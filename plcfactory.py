@@ -32,6 +32,8 @@ requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 deviceDict = {}
     
 
+# https://ics-services.esss.lu.se/ccdb-test/rest/slot/LNS-ISrc-01:Vac-TMPC-1
+
 def queryCCDB(device):
 
     # create URL for GET request
@@ -41,8 +43,14 @@ def queryCCDB(device):
     tmpDict    = json.loads(request.text)
     
     properties = tmpDict.get('properties')
+    
+    
     controls   = tmpDict.get('control')
     controlBy  = tmpDict.get('controlBy')
+
+    # convert from utf-8 to ascii for keys
+    controls   = map(lambda x: str(x), controls)
+    controlBy  = map(lambda x: str(x), controlBy)
 
     return (properties, controls, controlBy)
 
@@ -54,8 +62,7 @@ def getDevices(remainingDevices):
     if not remainingDevices:
         return
 
-    device = str(remainingDevices.pop())
-             # convert from utf-8 to ascii for keys
+    device = remainingDevices.pop()
     
     if device not in deviceDict:  # avoid infinite loop
         (prop, contr, contrBy) = queryCCDB(device)
@@ -91,29 +98,16 @@ if __name__ == "__main__":
     deviceDict[device]     =  (prop, contr, contrBy)
     
     # recursively gather information about 'controlBy' devices
+    # e.g. test with python plcfactory.py LNS-ISrc-01:Vac-TMP-1
     getDevices(contrBy)
 
-    print deviceDict.keys()
-    
-    writeTemplate()
-    
-    
-    
-"""
-# extract "controls" relationships and properties 
-
-print "Properties:"
-properties   = responseDict.get('properties')
-print properties
-
-print "Controls:"
-controls     = responseDict.get('control')
-print controls
-
-print "Controlled by:"
-controlledBy = responseDict.get('controlBy')
-print controlledBy
-
-# recursively retrieve data for every device the current one is controlled by
-# python plcfactory.py LNS-ISrc-01:Vac-TMP-1
-"""
+    for elem in deviceDict.keys():
+        (prop, contr, contrBy) = deviceDict.get(elem)
+        print "=" * 60
+        print "Device " + elem
+        print "Controls:"
+        print contr
+        print "Controlled by:"
+        print contrBy
+        print "Properties:"
+        print prop
