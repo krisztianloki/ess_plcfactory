@@ -8,106 +8,117 @@ See plcfactory.txt for further documentation.
 """
 
 # inbuilt libraries
-import json
 import os
 import sys
 
+# own libraries
+import restful         as rs
+import processTemplate as pt
 
-# add directory for third-party libraries to module search path
-parent_dir = os.path.abspath(os.path.dirname(__file__))
-lib_dir    = os.path.join(parent_dir, 'libs')
-sys.path.append(lib_dir)
+"""
+TODO
+- second argument to script: location of template files (still needed?)
+- layout standards for output files
 
-# third-party libraries, stored in folder 'libs' 
-import requests
-
-# disable printing of unsigned SSH connection warnings to console
-from requests.packages.urllib3.exceptions import InsecureRequestWarning
-requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+"""
 
 
-# global variables
+#FIXME: this is all hardcoded for now
+def getHeader(plc):
+    assert isinstance(plc, str)
 
-# key: deviceID, value: tuple of three lists: properties, controls, controlledBy 
-deviceDict = {}
+    filename = "PLC_DEVICE_TEMPLATE1_HEADER.txt"
+    lines = []
     
-
-# https://ics-services.esss.lu.se/ccdb-test/rest/slot/LNS-ISrc-01:Vac-TMPC-1
-
-def queryCCDB(device):
-
-    # create URL for GET request
-    url        = "https://ics-services.esss.lu.se/ccdb-test/rest/slot/" + device
-    request    = requests.get(url, verify=False)
-                 # False because SSH connection is unsigned
-    tmpDict    = json.loads(request.text)
+    with open(filename) as f:
+        lines = f.readlines()
+        
+    return lines
     
-    properties = tmpDict.get('properties')
+#FIXME 
+def getFooter(plc):
+    assert isinstance(plc, str)
     
+    filename = "PLC_DEVICE_TEMPLATE1_FOOTER.txt"
+    lines = []
     
-    controls   = tmpDict.get('control')
-    controlBy  = tmpDict.get('controlBy')
-
-    # convert from utf-8 to ascii for keys
-    controls   = map(lambda x: str(x), controls)
-    controlBy  = map(lambda x: str(x), controlBy)
-
-    return (properties, controls, controlBy)
-
-
-# exhaustively collect data for all affected devices
-def getDevices(remainingDevices):
-    global deviceDict
+    with open(filename) as f:
+        lines = f.readlines()
+        
+    return lines
     
-    if not remainingDevices:
-        return
-
-    device = remainingDevices.pop()
-    
-    if device not in deviceDict:  # avoid infinite loop
-        (prop, contr, contrBy) = queryCCDB(device)
-        deviceDict[device]     =  (prop, contr, contrBy)
-        return getDevices(remainingDevices + contrBy)
-    else:
-        return getDevices(remainingDevices)
-
-
-def writeTemplate():
-    pass
-
-
 
 if __name__ == "__main__":
+
+    os.system('clear')
+
+    output = []
+
     # global variables
     numArgs = 2    # note: file name counts as 1 argument
 
+    # argument is a PLC at the root
+
     # reading arguments
     # typical invocation: 'python plcfactory foo'
-
+    
     args = sys.argv
     assert len(args) == numArgs, "Illegal number of arguments."
 
     # get device, e.g. LNS-ISrc-01:Vac-TMPC-1
     # https://ics-services.esss.lu.se/ccdb-test/rest/slot/LNS-ISrc-01:Vac-TMPC-1
-    # python plcfactory.py LNS-ISrc-01:Vac-TMPC-1
-    device = args[1]
+    # python plcfactory.py LNS-ISrc-01:Vac-IPC-1
     
-    (prop, contr, contrBy) = queryCCDB(device)
+    # PLC name given as arguments
+    plc      = args[1]
     
-    # adding results to device dictionary
-    deviceDict[device]     =  (prop, contr, contrBy)
-    
-    # recursively gather information about 'controlBy' devices
-    # e.g. test with python plcfactory.py LNS-ISrc-01:Vac-TMP-1
-    getDevices(contrBy)
+    # find devices this PLC controls
+    controls = rs.controlCCDB(plc)
 
-    for elem in deviceDict.keys():
-        (prop, contr, contrBy) = deviceDict.get(elem)
-        print "=" * 60
-        print "Device " + elem
-        print "Controls:"
-        print contr
-        print "Controlled by:"
-        print contrBy
-        print "Properties:"
-        print prop
+    print "PLC: " + plc + "\n"
+    print "This device controls: "
+    for elem in controls:
+        print "\t- " + elem
+    print "\n"
+    
+    output += getHeader(plc)
+    print "Header processed.\n"
+        
+    # TODO: get name from RESTful interface, download file, maybe send list of lines to pt
+    # Ricardo will work on that
+    # thus: code below hard-coded and tailored to given example because the required REST interface has not yet
+    # been implemented
+    
+    # for each device, find corresponding template and process it
+    
+    print "Processed templates:"
+    for elem in controls:
+        # get template
+        
+        # process template
+        
+        # hardcoded placeholders
+        if elem == 'LNS-ISrc-01:Vac-TMPC-1':
+            filename = "LEYBOLD_TURBOPUMP_CONTROLLER_TEMPLATE1.txt"
+            
+        if elem == 'LNS-ISrc-01:Vac-PGV-1':
+            filename = "VALVE_TEMPLATE1.txt"
+            
+        # add result to output
+        output += pt.process(elem, filename)
+        
+        print "\t- " + elem
+    print "\n"
+    
+    output += getFooter(plc)
+    print "Footer processed.\n"    
+    
+    outputFile = plc + ".txt"
+
+    # write entire output
+    f = open(outputFile,'w')
+    for elem in output:
+        f.write(elem)
+    f.close()
+
+    print "Output file written: " + outputFile + "\n"
