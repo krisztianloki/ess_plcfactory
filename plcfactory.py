@@ -1,17 +1,21 @@
 #!/usr/bin/python
 """
 PLC Factory
-Gregor Ulm
-2016-07-04 to 2016-09-02
+(c) European Spallation Source, Lund
+
+Authors:
+- Gregor Ulm: 2016-07-04 to 2016-09-02
+- ...
 
 See plcfactory.txt for further documentation.
 """
 
-# inbuilt libraries
+# Python libraries
+import datetime
 import os
 import sys
 
-# own libraries
+# PLC Factor modules
 import restful         as rs
 import processTemplate as pt
 
@@ -103,22 +107,28 @@ if __name__ == "__main__":
             
         if elem == 'LNS-ISrc-01:Vac-PGV-1':
             filename = "VALVE_TEMPLATE1.txt"
+            #filename = "VALVE_TEMPLATE2.txt"
+            #filename = "VALVE_TEMPLATE3.txt"
             
         # add result to output
         output += pt.process(elem, filename)
         
         print "\t- " + elem
+        
     print "\n"
     
     output += getFooter(plc)
     print "Footer processed.\n"    
     
-    outputFile = plc + ".txt"
+    timestamp  = '{:%Y%m%d.%H%M%S}'.format(datetime.datetime.now())
+    outputFile = plc + timestamp + ".scl"
 
+    os.chdir("output")
     # write entire output
     f = open(outputFile,'w')
     for elem in output:
         f.write(elem)
     f.close()
+    os.chdir("..")
 
     print "Output file written: " + outputFile + "\n"

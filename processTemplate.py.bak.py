@@ -1,10 +1,31 @@
-# Python libraries
 import ast
 import json
-
-# PLC Factory modules
 import restful as rs
-import plcflang as plang
+
+
+# replace INSTALLATION_SLOT with provided name
+def replaceSlotName(line, plc):
+    assert isinstance(line,     str )
+    assert isinstance(plc,      str )
+    
+    start = line.find("$(")
+    end   = line.find(")", start)
+    assert end != -1
+
+    res   = line[:start] + plc + line[end + 1:]
+    return fixLength(res)
+
+
+def replaceSlotNameAndFixLength(line, plc):
+    assert isinstance(line,     str )
+    assert isinstance(plc,      str )
+    
+    
+    res   = line[:start] + plc + line[end + 1:]
+
+    return fixLength(res)
+    
+
 
 
 def fixLength(line):
@@ -29,7 +50,7 @@ def fixLength(line):
     start = line.find("EPICStoPLC_DB")  # TODO: is this always the first assignment?
     assert start <= 30
         
-    if not (start == 30 or start == -1):
+    if not start == 30:
         shift = " " * (30 - start) # creates white space
         return line[:start] + shift + line[start:]
     
@@ -57,9 +78,7 @@ def processLine(line, plc, propDict):
     assert isinstance(propDict, dict)
 
     if line.find("$(INSTALLATION_SLOT") != -1:
-        # replace INSTALLATION_SLOT with provided name     
-        tmp = replaceReference(line, plc)
-        tmp = fixLength(tmp)
+        tmp = replaceSlotName(line, plc)
         # there is a PLCF tag left to process
         return processLine(tmp, plc, propDict)
 
@@ -80,7 +99,6 @@ def createPropertyDict(propList):
     for elem in propList:
         assert isinstance(elem, str)
         # convert string to dictionary
-        
         elem = ast.literal_eval(elem)
 
         # input converted from utf-8 to ascii
@@ -111,37 +129,30 @@ def processAll(lines, plc):
     # create dictionary of properties
     propDict = createPropertyDict(propList)
     
-    # first pass
     res = []
     for elem in lines:        
-        #tmp = processLine(elem, plc, propDict)
-        tmp = plang.processLine(elem, plc, propDict)
-        
-#        tmp = fixLength(tmp)
-        
+        tmp = processLine(elem, plc, propDict)
         res.append(tmp)
 
-    # second pass; removes references that were introduced
-    # through property lookups
-    
+
+    # second pass
     final = []
     for elem in res:
         tmp = replaceReference(elem, plc)
-        tmp = fixLength(tmp)
         final.append(tmp)
 
     return final
     
-    return res
 
-# replaces "$(INSTALLATION_SLOT" with device name
+# FIXME
 def replaceReference(line, plc):
-    assert isinstance(line, str)
-    assert isinstance(plc,  str)
+    assert isinstance(line,     str )
+    assert isinstance(plc,      str )
     
     res = line
     
     if line.find("$(INSTALLATION_SLOT") != -1:
+        tmp = replaceSlotName(line, plc)
         
         start = line.find("$(")
         end   = line.find(")", start)
@@ -152,10 +163,11 @@ def replaceReference(line, plc):
     return res    
         
     
+
 # read entire template file
 # TODO: give filename as argument or call function with a list of lines,
 #       i.e. process file in plfactory.py istead?
-def getAllLines(filename):
+def allLines(filename):
     assert isinstance(filename, str)
     
     lines = []
@@ -170,7 +182,7 @@ def process(plc, filename):
     assert isinstance(plc,      str)
     assert isinstance(filename, str)
     
-    lines  = getAllLines(filename)
+    lines  = allLines(filename)
     result = processAll(lines, plc)    
         
     return result
