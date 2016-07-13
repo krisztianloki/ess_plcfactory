@@ -56,6 +56,20 @@ def getFooter(plc):
     return lines
     
 
+# ensures that filenames are legal in Windows
+# (OSX automatically replaces illegal characters)
+def sanitizeFilename(filename):
+    result = ""
+    
+    for char in filename:
+        if char in '<>:"/\|?*':
+            result += '_'
+        else:
+            result += char
+            
+    return result
+     
+
 if __name__ == "__main__":
 
     os.system('clear')
@@ -114,9 +128,11 @@ if __name__ == "__main__":
             filename = "LEYBOLD_TURBOPUMP_CONTROLLER_TEMPLATE1.txt"
             
         if elem == 'LNS-ISrc-01:Vac-PGV-1':
-            filename = "VALVE_TEMPLATE1.txt"
+            #filename = "VALVE_TEMPLATE1.txt"
             #filename = "VALVE_TEMPLATE2.txt"
             #filename = "VALVE_TEMPLATE3.txt"
+            
+            filename = "VACUUM_VALVE_TEMPLATE02a.txt"
             
         # add result to output
         output += pt.process(elem, filename)
@@ -129,8 +145,9 @@ if __name__ == "__main__":
     print "Footer processed.\n"    
     os.chdir("..")
     
-    timestamp  = '{:%Y%m%d.%H%M%S}'.format(datetime.datetime.now())
-    outputFile = plc + timestamp + ".scl"
+    timestamp  = '{:%Y%m%d%H%M%S}'.format(datetime.datetime.now())
+    outputFile = plc + "_" + timestamp + ".scl"
+    outputFile = sanitizeFilename(outputFile)
 
     os.chdir("output")
     # write entire output

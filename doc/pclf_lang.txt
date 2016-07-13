@@ -71,6 +71,22 @@ $[PLCF#ext.bar(PropertyInteger02)+10))]
 
 
 
+INSTALLATION_SLOT
+
+there is no need to change the code if the desired behavior is to not replace INSTALLATION_SLOT within a PLCF expression. For instance, a line like this:
+
+    field(INP, "@$(PLCNAME)/$[PLCF#$(INSTALLATION_SLOT)] T=WORD")
+
+...is turned into:
+
+    field(INP, "@LNS-ISrc-01:Vac-PGV-1/$(INSTALLATION_SLOT) T=WORD")
+
+The PLCF tag is peeled off, but the expression is unchanged otherwise.
+
+
+
+
+
 
 Basic sanity checks are included:
  - an opening square bracket has to be followed by a closing square bracket

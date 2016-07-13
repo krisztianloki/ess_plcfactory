@@ -62,6 +62,9 @@ def processLine(line, plc, propDict):
     assert isinstance(plc,      str )
     assert isinstance(propDict, dict)
 
+# FIXME
+# "$[PLCF#INSTALLATION_SLOT"]
+
     if line.find("$(INSTALLATION_SLOT") != -1:
         # replace INSTALLATION_SLOT with provided name     
         tmp = replaceReference(line, plc)

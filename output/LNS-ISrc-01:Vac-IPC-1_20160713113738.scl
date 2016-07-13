@@ -61,6 +61,13 @@ record(ai, LNS-ISrc-01:Vac-PGV-1:InRegister7) {
 	field(INP, "@$(PLCNAME)/100 T=WORD")
 }
 
+record(ai, LNS-ISrc-01:Vac-PGV-1:InRegister7) {
+	field(SCAN, "I/O Intr")
+	field(DTYP, "S7plc")
+	field(INP, "@LNS-ISrc-01:Vac-PGV-1/$(INSTALLATION_SLOT) T=WORD")
+}
+
+
 record(ao, LNS-ISrc-01:Vac-PGV-1:OutRegister1) {
   field(DTYP, "asynInt32")
   field(OUT,  "@asyn($(PLCNAME)write 18 100)")

@@ -40,6 +40,13 @@ record(ai, $(INSTALLATION_SLOT):InRegister7) {
 	field(INP, "@$(PLCNAME)/$[PLCF#PropertyInteger02+12] T=WORD")
 }
 
+record(ai, $(INSTALLATION_SLOT):InRegister7) {
+	field(SCAN, "I/O Intr")
+	field(DTYP, "S7plc")
+	field(INP, "@$(PLCNAME)/$[PLCF#$(INSTALLATION_SLOT)] T=WORD")
+}
+
+
 record(ao, $(INSTALLATION_SLOT):OutRegister1) {
   field(DTYP, "asynInt32")
   field(OUT,  "@asyn($(PLCNAME)write $[PLCF#PropertyInteger01] 100)")

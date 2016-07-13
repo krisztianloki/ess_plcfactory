@@ -32,6 +32,7 @@ def queryCCDB(plc, field):
 
     # create URL for GET request
     url     = "https://ics-services.esss.lu.se/ccdb-test/rest/slot/" + plc
+        
     request = requests.get(url, verify=False)
                  # False because SSH connection is unsigned
     tmpDict = json.loads(request.text)

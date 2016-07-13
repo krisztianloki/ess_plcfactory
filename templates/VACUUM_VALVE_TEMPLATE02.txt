@@ -1,0 +1,114 @@
+########## $[PLCF#INSTALLATION_SLOT] PLC->EPICS status ##########
+
+record(bi, $[PLCF#INSTALLATION_SLOT]:ManMode) {
+	field(SCAN, "I/O Intr")
+	field(DTYP, "S7plc")
+	field(INP, "@$(PLCNAME)/$[PLCF#PropertyInteger02] T=WORD B=0")
+}
+record(bi, $[PLCF#INSTALLATION_SLOT]:Closed) {
+	field(SCAN, "I/O Intr")
+	field(DTYP, "S7plc")
+	field(INP, "@$(PLCNAME)/$[PLCF#PropertyInteger02] T=WORD B=1")
+}
+record(bi, $[PLCF#INSTALLATION_SLOT]:Open) {
+	field(SCAN, "I/O Intr")
+	field(DTYP, "S7plc")
+	field(INP, "@$(PLCNAME)/$[PLCF#PropertyInteger02] T=WORD B=2")
+}
+record(bi, $[PLCF#INSTALLATION_SLOT]:LocalMode) {
+	field(SCAN, "I/O Intr")
+	field(DTYP, "S7plc")
+	field(INP, "@$(PLCNAME)/$[PLCF#PropertyInteger02] T=WORD B=3")
+}
+record(bi, $[PLCF#INSTALLATION_SLOT]:ForcedMode) {
+	field(SCAN, "I/O Intr")
+	field(DTYP, "S7plc")
+	field(INP, "@$(PLCNAME)/$[PLCF#PropertyInteger02] T=WORD B=4")
+}
+record(bi, $[PLCF#INSTALLATION_SLOT]:BlockedClosedMode) {
+	field(SCAN, "I/O Intr")
+	field(DTYP, "S7plc")
+	field(INP, "@$(PLCNAME)/$[PLCF#PropertyInteger02] T=WORD B=5")
+}
+record(bi, $[PLCF#INSTALLATION_SLOT]:OpenOutput) {
+	field(SCAN, "I/O Intr")
+	field(DTYP, "S7plc")
+	field(INP, "@$(PLCNAME)/$[PLCF#PropertyInteger02] T=WORD B=7")
+}
+
+
+
+
+record(ai, $[PLCF#INSTALLATION_SLOT]:InRegister2) {
+	field(SCAN, "I/O Intr")
+	field(DTYP, "S7plc")
+	field(INP, "@$(PLCNAME)/$[PLCF#PropertyInteger02 + 2] T=WORD")
+}
+
+record(ai, $[PLCF#INSTALLATION_SLOT]:InRegister3) {
+	field(SCAN, "I/O Intr")
+	field(DTYP, "S7plc")
+	field(INP, "@$(PLCNAME)/$[PLCF#PropertyInteger02 + 4] T=WORD")
+}
+
+record(ai, $[PLCF#INSTALLATION_SLOT]:InRegister4) {
+	field(SCAN, "I/O Intr")
+	field(DTYP, "S7plc")
+	field(INP, "@$(PLCNAME)/$[PLCF#PropertyInteger02 + 6] T=WORD")
+}
+
+record(ai, $[PLCF#INSTALLATION_SLOT]:InRegister5) {
+	field(SCAN, "I/O Intr")
+	field(DTYP, "S7plc")
+	field(INP, "@$(PLCNAME)/$[PLCF#PropertyInteger02 + 8] T=WORD")
+}
+
+record(ai, $[PLCF#INSTALLATION_SLOT]:InRegister6) {
+	field(SCAN, "I/O Intr")
+	field(DTYP, "S7plc")
+	field(INP, "@$(PLCNAME)/$[PLCF#PropertyInteger02 + 10] T=WORD")
+}
+
+record(ai, $[PLCF#INSTALLATION_SLOT]:InRegister7) {
+	field(SCAN, "I/O Intr")
+	field(DTYP, "S7plc")
+	field(INP, "@$(PLCNAME)/$[PLCF#PropertyInteger02 + 12] T=WORD")
+}
+####################
+
+########## $[PLCF#INSTALLATION_SLOT] EPICS->PLC commands ##########
+
+record(bo, $[PLCF#INSTALLATION_SLOT]:AutoCmd) {
+  field(DTYP, "asynUInt32Digital")
+  field(OUT,  "@asynMask($(PLCNAME)write, $[PLCF#PropertyInteger01], 0x0001, 100)")
+}
+record(bo, $[PLCF#INSTALLATION_SLOT]:ManCmd) {
+  field(DTYP, "asynUInt32Digital")
+  field(OUT,  "@asynMask($(PLCNAME)write, $[PLCF#PropertyInteger01], 0x0002, 100)")
+}
+record(bo, $[PLCF#INSTALLATION_SLOT]:ManCloseCmd) {
+  field(DTYP, "asynUInt32Digital")
+  field(OUT,  "@asynMask($(PLCNAME)write, $[PLCF#PropertyInteger01], 0x0004, 100)")
+}
+record(bo, $[PLCF#INSTALLATION_SLOT]:ManOpenCmd) {
+  field(DTYP, "asynUInt32Digital")
+  field(OUT,  "@asynMask($(PLCNAME)write, $[PLCF#PropertyInteger01], 0x0008, 100)")
+}
+record(bo, $[PLCF#INSTALLATION_SLOT]:RemoteCmd) {
+  field(DTYP, "asynUInt32Digital")
+  field(OUT,  "@asynMask($(PLCNAME)write, $[PLCF#PropertyInteger01], 0x0010, 100)")
+}
+record(bo, $[PLCF#INSTALLATION_SLOT]:IntlkBypassCmd) {
+  field(DTYP, "asynUInt32Digital")
+  field(OUT,  "@asynMask($(PLCNAME)write, $[PLCF#PropertyInteger01], 0x0020, 100)")
+}
+record(bo, $[PLCF#INSTALLATION_SLOT]:BlockClosedCmd) {
+  field(DTYP, "asynUInt32Digital")
+  field(OUT,  "@asynMask($(PLCNAME)write, $[PLCF#PropertyInteger01], 0x0040, 100)")
+}
+record(bo, $[PLCF#INSTALLATION_SLOT]:ResetCmd) {
+  field(DTYP, "asynUInt32Digital")
+  field(OUT,  "@asynMask($(PLCNAME)write, $[PLCF#PropertyInteger01], 0x0080, 100)")
+}
+
+####################
