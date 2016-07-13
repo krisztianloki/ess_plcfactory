@@ -15,7 +15,7 @@ import datetime
 import os
 import sys
 
-# PLC Factor modules
+# PLC Factory modules
 import restful         as rs
 import processTemplate as pt
 
@@ -25,6 +25,10 @@ TODO
 - layout standards for output files
 
 """
+
+# global variables
+TEMPLATE_DIR = "templates"
+
 
 
 #FIXME: this is all hardcoded for now
@@ -85,6 +89,9 @@ if __name__ == "__main__":
         print "\t- " + elem
     print "\n"
     
+    # change working directory to template directory
+    os.chdir(TEMPLATE_DIR)
+    
     output += getHeader(plc)
     print "Header processed.\n"
         
@@ -96,6 +103,7 @@ if __name__ == "__main__":
     # for each device, find corresponding template and process it
     
     print "Processed templates:"
+    
     for elem in controls:
         # get template
         
@@ -114,11 +122,12 @@ if __name__ == "__main__":
         output += pt.process(elem, filename)
         
         print "\t- " + elem
-        
+      
     print "\n"
     
     output += getFooter(plc)
     print "Footer processed.\n"    
+    os.chdir("..")
     
     timestamp  = '{:%Y%m%d.%H%M%S}'.format(datetime.datetime.now())
     outputFile = plc + timestamp + ".scl"

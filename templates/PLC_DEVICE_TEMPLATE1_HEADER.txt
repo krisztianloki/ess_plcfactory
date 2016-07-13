@@ -1,0 +1,13 @@
+FUNCTION "CCDB-PLC Factory Call_Devices" : Void
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_TEMP 
+      "false" : Bool;
+      "true" : Bool;
+   END_VAR
+
+
+BEGIN
+	#false:=0;
+	#true := 1;
+	

@@ -1,0 +1,60 @@
+PLC Factory
+(c) European Spallation Source, Lund
+
+Authors:
+- Gregor Ulm: 2016-07-04 to 2016-09-02
+- ...
+
+
+Overview
+
+PLC Factory is a Python script that automates some of the tasks associated with programming PLCs. Concretely, it creates templates with device information already filled in, which eliminate a large part of the possibly tedious work of programming PLCs.
+
+
+Requirements:
+
+ - Python 2.7
+ - Python library 'requests' 2.10.0, provided in /libs
+
+In addition, the user is required to have access to CCDB. Lastly, this application has been developed in  Apple OSX. It should run without modifications on any POSIX-compliant operating system, but may not work as intended, due to calls to the underlying operating system, on non-POSIX-compliant operating systems, which includes some Windows verions.
+
+
+Files:
+
+  - plcfactory.txt
+  - plcfactory.py
+  - restful.py
+  - processTemplate.py
+
+
+Usage:
+
+  The invocation of the script follows the following pattern:
+  
+  python plcfactory.py <plc-name>
+  
+  For instance, "python plcfactory.py LNS-ISrc-01:Vac-IPC-1".
+  
+  As a result, a file of the format <plc-name>.txt is written to the directory plcfactory.py was called from. Note that certain characters in <plc-name> may get changed if they are not allwed in file names by the underlying operating system. For instance, on OSX, the colon (:) sign is turned into a slash (/).
+
+
+Outline:
+
+ PLC Factory performs the following steps, in order:
+ 
+ 1) Look up <plc-name> in CCDB
+ 
+ 2) Determine which devices are controlled by <plc-name>
+ 
+ 3) Collect properties of those devices.
+ 
+ 4) Retrieve the header for <plc-name>
+ 
+ 5) For each device controlled by <plc-name>, retrieve their template and process it.
+ 
+ 6) Retrieve the footer for <plc-name>
+ 
+ 7) Write one ouput file, named <plc-name>.txt
+ 
+
+ For further details, please consult the provided source code.

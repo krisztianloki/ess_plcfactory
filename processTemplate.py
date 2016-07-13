@@ -1,3 +1,9 @@
+"""
+processTemplate.py
+
+
+"""
+
 # Python libraries
 import ast
 import json
@@ -174,22 +180,3 @@ def process(plc, filename):
     result = processAll(lines, plc)    
         
     return result
-
-"""
-if __name__ == "__main__":
-    
-    plc      = "LNS-ISrc-01:Vac-TMPC-1" # would be given as an argument
-    filename = "LEYBOLD_TURBOPUMP_CONTROLLER_TEMPLATE1.txt"
-    lines    = allLines(filename)
-    
-    x = processAll(lines, plc)    
-    
-    for elem in x:
-        print elem
-    
-    # write file
-    f = open('output.txt','w')
-    for elem in x:
-        f.write(elem)
-    f.close()
-"""

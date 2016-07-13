@@ -1,9 +1,14 @@
 """
+plcflang.py
 
+This module processes expressions in 'PLCFLang', the embedded domain-specific
+language of PLC Factory. Please see the documentation for further details.
+
+Note that erroneous input in syntactically valid expressions, for instance
+using a variable name that is not defined as a device property in CCDB,
+will not lead to an error. Instead, such input is simply returned unchanged.
 
 """
-
-
 
 # PLC Factory modules
 import restful             as rs
@@ -11,9 +16,8 @@ import processTemplate     as pt
 import plcflang_extensions as ext
 
 
-
-
-# processOne
+# replaces all variables in a PLCFLang expression with values
+# from CCDB and returns the evaluated expression
 def evaluateExpression(line, device, propDict):
     assert isinstance(line,     str )
     assert isinstance(device,   str )
@@ -27,16 +31,21 @@ def evaluateExpression(line, device, propDict):
             # recursion to take care of multiple occurrences of variables
             return evaluateExpression(tmp, device, propDict)
         
+    # evaluation happens after all substitutions have been performed
     try:
-            result = eval(line)
-    except SyntaxError as e:     # catches references to slot names (and erroneous input)
-            result = line
+        result = eval(line)
+
+   # catch references to slot names (and erroneous input)
+    except SyntaxError as e:
+        result = line
+
     except NameError as e:
-            result = line
+        result = line
             
     return str(result)
     
-    
+
+# substitutes a variable in an expression with the proviced value
 def substitute(expr, variable, value):
     assert isinstance(expr,     str)
     assert isinstance(variable, str)
@@ -48,6 +57,8 @@ def substitute(expr, variable, value):
     return expr[:start] + value + expr[end:]
         
 
+# checks for basic validity of expression by determining whether
+# open and closed parentheses match
 def matchingParentheses(line):
     assert isinstance(line, str)
     
@@ -60,16 +71,22 @@ def matchingParentheses(line):
             return acc == 0
             
         else:
+            
             if line[0] == '(':
                 return helper(line[1:], acc + 1)
+                
             elif line[0] == ')':
                 return helper(line[1:], acc - 1)
+                
             else:
                 return helper(line[1:], acc)
     
     return helper(line, 0)
 
 
+# extracts a PLFCLang expression from a line in a template,
+# evaluates the expression, and returns a new line with
+# the result of the evaluation
 def processLine(line, device, propDict):
     assert isinstance(line,     str )
     assert isinstance(device,   str )
@@ -81,8 +98,9 @@ def processLine(line, device, propDict):
     
     if start == -1:
         return line # nothing to replace
-    
+
     end        = line.find("]", start)
+    # assert matching square brackets
     assert end != -1
     
     expression = line[start + offset : end]
