@@ -1,4 +1,4 @@
-# user-defined functions for PLCFlang 
+# user-defined functions for PLCFlang
 
 def foo(x):
     return x * x * x

@@ -19,142 +19,171 @@ import sys
 import restful         as rs
 import processTemplate as pt
 
-"""
-TODO
-- second argument to script: location of template files (still needed?)
-- layout standards for output files
-
-"""
 
 # global variables
 TEMPLATE_DIR = "templates"
+OUTPUT_DIR   = "output"
 
 
+def getArtefact(deviceType, filenames, tag, n):
+    assert isinstance(deviceType, str )
+    assert isinstance(filenames,  list)
+    assert isinstance(tag,        str )
+    assert isinstance(n,          int )
 
-#FIXME: this is all hardcoded for now
-def getHeader(plc):
-    assert isinstance(plc, str)
-
-    filename = "PLC_DEVICE_TEMPLATE1_HEADER.txt"
     lines = []
-    
-    with open(filename) as f:
-        lines = f.readlines()
+
+    for filename in filenames:
         
+        if matchingArtefact(filename, tag, n):
+            
+            rs.getArtefact(deviceType, filename)
+            
+            with open(filename) as f:
+                lines = f.readlines()
+                    
+            break
+
     return lines
+
+
+def getTemplateName(deviceType, filenames, n):
+    assert isinstance(deviceType, str )
+    assert isinstance(filenames,  list)
+    assert isinstance(n,          int )
+
+    result = ""
     
-#FIXME 
-def getFooter(plc):
-    assert isinstance(plc, str)
-    
-    filename = "PLC_DEVICE_TEMPLATE1_FOOTER.txt"
-    lines = []
-    
-    with open(filename) as f:
-        lines = f.readlines()
-        
-    return lines
-    
+    for filename in filenames:
+
+        if matchingArtefact(filename, "TEMPLATE", n):
+            result = filename
+            # download header and save in template directory
+            rs.getArtefact(deviceType, filename)
+            break
+
+    return result
+
+
+def matchingArtefact(filename, tag, n):
+    assert isinstance(filename, str)
+    assert isinstance(tag,      str)
+    assert isinstance(n,        int)
+
+    # attached artefacts may be of different file types, e.g. PDF
+    if not filename.endswith('.txt'):
+        return False
+
+    # sample filename: VALVE_TEMPLATE_1.txt
+
+    filename    = filename.split('.')[0] # removing '.txt.
+    tmp         = filename.split("_")    # separating fields in filename
+
+    template_nr = int(tmp[-1])
+
+    return template_nr == n and tag in filename
+
 
 # ensures that filenames are legal in Windows
 # (OSX automatically replaces illegal characters)
 def sanitizeFilename(filename):
-    result = ""
-    
-    for char in filename:
-        if char in '<>:"/\|?*':
-            result += '_'
-        else:
-            result += char
-            
-    return result
-     
+    assert isinstance(filename, str)
+
+    result = map(lambda x: '_' if x in '<>:"/\|?*' else x, filename)
+    return "".join(result)
+
 
 if __name__ == "__main__":
 
     os.system('clear')
 
-    output = []
+    # typical invocation: 'python plcfactory plc n'
+    # i.e. PLC at the root + template number
+    # example:
+    #     python plcfactory.py LNS-ISrc-01:Vac-IPC-1 1
 
-    # global variables
-    numArgs = 2    # note: file name counts as 1 argument
-
-    # argument is a PLC at the root
-
+    numArgs = 3    # note: file name counts as 1 argument
     # reading arguments
-    # typical invocation: 'python plcfactory foo'
-    
-    args = sys.argv
+    args    = sys.argv
     assert len(args) == numArgs, "Illegal number of arguments."
 
     # get device, e.g. LNS-ISrc-01:Vac-TMPC-1
     # https://ics-services.esss.lu.se/ccdb-test/rest/slot/LNS-ISrc-01:Vac-TMPC-1
-    # python plcfactory.py LNS-ISrc-01:Vac-IPC-1
-    
-    # PLC name given as arguments
-    plc      = args[1]
-    
+
+    # PLC name and template number given as arguments
+    plc = args[1]
+    n   = int(args[2])
+
+    # collect lines to be written at the end
+    output  = []
+
+    # get artifact names of files attached to plc
+    # TODO: only ever header and footer?
+    (deviceType, plcArtefacts) = rs.getArtefactNames(plc)
+
+
     # find devices this PLC controls
     controls = rs.controlCCDB(plc)
 
     print "PLC: " + plc + "\n"
     print "This device controls: "
+    
     for elem in controls:
         print "\t- " + elem
-    print "\n"
     
+    print "\n"
+
     # change working directory to template directory
     os.chdir(TEMPLATE_DIR)
-    
-    output += getHeader(plc)
+
+    header = getArtefact(deviceType, plcArtefacts, "HEADER", n)
     print "Header processed.\n"
-        
-    # TODO: get name from RESTful interface, download file, maybe send list of lines to pt
-    # Ricardo will work on that
-    # thus: code below hard-coded and tailored to given example because the required REST interface has not yet
-    # been implemented
-    
-    # for each device, find corresponding template and process it
-    
+
+    footer = getArtefact(deviceType, plcArtefacts, "FOOTER", n)
+    print "Footer processed.\n"
+
     print "Processed templates:"
-    
+    # for each device, find corresponding template and process it
+
+    output = []
+
     for elem in controls:
+
         # get template
+        (deviceType, artefacts) = rs.getArtefactNames(elem)
+
+        # only need to download the file
+        filename = getTemplateName(deviceType, artefacts, n)
         
-        # process template
-        
-        # hardcoded placeholders
-        if elem == 'LNS-ISrc-01:Vac-TMPC-1':
-            filename = "LEYBOLD_TURBOPUMP_CONTROLLER_TEMPLATE1.txt"
-            
-        if elem == 'LNS-ISrc-01:Vac-PGV-1':
-            #filename = "VALVE_TEMPLATE1.txt"
-            #filename = "VALVE_TEMPLATE2.txt"
-            #filename = "VALVE_TEMPLATE3.txt"
-            
-            filename = "VACUUM_VALVE_TEMPLATE02a.txt"
-            
-        # add result to output
-        output += pt.process(elem, filename)
-        
+        if filename != "":
+            # process template and add result to output
+            output += pt.process(elem, filename)
+
         print "\t- " + elem
-      
+
     print "\n"
-    
-    output += getFooter(plc)
-    print "Footer processed.\n"    
+
+    output = header + output + footer
+
     os.chdir("..")
-    
+
     timestamp  = '{:%Y%m%d%H%M%S}'.format(datetime.datetime.now())
-    outputFile = plc + "_" + timestamp + ".scl"
+    outputFile = plc + "_" + "template_" + str(n) + "_" + timestamp + ".scl"
     outputFile = sanitizeFilename(outputFile)
 
-    os.chdir("output")
-    # write entire output
-    f = open(outputFile,'w')
-    for elem in output:
-        f.write(elem)
-    f.close()
-    os.chdir("..")
+    if len(output) > 0:
+        
+        os.chdir(OUTPUT_DIR)
+        
+        # write entire output
+        with open(outputFile,'w') as f:
+            map(lambda x: f.write(x), output)        
 
-    print "Output file written: " + outputFile + "\n"
+        os.chdir("..")
+        
+        print "Output file written: " + outputFile + "\n"
+
+    else:
+
+        os.system('clear')
+        print "There were no available templates for N = " + str(n) + ".\n"

@@ -7,7 +7,7 @@ record(ai, $(INSTALLATION_SLOT):InRegister1) {
 record(ai, $(INSTALLATION_SLOT):InRegister2) {
 	field(SCAN, "I/O Intr")
 	field(DTYP, "S7plc")
-	field(INP, "@$(PLCNAME)/$[PLCF#PropertyInteger02+2] T=WORD")
+	field(INP, "@$(PLCNAME)/$[PLCF#PropertyInteger02+2+PropertyInteger02+PropertyInteger02] T=WORD")
 }
 
 record(ai, $(INSTALLATION_SLOT):InRegister3) {
@@ -39,6 +39,13 @@ record(ai, $(INSTALLATION_SLOT):InRegister7) {
 	field(DTYP, "S7plc")
 	field(INP, "@$(PLCNAME)/$[PLCF#PropertyInteger02+12] T=WORD")
 }
+
+record(ai, $(INSTALLATION_SLOT):InRegister7) {
+	field(SCAN, "I/O Intr")
+	field(DTYP, "S7plc")
+	field(INP, "@$(PLCNAME)/$[PLCF#$(INSTALLATION_SLOT)] T=WORD")
+}
+
 
 record(ao, $(INSTALLATION_SLOT):OutRegister1) {
   field(DTYP, "asynInt32")

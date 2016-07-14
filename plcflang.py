@@ -36,10 +36,7 @@ def evaluateExpression(line, device, propDict):
         result = eval(line)
 
    # catch references to slot names (and erroneous input)
-    except SyntaxError as e:
-        result = line
-
-    except NameError as e:
+    except (SyntaxError, NameError) as e:
         result = line
             
     return str(result)
@@ -104,12 +101,9 @@ def processLine(line, device, propDict):
     assert end != -1
     
     expression = line[start + offset : end]
-    
-    # check for matching parentheses
     assert matchingParentheses(expression)
     
     reduced    = evaluateExpression(expression, device, propDict)
-
     result     = line[:start] + reduced + line[end + 1:]
 
     return result
