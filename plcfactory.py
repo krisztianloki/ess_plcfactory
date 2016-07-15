@@ -76,10 +76,17 @@ def matchingArtefact(filename, tag, n):
 
     # sample filename: VALVE_TEMPLATE_1.txt
 
+
+    # TODO: assert: exactly one '.' in filename 
+
     filename    = filename.split('.')[0] # removing '.txt.
     tmp         = filename.split("_")    # separating fields in filename
 
-    template_nr = int(tmp[-1])
+
+    if tmp[-1].startswith("TEMPLATE"):
+        template_nr = int(tmp[-1][len("TEMPLATE"):])
+    else:
+        template_nr = int(tmp[-1])
 
     return template_nr == n and tag in filename
 
@@ -101,6 +108,8 @@ if __name__ == "__main__":
     # i.e. PLC at the root + template number
     # example:
     #     python plcfactory.py LNS-ISrc-01:Vac-IPC-1 1
+    
+    # CCDB: python plcfactory.py LNS-LEBT-010:Vac-VPGCF-001 2
 
     numArgs = 3    # note: file name counts as 1 argument
     # reading arguments
@@ -109,6 +118,11 @@ if __name__ == "__main__":
 
     # get device, e.g. LNS-ISrc-01:Vac-TMPC-1
     # https://ics-services.esss.lu.se/ccdb-test/rest/slot/LNS-ISrc-01:Vac-TMPC-1
+
+    # https://ics-services.esss.lu.se/ccdb-test/rest/slot/LNS-LEBT-010:Vac-VPGCF-001
+
+    # https://ccdb.esss.lu.se/rest/slot/LNS-LEBT-010:Vac-VPGCF-001
+
 
     # PLC name and template number given as arguments
     plc = args[1]
@@ -159,7 +173,10 @@ if __name__ == "__main__":
             # process template and add result to output
             output += pt.process(elem, filename)
 
-        print "\t- " + elem
+        
+            print "\t- " + elem
+        else:
+            print "\t- " + elem + ": no template found"
 
     print "\n"
 
@@ -185,5 +202,5 @@ if __name__ == "__main__":
 
     else:
 
-        os.system('clear')
+        #os.system('clear')
         print "There were no available templates for N = " + str(n) + ".\n"

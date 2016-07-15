@@ -52,8 +52,10 @@ def getArtefact(deviceType, filename):
     # alternative URL e.g.
     # https://ics-services.esss.lu.se/ccdb-test/rest/slot/LNS-ISrc-01:Vac-IPC-1/download/PLC_DEVICE_HEADER_TEMPLATE_1.txt
 
-    url     = "https://ics-services.esss.lu.se/ccdb-test/rest/deviceType/"  \
+    # url     = "https://ics-services.esss.lu.se/ccdb-test/rest/deviceType/"  \
+    url     = "https://ccdb.esss.lu.se/rest/deviceType/"  \
                + deviceType + "/download/" + filename
+    
     results = requests.get(url, verify=False)
 
     with open(filename, 'wb') as f:
@@ -62,13 +64,15 @@ def getArtefact(deviceType, filename):
 
 def getField(device, field):
     # create URL for GET request
-    url     = "https://ics-services.esss.lu.se/ccdb-test/rest/slot/" + device
-
+    # url     = "https://ics-services.esss.lu.se/ccdb-test/rest/slot/" + device
+    
+    url     = "https://ccdb.esss.lu.se/rest/slot/" + device
+    
     request = requests.get(url, verify=False)
               # False because SSH connection is unsigned
     tmpDict = json.loads(request.text)
     result  = tmpDict.get(field)
-
+        
     return result
 
 
