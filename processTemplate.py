@@ -43,6 +43,7 @@ def fixLength(line):
 
 
 def replaceTag(line, propDict):
+        
     assert isinstance(line,     str )
     assert isinstance(propDict, dict)
 

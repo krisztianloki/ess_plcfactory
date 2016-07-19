@@ -51,6 +51,8 @@ def getArtefact(deviceType, filename):
 
     # alternative URL e.g.
     # https://ics-services.esss.lu.se/ccdb-test/rest/slot/LNS-ISrc-01:Vac-IPC-1/download/PLC_DEVICE_HEADER_TEMPLATE_1.txt
+    
+    # https://ccdb.esss.lu.se/rest/slot/LNS-LEBT-010:Vac-VPGCF-001
 
     # url     = "https://ics-services.esss.lu.se/ccdb-test/rest/deviceType/"  \
     url     = "https://ccdb.esss.lu.se/rest/deviceType/"  \
@@ -58,6 +60,7 @@ def getArtefact(deviceType, filename):
     
     results = requests.get(url, verify=False)
 
+    # 'w' overwrites the file if it exists
     with open(filename, 'wb') as f:
         map(lambda x: f.write(x), results)
 

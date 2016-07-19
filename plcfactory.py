@@ -11,9 +11,11 @@ See plcfactory.txt for further documentation.
 """
 
 # Python libraries
+import argparse
 import datetime
 import os
 import sys
+
 
 # PLC Factory modules
 import restful         as rs
@@ -34,14 +36,14 @@ def getArtefact(deviceType, filenames, tag, n):
     lines = []
 
     for filename in filenames:
-        
+
         if matchingArtefact(filename, tag, n):
-            
+
             rs.getArtefact(deviceType, filename)
-            
+
             with open(filename) as f:
                 lines = f.readlines()
-                    
+
             break
 
     return lines
@@ -53,7 +55,7 @@ def getTemplateName(deviceType, filenames, n):
     assert isinstance(n,          int )
 
     result = ""
-    
+
     for filename in filenames:
 
         if matchingArtefact(filename, "TEMPLATE", n):
@@ -76,8 +78,7 @@ def matchingArtefact(filename, tag, n):
 
     # sample filename: VALVE_TEMPLATE_1.txt
 
-
-    # TODO: assert: exactly one '.' in filename 
+    # TODO: assert: exactly one '.' in filename
 
     filename    = filename.split('.')[0] # removing '.txt.
     tmp         = filename.split("_")    # separating fields in filename
@@ -89,6 +90,57 @@ def matchingArtefact(filename, tag, n):
         template_nr = int(tmp[-1])
 
     return template_nr == n and tag in filename
+
+
+def createFilename(header, device, n):
+    assert isinstance(header, list)
+    assert isinstance(device, str )
+    assert isinstance(n,      int )
+    
+    timestamp  = '{:%Y%m%d%H%M%S}'.format(datetime.datetime.now())
+
+    if len(header) == 0 or not header[0].startswith("#FILENAME:"):
+
+
+        outputFile = plc + "_" + "template_" + str(n) + "_" + timestamp + ".scl"
+        return (outputFile, header)
+
+    else:
+        
+        # FIXME: untested
+        
+        assert header[0].startswith("#FILENAME")
+        
+        filenameSpec   = header[0]        
+        extensionStart = filenameSpec.find('.')
+        outputFile     = fileNameSpec
+        
+        if 'INSTALLATION_SLOT' in outputFile:
+            outputFile = replaceTag(
+                outputFile, 'INSTALLATION_SLOT', device)
+        if 'TEMPLATE' in outputFile:
+            outputFile = replaceTag(
+                outputFile, 'INSTALLATION_SLOT', 'TEMPLATE' + str(n))
+        if 'TIMESTAMP' in outputFile:
+            outputFile = replaceTag(
+                outputFile, 'TIMESTAMP', timestamp)
+                    
+        # no duplicate tags
+        assert 'INSTALLATION_SLOT' not in outputFile
+        assert 'TEMPLATE'          not in outputFile
+        assert 'TIMESTAMP'         not in outputFile
+    
+        if extensionStart != -1:
+            outputFile += fileNameSpec[extensionStart:]
+            
+        return (outputFile, header[1:])
+
+
+def replaceTag(line, tag, insert):
+    pass
+
+
+
 
 
 # ensures that filenames are legal in Windows
@@ -104,57 +156,58 @@ if __name__ == "__main__":
 
     os.system('clear')
 
-    # typical invocation: 'python plcfactory plc n'
-    # i.e. PLC at the root + template number
-    # example:
-    #     python plcfactory.py LNS-ISrc-01:Vac-IPC-1 1
-    
-    # CCDB: python plcfactory.py LNS-LEBT-010:Vac-VPGCF-001 2
+    # invocation:
+    # python plcfactory.py --device LNS-LEBT-010:Vac-VPGCF-001 --template 2
+    # i.e. device / installations slot, and template number
 
-    numArgs = 3    # note: file name counts as 1 argument
-    # reading arguments
-    args    = sys.argv
-    assert len(args) == numArgs, "Illegal number of arguments."
+    parser = argparse.ArgumentParser()
 
-    # get device, e.g. LNS-ISrc-01:Vac-TMPC-1
-    # https://ics-services.esss.lu.se/ccdb-test/rest/slot/LNS-ISrc-01:Vac-TMPC-1
+    parser.add_argument(
+                        '-d',
+                        '--device',
+                        help='device / installation slot',
+                        required=True
+                        )
 
-    # https://ics-services.esss.lu.se/ccdb-test/rest/slot/LNS-LEBT-010:Vac-VPGCF-001
+    parser.add_argument(
+                        '-t',
+                        '--template',
+                        help='template number',
+                        type=int,
+                        required=True)
 
-    # https://ccdb.esss.lu.se/rest/slot/LNS-LEBT-010:Vac-VPGCF-001
-
+    # retrieve parameters
+    args = parser.parse_args()
 
     # PLC name and template number given as arguments
-    plc = args[1]
-    n   = int(args[2])
+    plc  = args.device
+    n    = args.template
 
     # collect lines to be written at the end
     output  = []
 
     # get artifact names of files attached to plc
-    # TODO: only ever header and footer?
     (deviceType, plcArtefacts) = rs.getArtefactNames(plc)
-
 
     # find devices this PLC controls
     controls = rs.controlCCDB(plc)
 
     print "PLC: " + plc + "\n"
     print "This device controls: "
-    
+
     for elem in controls:
         print "\t- " + elem
-    
+
     print "\n"
 
     # change working directory to template directory
     os.chdir(TEMPLATE_DIR)
 
     header = getArtefact(deviceType, plcArtefacts, "HEADER", n)
-    print "Header processed.\n"
+    print "Header read.\n"
 
     footer = getArtefact(deviceType, plcArtefacts, "FOOTER", n)
-    print "Footer processed.\n"
+    print "Footer read.\n"
 
     print "Processed templates:"
     # for each device, find corresponding template and process it
@@ -168,36 +221,33 @@ if __name__ == "__main__":
 
         # only need to download the file
         filename = getTemplateName(deviceType, artefacts, n)
-        
+
         if filename != "":
             # process template and add result to output
             output += pt.process(elem, filename)
-
-        
             print "\t- " + elem
+
         else:
             print "\t- " + elem + ": no template found"
 
     print "\n"
 
-    output = header + output + footer
-
     os.chdir("..")
 
-    timestamp  = '{:%Y%m%d%H%M%S}'.format(datetime.datetime.now())
-    outputFile = plc + "_" + "template_" + str(n) + "_" + timestamp + ".scl"
-    outputFile = sanitizeFilename(outputFile)
+    (outputFile, header) = createFilename(header, plc, n)
+    output               = header + output + footer
+    outputFile           = sanitizeFilename(outputFile)
 
     if len(output) > 0:
-        
+
         os.chdir(OUTPUT_DIR)
-        
+
         # write entire output
         with open(outputFile,'w') as f:
-            map(lambda x: f.write(x), output)        
+            map(lambda x: f.write(x), output)
 
         os.chdir("..")
-        
+
         print "Output file written: " + outputFile + "\n"
 
     else:
