@@ -10,6 +10,10 @@ Authors:
 See plcfactory.txt for further documentation.
 """
 
+# python plcfactory.py --device LNS-LEBT-010:Vac-VPGCF-001 --template 2
+# python plcfactory.py --device LNS-LEBT-010:Vac-PLC-11111 --template 2
+
+
 # Python libraries
 import argparse
 import datetime
