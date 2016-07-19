@@ -103,12 +103,13 @@ def createFilename(header, device, n):
     
     timestamp  = '{:%Y%m%d%H%M%S}'.format(datetime.datetime.now())
 
-    if len(header) == 0 or not header[0].startswith("#FILENAME"):
+    #if len(header) == 0 or not header[0].startswith("#FILENAME"):
 
 
-        outputFile = plc + "_" + "template_" + str(n) + "_" + timestamp + ".scl"
-        return (outputFile, header)
+    outputFile = plc + "_" + "template_" + str(n) + "_" + timestamp + ".scl"
+    return (outputFile, header)
 
+    """
     else:
         
         # FIXME: untested
@@ -138,7 +139,7 @@ def createFilename(header, device, n):
             outputFile += fileNameSpec[extensionStart:]
             
         return (outputFile, header[1:])
-
+    """
 
 def replaceTag(line, tag, insert):
     pass
