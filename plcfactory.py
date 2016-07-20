@@ -228,11 +228,64 @@ if __name__ == "__main__":
     footer = getArtefact(deviceType, plcArtefacts, "FOOTER", n)
     print "Footer read.\n"
 
-    print "Processed templates:"
+    print "Processing entire tree of controls-relationships:\n"
+
+    #print "Processed templates:"
     # for each device, find corresponding template and process it
 
-    output = []
+    output    = []
+    
+    toProcess = controls # starting with devices controlled by PLC
+    processed = set()
+        
+    while toProcess != []:
+        #print "left: " + str(toProcess)
 
+        elem = toProcess.pop()
+
+        if elem in processed:  # this should be redundant
+            continue
+        
+        print elem
+        
+        # get template
+        (deviceType, artefacts) = rs.getArtefactNames(elem)
+
+        # only need to download the file
+        filename = getTemplateName(deviceType, artefacts, n)
+
+        if filename != "":
+            # process template and add result to output
+            output += pt.process(elem, filename)
+            output.append("\n\n")
+            print "Template processed."
+
+        else:
+            print "No template found."
+            
+        controls = rs.controlCCDB(elem)
+        
+        print "This device controls: "   
+             
+        if len(controls) > 0:
+            
+            for c in controls:
+                print "\t- " + c #, c in processed
+                if c not in processed:
+                    toProcess.append(c)
+                   
+        else:
+            print "N/A"
+                     
+        print "=" * 40
+        processed.add(elem)            
+            
+    print "\n"
+
+
+    # old code
+    ########
+    """
     for elem in controls:
 
         # get template
@@ -250,6 +303,9 @@ if __name__ == "__main__":
             print "\t- " + elem + ": no template found"
 
     print "\n"
+    """
+    ####
+
 
     os.chdir("..")
 
