@@ -26,6 +26,14 @@ import restful         as rs
 import processTemplate as pt
 
 
+# #FILENAME INSTALLATION_SLOT-TEMPLATE-TIMESTAMP.scl
+
+
+# no: $[PLCF#$(INSTALLATION_SLOT)]" ; $(INSTALLATION_SLOT)
+# [PLCF#INSTALLATION_SLOT]
+
+# #FILENAME [PLCF#INSTALLATION_SLOT]-[PLCF#TEMPLATE]-[PLCF#TIMESTAMP].scl
+
 # global variables
 TEMPLATE_DIR = "templates"
 OUTPUT_DIR   = "output"
@@ -101,51 +109,64 @@ def createFilename(header, device, n):
     assert isinstance(device, str )
     assert isinstance(n,      int )
     
+    tag        = "#FILENAME"
     timestamp  = '{:%Y%m%d%H%M%S}'.format(datetime.datetime.now())
 
-    #if len(header) == 0 or not header[0].startswith("#FILENAME"):
-
-
-    outputFile = plc + "_" + "template_" + str(n) + "_" + timestamp + ".scl"
-    return (outputFile, header)
-
-    """
-    else:
-        
-        # FIXME: untested
-        
-        assert header[0].startswith("#FILENAME")
-        
-        filenameSpec   = header[0]        
-        extensionStart = filenameSpec.find('.')
-        outputFile     = fileNameSpec
-        
-        if 'INSTALLATION_SLOT' in outputFile:
-            outputFile = replaceTag(
-                outputFile, 'INSTALLATION_SLOT', device)
-        if 'TEMPLATE' in outputFile:
-            outputFile = replaceTag(
-                outputFile, 'INSTALLATION_SLOT', 'TEMPLATE' + str(n))
-        if 'TIMESTAMP' in outputFile:
-            outputFile = replaceTag(
-                outputFile, 'TIMESTAMP', timestamp)
-                    
-        # no duplicate tags
-        assert 'INSTALLATION_SLOT' not in outputFile
-        assert 'TEMPLATE'          not in outputFile
-        assert 'TIMESTAMP'         not in outputFile
+    # #FILENAME INSTALLATION_SLOT-TEMPLATE-TIMESTAMP.scl
     
-        if extensionStart != -1:
-            outputFile += fileNameSpec[extensionStart:]
+    # python plcfactory.py --device LNS-LEBT-010:Vac-PLC-11111 --template 1
+    
+
+    if len(header) == 0 or not header[0].startswith(tag):
+
+        outputFile = plc + "_" + "template_" + str(n) + "_" + timestamp + ".scl"
+        return (outputFile, header)
+
+    else:
+                
+        assert header[0].startswith(tag)
+        
+        filename  = header[0]        
+        
+        # remove tag and strip surrounding whitespace
+        filename = filename[len(tag):].strip()
+        
+        if 'INSTALLATION_SLOT' in filename:
+            filename = replaceTag(
+                filename, 'INSTALLATION_SLOT', device)
+        
+        if 'TEMPLATE' in filename:
+            filename = replaceTag(
+                filename, 'TEMPLATE', 'template' + str(n))
+        
+        if 'TIMESTAMP' in filename:
+            filename = replaceTag(
+                filename, 'TIMESTAMP', timestamp)
+                    
+        # ensure that there are no duplicate tags
+        assert 'INSTALLATION_SLOT' not in filename
+        assert 'TEMPLATE'          not in filename
+        assert 'TIMESTAMP'         not in filename
+                
+        # remove second line in header template if it is empty
+        if header[1].strip() == "":
+            return (filename, header[2:])
             
-        return (outputFile, header[1:])
-    """
+        else:
+            return (filename, header[1:])
+
 
 def replaceTag(line, tag, insert):
-    pass
+    assert isinstance(line,   str)
+    assert isinstance(tag,    str)
+    assert isinstance(insert, str)
 
+    start = line.find(tag)
+    assert start != -1
+    
+    end   = start + len(tag)
 
-
+    return line[:start] + insert + line[end:]
 
 
 # ensures that filenames are legal in Windows

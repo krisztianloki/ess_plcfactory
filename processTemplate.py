@@ -71,10 +71,14 @@ def processLine(line, plc, propDict):
         return processLine(tmp, plc, propDict)
 
     if line.find("$(PLCF#") != -1:
-        return replaceTag(line, propDict)
+        tmp = replaceTag(line, propDict)
+        print tmp
+        return tmp
+#        return replaceTag(line, propDict)
 
     # template may contain files that don't require any substitutions
     return line
+    
 
 
 # create a dictionary with all properties;
@@ -124,8 +128,16 @@ def processAll(lines, plc):
     # second pass; removes references that were introduced
     # through property lookups
     result  = map(lambda x: fixLength(replaceReference(x, plc)), result)
+    
 
     return result
+
+
+
+# FIXME: INSTALLATION_SLOT
+
+# "LNS-LEBT-010:Vac-VVA-00041"("Open Status DI Address (PLC Tag)":="$[PLCF#$(INSTALLATION_SLOT)]:Open.DI",
+
 
 
 # replaces "$(INSTALLATION_SLOT" with device name
