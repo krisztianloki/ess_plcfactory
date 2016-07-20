@@ -104,18 +104,19 @@ def matchingArtefact(filename, tag, n):
     return template_nr == n and tag in filename
 
 
-def createFilename(header, device, n):
-    assert isinstance(header, list)
-    assert isinstance(device, str )
-    assert isinstance(n,      int )
-    
+def createFilename(header, device, n, deviceType):
+    assert isinstance(header,     list)
+    assert isinstance(device,     str )
+    assert isinstance(n,          int )
+    assert isinstance(deviceType, str )
+
     tag        = "#FILENAME"
     timestamp  = '{:%Y%m%d%H%M%S}'.format(datetime.datetime.now())
 
     # #FILENAME INSTALLATION_SLOT-TEMPLATE-TIMESTAMP.scl
-    
+
     # python plcfactory.py --device LNS-LEBT-010:Vac-PLC-11111 --template 1
-    
+
 
     if len(header) == 0 or not header[0].startswith(tag):
 
@@ -123,35 +124,40 @@ def createFilename(header, device, n):
         return (outputFile, header)
 
     else:
-                
+
         assert header[0].startswith(tag)
-        
-        filename  = header[0]        
-        
+
+        filename  = header[0]
+
         # remove tag and strip surrounding whitespace
         filename = filename[len(tag):].strip()
-        
+
         if 'INSTALLATION_SLOT' in filename:
             filename = replaceTag(
                 filename, 'INSTALLATION_SLOT', device)
-        
+
         if 'TEMPLATE' in filename:
             filename = replaceTag(
                 filename, 'TEMPLATE', 'template' + str(n))
-        
+
         if 'TIMESTAMP' in filename:
             filename = replaceTag(
                 filename, 'TIMESTAMP', timestamp)
-                    
+
+        # FIXME: this is untested; no input provided yet
+        if 'DEVICE_TYPE' in filename:            
+            filename = replaceTag(
+                filename, 'DEVICE_TYPE', deviceType)
+
         # ensure that there are no duplicate tags
         assert 'INSTALLATION_SLOT' not in filename
         assert 'TEMPLATE'          not in filename
         assert 'TIMESTAMP'         not in filename
-                
+
         # remove second line in header template if it is empty
         if header[1].strip() == "":
             return (filename, header[2:])
-            
+
         else:
             return (filename, header[1:])
 
@@ -163,7 +169,7 @@ def replaceTag(line, tag, insert):
 
     start = line.find(tag)
     assert start != -1
-    
+
     end   = start + len(tag)
 
     return line[:start] + insert + line[end:]
@@ -260,7 +266,7 @@ if __name__ == "__main__":
 
     os.chdir("..")
 
-    (outputFile, header) = createFilename(header, plc, n)
+    (outputFile, header) = createFilename(header, plc, n, deviceType)
     output               = header + output + footer
     outputFile           = sanitizeFilename(outputFile)
 
