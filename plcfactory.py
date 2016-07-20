@@ -26,9 +26,6 @@ import restful         as rs
 import processTemplate as pt
 
 
-# #FILENAME INSTALLATION_SLOT-TEMPLATE-TIMESTAMP.scl
-
-
 # no: $[PLCF#$(INSTALLATION_SLOT)]" ; $(INSTALLATION_SLOT)
 # [PLCF#INSTALLATION_SLOT]
 
@@ -98,6 +95,7 @@ def matchingArtefact(filename, tag, n):
 
     if tmp[-1].startswith("TEMPLATE"):
         template_nr = int(tmp[-1][len("TEMPLATE"):])
+        
     else:
         template_nr = int(tmp[-1])
 
@@ -114,13 +112,13 @@ def createFilename(header, device, n, deviceType):
     timestamp  = '{:%Y%m%d%H%M%S}'.format(datetime.datetime.now())
 
     # #FILENAME INSTALLATION_SLOT-TEMPLATE-TIMESTAMP.scl
-
     # python plcfactory.py --device LNS-LEBT-010:Vac-PLC-11111 --template 1
 
-
+    # default filename is chosen when no custom filename is specified
     if len(header) == 0 or not header[0].startswith(tag):
 
-        outputFile = plc + "_" + "template_" + str(n) + "_" + timestamp + ".scl"
+        outputFile = plc + "_" + deviceType + "_template_" + str(n) \
+                   + "_" + timestamp + ".scl"
         return (outputFile, header)
 
     else:
@@ -132,28 +130,17 @@ def createFilename(header, device, n, deviceType):
         # remove tag and strip surrounding whitespace
         filename = filename[len(tag):].strip()
 
-        if 'INSTALLATION_SLOT' in filename:
-            filename = replaceTag(
-                filename, 'INSTALLATION_SLOT', device)
+        # list of tuples of the form (tag, replacement)
+        pairs = [ ('INSTALLATION_SLOT', device            )
+                , ('TEMPLATE',         'template' + str(n))
+                , ('TIMESTAMP',        timestamp          )
+                , ('DEVICE_TYPE',      deviceType         )
+                ]
 
-        if 'TEMPLATE' in filename:
-            filename = replaceTag(
-                filename, 'TEMPLATE', 'template' + str(n))
-
-        if 'TIMESTAMP' in filename:
-            filename = replaceTag(
-                filename, 'TIMESTAMP', timestamp)
-
-        # FIXME: this is untested; no input provided yet
-        if 'DEVICE_TYPE' in filename:            
-            filename = replaceTag(
-                filename, 'DEVICE_TYPE', deviceType)
-
-        # ensure that there are no duplicate tags
-        assert 'INSTALLATION_SLOT' not in filename
-        assert 'TEMPLATE'          not in filename
-        assert 'TIMESTAMP'         not in filename
-
+        for (tag, replacement) in pairs:
+            if tag in filename:
+                filename = replaceTag(filename, tag, replacement)
+                            
         # remove second line in header template if it is empty
         if header[1].strip() == "":
             return (filename, header[2:])
