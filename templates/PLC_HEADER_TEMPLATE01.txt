@@ -1,3 +1,5 @@
+#FILENAME INSTALLATION_SLOT-TEMPLATE-TIMESTAMP.scl
+
 FUNCTION "CCDB-PLC Factory Call_Devices" : Void
 { S7_Optimized_Access := 'TRUE' }
 VERSION : 0.1

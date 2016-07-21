@@ -44,17 +44,60 @@ Outline:
  
  1) Look up <plc-name> in CCDB
  
- 2) Determine which devices are controlled by <plc-name>
+ 2) Determine which devices X are controlled by <plc-name>
  
- 3) Collect properties of those devices.
+ 3) initialise a set 'toProcess', populated with all devices that are controlled by <plc-name>
+     while 'toProcess' is not empty:
+        remove one element x,
+        process template n of x, if available
+        add devices controlled by x to 'toProcess', but only if they have not yet been processed
+        remove x from toProcess
+
+ 4) Process header file associated with <plc-name>
+  
+ 6) Process footer file associated with <plc-name>
  
- 4) Retrieve the header for <plc-name>
- 
- 5) For each device controlled by <plc-name>, retrieve their template and process it.
- 
- 6) Retrieve the footer for <plc-name>
- 
- 7) Write one ouput file, named <plc-name>.txt
+ 7) Write one output file, named <plc-name>.txt
  
 
  For further details, please consult the provided source code.
+
+
+Features:
+a) Custom file name
+
+In order to create a custom filename for the output file, a header file needs to be provided. It has to contain, as the very first line, a definition of the desired name for the output file. The expected format is as follows:
+
+#FILENAME INSTALLATION_SLOT-DEVICE_TYPE-TEMPLATE-TIMESTAMP.scl
+
+#FILENAME [PLCF#INSTALLATION_SLOT]-[PLCF#TEMPLATE]-[PLCF#TIMESTAMP].scl
+
+
+The definition needs to start with "#FILENAME". The following four keywords are implemented:
+
+
+INSTALLATION_SLOT: installation slot taken from the invocation of plcfactory.py
+DEVICE_TYPE:       retrieved from CCDB
+TEMPLATE:          template number; taken from provided argument
+TIMESTAMP:         date and time
+
+In order to add further fields, modify the function definition of createFilename() in the file plcfactory.py.
+
+
+You can chose any file extension you want, and even omit an extension altogether.
+
+
+How to add new substitutions:
+
+
+        # list of tuples of the form (tag, replacement)
+        pairs = [ ('INSTALLATION_SLOT', device            )
+                , ('TEMPLATE',         'template' + str(n))
+                , ('TIMESTAMP',        timestamp          )
+                , ('DEVICE_TYPE',      deviceType         )
+                ]
+
+        for (tag, replacement) in pairs:
+            if tag in filename:
+                filename = replaceTag(filename, tag, replacement)
+

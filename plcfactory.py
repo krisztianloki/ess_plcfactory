@@ -238,6 +238,8 @@ if __name__ == "__main__":
     toProcess = controls # starting with devices controlled by PLC
     processed = set()
         
+#    maxDepth = 10  # not implemented; would be cumbersome and have little benefit
+        
     while toProcess != []:
         #print "left: " + str(toProcess)
 
