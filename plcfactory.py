@@ -25,6 +25,8 @@ import sys
 import restful         as rs
 import processTemplate as pt
 
+import plcflang as plang
+
 
 # no: $[PLCF#$(INSTALLATION_SLOT)]" ; $(INSTALLATION_SLOT)
 # [PLCF#INSTALLATION_SLOT]
@@ -109,15 +111,16 @@ def createFilename(header, device, n, deviceType):
     assert isinstance(deviceType, str )
 
     tag        = "#FILENAME"
-    timestamp  = '{:%Y%m%d%H%M%S}'.format(datetime.datetime.now())
+
 
     # #FILENAME INSTALLATION_SLOT-TEMPLATE-TIMESTAMP.scl
     # python plcfactory.py --device LNS-LEBT-010:Vac-PLC-11111 --template 1
 
     # default filename is chosen when no custom filename is specified
     if len(header) == 0 or not header[0].startswith(tag):
-
-        outputFile = plc + "_" + deviceType + "_template_" + str(n) \
+        
+        timestamp  = '{:%Y%m%d%H%M%S}'.format(datetime.datetime.now())
+        outputFile = plc + "_" + deviceType + "_template-" + str(n) \
                    + "_" + timestamp + ".scl"
         return (outputFile, header)
 
@@ -129,18 +132,8 @@ def createFilename(header, device, n, deviceType):
 
         # remove tag and strip surrounding whitespace
         filename = filename[len(tag):].strip()
-
-        # list of tuples of the form (tag, replacement)
-        pairs = [ ('INSTALLATION_SLOT', device            )
-                , ('TEMPLATE',         'template' + str(n))
-                , ('TIMESTAMP',        timestamp          )
-                , ('DEVICE_TYPE',      deviceType         )
-                ]
-
-        for (tag, replacement) in pairs:
-            if tag in filename:
-                filename = replaceTag(filename, tag, replacement)
-                            
+        filename = plang.keywordsHeader(filename, device, n)
+                           
         # remove second line in header template if it is empty
         if header[1].strip() == "":
             return (filename, header[2:])
@@ -223,10 +216,26 @@ if __name__ == "__main__":
     os.chdir(TEMPLATE_DIR)
 
     header = getArtefact(deviceType, plcArtefacts, "HEADER", n)
-    print "Header read.\n"
 
+    if len(header) == 0:
+        print "No header found.\n"
+    else:
+        print "Header read.\n"
+        
+
+    """
+    (xx, yy) = createFilename(header, plc, n, deviceType)
+    print xx
+    print "foo"
+    exit()
+    """
+    
     footer = getArtefact(deviceType, plcArtefacts, "FOOTER", n)
-    print "Footer read.\n"
+    
+    if len(footer) == 0:
+        print "No footer found.\n"
+    else:
+        print "Footer read.\n"
 
     print "Processing entire tree of controls-relationships:\n"
 
@@ -252,6 +261,7 @@ if __name__ == "__main__":
         
         # get template
         (deviceType, artefacts) = rs.getArtefactNames(elem)
+        print "Device type: " + deviceType
 
         # only need to download the file
         filename = getTemplateName(deviceType, artefacts, n)
