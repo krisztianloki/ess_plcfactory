@@ -18,24 +18,7 @@ import restful             as rs
 import processTemplate     as pt
 import plcflang_extensions as ext
 
-## FIXME add keywords
-
-
-
-def go(device, n, deviceType):
-    
-    
-    # read each line, process them, add one by one to accumulator
-    propList = rs.propertiesCCDB(device)
-
-    # create dictionary of properties
-    propDict = createPropertyDict(propList)
-    
-    
-
-# has: device, n, deviceType
-
-
+import glob
 
 def keywordsHeader(filename, device, n):
     assert isinstance(filename, str)
@@ -119,6 +102,9 @@ def processOne(line, plc):
 # global var
 current_device = None
 
+# reduce calls to CCDB
+#cached = dict()
+
 
 def evalUp(line):
     
@@ -130,10 +116,114 @@ def evalUp(line):
         prop  = line[start + 2:end]
             
         # backtrack        
-        val  = rs.backtrack(prop, current_device)
+        #val  = rs.backtrack(prop, current_device)
+        val  = backtrack(prop, current_device)
         line = line[:start] + val + line[end+1:]
 
     return line
+
+
+
+## FIXME: put backtrack from restful to here; then memoize
+# let backtrack update a global dictionary
+def backtrack(prop, device):
+    assert isinstance(prop,   str)
+    assert isinstance(device, str)
+
+    # starting by one device, looking for property X, determine a device in a higher level
+    # of the hierarchy that has that property
+
+    # FIXME: add to documentation that FIRST fitting value is returned
+
+
+
+    #global cached
+
+    # starting point: all devices 'device' is controlled by
+    leftToProcess = rs.controlledByCDDB(device)
+    processed     = []
+
+    # keep track of number of iterations
+    count         = 0
+
+    # process tree in BFS manner
+    while True:
+
+        if count > 200:
+            print "something went wrong; too many iterations in backtracking"
+            exit()
+
+        if len(leftToProcess) == 0:
+            print "error in  backtracking; probably invalid input"
+            return " ==== BACKTRACKING ERROR ==== "
+
+        x = leftToProcess.pop()
+        processed.append(x)
+
+
+        
+        
+        if x not in glob.cached.keys():
+            # get properties of device
+            propList = rs.propertiesCCDB(x)
+            propDict = pt.createPropertyDict(propList)
+            # add to dict
+            glob.cached[x] = propDict
+            
+        else:
+            # retrievce
+            propDict = glob.cached.get(x)
+
+
+        if prop in propDict.keys():
+            val = propDict.get(prop)
+            return val
+
+        # desired property not found in device x
+        else:
+            controlledBy   = rs.controlledByCDDB(x)
+            leftToProcess += controlledBy
+            count         += 1
+        
+
+        
+
+
+########## OLD
+
+
+        """
+        # no caching
+        
+        # get properties of device
+        propList = rs.propertiesCCDB(x)
+        propDict = pt.createPropertyDict(propList)
+
+        if prop in propDict.keys():
+            val = propDict.get(prop)
+            return val
+
+        # desired property not found in device x
+        else:
+            controlledBy   = rs.controlledByCDDB(x)
+            leftToProcess += controlledBy
+            count         += 1
+        """ 
+           
+            
+            
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 # replaces all variables in a PLCFLang expression with values
@@ -144,11 +234,6 @@ def evaluateExpression(line, device, propDict):
     assert isinstance(propDict, dict)
         
     global current_device
-        
-    # substitute
-    # TODO
-    
-    # evalUp()
     
     # resolve all references to properties in devices on an upper level in the hierarchy
     line = evalUp(line)
@@ -159,16 +244,11 @@ def evaluateExpression(line, device, propDict):
             tmp   = substitute(line, elem, value)
             # recursion to take care of multiple occurrences of variables
             return evaluateExpression(tmp, device, propDict)
-    
-    # TODO
-    # get keyword dict, perform replacements
-    # at the end, replace keywords with values
-    
+        
     # note that an expression like "INSTALLATION_SLOT + 1" is of course not syntactically correct
     x = 'INSTALLATION_SLOT' 
     if x in line:
         line = substitute(line, x, device)
-    
     
     current_device = device
     
@@ -176,7 +256,7 @@ def evaluateExpression(line, device, propDict):
     try:
         result = eval(line)
 
-   # catch references to slot names (and erroneous input)  # FIXME
+   # catch references to slot names (and erroneous input)
     except (SyntaxError, NameError) as e:
         result = line
             

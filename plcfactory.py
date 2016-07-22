@@ -20,12 +20,15 @@ import datetime
 import os
 import sys
 
+import time
 
 # PLC Factory modules
 import restful         as rs
 import processTemplate as pt
 
 import plcflang as plang
+
+import glob
 
 
 # no: $[PLCF#$(INSTALLATION_SLOT)]" ; $(INSTALLATION_SLOT)
@@ -167,6 +170,15 @@ def sanitizeFilename(filename):
 if __name__ == "__main__":
 
     os.system('clear')
+
+
+
+    start_time = time.time()
+
+
+
+
+
 
     # invocation:
     # python plcfactory.py --device LNS-LEBT-010:Vac-VPGCF-001 --template 2
@@ -341,3 +353,6 @@ if __name__ == "__main__":
 
         #os.system('clear')
         print "There were no available templates for N = " + str(n) + ".\n"
+        
+        
+    print("--- %s seconds ---" % (time.time() - start_time))
