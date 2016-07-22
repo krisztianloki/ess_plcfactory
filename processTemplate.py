@@ -13,9 +13,11 @@ import restful as rs
 import plcflang as plang
 
 
-def fixLength(line):
-    assert isinstance(line, str)
-    """
+import glob
+
+
+
+"""
     The alignment of the variable assignmens in the generated output
     depends on the length of the device name that replaces the tag
     $(INSTALLATION_SLOT). If it is not exactly 22 characters long,
@@ -30,7 +32,11 @@ def fixLength(line):
 
     In the example above, the first assignment statement needs to be shifted
     to the right so that it begins at position 30.
-    """
+"""
+"""
+def fixLength(line):
+    assert isinstance(line, str)
+
 
     start = line.find("EPICStoPLC_DB")  # TODO: is this always the first assignment?
     assert start <= 30
@@ -40,6 +46,7 @@ def fixLength(line):
         return line[:start] + shift + line[start:]
 
     return line
+"""
 
 
 def replaceTag(line, propDict):
@@ -63,6 +70,7 @@ def processLine(line, plc, propDict):
     assert isinstance(plc,      str )
     assert isinstance(propDict, dict)
 
+    """
     if line.find("$(INSTALLATION_SLOT") != -1:
         # replace INSTALLATION_SLOT with provided name
         tmp = replaceReference(line, plc)
@@ -76,8 +84,17 @@ def processLine(line, plc, propDict):
         return tmp
 #        return replaceTag(line, propDict)
 
+    """
+    
+    
+    # FIXME: process keywords
+    
+
+    # FIXME: add PLCF1#
+
+
     # template may contain files that don't require any substitutions
-    return line
+    return plang.xxProcessLine(line, plc, propDict)
     
 
 
@@ -121,13 +138,15 @@ def processAll(lines, plc):
 
     # create dictionary of properties
     propDict = createPropertyDict(propList)
-
+    
     # first pass
     result  = map(lambda x: plang.processLine(x, plc, propDict), lines)
 
     # second pass; removes references that were introduced
     # through property lookups
-    result  = map(lambda x: fixLength(replaceReference(x, plc)), result)
+    
+    # TODO
+    #result  = map(lambda x: fixLength(replaceReference(x, plc)), result)
     
 
     return result
@@ -139,7 +158,7 @@ def processAll(lines, plc):
 # "LNS-LEBT-010:Vac-VVA-00041"("Open Status DI Address (PLC Tag)":="$[PLCF#$(INSTALLATION_SLOT)]:Open.DI",
 
 
-
+"""
 # replaces "$(INSTALLATION_SLOT" with device name
 def replaceReference(line, plc):
     assert isinstance(line, str)
@@ -156,7 +175,7 @@ def replaceReference(line, plc):
         res   = line[:start] + plc + line[end + 1:]
 
     return res
-
+"""
 
 def getAllLines(filename):
     assert isinstance(filename, str)
@@ -165,6 +184,11 @@ def getAllLines(filename):
         lines = f.readlines()
 
     return lines
+
+
+# FIXME
+def processCached(device, templateLines):
+    pass
 
 
 def process(device, filename):
