@@ -2,9 +2,18 @@
 
 PLC Factory is intended to simplify programming PLCs by automatically generating template files.
 
-TODO:
-- clean up repository (will be done at the end)
 
-- implement backtracking for properties, so that a template can have a reference to a property of a device it is controlled by
+example of an invocation:
+python plcfactory.py --device LNS-LEBT-010:Vac-PLC-11111 --template 4
+
+
+
+TODO:
 
 - (?) implement named variables, e.g. counters, in PLCF_Lang
+
+- clean up repository (will be done at the end)
+
+- code cleanup
+
+- extend documentation
