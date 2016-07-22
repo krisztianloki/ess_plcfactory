@@ -41,6 +41,10 @@ TEMPLATE_DIR = "templates"
 OUTPUT_DIR   = "output"
 
 
+
+
+
+
 def getArtefact(deviceType, filenames, tag, n):
     assert isinstance(deviceType, str )
     assert isinstance(filenames,  list)
@@ -171,14 +175,7 @@ if __name__ == "__main__":
 
     os.system('clear')
 
-
-
     start_time = time.time()
-
-
-
-
-
 
     # invocation:
     # python plcfactory.py --device LNS-LEBT-010:Vac-VPGCF-001 --template 2
@@ -261,6 +258,14 @@ if __name__ == "__main__":
         
 #    maxDepth = 10  # not implemented; would be cumbersome and have little benefit
         
+        
+    # ensure that template is only downloaded once per deviceType
+    # key: deviceType, value: entire template (list of strings)
+    cachedTemplates = dict()
+        
+    # TODO: should be stored with all lines
+        
+        
     while toProcess != []:
         #print "left: " + str(toProcess)
 
@@ -275,7 +280,20 @@ if __name__ == "__main__":
         (deviceType, artefacts) = rs.getArtefactNames(elem)
         print "Device type: " + deviceType
 
-        # only need to download the file
+        #############################
+        # FIXME CONTINUE HERE
+        #if deviceType not in cachedTemplates.keys():
+         #   # only need to download the file
+          #  filename = getTemplateName(deviceType, artefacts, n)
+        
+
+
+
+        
+        # OLD; works
+
+
+#        # only need to download the file
         filename = getTemplateName(deviceType, artefacts, n)
 
         if filename != "":
@@ -286,6 +304,13 @@ if __name__ == "__main__":
 
         else:
             print "No template found."
+
+        
+
+
+
+
+
             
         controls = rs.controlCCDB(elem)
         

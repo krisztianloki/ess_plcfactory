@@ -160,9 +160,6 @@ def backtrack(prop, device):
         x = leftToProcess.pop()
         processed.append(x)
 
-
-        
-        
         if x not in glob.cached.keys():
             # get properties of device
             propList = rs.propertiesCCDB(x)
@@ -184,10 +181,6 @@ def backtrack(prop, device):
             controlledBy   = rs.controlledByCDDB(x)
             leftToProcess += controlledBy
             count         += 1
-        
-
-        
-
 
 ########## OLD
 
