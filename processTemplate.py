@@ -9,11 +9,8 @@ import ast
 import json
 
 # PLC Factory modules
-import restful as rs
+import ccdb
 import plcflang as plang
-
-
-import glob
 
 
 
@@ -50,7 +47,6 @@ def fixLength(line):
 
 
 def replaceTag(line, propDict):
-        
     assert isinstance(line,     str )
     assert isinstance(propDict, dict)
 
@@ -63,39 +59,6 @@ def replaceTag(line, propDict):
     name   = propDict.get(lookup)
 
     return line[:start] + name + line[end + 1:]
-
-
-def processLine(line, plc, propDict):
-    assert isinstance(line,     str )
-    assert isinstance(plc,      str )
-    assert isinstance(propDict, dict)
-
-    """
-    if line.find("$(INSTALLATION_SLOT") != -1:
-        # replace INSTALLATION_SLOT with provided name
-        tmp = replaceReference(line, plc)
-        tmp = fixLength(tmp)
-        # there is a PLCF tag left to process
-        return processLine(tmp, plc, propDict)
-
-    if line.find("$(PLCF#") != -1:
-        tmp = replaceTag(line, propDict)
-        print tmp
-        return tmp
-#        return replaceTag(line, propDict)
-
-    """
-    
-    
-    # FIXME: process keywords
-    
-
-    # FIXME: add PLCF1#
-
-
-    # template may contain files that don't require any substitutions
-    return plang.xxProcessLine(line, plc, propDict)
-    
 
 
 # create a dictionary with all properties;
@@ -129,53 +92,18 @@ def createPropertyDict(propList):
     return result
 
 
-def processAll(lines, plc):
-    assert isinstance(lines, list)
-    assert isinstance(plc,   str )
+def processAll(lines, device):
+    assert isinstance(lines,  list)
+    assert isinstance(device, str )
 
     # read each line, process them, add one by one to accumulator
-    propList = rs.propertiesCCDB(plc)
+    propList = ccdb.properties(device)
 
     # create dictionary of properties
     propDict = createPropertyDict(propList)
     
-    # first pass
-    result  = map(lambda x: plang.processLine(x, plc, propDict), lines)
-
-    # second pass; removes references that were introduced
-    # through property lookups
+    return map(lambda x: plang.processLine(x, device, propDict), lines)
     
-    # TODO
-    #result  = map(lambda x: fixLength(replaceReference(x, plc)), result)
-    
-
-    return result
-
-
-
-# FIXME: INSTALLATION_SLOT
-
-# "LNS-LEBT-010:Vac-VVA-00041"("Open Status DI Address (PLC Tag)":="$[PLCF#$(INSTALLATION_SLOT)]:Open.DI",
-
-
-"""
-# replaces "$(INSTALLATION_SLOT" with device name
-def replaceReference(line, plc):
-    assert isinstance(line, str)
-    assert isinstance(plc,  str)
-
-    res = line
-
-    if line.find("$(INSTALLATION_SLOT") != -1:
-
-        start = line.find("$(")
-        end   = line.find(")", start)
-        assert end != -1
-
-        res   = line[:start] + plc + line[end + 1:]
-
-    return res
-"""
 
 def getAllLines(filename):
     assert isinstance(filename, str)
@@ -186,15 +114,10 @@ def getAllLines(filename):
     return lines
 
 
-# FIXME
-def processCached(device, templateLines):
-    pass
-
-
 def process(device, filename):
-    assert isinstance(device,      str)
+    assert isinstance(device,   str)
     assert isinstance(filename, str)
 
-    lines  = getAllLines(filename)
-    result = processAll(lines, device)
-    return result
+    lines = getAllLines(filename)
+    
+    return processAll(lines, device)

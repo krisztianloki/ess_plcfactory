@@ -23,26 +23,15 @@ import sys
 import time
 
 # PLC Factory modules
-import restful         as rs
+import ccdb
+import glob
+import plcflang        as plang
 import processTemplate as pt
 
-import plcflang as plang
-
-import glob
-
-
-# no: $[PLCF#$(INSTALLATION_SLOT)]" ; $(INSTALLATION_SLOT)
-# [PLCF#INSTALLATION_SLOT]
-
-# #FILENAME [PLCF#INSTALLATION_SLOT]-[PLCF#TEMPLATE]-[PLCF#TIMESTAMP].scl
 
 # global variables
 TEMPLATE_DIR = "templates"
 OUTPUT_DIR   = "output"
-
-
-
-
 
 
 def getArtefact(deviceType, filenames, tag, n):
@@ -57,7 +46,7 @@ def getArtefact(deviceType, filenames, tag, n):
 
         if matchingArtefact(filename, tag, n):
 
-            rs.getArtefact(deviceType, filename)
+            ccdb.getArtefact(deviceType, filename)
 
             with open(filename) as f:
                 lines = f.readlines()
@@ -77,9 +66,10 @@ def getTemplateName(deviceType, filenames, n):
     for filename in filenames:
 
         if matchingArtefact(filename, "TEMPLATE", n):
+
             result = filename
             # download header and save in template directory
-            rs.getArtefact(deviceType, filename)
+            ccdb.getArtefact(deviceType, filename)
             break
 
     return result
@@ -96,15 +86,16 @@ def matchingArtefact(filename, tag, n):
 
     # sample filename: VALVE_TEMPLATE_1.txt
 
-    # TODO: assert: exactly one '.' in filename
+    # exactly one '.' in filename
+    assert filename.count('.') == 1
 
     filename    = filename.split('.')[0] # removing '.txt.
     tmp         = filename.split("_")    # separating fields in filename
 
-
+    # extract template number
     if tmp[-1].startswith("TEMPLATE"):
         template_nr = int(tmp[-1][len("TEMPLATE"):])
-        
+
     else:
         template_nr = int(tmp[-1])
 
@@ -119,13 +110,12 @@ def createFilename(header, device, n, deviceType):
 
     tag        = "#FILENAME"
 
-
     # #FILENAME INSTALLATION_SLOT-TEMPLATE-TIMESTAMP.scl
     # python plcfactory.py --device LNS-LEBT-010:Vac-PLC-11111 --template 1
 
     # default filename is chosen when no custom filename is specified
     if len(header) == 0 or not header[0].startswith(tag):
-        
+
         timestamp  = '{:%Y%m%d%H%M%S}'.format(datetime.datetime.now())
         outputFile = plc + "_" + deviceType + "_template-" + str(n) \
                    + "_" + timestamp + ".scl"
@@ -140,7 +130,7 @@ def createFilename(header, device, n, deviceType):
         # remove tag and strip surrounding whitespace
         filename = filename[len(tag):].strip()
         filename = plang.keywordsHeader(filename, device, n)
-                           
+
         # remove second line in header template if it is empty
         if header[1].strip() == "":
             return (filename, header[2:])
@@ -208,10 +198,10 @@ if __name__ == "__main__":
     output  = []
 
     # get artifact names of files attached to plc
-    (deviceType, plcArtefacts) = rs.getArtefactNames(plc)
+    (deviceType, plcArtefacts) = ccdb.getArtefactNames(plc)
 
     # find devices this PLC controls
-    controls = rs.controlCCDB(plc)
+    controls = ccdb.control(plc)
 
     print "PLC: " + plc + "\n"
     print "This device controls: "
@@ -230,17 +220,9 @@ if __name__ == "__main__":
         print "No header found.\n"
     else:
         print "Header read.\n"
-        
 
-    """
-    (xx, yy) = createFilename(header, plc, n, deviceType)
-    print xx
-    print "foo"
-    exit()
-    """
-    
     footer = getArtefact(deviceType, plcArtefacts, "FOOTER", n)
-    
+
     if len(footer) == 0:
         print "No footer found.\n"
     else:
@@ -252,48 +234,30 @@ if __name__ == "__main__":
     # for each device, find corresponding template and process it
 
     output    = []
-    
+
     toProcess = controls # starting with devices controlled by PLC
     processed = set()
-        
+
 #    maxDepth = 10  # not implemented; would be cumbersome and have little benefit
-        
-        
+
+
     # ensure that template is only downloaded once per deviceType
     # key: deviceType, value: entire template (list of strings)
-    cachedTemplates = dict()
-        
-    # TODO: should be stored with all lines
-        
-        
+    #cachedTemplates = dict()
+
     while toProcess != []:
-        #print "left: " + str(toProcess)
 
         elem = toProcess.pop()
 
         if elem in processed:  # this should be redundant
             continue
-        
+
         print elem
-        
+
         # get template
-        (deviceType, artefacts) = rs.getArtefactNames(elem)
+        (deviceType, artefacts) = ccdb.getArtefactNames(elem)
         print "Device type: " + deviceType
 
-        #############################
-        # FIXME CONTINUE HERE
-        #if deviceType not in cachedTemplates.keys():
-         #   # only need to download the file
-          #  filename = getTemplateName(deviceType, artefacts, n)
-        
-
-
-
-        
-        # OLD; works
-
-
-#        # only need to download the file
         filename = getTemplateName(deviceType, artefacts, n)
 
         if filename != "":
@@ -305,55 +269,24 @@ if __name__ == "__main__":
         else:
             print "No template found."
 
-        
+        controls = ccdb.control(elem)
 
+        print "This device controls: "
 
-
-
-
-            
-        controls = rs.controlCCDB(elem)
-        
-        print "This device controls: "   
-             
         if len(controls) > 0:
-            
+
             for c in controls:
                 print "\t- " + c #, c in processed
                 if c not in processed:
                     toProcess.append(c)
-                   
+
         else:
             print "N/A"
-                     
+
         print "=" * 40
-        processed.add(elem)            
-            
-    print "\n"
-
-
-    # old code
-    ########
-    """
-    for elem in controls:
-
-        # get template
-        (deviceType, artefacts) = rs.getArtefactNames(elem)
-
-        # only need to download the file
-        filename = getTemplateName(deviceType, artefacts, n)
-
-        if filename != "":
-            # process template and add result to output
-            output += pt.process(elem, filename)
-            print "\t- " + elem
-
-        else:
-            print "\t- " + elem + ": no template found"
+        processed.add(elem)
 
     print "\n"
-    """
-    ####
 
 
     os.chdir("..")
@@ -369,15 +302,45 @@ if __name__ == "__main__":
         # write entire output
         with open(outputFile,'w') as f:
             map(lambda x: f.write(x), output)
-
+            
         os.chdir("..")
 
         print "Output file written: " + outputFile + "\n"
 
     else:
-
-        #os.system('clear')
         print "There were no available templates for N = " + str(n) + ".\n"
-        
-        
+        exit()
+
+
+    # Process counters
+    lines  = output
+    output = []
+
+    # initial values
+    counter1 = 0
+    counter2 = 0
+
+    for line in lines:
+
+        if "[PLCF#" in line and "# COUNTER" not in line:
+            line = plang.evalCounter(line, counter1, counter2)
+
+        elif "[PLCF#" in line and '# COUNTER' in line:
+            (counter1, counter2, line) = plang.evalCounterIncrease(
+                                            line, counter1, counter2)
+
+        assert isinstance(line, str)
+        assert "[PLCF#" not in line  # line contains at most one PLCF tag
+        output.append(line)
+
+    #write file
+    os.chdir(OUTPUT_DIR)
+
+    with open(outputFile + "_FINAL.txt",'w') as f:
+        map(lambda x: f.write(x), output)
+
+    os.chdir("..")
+
+    print "Output file written: " + outputFile + "\n"
+
     print("--- %s seconds ---" % (time.time() - start_time))

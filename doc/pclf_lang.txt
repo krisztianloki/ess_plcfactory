@@ -1,93 +1,111 @@
+# PLCF Language
 
+The PLCF Language (PLCF#) is a simple embedded domain-specific language for use in template files. It has successfully been used with template files that generate TIA Portial files as well as EPICS database records. The main purpose of PLCF# is to name properties, which will be sustituted by corresponding values from CCDB, and perform simple operations on those properties.
 
-PCLF Language
+Note that the user has to take responsibility for writing valid expressions.
 
-The PCLF Language (PCLF Lang) is a simple embedded domain-specific language for use in template files.
+ 
+ 
 
-Some examples:
+## Format
 
-record(ai, $(INSTALLATION_SLOT):InRegister1) {
-	field(SCAN, "I/O Intr")
-	field(DTYP, "S7plc")
-	field(INP, "@$(PLCNAME)/$[PLCF#PropertyInteger02] T=WORD")
-}
+[PLCF# <expression> ]
 
+[PLCF# PropertyInteger02 + 1 ]
 
+In this case, CCDB is used to resolve the reference to `PropertyInteger02` of the given device, and add 1 to it.
 
-An expression in PCLF_Lang is tagged in the following way of the format:
-
-  $[PLCF# <expression> ]
-
-
-Examples:
-
-
-$[PLCF#10*4] T=WORD")
-
-$[PLCF#PropertyInteger02+PropertyInteger02] T=WORD")
-
-$[PLCF#PropertyInteger02+4] T=WORD")
-
-$[PLCF#4+PropertyInteger02] T=WORD")
-
-Note that the user has to take responsibility for writing valid expressions. There is only basic feedback for erroneous input.
-
-
-Variables are simply replaced:
-
-$[PLCF#PropertyString01]
-
-
-Variables must be part of the corresponding property entries in CCDB.
-
-
-Advanced: Defining your own functions:
-
-$[PLCF#ext.foo(PropertyInteger02)] T=WORD")
-
-$[PLCF#ext.foo(ext.foo(PropertyInteger02+10))] T=WORD")
-
-
-The function foo is defined in pclflang_extensions.py:
-
-def foo(x):
-    return x * x * x
-
-
-You can define your own functions, using Python, by adding them to this file. Those functions can be called with the prefix 'ext'. For instance, if you defined the function 'bar()' in pclflang_extensions.py, you would call it in PLCF_Lang as follows:
-
-$[PLCF#ext.bar()+10))]
-
-If 'bar()' takes an argument, write for instance:
-
-$[PLCF#ext.bar(4)+10))]
-
-or
-
-$[PLCF#ext.bar(PropertyInteger02)+10))]
-
-
-
-
-
-
-INSTALLATION_SLOT
-
-there is no need to change the code if the desired behavior is to not replace INSTALLATION_SLOT within a PLCF expression. For instance, a line like this:
-
-    field(INP, "@$(PLCNAME)/$[PLCF#$(INSTALLATION_SLOT)] T=WORD")
-
-...is turned into:
-
-    field(INP, "@LNS-ISrc-01:Vac-PGV-1/$(INSTALLATION_SLOT) T=WORD")
-
-The PLCF tag is peeled off, but the expression is unchanged otherwise.
-
-
-
+In general, PLCF# expressions are valid Python expressions, with the addition of a limited number of keywords, specified below, calls to user-defined functions, and properties, which need to refer to entries in CCDB.
 
 
 
 Basic sanity checks are included:
  - an opening square bracket has to be followed by a closing square bracket
  - parentheses need to match
+
+
+
+
+## Keywords
+
+Keywords are reserved terms. Currently, PLCF# has the following keywords:
+
+- INSTALLATION_SLOT
+- TEMPLATE
+- TIMESTAMP
+- DEVICE_TYPE
+- Counter1
+- Counter2
+
+
+## Inbuilt and user-defined functions
+
+PLCF# is embedded in Python and thus standard Python functions can be called. To give two simple examples, which may not be realistic:
+
+`[PLCF# abs(PropertyInteger02) + 1 ]`
+
+The Python functino 'abs()' computes the absolute value. Assuming PropertyInteger02 evaluates to -2, the result of evaluating the entire PLCF# expression is -1.
+
+In addition, users can define their own functions in the file plcflang_extensions.py, which contains a simple example. Assuming that file contains a definition of the function foo(), it can be called the following way in PLCF#:
+
+`[PLCF# ext.foo(PropertyInteger02) + 1 ]`
+
+
+
+## References to higher levels in a device hierarchy
+
+In a given hierarchy of devices it may be the case that a particular property of a device D needs to be re-used in a device Y that is at a lower level in the hierarchy. Instead of defining this property in CCDB for device Y, it is possible to reference to a top-level device in a template.
+
+In order to indicate that a property value is to be taken from a device at a higher level in the hierarchy, put the property reference into parentheses, and suffix the resulting sub-expression with a ^, which is to be read as 'up' and represents a stylized arrow pointing upwards.
+
+The general pattern is
+
+`[PLCF# ^(<property>) ]`
+
+...where `^(<property>)` evaluates to the value of a property. Note that technically a property itself is an expression, but it is not generally true that an expression can take the place of a property in the definition above. Thus, a definition like ^(Property01 + 2) is invalid. Instead, the correct definition is `^(Property01) + 2`.
+
+
+## Evaluation
+
+An expression on PLCF# is evaluated in three distincts steps. We will follow a more complex and not necessarily realistic example for the purpose of illustration:
+
+`[PLCF# ^(PropertyInteger02) + abs(PropertyInteger02 + 2 * 4) + Counter1 ]`
+
+
+a) Resolve references to properties in higher levels of the hierarchy
+
+First, `^(PropertyInteger02)` expresses that the desired property does not refer to the current device `X`, but to a device higher up the hierarchy. Thus, an exhautive search is initiated, which will continue until a device `Y` is found that is higher in the hierarchy and for which an entry `PropertyInteger02` exists in CCDB. Note that it is the responsibility of the user to ensure that a corresponding entry exists.
+
+Assume said entry was 4:
+
+`[PLCF# 4 + abs(PropertyInteger02 + 2 * 4) + Counter1 ]`
+
+
+
+b) Replace all remaining properties with their corresponding values
+
+Device `X` is assumed to have CCDB entries corresponding to all references. Those are resolved in the second step of the evaluation. Assume that `X` has a `PropertyInteger02` value of 1:
+
+`[PLCF# 4 + abs(1 + 2 * 4) + Counter1 ]`
+
+
+
+c) Evaluate counter variables
+
+If the remaining PLCF# expression contains a counter variable, which can be either `Counter1` or `Counter2`, then those variables are resolved. Afterwards, the entire expression is evaluated. If there are no counter variables, then the expression is evaluated as it is.
+
+Assume the value for Counter1 in our example is 10:
+
+
+
+d) compute values for counter variables and substitute
+
+`[PLCF# 4 + abs(1 + 2 * 4) + 10 ]`
+
+The final value is:
+
+  `[PLCF# 4 + abs(1 + 2 * 4) + 10 ]`
+= `[PLCF# 4 + abs(9)         + 10 ]`
+= `[PLCF# 4 + 9              + 10 ]`
+= `[PLCF# 23                      ]`
+= `23`
