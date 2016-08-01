@@ -10,7 +10,7 @@ import json
 
 # PLC Factory modules
 import ccdb
-import plcflang as plang
+import plcf
 
 
 
@@ -102,7 +102,7 @@ def processAll(lines, device):
     # create dictionary of properties
     propDict = createPropertyDict(propList)
     
-    return map(lambda x: plang.processLine(x, device, propDict), lines)
+    return map(lambda x: plcf.processLine(x, device, propDict), lines)
     
 
 def getAllLines(filename):

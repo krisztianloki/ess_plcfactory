@@ -25,7 +25,7 @@ import time
 # PLC Factory modules
 import ccdb
 import glob
-import plcflang        as plang
+import plcf
 import processTemplate as pt
 
 
@@ -129,7 +129,7 @@ def createFilename(header, device, n, deviceType):
 
         # remove tag and strip surrounding whitespace
         filename = filename[len(tag):].strip()
-        filename = plang.keywordsHeader(filename, device, n)
+        filename = plcf.keywordsHeader(filename, device, n)
 
         # remove second line in header template if it is empty
         if header[1].strip() == "":
@@ -323,10 +323,10 @@ if __name__ == "__main__":
     for line in lines:
 
         if "[PLCF#" in line and "# COUNTER" not in line:
-            line = plang.evalCounter(line, counter1, counter2)
+            line = plcf.evalCounter(line, counter1, counter2)
 
         elif "[PLCF#" in line and '# COUNTER' in line:
-            (counter1, counter2, line) = plang.evalCounterIncrease(
+            (counter1, counter2, line) = plcf.evalCounterIncrease(
                                             line, counter1, counter2)
 
         assert isinstance(line, str)

@@ -17,8 +17,8 @@ import datetime
 # PLC Factory modules
 import ccdb
 import glob
-import plcflang_extensions as ext
-import processTemplate     as pt
+import plcf_ext        as ext
+import processTemplate as pt
 
 
 # global vars

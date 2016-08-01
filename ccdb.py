@@ -5,7 +5,7 @@ import sys
 
 # PLC Factory modules
 import glob
-import processTemplate     as pt
+import processTemplate as pt
 
 
 
