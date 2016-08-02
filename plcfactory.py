@@ -34,17 +34,17 @@ TEMPLATE_DIR = "templates"
 OUTPUT_DIR   = "output"
 
 
-def getArtefact(deviceType, filenames, tag, n):
-    assert isinstance(deviceType, str )
-    assert isinstance(filenames,  list)
-    assert isinstance(tag,        str )
-    assert isinstance(n,          int )
+def getArtefact(deviceType, filenames, tag, templateName):
+    assert isinstance(deviceType,   str )
+    assert isinstance(filenames,    list)
+    assert isinstance(tag,          str )
+    assert isinstance(templateName, str )
 
     lines = []
 
     for filename in filenames:
 
-        if matchingArtefact(filename, tag, n):
+        if matchingArtefact(filename, tag, templateName):
 
             ccdb.getArtefact(deviceType, filename)
 
@@ -56,16 +56,16 @@ def getArtefact(deviceType, filenames, tag, n):
     return lines
 
 
-def getTemplateName(deviceType, filenames, n):
+def getTemplateName(deviceType, filenames, templateName):
     assert isinstance(deviceType, str )
     assert isinstance(filenames,  list)
-    assert isinstance(n,          int )
+    assert isinstance(templateName,          str )
 
     result = ""
 
     for filename in filenames:
 
-        if matchingArtefact(filename, "TEMPLATE", n):
+        if matchingArtefact(filename, "TEMPLATE", templateName):
 
             result = filename
             # download header and save in template directory
@@ -75,10 +75,10 @@ def getTemplateName(deviceType, filenames, n):
     return result
 
 
-def matchingArtefact(filename, tag, n):
-    assert isinstance(filename, str)
-    assert isinstance(tag,      str)
-    assert isinstance(n,        int)
+def matchingArtefact(filename, tag, templateName):
+    assert isinstance(filename,     str)
+    assert isinstance(tag,          str)
+    assert isinstance(templateName, str)
 
     # attached artefacts may be of different file types, e.g. PDF
     if not filename.endswith('.txt'):
@@ -93,19 +93,18 @@ def matchingArtefact(filename, tag, n):
     tmp         = filename.split("_")    # separating fields in filename
 
     # extract template number
-    if tmp[-1].startswith("TEMPLATE"):
-        template_nr = int(tmp[-1][len("TEMPLATE"):])
+    #if tmp[-1].startswith("TEMPLATE"):
+     #   template_nr = int(tmp[-1][len("TEMPLATE"):])
 
-    else:
-        template_nr = int(tmp[-1])
+    name = tmp[-1]
 
-    return template_nr == n and tag in filename
+    return name == templateName and tag in filename
 
 
-def createFilename(header, device, n, deviceType):
+def createFilename(header, device, templateName, deviceType):
     assert isinstance(header,     list)
     assert isinstance(device,     str )
-    assert isinstance(n,          int )
+    assert isinstance(templateName, str )
     assert isinstance(deviceType, str )
 
     tag        = "#FILENAME"
@@ -117,7 +116,7 @@ def createFilename(header, device, n, deviceType):
     if len(header) == 0 or not header[0].startswith(tag):
 
         timestamp  = '{:%Y%m%d%H%M%S}'.format(datetime.datetime.now())
-        outputFile = plc + "_" + deviceType + "_template-" + str(n) \
+        outputFile = plc + "_" + deviceType + "_template-" + templateName \
                    + "_" + timestamp + ".scl"
         return (outputFile, header)
 
@@ -183,16 +182,16 @@ if __name__ == "__main__":
     parser.add_argument(
                         '-t',
                         '--template',
-                        help='template number',
-                        type=int,
+                        help='template name',
+                        type=str,
                         required=True)
 
     # retrieve parameters
     args = parser.parse_args()
 
     # PLC name and template number given as arguments
-    plc  = args.device
-    n    = args.template
+    plc          = args.device
+    templateName = args.template
 
     # collect lines to be written at the end
     output  = []
@@ -214,14 +213,14 @@ if __name__ == "__main__":
     # change working directory to template directory
     os.chdir(TEMPLATE_DIR)
 
-    header = getArtefact(deviceType, plcArtefacts, "HEADER", n)
+    header = getArtefact(deviceType, plcArtefacts, "HEADER", templateName)
 
     if len(header) == 0:
         print "No header found.\n"
     else:
         print "Header read.\n"
 
-    footer = getArtefact(deviceType, plcArtefacts, "FOOTER", n)
+    footer = getArtefact(deviceType, plcArtefacts, "FOOTER", templateName)
 
     if len(footer) == 0:
         print "No footer found.\n"
@@ -258,7 +257,7 @@ if __name__ == "__main__":
         (deviceType, artefacts) = ccdb.getArtefactNames(elem)
         print "Device type: " + deviceType
 
-        filename = getTemplateName(deviceType, artefacts, n)
+        filename = getTemplateName(deviceType, artefacts, templateName)
 
         if filename != "":
             # process template and add result to output
@@ -291,7 +290,7 @@ if __name__ == "__main__":
 
     os.chdir("..")
 
-    (outputFile, header) = createFilename(header, plc, n, deviceType)
+    (outputFile, header) = createFilename(header, plc, templateName, deviceType)
     output               = header + output + footer
     outputFile           = sanitizeFilename(outputFile)
 
@@ -308,7 +307,7 @@ if __name__ == "__main__":
         print "Output file written: " + outputFile + "\n"
 
     else:
-        print "There were no available templates for N = " + str(n) + ".\n"
+        print "There were no available templates for template name = " + templateName + ".\n"
         exit()
 
 
@@ -337,8 +336,6 @@ if __name__ == "__main__":
     os.chdir(OUTPUT_DIR)
 
     with open(outputFile + "_FINAL.txt",'w') as f:
-        #map(lambda x: f.write(x), output)
-        
         for line in output:
             if not line.startswith("# COUNTER"):
                 f.write(line)        
