@@ -10,8 +10,7 @@ Authors:
 See plcfactory.txt for further documentation.
 """
 
-# python plcfactory.py --device LNS-LEBT-010:Vac-VPGCF-001 --template 2
-# python plcfactory.py --device LNS-LEBT-010:Vac-PLC-11111 --template 2
+# python plcfactory.py --device LNS-LEBT-010:Vac-PLC-11111 --template EPICS-DB
 
 
 # Python libraries
@@ -19,7 +18,6 @@ import argparse
 import datetime
 import os
 import sys
-
 import time
 
 # PLC Factory modules
@@ -34,17 +32,17 @@ TEMPLATE_DIR = "templates"
 OUTPUT_DIR   = "output"
 
 
-def getArtefact(deviceType, filenames, tag, templateName):
-    assert isinstance(deviceType,   str )
-    assert isinstance(filenames,    list)
-    assert isinstance(tag,          str )
-    assert isinstance(templateName, str )
+def getArtefact(deviceType, filenames, tag, templateID):
+    assert isinstance(deviceType, str )
+    assert isinstance(filenames,  list)
+    assert isinstance(tag,        str )
+    assert isinstance(templateID, str )
 
     lines = []
 
     for filename in filenames:
 
-        if matchingArtefact(filename, tag, templateName):
+        if matchingArtefact(filename, tag, templateID):
 
             ccdb.getArtefact(deviceType, filename)
 
@@ -56,16 +54,16 @@ def getArtefact(deviceType, filenames, tag, templateName):
     return lines
 
 
-def getTemplateName(deviceType, filenames, templateName):
+def getTemplateName(deviceType, filenames, templateID):
     assert isinstance(deviceType, str )
     assert isinstance(filenames,  list)
-    assert isinstance(templateName,          str )
+    assert isinstance(templateID, str )
 
     result = ""
 
     for filename in filenames:
 
-        if matchingArtefact(filename, "TEMPLATE", templateName):
+        if matchingArtefact(filename, "TEMPLATE", templateID):
 
             result = filename
             # download header and save in template directory
@@ -75,10 +73,10 @@ def getTemplateName(deviceType, filenames, templateName):
     return result
 
 
-def matchingArtefact(filename, tag, templateName):
-    assert isinstance(filename,     str)
-    assert isinstance(tag,          str)
-    assert isinstance(templateName, str)
+def matchingArtefact(filename, tag, templateID):
+    assert isinstance(filename,   str)
+    assert isinstance(tag,        str)
+    assert isinstance(templateID, str)
 
     # attached artefacts may be of different file types, e.g. PDF
     if not filename.endswith('.txt'):
@@ -89,34 +87,28 @@ def matchingArtefact(filename, tag, templateName):
     # exactly one '.' in filename
     assert filename.count('.') == 1
 
-    filename    = filename.split('.')[0] # removing '.txt.
-    tmp         = filename.split("_")    # separating fields in filename
+    filename  = filename.split('.')[0] # removing '.txt.
+    tmp       = filename.split("_")    # separating fields in filename
 
-    # extract template number
-    #if tmp[-1].startswith("TEMPLATE"):
-     #   template_nr = int(tmp[-1][len("TEMPLATE"):])
+    # extract template ID
+    name      = tmp[-1]
 
-    name = tmp[-1]
-
-    return name == templateName and tag in filename
+    return name == templateID and tag in filename
 
 
-def createFilename(header, device, templateName, deviceType):
+def createFilename(header, device, templateID, deviceType):
     assert isinstance(header,     list)
     assert isinstance(device,     str )
-    assert isinstance(templateName, str )
+    assert isinstance(templateID, str )
     assert isinstance(deviceType, str )
 
-    tag        = "#FILENAME"
-
-    # #FILENAME INSTALLATION_SLOT-TEMPLATE-TIMESTAMP.scl
-    # python plcfactory.py --device LNS-LEBT-010:Vac-PLC-11111 --template 1
+    tag = "#FILENAME"
 
     # default filename is chosen when no custom filename is specified
     if len(header) == 0 or not header[0].startswith(tag):
 
         timestamp  = '{:%Y%m%d%H%M%S}'.format(datetime.datetime.now())
-        outputFile = plc + "_" + deviceType + "_template-" + templateName \
+        outputFile = plc + "_" + deviceType + "_template-" + templateID \
                    + "_" + timestamp + ".scl"
         return (outputFile, header)
 
@@ -165,12 +157,8 @@ if __name__ == "__main__":
     os.system('clear')
 
     start_time = time.time()
-
-    # invocation:
-    # python plcfactory.py --device LNS-LEBT-010:Vac-VPGCF-001 --template 2
-    # i.e. device / installations slot, and template number
-
-    parser = argparse.ArgumentParser()
+    
+    parser     = argparse.ArgumentParser()
 
     parser.add_argument(
                         '-d',
@@ -190,8 +178,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # PLC name and template number given as arguments
-    plc          = args.device
-    templateName = args.template
+    plc        = args.device
+    templateID = args.template
 
     # collect lines to be written at the end
     output  = []
@@ -213,14 +201,14 @@ if __name__ == "__main__":
     # change working directory to template directory
     os.chdir(TEMPLATE_DIR)
 
-    header = getArtefact(deviceType, plcArtefacts, "HEADER", templateName)
+    header = getArtefact(deviceType, plcArtefacts, "HEADER", templateID)
 
     if len(header) == 0:
         print "No header found.\n"
     else:
         print "Header read.\n"
 
-    footer = getArtefact(deviceType, plcArtefacts, "FOOTER", templateName)
+    footer = getArtefact(deviceType, plcArtefacts, "FOOTER", templateID)
 
     if len(footer) == 0:
         print "No footer found.\n"
@@ -229,9 +217,7 @@ if __name__ == "__main__":
 
     print "Processing entire tree of controls-relationships:\n"
 
-    #print "Processed templates:"
     # for each device, find corresponding template and process it
-
     output    = []
 
     toProcess = controls # starting with devices controlled by PLC
@@ -257,7 +243,7 @@ if __name__ == "__main__":
         (deviceType, artefacts) = ccdb.getArtefactNames(elem)
         print "Device type: " + deviceType
 
-        filename = getTemplateName(deviceType, artefacts, templateName)
+        filename = getTemplateName(deviceType, artefacts, templateID)
 
         if filename != "":
             # process template and add result to output
@@ -290,7 +276,7 @@ if __name__ == "__main__":
 
     os.chdir("..")
 
-    (outputFile, header) = createFilename(header, plc, templateName, deviceType)
+    (outputFile, header) = createFilename(header, plc, templateID, deviceType)
     output               = header + output + footer
     outputFile           = sanitizeFilename(outputFile)
 
@@ -307,7 +293,7 @@ if __name__ == "__main__":
         print "Output file written: " + outputFile + "\n"
 
     else:
-        print "There were no available templates for template name = " + templateName + ".\n"
+        print "There were no templates for ID = " + templateID + ".\n"
         exit()
 
 
