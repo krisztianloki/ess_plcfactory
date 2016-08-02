@@ -337,7 +337,11 @@ if __name__ == "__main__":
     os.chdir(OUTPUT_DIR)
 
     with open(outputFile + "_FINAL.txt",'w') as f:
-        map(lambda x: f.write(x), output)
+        #map(lambda x: f.write(x), output)
+        
+        for line in output:
+            if not line.startswith("# COUNTER"):
+                f.write(line)        
 
     os.chdir("..")
 
