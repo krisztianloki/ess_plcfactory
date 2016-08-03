@@ -6,6 +6,10 @@ PLC Factory is intended to simplify programming PLCs by automatically generating
 
 ## Quickstart
 
+PLC Factory requires Python 2.7.
+
+Invocation follows the pattern `python plcfactory.py --device <device> --template <id>`.
+
 Sample invocation:
 `python plcfactory.py --device LNS-LEBT-010:Vac-PLC-11111 --template EPICS-DB`
 

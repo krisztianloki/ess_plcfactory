@@ -24,7 +24,7 @@ In addition, the user needs to have read-access to CCDB. Lastly, this applicatio
 
 ## Template file format
 
-Template file names have to have the extension `.txt`. Note that the filename, without the extension, has to end with an integer, which can be separated from the required keyword `TEMPLATE` with an underscore (`_`), e.g. `VALVE_TEMPLATE_1.txt`.
+Template file names have to have the extension `.txt`. Note that the filename, without the extension, has to end with an integer, which can be separated from the required keyword `TEMPLATE` with an underscore (`_`), e.g. `VALVE_TEMPLATE_TIA-MAP.txt`.
 
 Example template files are provided in the folder `/sample_templates`.
 
@@ -51,11 +51,11 @@ PLC Factory consists of the following files:
 
 The invocation of the script follows the pattern:
 
-`python plcfactory.py --device <device-name> --template <template number>`
+`python plcfactory.py --device <device-name> --template <template id>`
 
 It is possible to use shorthands for the parameters:
 
-`python plcfactory.py -d <device-name> -t <template number>`
+`python plcfactory.py -d <device-name> -t <template id>`
 
 For instance, `python plcfactory.py -d LNS-LEBT-010:Vac-PLC-11111 -t 5`.
 
@@ -76,7 +76,7 @@ PLC Factory performs the following steps (pseudocode), in order:
 
   * remove one element `x`,
 
-  * process template `n` of `x`, if available
+  * process template with id `i` associated with `x`, if available
 
   * add devices controlled by `x` to `toProcess`, but only if they have not yet been processed  
 
