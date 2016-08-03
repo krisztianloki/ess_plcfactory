@@ -82,16 +82,14 @@ def matchingArtefact(filename, tag, templateID):
     if not filename.endswith('.txt'):
         return False
 
-    # sample filename: VALVE_TEMPLATE_1.txt
-
     # exactly one '.' in filename
     assert filename.count('.') == 1
 
-    filename  = filename.split('.')[0] # removing '.txt.
-    tmp       = filename.split("_")    # separating fields in filename
+    filename = filename.split('.')[0] # removing '.txt.
+    tmp      = filename.split("_")    # separating fields in filename
 
     # extract template ID
-    name      = tmp[-1]
+    name     = tmp[-1]
 
     return name == templateID and tag in filename
 
@@ -108,8 +106,9 @@ def createFilename(header, device, templateID, deviceType):
     if len(header) == 0 or not header[0].startswith(tag):
 
         timestamp  = '{:%Y%m%d%H%M%S}'.format(datetime.datetime.now())
-        outputFile = plc + "_" + deviceType + "_template-" + templateID \
+        outputFile = device + "_" + deviceType + "_template-" + templateID \
                    + "_" + timestamp + ".scl"
+
         return (outputFile, header)
 
     else:
@@ -178,20 +177,19 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # PLC name and template number given as arguments
-    plc        = args.device
+    device     = args.device
     templateID = args.template
 
     # collect lines to be written at the end
     output  = []
 
     # get artifact names of files attached to plc
-    (deviceType, plcArtefacts) = ccdb.getArtefactNames(plc)
+    (deviceType, plcArtefacts) = ccdb.getArtefactNames(device)
 
     # find devices this PLC controls
-    controls = ccdb.control(plc)
+    controls = ccdb.control(device)
 
-    print "PLC: " + plc + "\n"
-    print "This device controls: "
+    print device + " controls: "
 
     for elem in controls:
         print "\t- " + elem
@@ -284,7 +282,7 @@ if __name__ == "__main__":
 
     os.chdir("..")
 
-    (outputFile, header) = createFilename(header, plc, templateID, deviceType)
+    (outputFile, header) = createFilename(header, device, templateID, deviceType)
     output               = header + output + footer
     outputFile           = sanitizeFilename(outputFile)
 
