@@ -201,6 +201,14 @@ if __name__ == "__main__":
     # change working directory to template directory
     os.chdir(TEMPLATE_DIR)
 
+
+    # remove templates downloaded in a previous run
+    files = [f for f in os.listdir('.') if os.path.isfile(f)]
+    for f in files:
+        if "TEMPLATE" in f:
+            os.remove(f)
+    
+    
     header = getArtefact(deviceType, plcArtefacts, "HEADER", templateID)
 
     if len(header) == 0:
