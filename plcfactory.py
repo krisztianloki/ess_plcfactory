@@ -183,7 +183,7 @@ if __name__ == "__main__":
     # collect lines to be written at the end
     output  = []
 
-    # get artifact names of files attached to plc
+    # get artifact names of files attached to root device
     (deviceType, plcArtefacts) = ccdb.getArtefactNames(device)
 
     # find devices this PLC controls

@@ -1,19 +1,18 @@
 # PLC Factory
-
-PLC Factory is intended to simplify programming PLCs by automatically generating template files.
-
-
-example of an invocation:
-python plcfactory.py --device LNS-LEBT-010:Vac-PLC-11111 --template 4
+(c) 2016 European Spallation Source, Lund
 
 
+PLC Factory is intended to simplify programming PLCs by automatically generating template files. It takes an arbitrary device and template name as input and processes the corresponding sub-tree of devices according to their entries in CCDB.
 
-TODO:
+## Quickstart
 
-- (?) implement named variables, e.g. counters, in PLCF_Lang
+Sample invocation:
+`python plcfactory.py --device LNS-LEBT-010:Vac-PLC-11111 --template EPICS-DB`
 
-- clean up repository (will be done at the end)
+With shorthands:
+`python plcfactory.py -d LNS-LEBT-010:Vac-PLC-11111 -t EPICS-DB`
 
-- code cleanup
+The resulting output file will be written to `\output`.
 
-- extend documentation
+
+For further information, see `\doc`.
