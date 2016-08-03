@@ -288,6 +288,7 @@ if __name__ == "__main__":
     output               = header + output + footer
     outputFile           = sanitizeFilename(outputFile)
 
+    """
     if len(output) > 0:
 
         os.chdir(OUTPUT_DIR)
@@ -303,8 +304,14 @@ if __name__ == "__main__":
     else:
         print "There were no templates for ID = " + templateID + ".\n"
         exit()
-
-
+    """
+    
+    if len(output) == 0:
+        print "There were no templates for ID = " + templateID + ".\n"
+        print("--- %s seconds ---" % (time.time() - start_time))
+        exit()
+        
+        
     # Process counters
     lines  = output
     output = []
@@ -329,7 +336,7 @@ if __name__ == "__main__":
     #write file
     os.chdir(OUTPUT_DIR)
 
-    with open(outputFile + "_FINAL.txt",'w') as f:
+    with open(outputFile,'w') as f:
         for line in output:
             if not line.startswith("# COUNTER"):
                 f.write(line)        
