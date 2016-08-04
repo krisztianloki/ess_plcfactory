@@ -28,7 +28,7 @@ current_device = None
 def keywordsHeader(filename, device, n):
     assert isinstance(filename, str)
     assert isinstance(device,   str)
-    assert isinstance(n,        int)
+    assert isinstance(n,        str)
 
     timestamp  = '{:%Y%m%d%H%M%S}'.format(datetime.datetime.now())
     deviceType = ccdb.getDeviceType(device)
