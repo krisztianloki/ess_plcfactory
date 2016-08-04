@@ -119,7 +119,7 @@ def createFilename(header, device, templateID, deviceType):
 
         # remove tag and strip surrounding whitespace
         filename = filename[len(tag):].strip()
-        filename = plcf.keywordsHeader(filename, device, n)
+        filename = plcf.keywordsHeader(filename, device, templateID)
 
         # remove second line in header template if it is empty
         if header[1].strip() == "":
@@ -309,23 +309,31 @@ if __name__ == "__main__":
         print("--- %s seconds ---" % (time.time() - start_time))
         exit()
         
-        
-    # Process counters
     lines  = output
     output = []
 
-    # initial values
-    counter1 = 0
-    counter2 = 0
+    # Process counters; initialize
+    counters = { "Counter1": 0
+               , "Counter2": 0
+               , "Counter3": 0
+               , "Counter4": 0
+               , "Counter5": 0 }
+ 
+#    counter1 = 0
+#    counter2 = 0
 
     for line in lines:
 
         if "[PLCF#" in line and "# COUNTER" not in line:
-            line = plcf.evalCounter(line, counter1, counter2)
+            #line = plcf.evalCounter(line, counter1, counter2)
+            line = plcf.evalCounter(line, counters)
+            
 
         elif "[PLCF#" in line and '# COUNTER' in line:
-            (counter1, counter2, line) = plcf.evalCounterIncrease(
-                                            line, counter1, counter2)
+            #(counter1, counter2, line) = plcf.evalCounterIncrease(
+            #                                line, counter1, counter2)
+            (counters, line) = plcf.evalCounterIncrease(line, counters)
+                                            
 
         assert isinstance(line, str)
         assert "[PLCF#" not in line  # line contains at most one PLCF tag

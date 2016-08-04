@@ -42,7 +42,7 @@ def keywordsHeader(filename, device, n):
 
     return processLine(filename, device, substDict)
 
-
+"""
 def evalCounter(line, counter1, counter2):
     assert isinstance(line,     str)
     assert isinstance(counter1, int)
@@ -56,8 +56,23 @@ def evalCounter(line, counter1, counter2):
     (_, line) = processLineCounter(line)
 
     return line
+"""
+
+def evalCounter(line, counters):
+    assert isinstance(line,     str )
+    assert isinstance(counters, dict)
+
+    # substitutions
+    for key in counters.keys():
+        line = substitute(line, key, str(counters[key]))
+
+    # evaluation
+    (_, line) = processLineCounter(line)
+
+    return line
 
 
+"""
 def evalCounterIncrease(line, counter1, counter2):
     assert isinstance(line,     str)
     assert isinstance(counter1, int)
@@ -93,6 +108,39 @@ def evalCounterIncrease(line, counter1, counter2):
         counter2 = counter
 
     return (counter1, counter2, line)
+"""
+
+def evalCounterIncrease(line, counters):
+    assert isinstance(line,     str )
+    assert isinstance(counters, dict)
+
+    # identify start of expression and substitute
+    pos = line.find("[PLCF#")
+
+    if pos != -1:
+
+        pre  = line[:pos]
+        post = line[pos:]
+        
+        for key in counters.keys():
+            post = substitute(post, key, str(counters[key]))
+            
+        line = pre + post
+
+    # identify counter
+    counterVar = line.split()[2]
+    assert 'Counter' in counterVar
+
+    # evaluate
+    (counter, line) = processLineCounter(line)
+    assert isinstance(counter, int)
+    assert isinstance(line,    str)
+        
+    for key in counters.keys():
+        if counterVar == key:
+            counters[key] = counter
+        
+    return (counters, line)
 
 
 def processLineCounter(line):
