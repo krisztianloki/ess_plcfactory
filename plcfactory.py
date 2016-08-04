@@ -313,15 +313,12 @@ if __name__ == "__main__":
     output = []
 
     # Process counters; initialize
-    counters = { "Counter1": 0
-               , "Counter2": 0
-               , "Counter3": 0
-               , "Counter4": 0
-               , "Counter5": 0 }
- 
-#    counter1 = 0
-#    counter2 = 0
-
+    numOfCounters = 5
+    counters      = dict()
+    for n in range(numOfCounters):
+        counters["Counter" + str(n + 1)] = 0
+    
+    
     for line in lines:
 
         if "[PLCF#" in line and "# COUNTER" not in line:

@@ -25,38 +25,23 @@ import processTemplate as pt
 current_device = None
 
 
-def keywordsHeader(filename, device, n):
+def keywordsHeader(filename, device, id):
     assert isinstance(filename, str)
     assert isinstance(device,   str)
-    assert isinstance(n,        str)
+    assert isinstance(id,       str)
 
     timestamp  = '{:%Y%m%d%H%M%S}'.format(datetime.datetime.now())
     deviceType = ccdb.getDeviceType(device)
 
     # dictionary of the form key: tag, value: replacement
     substDict = {'INSTALLATION_SLOT': device
-                ,'TEMPLATE'         : 'template-' + str(n)
+                ,'TEMPLATE'         : 'template-' + id
                 ,'TIMESTAMP'        : timestamp
                 ,'DEVICE_TYPE'      : deviceType
                 }
 
     return processLine(filename, device, substDict)
 
-"""
-def evalCounter(line, counter1, counter2):
-    assert isinstance(line,     str)
-    assert isinstance(counter1, int)
-    assert isinstance(counter2, int)
-
-    # substitutions
-    line = substitute(line, "Counter1", str(counter1))
-    line = substitute(line, "Counter2", str(counter2))
-
-    # evaluation
-    (_, line) = processLineCounter(line)
-
-    return line
-"""
 
 def evalCounter(line, counters):
     assert isinstance(line,     str )
@@ -71,44 +56,6 @@ def evalCounter(line, counters):
 
     return line
 
-
-"""
-def evalCounterIncrease(line, counter1, counter2):
-    assert isinstance(line,     str)
-    assert isinstance(counter1, int)
-    assert isinstance(counter2, int)
-
-    # identify start of expression and substitute
-    pos = line.find("[PLCF#")
-
-    if pos != -1:
-
-        pre  = line[:pos]
-        post = line[pos:]
-
-        post = substitute(post, "Counter1", str(counter1))
-        post = substitute(post, "Counter2", str(counter2))
-
-        line = pre + post
-
-
-    # identify counter
-    counterVar = line.split()[2]
-    assert counterVar == 'Counter1' or counterVar == 'Counter2'
-
-    # evaluate
-    (counter, line) = processLineCounter(line)
-    assert isinstance(counter, int)
-    assert isinstance(line,    str)
-
-    # return updated line and values
-    if counterVar == 'Counter1':
-        counter1 = counter
-    elif counterVar == 'Counter2':
-        counter2 = counter
-
-    return (counter1, counter2, line)
-"""
 
 def evalCounterIncrease(line, counters):
     assert isinstance(line,     str )
