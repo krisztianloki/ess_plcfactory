@@ -27,9 +27,9 @@ Keywords are reserved terms. Currently, PLCF# has the following keywords:
 - `TEMPLATE`
 - `TIMESTAMP`
 - `DEVICE_TYPE`
-- `Counter1`
-- `Counter2`
+- `Counter<N>`
 
+Currently, PLCF# recognizes `Counter1` up to and including `Counter5`. In case you need to use more counters, modify the line `numOfCounters = 5` in `plcfactory.py`.
 
 ## Inbuilt and user-defined functions
 
@@ -81,7 +81,7 @@ Device `X` is assumed to have CCDB entries corresponding to all references. Thos
 
 ### Evaluate counter variables
 
-If the remaining PLCF# expression contains a counter variable, which can be either `Counter1` or `Counter2`, then those variables are resolved. Afterwards, the entire expression is evaluated. If there are no counter variables, then the expression is evaluated as it is.
+If the remaining PLCF# expression contains a counter variable, for instance `Counter1` or `Counter2`, then those variables are resolved. Afterwards, the entire expression is evaluated. If there are no counter variables, then the expression is evaluated as it is.
 
 Assume the value for `Counter1` in our example is `10`, thus:
 `[PLCF# 4 + abs(1 + 2 * 4) + 10 ]`
@@ -92,7 +92,7 @@ Assume the value for `Counter1` in our example is `10`, thus:
 Lastly, the resulting expression is evaluated:
 
   `[PLCF# 4 + abs(1 + 2 * 4) + 10 ]`
-  
+
 = `[PLCF# 4 + abs(9)         + 10 ]`
 
 = `[PLCF# 4 + 9              + 10 ]`
