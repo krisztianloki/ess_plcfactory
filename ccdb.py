@@ -8,7 +8,6 @@ import glob
 import processTemplate as pt
 
 
-
 # add directory for third-party libraries to module search path
 parent_dir = os.path.abspath(os.path.dirname(__file__))
 lib_dir    = os.path.join(parent_dir, 'libs')
@@ -73,16 +72,10 @@ def getArtefact(deviceType, filename):
     assert isinstance(deviceType, str)
     assert isinstance(filename,   str)
 
-    # check if filename has already been downloaded        
+    # check if filename has already been downloaded
     if os.path.exists(filename):
         return
 
-    # alternative URL e.g.
-    # https://ics-services.esss.lu.se/ccdb-test/rest/slot/LNS-ISrc-01:Vac-IPC-1/download/PLC_DEVICE_HEADER_TEMPLATE_1.txt
-    
-    # https://ccdb.esss.lu.se/rest/slot/LNS-LEBT-010:Vac-VVM-00081
-
-    # url     = "https://ics-services.esss.lu.se/ccdb-test/rest/deviceType/"  \
     url     = "https://ccdb.esss.lu.se/rest/deviceType/"  \
                + deviceType + "/download/" + filename
 
@@ -99,9 +92,9 @@ def getField(device, field):
 
     if device not in glob.deviceDict.keys():
         # create URL for GET request
-        url     = "https://ccdb.esss.lu.se/rest/slot/" + device        
-        # False because SSH connection is unsigned:        
-        request = requests.get(url, verify=False) 
+        url     = "https://ccdb.esss.lu.se/rest/slot/" + device
+        # False because SSH connection is unsigned:
+        request = requests.get(url, verify=False)
         tmpDict = json.loads(request.text)
 
         # save downloaded data
@@ -123,17 +116,15 @@ def query(device, field):
     result  = map(lambda x: str(x), result)
 
     return result
-    
-    
+
+
 # let backtrack update a global dictionary
 def backtrack(prop, device):
     assert isinstance(prop,   str)
     assert isinstance(device, str)
 
-    # starting by one device, looking for property X, determine a device in a higher level
-    # of the hierarchy that has that property
-
-    # FIXME: add to documentation that FIRST fitting value is returned
+    # starting by one device, looking for property X, find a device
+    # in a higher level of the hierarchy that has that property
 
     # starting point: all devices 'device' is controlled by
     leftToProcess = controlledBy(device)
@@ -175,4 +166,3 @@ def backtrack(prop, device):
         else:
             leftToProcess += controlledBy(elem)
             count         += 1
-            

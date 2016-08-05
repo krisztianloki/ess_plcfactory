@@ -1,35 +1,15 @@
+# global dictionaries for memoization
+# templates as well as device information is only requested
+# at most one time
 
 
-# memoizing data drawn from CCDB
-cached = dict()
-
-
-
-templateDict = dict()
-
-
-
+# all devices and their properties
 # key: device, value: dict of all properties/values
-deviceDict = dict()
+deviceDict   = dict()
+
+# same, but for backtracking
+# (leads to a conceptually simpler implementation)
+cached       = dict()
 
 
 
-"""
-used in
-
-def getField(device, field):
-    # create URL for GET request
-    # url     = "https://ics-services.esss.lu.se/ccdb-test/rest/slot/" + device
-
-    url     = "https://ccdb.esss.lu.se/rest/slot/" + device
-
-    request = requests.get(url, verify=False)
-              # False because SSH connection is unsigned
-    tmpDict = json.loads(request.text)
-
-    result  = tmpDict.get(field)
-
-    return result
-
-
-"""

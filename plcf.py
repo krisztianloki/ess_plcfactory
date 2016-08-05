@@ -13,13 +13,11 @@ will not lead to an error. Instead, such input is simply returned unchanged.
 # Python libraries
 import datetime
 
-
 # PLC Factory modules
 import ccdb
 import glob
 import plcf_ext        as ext
 import processTemplate as pt
-
 
 # global vars
 current_device = None
@@ -68,25 +66,25 @@ def evalCounterIncrease(line, counters):
 
         pre  = line[:pos]
         post = line[pos:]
-        
+
         for key in counters.keys():
             post = substitute(post, key, str(counters[key]))
-            
+
         line = pre + post
 
     # identify counter
     counterVar = line.split()[2]
-    assert 'Counter' in counterVar
+    assert counterVar in counters.keys()
 
     # evaluate
     (counter, line) = processLineCounter(line)
     assert isinstance(counter, int)
     assert isinstance(line,    str)
-        
+
     for key in counters.keys():
         if counterVar == key:
             counters[key] = counter
-        
+
     return (counters, line)
 
 
@@ -135,21 +133,20 @@ def processLine(line, device, substDict):
     if start == -1:
         return line # nothing to replace
 
-    end        = line.find("]", start)
+    end         = line.find("]", start)
     # assert matching square brackets
     assert end != -1
 
     expression = line[start + offset : end]
     assert matchingParentheses(expression)
 
-    # TODO not needed for header; later on add for generalization
-    reduced    = evaluateExpression(expression, device, substDict)
+    reduced = evaluateExpression(expression, device, substDict)
 
     # maintain PLCF tag if a counter variable is part of the expression
-    if 'Counter1' in reduced or 'Counter2' in reduced:
+    if 'Counter' in reduced:
         return line[:start] + "[PLCF#" + reduced + line[end:]
 
-    result     = line[:start] + reduced + line[end + 1:]
+    result = line[:start] + reduced + line[end + 1:]
 
     # recurse until all PLCF_Lang expressions have been processed
     return processLine(result, device, substDict)
@@ -181,7 +178,8 @@ def evaluateExpression(line, device, propDict):
 
     global current_device
 
-    # resolve all references to properties in devices on an upper level in the hierarchy
+    # resolve all references to properties in devices on a higher level
+    # in the hierarchy
     line = evalUp(line)
 
     for elem in propDict.keys():
@@ -191,7 +189,7 @@ def evaluateExpression(line, device, propDict):
             # recursion to take care of multiple occurrences of variables
             return evaluateExpression(tmp, device, propDict)
 
-    # note that an expression like "INSTALLATION_SLOT + 1" is of course not syntactically correct
+    # an expression like "INSTALLATION_SLOT + 1" is not syntactically correct
     tag = 'INSTALLATION_SLOT'
     if tag in line:
         line = substitute(line, tag, device)

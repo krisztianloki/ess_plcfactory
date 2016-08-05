@@ -1,16 +1,18 @@
 #!/usr/bin/python
-"""
-PLC Factory
-(c) European Spallation Source, Lund
 
-Authors:
-- Gregor Ulm: 2016-07-04 to 2016-09-02
-- ...
+""" PLC Factory """
 
-See plcfactory.txt for further documentation.
-"""
-
-# python plcfactory.py --device LNS-LEBT-010:Vac-PLC-11111 --template EPICS-DB
+__author__     = "Gregor Ulm"
+__copyright__  = "Copyright 2016, European Spallation Source, Lund"
+__credits__    = [ "Gregor Ulm"
+                 , "David Brodrick"
+                 , "Nick Levchenko"
+                 , "Francois Bellorini"
+                 , "Ricardo Fernandes"
+                 ]
+__maintainer__ = "Gregor Ulm"
+__email__      = "gregor.ulm@esss.se"
+__status__     = "Production"
 
 
 # Python libraries
@@ -115,7 +117,7 @@ def createFilename(header, device, templateID, deviceType):
 
         assert header[0].startswith(tag)
 
-        filename  = header[0]
+        filename = header[0]
 
         # remove tag and strip surrounding whitespace
         filename = filename[len(tag):].strip()
@@ -156,7 +158,7 @@ if __name__ == "__main__":
     os.system('clear')
 
     start_time = time.time()
-    
+
     parser     = argparse.ArgumentParser()
 
     parser.add_argument(
@@ -174,17 +176,17 @@ if __name__ == "__main__":
                         required=True)
 
     # retrieve parameters
-    args = parser.parse_args()
+    args       = parser.parse_args()
 
     # PLC name and template number given as arguments
     device     = args.device
     templateID = args.template
 
     # collect lines to be written at the end
-    output  = []
+    output     = []
 
     # get artifact names of files attached to root device
-    (deviceType, plcArtefacts) = ccdb.getArtefactNames(device)
+    (deviceType, rootArtefacts) = ccdb.getArtefactNames(device)
 
     # find devices this PLC controls
     controls = ccdb.control(device)
@@ -199,22 +201,20 @@ if __name__ == "__main__":
     # change working directory to template directory
     os.chdir(TEMPLATE_DIR)
 
-
     # remove templates downloaded in a previous run
     files = [f for f in os.listdir('.') if os.path.isfile(f)]
     for f in files:
         if "TEMPLATE" in f:
             os.remove(f)
-    
-    
-    header = getArtefact(deviceType, plcArtefacts, "HEADER", templateID)
+
+    header = getArtefact(deviceType, rootArtefacts, "HEADER", templateID)
 
     if len(header) == 0:
         print "No header found.\n"
     else:
         print "Header read.\n"
 
-    footer = getArtefact(deviceType, plcArtefacts, "FOOTER", templateID)
+    footer = getArtefact(deviceType, rootArtefacts, "FOOTER", templateID)
 
     if len(footer) == 0:
         print "No footer found.\n"
@@ -229,12 +229,6 @@ if __name__ == "__main__":
     toProcess = controls # starting with devices controlled by PLC
     processed = set()
 
-#    maxDepth = 10  # not implemented; would be cumbersome and have little benefit
-
-
-    # ensure that template is only downloaded once per deviceType
-    # key: deviceType, value: entire template (list of strings)
-    #cachedTemplates = dict()
 
     while toProcess != []:
 
@@ -279,36 +273,18 @@ if __name__ == "__main__":
 
     print "\n"
 
-
     os.chdir("..")
 
     (outputFile, header) = createFilename(header, device, templateID, deviceType)
     output               = header + output + footer
     outputFile           = sanitizeFilename(outputFile)
 
-    """
-    if len(output) > 0:
 
-        os.chdir(OUTPUT_DIR)
-
-        # write entire output
-        with open(outputFile,'w') as f:
-            map(lambda x: f.write(x), output)
-            
-        os.chdir("..")
-
-        print "Output file written: " + outputFile + "\n"
-
-    else:
-        print "There were no templates for ID = " + templateID + ".\n"
-        exit()
-    """
-    
     if len(output) == 0:
         print "There were no templates for ID = " + templateID + ".\n"
         print("--- %s seconds ---" % (time.time() - start_time))
         exit()
-        
+
     lines  = output
     output = []
 
@@ -317,23 +293,18 @@ if __name__ == "__main__":
     counters      = dict()
     for n in range(numOfCounters):
         counters["Counter" + str(n + 1)] = 0
-    
-    
+
+
     for line in lines:
 
         if "[PLCF#" in line and "# COUNTER" not in line:
-            #line = plcf.evalCounter(line, counter1, counter2)
             line = plcf.evalCounter(line, counters)
-            
 
         elif "[PLCF#" in line and '# COUNTER' in line:
-            #(counter1, counter2, line) = plcf.evalCounterIncrease(
-            #                                line, counter1, counter2)
             (counters, line) = plcf.evalCounterIncrease(line, counters)
-                                            
 
         assert isinstance(line, str)
-        assert "[PLCF#" not in line  # line contains at most one PLCF tag
+        assert "[PLCF#" not in line  # PLCF should now all be be processed
         output.append(line)
 
     #write file
@@ -342,7 +313,7 @@ if __name__ == "__main__":
     with open(outputFile,'w') as f:
         for line in output:
             if not line.startswith("# COUNTER"):
-                f.write(line)        
+                f.write(line)
 
     os.chdir("..")
 
