@@ -312,8 +312,9 @@ if __name__ == "__main__":
 
     with open(outputFile,'w') as f:
         for line in output:
+            line = line.rstrip()
             if not line.startswith("# COUNTER"):
-                f.write(line)
+                f.write(line + "\n")
 
     os.chdir("..")
 
