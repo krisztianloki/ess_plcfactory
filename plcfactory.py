@@ -229,6 +229,7 @@ if __name__ == "__main__":
     toProcess = controls # starting with devices controlled by PLC
     processed = set()
 
+    (outputFile, header) = createFilename(header, device, templateID, deviceType)
 
     while toProcess != []:
 
@@ -275,7 +276,6 @@ if __name__ == "__main__":
 
     os.chdir("..")
 
-    (outputFile, header) = createFilename(header, device, templateID, deviceType)
     output               = header + output + footer
     outputFile           = sanitizeFilename(outputFile)
 
