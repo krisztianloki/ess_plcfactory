@@ -289,7 +289,7 @@ if __name__ == "__main__":
     output = []
 
     # Process counters; initialize
-    numOfCounters = 5
+    numOfCounters = 9
     counters      = dict()
     for n in range(numOfCounters):
         counters["Counter" + str(n + 1)] = 0

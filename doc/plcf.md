@@ -30,7 +30,7 @@ Keywords are reserved terms. Currently, PLCF# has the following keywords:
 - `Counter`
 - `Counter<N>`
 
-Currently, PLCF# recognizes `Counter1` up to and including `Counter5`. In case you need to use more counters, modify the line `numOfCounters = 5` in `plcfactory.py`.
+Currently, PLCF# recognizes `Counter1` up to and including `Counter9`. In case you need to use more counters, modify the line `numOfCounters = 9` in `plcfactory.py`.
 
 ## Inbuilt and user-defined functions
 
