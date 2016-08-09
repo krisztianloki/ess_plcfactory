@@ -13,7 +13,7 @@ __credits__    = [ "Gregor Ulm"
 __maintainer__ = "Gregor Ulm"
 __email__      = "gregor.ulm@esss.se"
 __status__     = "Production"
-
+__env__        = "Python version 2.7"
 
 # Python libraries
 import argparse
@@ -153,37 +153,8 @@ def sanitizeFilename(filename):
     return "".join(result)
 
 
-if __name__ == "__main__":
-
-    os.system('clear')
-
-    start_time = time.time()
-
-    parser     = argparse.ArgumentParser()
-
-    parser.add_argument(
-                        '-d',
-                        '--device',
-                        help='device / installation slot',
-                        required=True
-                        )
-
-    parser.add_argument(
-                        '-t',
-                        '--template',
-                        help='template name',
-                        type=str,
-                        required=True)
-
-    # retrieve parameters
-    args       = parser.parse_args()
-
-    # PLC name and template number given as arguments
-    device     = args.device
-    templateID = args.template
-
-    # collect lines to be written at the end
-    output     = []
+def processRoot(templateID, device):
+    
 
     # get artifact names of files attached to root device
     (deviceType, rootArtefacts) = ccdb.getArtefactNames(device)
@@ -201,12 +172,6 @@ if __name__ == "__main__":
     # change working directory to template directory
     os.chdir(TEMPLATE_DIR)
 
-    # remove templates downloaded in a previous run
-    files = [f for f in os.listdir('.') if os.path.isfile(f)]
-    for f in files:
-        if "TEMPLATE" in f:
-            os.remove(f)
-
     header = getArtefact(deviceType, rootArtefacts, "HEADER", templateID)
 
     if len(header) == 0:
@@ -223,13 +188,30 @@ if __name__ == "__main__":
 
     print "Processing entire tree of controls-relationships:\n"
 
+    return (deviceType, rootArtefacts, controls, header, footer)
+
+
+def processTemplateID(templateID, device):
+    
+    print "#" * 60
+    print "Template ID " + templateID
+    print "Device at root: " + device + "\n"
+
+    # collect lines to be written at the end
+    output = []
+
+    # process header/footer
+    (deviceType, rootArtefacts, controls, header, footer) =       \
+        processRoot(templateID, device)
+
     # for each device, find corresponding template and process it
     output    = []
 
     toProcess = controls # starting with devices controlled by PLC
     processed = set()
 
-    (outputFile, header) = createFilename(header, device, templateID, deviceType)
+    (outputFile, header) =                                        \
+        createFilename(header, device, templateID, deviceType)
 
     while toProcess != []:
 
@@ -279,11 +261,9 @@ if __name__ == "__main__":
     output               = header + output + footer
     outputFile           = sanitizeFilename(outputFile)
 
-
     if len(output) == 0:
         print "There were no templates for ID = " + templateID + ".\n"
-        print("--- %s seconds ---" % (time.time() - start_time))
-        exit()
+        return
 
     lines  = output
     output = []
@@ -320,4 +300,48 @@ if __name__ == "__main__":
 
     print "Output file written: " + outputFile + "\n"
 
-    print("--- %s seconds ---" % (time.time() - start_time))
+
+if __name__ == "__main__":
+
+    os.system('clear')
+
+    start_time = time.time()
+
+    parser     = argparse.ArgumentParser()
+
+    parser.add_argument(
+                        '-d',
+                        '--device',
+                        help='device / installation slot',
+                        required=True
+                        )
+
+    parser.add_argument(
+                        '-t',
+                        '--template',
+                        help='template name',
+                        nargs = '*',
+                        type=str,
+                        required=True)
+
+    # retrieve parameters
+    args       = parser.parse_args()
+
+    # PLC name and template number given as arguments
+    device     = args.device
+    templateIDs = args.template
+
+    # remove templates downloaded in a previous run
+    os.chdir(TEMPLATE_DIR)
+
+    files = [f for f in os.listdir('.') if os.path.isfile(f)]
+    for f in files:
+        if "TEMPLATE" in f:
+            os.remove(f)
+
+    os.chdir("..")
+
+    map(lambda x: processTemplateID(x, device), templateIDs)
+
+
+    print("--- %.1f seconds ---\n" % (time.time() - start_time))
