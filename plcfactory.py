@@ -328,8 +328,11 @@ if __name__ == "__main__":
     args       = parser.parse_args()
 
     # PLC name and template number given as arguments
-    device     = args.device
+    device      = args.device
     templateIDs = args.template
+    
+    assert len(templateIDs) >= 1, "at least one template ID must be given"
+
 
     # remove templates downloaded in a previous run
     os.chdir(TEMPLATE_DIR)

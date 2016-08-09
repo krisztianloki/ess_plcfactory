@@ -8,13 +8,13 @@ PLC Factory is intended to simplify programming PLCs by automatically generating
 
 PLC Factory requires Python 2.7.
 
-Invocation follows the pattern `python plcfactory.py --device <device> --template <id>`.
+Invocation follows the pattern `python plcfactory.py --device <device> --template <ids>`, where `ids` is a list of template names of at least one element.
 
 Sample invocation:
-`python plcfactory.py --device LNS-LEBT-010:Vac-PLC-11111 --template EPICS-DB`
+`python plcfactory.py --device LNS-LEBT-010:Vac-PLC-11111 --template EPICS-DB TIA-MAP`
 
 With shorthands:
-`python plcfactory.py -d LNS-LEBT-010:Vac-PLC-11111 -t EPICS-DB`
+`python plcfactory.py -d LNS-LEBT-010:Vac-PLC-11111 -t EPICS-DB TIA-MAP`
 
 The resulting output file will be written to `\output`.
 

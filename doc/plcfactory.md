@@ -51,22 +51,22 @@ PLC Factory consists of the following files:
 
 The invocation of the script follows the pattern:
 
-`python plcfactory.py --device <device-name> --template <template id>`
+`python plcfactory.py --device <device-name> --template <template ids>`
 
 It is possible to use shorthands for the parameters:
 
-`python plcfactory.py -d <device-name> -t <template id>`
+`python plcfactory.py -d <device-name> -t <template ids>`
 
-For instance, `python plcfactory.py -d LNS-LEBT-010:Vac-PLC-11111 -t 5`.
+For instance, `python plcfactory.py -d LNS-LEBT-010:Vac-PLC-11111 -t TIA-MAP TIA-DEVICES`.
 
 Execution of the script ends with writing an output file to the directory `/output`.
 
 
 ## Outline
 
-PLC Factory performs the following steps (pseudocode), in order:
+PLC Factory performs the following steps (pseudocode) for each of the provided template IDs, in order:
 
-1. Look up `<device-name>` in CCDB
+1. Look up `<device-name>` either in CCDB (first access) or in-memory
 
 2. Determine which devices `X` are controlled by `<device-name>`
 
@@ -171,4 +171,6 @@ In order to add a new keyword, add a new entry to `substDict`. You may need to p
 
 PLC Factory is rather efficient. The bottleneck of the execution is due to input/output operations like accessing CCDB via the network, downloading template files, opening those files, and writing the final output.
 
-PLC Factory runs in `O(m + n)`, where `m` is the number of device types, of which there is one template associated with each device type. Furthermore, `n` is the number of devices. CCDB needs to be accessed once for every device in a dependency tree. Internal operations are disregarded in this calculation; writing the final output is interpreted as a constant. As a consequence, PLC Factory is expected to scale linearly, depending on the number of both unique device types and the total number of devices.
+PLC Factory runs in `O(m + n) = O(n)`, where `m` is the number of device types, of which there is one template associated with each device type. Furthermore, `n` is the number of devices. CCDB needs to be accessed once for every device in a dependency tree. Internal operations are disregarded in this calculation; writing the final output is interpreted as a constant. As a consequence, PLC Factory is expected to scale linearly, depending on the number of both unique device types and the total number of devices.
+
+Note that processing additional templates is a constant (!) because information regarding the same devices is needed. However, after the first template has been processed, informaiton regarding each affected device has been requested from CCDB once already and is therefore available in-memory.
