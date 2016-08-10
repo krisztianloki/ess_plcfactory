@@ -107,9 +107,8 @@ def createFilename(header, device, templateID, deviceType):
     # default filename is chosen when no custom filename is specified
     if len(header) == 0 or not header[0].startswith(tag):
 
-        timestamp  = '{:%Y%m%d%H%M%S}'.format(datetime.datetime.now())
         outputFile = device + "_" + deviceType + "_template-" + templateID \
-                   + "_" + timestamp + ".scl"
+                   + "_" + glob.timestamp + ".scl"
 
         return (outputFile, header)
 
@@ -309,9 +308,11 @@ if __name__ == "__main__":
 
     os.system('clear')
 
-    start_time = time.time()
+    start_time     = time.time()
 
-    parser     = argparse.ArgumentParser()
+    glob.timestamp = '{:%Y%m%d%H%M%S}'.format(datetime.datetime.now())
+
+    parser         = argparse.ArgumentParser()
 
     parser.add_argument(
                         '-d',

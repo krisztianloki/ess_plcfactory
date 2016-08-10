@@ -11,5 +11,5 @@ deviceDict   = dict()
 # (leads to a conceptually simpler implementation)
 cached       = dict()
 
-
-
+# timestamp for names of output files
+timestamp    = None

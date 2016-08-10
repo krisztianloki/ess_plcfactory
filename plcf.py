@@ -34,7 +34,7 @@ def keywordsHeader(filename, device, id):
     # dictionary of the form key: tag, value: replacement
     substDict = {'INSTALLATION_SLOT': device
                 ,'TEMPLATE'         : 'template-' + id
-                ,'TIMESTAMP'        : timestamp
+                ,'TIMESTAMP'        : glob.timestamp
                 ,'DEVICE_TYPE'      : deviceType
                 }
 
