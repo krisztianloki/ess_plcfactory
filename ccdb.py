@@ -86,15 +86,30 @@ def getArtefact(deviceType, filename):
         map(lambda x: f.write(x), results)
 
 
+
+def getSimilarDevices(device):
+    pass
+
 def getField(device, field):
     assert isinstance(device, str)
     assert isinstance(field,  str)
 
     if device not in glob.deviceDict.keys():
         # create URL for GET request
-        url     = "https://ccdb.esss.lu.se/rest/slot/" + device
+        url     = "https://ccdb.esss.lu.se/rest/slot/" + device        
+        
         # False because SSH connection is unsigned:
         request = requests.get(url, verify=False)
+                
+        if request.status_code == 204:
+            print "Device " + device + " not found."
+            print "Check list of devices in CCDB.",
+            print "Device names are case-sensitive."
+            print "Maybe you meant one of the following devices: "
+            print getSimilarDevices(device)
+            print "Exiting."
+            exit()
+        
         tmpDict = json.loads(request.text)
 
         # save downloaded data
