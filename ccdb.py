@@ -6,7 +6,7 @@ import sys
 # PLC Factory modules
 import glob
 import processTemplate as pt
-
+import levenshtein
 
 # add directory for third-party libraries to module search path
 parent_dir = os.path.abspath(os.path.dirname(__file__))
@@ -86,9 +86,36 @@ def getArtefact(deviceType, filename):
         map(lambda x: f.write(x), results)
 
 
-
 def getSimilarDevices(device):
-    pass
+    assert isinstance(device, str)
+    assert device.count(":") == 1, "bad formatting of device name"
+
+    (slot, deviceName) = device.split(":")
+
+    url     = "https://ccdb.esss.lu.se/rest/slot/"
+    # False because SSH connection is unsigned:
+    request = requests.get(url, verify=False)
+    tmpList = json.loads(request.text)
+
+    # get all devices in CCDB
+    allDevices = map(lambda x: x["name"], tmpList)
+
+    # convert unicode to String
+    allDevices = map(lambda x: str(x), allDevices)
+
+    # keep only device
+    candidates = filter(lambda x: x.startswith(slot), allDevices)
+
+    # discard slot name
+    #candidates = map(lambda x: x.split(":")[1], candidates)
+
+    # compute Levenshtein distances
+    distances  = \
+        map(lambda x: (levenshtein.distance(device, x), x), candidates)
+    distances.sort()
+
+    return distances
+
 
 def getField(device, field):
     assert isinstance(device, str)
@@ -96,20 +123,29 @@ def getField(device, field):
 
     if device not in glob.deviceDict.keys():
         # create URL for GET request
-        url     = "https://ccdb.esss.lu.se/rest/slot/" + device        
-        
+        url     = "https://ccdb.esss.lu.se/rest/slot/" + device
+
         # False because SSH connection is unsigned:
         request = requests.get(url, verify=False)
-                
+
         if request.status_code == 204:
-            print "Device " + device + " not found."
-            print "Check list of devices in CCDB.",
-            print "Device names are case-sensitive."
+            print "ERROR:"
+            print "Device " + device + " not found.\n"
+            print "Please check the list of devices in CCDB, and keep"
+            print "in mind that device names are case-sensitive.\n"
             print "Maybe you meant one of the following devices: "
-            print getSimilarDevices(device)
-            print "Exiting."
+            print "(Accesing CCDB, may take a few seconds.)\n"
+            print "Ten most simlar device names on CCDB in chosen slot:"
+            top10 = getSimilarDevices(device)[:10]
+
+            if top10 == []:
+                print "No devices found."
+            else:
+                for (score, x) in top10:
+                    print x
+            print "\nExiting.\n"
             exit()
-        
+
         tmpDict = json.loads(request.text)
 
         # save downloaded data
