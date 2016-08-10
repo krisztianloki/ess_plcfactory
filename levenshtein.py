@@ -8,6 +8,9 @@
 
 def distance(s, t):
     ''' From Wikipedia article; Iterative with two matrix rows. '''
+    assert isinstance(s, str)
+    assert isinstance(t, str)
+    
     if s == t:
         return 0
 

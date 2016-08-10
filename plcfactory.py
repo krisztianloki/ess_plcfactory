@@ -154,7 +154,8 @@ def sanitizeFilename(filename):
 
 
 def processRoot(templateID, device):
-    
+    assert isinstance(templateID, str)
+    assert isinstance(device,     str)
 
     # get artifact names of files attached to root device
     (deviceType, rootArtefacts) = ccdb.getArtefactNames(device)
@@ -192,7 +193,9 @@ def processRoot(templateID, device):
 
 
 def processTemplateID(templateID, device):
-    
+    assert isinstance(templateID, str)
+    assert isinstance(device,     str)
+
     print "#" * 60
     print "Template ID " + templateID
     print "Device at root: " + device + "\n"
@@ -271,6 +274,7 @@ def processTemplateID(templateID, device):
     # Process counters; initialize
     numOfCounters = 9
     counters      = dict()
+
     for n in range(numOfCounters):
         counters["Counter" + str(n + 1)] = 0
 
@@ -330,7 +334,7 @@ if __name__ == "__main__":
     # PLC name and template number given as arguments
     device      = args.device
     templateIDs = args.template
-    
+
     assert len(templateIDs) >= 1, "at least one template ID must be given"
 
 
