@@ -102,10 +102,16 @@ def createFilename(header, device, templateID, deviceType):
     assert isinstance(templateID, str )
     assert isinstance(deviceType, str )
 
-    tag = "#FILENAME"
+    tag    = "#FILENAME"
+    tagPos = -1
+
+    for i in range(len(header)):
+        if header[i].startswith(tag):
+            tagPos = i
+            break
 
     # default filename is chosen when no custom filename is specified
-    if len(header) == 0 or not header[0].startswith(tag):
+    if len(header) == 0 or tagPos == -1:
 
         outputFile = device + "_" + deviceType + "_template-" + templateID \
                    + "_" + glob.timestamp + ".scl"
@@ -114,20 +120,16 @@ def createFilename(header, device, templateID, deviceType):
 
     else:
 
-        assert header[0].startswith(tag)
-
-        filename = header[0]
+        filename = header[tagPos]
 
         # remove tag and strip surrounding whitespace
         filename = filename[len(tag):].strip()
         filename = plcf.keywordsHeader(filename, device, templateID)
 
-        # remove second line in header template if it is empty
-        if header[1].strip() == "":
-            return (filename, header[2:])
+        # remove line with tag
+        header.pop(tagPos)
 
-        else:
-            return (filename, header[1:])
+        return (filename, header)
 
 
 def replaceTag(line, tag, insert):
@@ -293,9 +295,9 @@ def processTemplateID(templateID, device):
 
     # process HASH keyword
     print ccdb.getHash()
-    output[0] = ccdb.getHash()
-    
-    
+    output = [ccdb.getHash()] + output
+
+
     #write file
     os.chdir(OUTPUT_DIR)
 
