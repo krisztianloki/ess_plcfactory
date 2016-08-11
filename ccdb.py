@@ -1,8 +1,8 @@
 # Python libraries
-import hashlib
 import json
 import os
 import sys
+import zlib
 
 # PLC Factory modules
 import glob
@@ -293,7 +293,7 @@ def getHash():
         # values in order, e.g.
         # key_1,value_1, key_2, value_2, ... key_n, value_n
 
-        # compute md5 hashsum of string
-        glob.hashSum = hashlib.sha512(tmp).hexdigest()
+        # compute checksum of string
+        glob.hashSum = str(zlib.crc32(tmp))
 
         return glob.hashSum

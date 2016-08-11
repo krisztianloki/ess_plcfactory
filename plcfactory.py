@@ -103,13 +103,16 @@ def createFilename(header, device, templateID, deviceType):
     assert isinstance(deviceType, str )
 
     tag    = "#FILENAME"
+    tagPos = findTag(header, tag)
+    """
     tagPos = -1
 
     for i in range(len(header)):
         if header[i].startswith(tag):
             tagPos = i
             break
-
+    """
+    
     # default filename is chosen when no custom filename is specified
     if len(header) == 0 or tagPos == -1:
 
@@ -132,22 +135,35 @@ def createFilename(header, device, templateID, deviceType):
         return (filename, header)
 
 
-def findTag(lines):
-    pass
+def findTag(lines, tag):
+    
+    tagPos = -1
+    
+    for i in range(len(lines)):
+        if lines[i].startswith(tag):
+            tagPos = i
+            break
+    
+    return tagPos
 
 
 def processHash(lines):
 
     tag     = "#HASH"
     hashSum = ccdb.getHash()
-    hashPos = -1
-
+    
+    hashPos = findTag(lines, tag)
+    #hashPos = -1
+    
+    """
     for i in range(len(lines)):
         if lines[i].startswith(tag):
             tagPos = i
             break
-
-    lines[hashPos] = hashSum
+    """
+    
+    if not hashPos == -1:
+        lines[hashPos] = hashSum
 
     return lines
 
