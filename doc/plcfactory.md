@@ -135,7 +135,7 @@ The definition needs to start with `#FILENAME`. The following four keywords are 
 
 `TEMPLATE`:          template number; taken from provided argument
 
-`TIMESTAMP`:         date and time, using current system time
+`TIMESTAMP`:         date and time of programm invokation, using current system time
 
 In order to add further fields, modify the function definition of `createFilename()` in the file `plcfactory.py`.
 

@@ -1,4 +1,5 @@
 # Python libraries
+import hashlib
 import json
 import os
 import sys
@@ -217,3 +218,82 @@ def backtrack(prop, device):
         else:
             leftToProcess += controlledBy(elem)
             count         += 1
+
+
+# recursively process input in order to create an "ordered"
+# string of all properties
+def getOrderedString(inp, device):
+
+    res       = ""
+    toProcess = inp
+
+    while not toProcess == []:
+
+        head = toProcess.pop(0)
+
+        if isinstance(head, unicode):
+            res += head
+
+        elif isinstance(head, list):
+            for elem in head:
+                toProcess.append(elem)
+
+        elif isinstance(head, dict):
+            keys = head.keys()
+            keys.sort()
+
+            for elem in keys:
+                toProcess.append(elem)
+                toProcess.append(head[elem])
+
+        elif isinstance(head, bool):
+            res += str(head)
+
+        elif head is None:
+            continue
+
+        else:
+            print "Input error", type(head)
+            exit()
+
+    return res
+
+
+def getHash():
+
+    if not glob.hashSum == None:
+        return glob.hashSum
+
+    # compute hash sum
+    else:
+
+        # build a temporary string
+        tmp = ""
+
+        # get all devices
+        devices = glob.deviceDict.keys()
+
+        # ... in alphabetical order
+        devices.sort()
+
+        # now the same for each device:
+        for device in devices:
+            tmp       += device
+            properties = glob.deviceDict[device]
+            keys       = properties.keys()
+            keys.sort()
+
+            for k in keys:
+                tmp += k
+                # FIXME remove 'device' argument
+                tmp += getOrderedString([properties[k]], device)
+
+
+        # Now 'tmp' is one string with all keys and their corresponding
+        # values in order, e.g.
+        # key_1,value_1, key_2, value_2, ... key_n, value_n
+
+        # compute md5 hashsum of string
+        glob.hashSum = hashlib.sha224(tmp).hexdigest()
+
+        return glob.hashSum

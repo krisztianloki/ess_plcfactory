@@ -290,6 +290,12 @@ def processTemplateID(templateID, device):
         assert "[PLCF#" not in line  # PLCF should now all be be processed
         output.append(line)
 
+
+    # process HASH keyword
+    print ccdb.getHash()
+    output[0] = ccdb.getHash()
+    
+    
     #write file
     os.chdir(OUTPUT_DIR)
 

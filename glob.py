@@ -13,3 +13,6 @@ cached       = dict()
 
 # timestamp for names of output files
 timestamp    = None
+
+# md5 hash sum for output file
+hashSum      = None
