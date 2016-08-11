@@ -294,6 +294,6 @@ def getHash():
         # key_1,value_1, key_2, value_2, ... key_n, value_n
 
         # compute md5 hashsum of string
-        glob.hashSum = hashlib.sha224(tmp).hexdigest()
+        glob.hashSum = hashlib.sha512(tmp).hexdigest()
 
         return glob.hashSum

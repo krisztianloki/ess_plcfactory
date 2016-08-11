@@ -132,6 +132,26 @@ def createFilename(header, device, templateID, deviceType):
         return (filename, header)
 
 
+def findTag(lines):
+    pass
+
+
+def processHash(lines):
+
+    tag     = "#HASH"
+    hashSum = ccdb.getHash()
+    hashPos = -1
+
+    for i in range(len(lines)):
+        if lines[i].startswith(tag):
+            tagPos = i
+            break
+
+    lines[hashPos] = hashSum
+
+    return lines
+
+
 def replaceTag(line, tag, insert):
     assert isinstance(line,   str)
     assert isinstance(tag,    str)
@@ -294,9 +314,7 @@ def processTemplateID(templateID, device):
 
 
     # process HASH keyword
-    print ccdb.getHash()
-    output = [ccdb.getHash()] + output
-
+    output = processHash(output)
 
     #write file
     os.chdir(OUTPUT_DIR)
@@ -309,7 +327,8 @@ def processTemplateID(templateID, device):
 
     os.chdir("..")
 
-    print "Output file written: " + outputFile + "\n"
+    print "Output file written: " + outputFile + "\n",
+    print "Hash sum: " + glob.hashSum
 
 
 if __name__ == "__main__":
