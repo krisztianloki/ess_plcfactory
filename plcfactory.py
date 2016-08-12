@@ -104,15 +104,7 @@ def createFilename(header, device, templateID, deviceType):
 
     tag    = "#FILENAME"
     tagPos = findTag(header, tag)
-    """
-    tagPos = -1
 
-    for i in range(len(header)):
-        if header[i].startswith(tag):
-            tagPos = i
-            break
-    """
-    
     # default filename is chosen when no custom filename is specified
     if len(header) == 0 or tagPos == -1:
 
@@ -136,36 +128,40 @@ def createFilename(header, device, templateID, deviceType):
 
 
 def findTag(lines, tag):
-    
+    assert isinstance(lines, list)
+    assert isinstance(tag,   str )
+
     tagPos = -1
-    
+
     for i in range(len(lines)):
         if lines[i].startswith(tag):
             tagPos = i
             break
-    
+
     return tagPos
 
 
-def processHash(lines):
+def processHash(header):
+    assert isinstance(header, list)
 
     tag     = "#HASH"
     hashSum = ccdb.getHash()
-    
-    hashPos = findTag(lines, tag)
-    #hashPos = -1
-    
-    """
-    for i in range(len(lines)):
-        if lines[i].startswith(tag):
-            tagPos = i
-            break
-    """
-    
-    if not hashPos == -1:
-        lines[hashPos] = hashSum
+    pos     = -1
 
-    return lines
+    for i in range(len(header)):
+        if tag in header[i]:
+            pos = i
+            break
+
+    if pos == -1:
+        return header
+
+    line        = header[pos]
+    tagPos      = line.find(tag)
+    line        = line[:tagPos] + hashSum + line[tagPos + len(tag):]
+    header[pos] = line
+
+    return header
 
 
 def replaceTag(line, tag, insert):
@@ -298,8 +294,11 @@ def processTemplateID(templateID, device):
 
     os.chdir("..")
 
-    output               = header + output + footer
-    outputFile           = sanitizeFilename(outputFile)
+    # process #HASH keyword in header
+    header      = processHash(header)
+
+    output      = header + output + footer
+    outputFile  = sanitizeFilename(outputFile)
 
     if len(output) == 0:
         print "There were no templates for ID = " + templateID + ".\n"
@@ -328,9 +327,6 @@ def processTemplateID(templateID, device):
         assert "[PLCF#" not in line  # PLCF should now all be be processed
         output.append(line)
 
-
-    # process HASH keyword
-    output = processHash(output)
 
     #write file
     os.chdir(OUTPUT_DIR)

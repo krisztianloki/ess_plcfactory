@@ -222,7 +222,8 @@ def backtrack(prop, device):
 
 # recursively process input in order to create an "ordered"
 # string of all properties
-def getOrderedString(inp, device):
+def getOrderedString(inp):
+    assert isinstance(inp, list)
 
     res       = ""
     toProcess = inp
@@ -285,8 +286,7 @@ def getHash():
 
             for k in keys:
                 tmp += k
-                # FIXME remove 'device' argument
-                tmp += getOrderedString([properties[k]], device)
+                tmp += getOrderedString([properties[k]])
 
 
         # Now 'tmp' is one string with all keys and their corresponding
