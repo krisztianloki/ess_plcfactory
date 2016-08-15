@@ -37,6 +37,7 @@ PLC Factory consists of the following files:
 - `plcfactory.py`
 - `glob.py`
 - `ccdb.py`
+- `levenshtein.py`
 - `processTemplate.py`
 - `plcf.py`
 - `plcf_ext.py`
@@ -113,9 +114,11 @@ The benefit of this approach is that it greatly simplifies maintaining informati
 In order to make use of this ability of PLC Factory, tag a property as follows: `^(<property>)`, e.g. `[PLCF# ^(PropertyString02)]`. This means that there will be no lookup for `PropertyString02` for the current device `X`, but for all devices `X` is controlled by, directly or indirectly, until one device is encountered for which a corresponding entry for `PropertyString02` exists in CCDB.
 
 
-### Global handling of two counter variables
+### Global handling of counter variables
 
-In order to remove the tedium of manually specifying values for memory locations, it is possible to make use of up to two counter variables in template files, `Counter1` and `Counter2`. After all template files have been processed, a final pass is performed that assigns correct values to all counter variables in the temporary data before creating the output file. The starting value for both counters is `0`.
+In order to remove the tedium of manually specifying values that dynamically change, it is possible to make use of up to `9` counter variables in template files, `Counter1` to `Counter9`. After all template files have been processed, a final pass is performed that assigns correct values to all counter variables in the temporary data before creating the output file. The starting value for both counters is `0`.
+
+Keep in mind that every counter is implicitly (!) initialized to `0`, meaning that the starting value does not need to be provided by the user. If you want to increase the value of a particular counter, you need to increment it in the header file. For instance, the line `#COUNTER Counter1 = [PLCF#Counter1 + 1];` expresses that the counter `Counter1` is set to `1`. It is implicitly initialized to `0`, but then its value is incremented by `1`.
 
 
 
@@ -140,6 +143,12 @@ The definition needs to start with `#FILENAME`. The following four keywords are 
 In order to add further fields, modify the function definition of `createFilename()` in the file `plcfactory.py`.
 
 You can choose any file extension you want, and even omit an extension altogether.
+
+
+### Consistency check via Hashing
+
+PLC Factory is able to compute a checksum that records whether a change in the relevant data stored in CCDB has taken place. The corresponding tag is `#HASH`, which is to be placed in a header file. If this tag is present, it will be replaced by a signed 32-bit value. In order to compute this value, all devices and properties in a subtree of which the argument `device-name` is the root are retrieved, recursively sorted in alphabetical order and turned into a string. The resulting string serves as the input of the chosen hash function (`CRC32`), which maps any input to one of `2^32` outputs. Note that because the input space is infinite, but the output space finite, hash collisions may occur. This means that two different inputs may result in the same output (recall the 'Birthday Problem'). In practice, this should not be an issue, but it may be worthwhile pointing out that hash functions that take unbounded inputs cannot guarantee uniqueness of outputs.
+
 
 
 ## For advanced users
