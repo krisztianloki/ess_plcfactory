@@ -323,10 +323,10 @@ def processTemplateID(templateID, device):
 
     for line in lines:
 
-        if "[PLCF#" in line and "# COUNTER" not in line:            
+        if "[PLCF#" in line and "#COUNTER" not in line:            
             line = plcf.evalCounter(line, counters)
 
-        elif "[PLCF#" in line and '# COUNTER' in line:
+        elif "[PLCF#" in line and '#COUNTER' in line:
             (counters, line) = plcf.evalCounterIncrease(line, counters)
 
         assert isinstance(line, str)
@@ -340,7 +340,7 @@ def processTemplateID(templateID, device):
     with open(outputFile,'w') as f:
         for line in output:
             line = line.rstrip()
-            if not line.startswith("# COUNTER") \
+            if not line.startswith("#COUNTER") \
                and not line.startswith("#FILENAME"):
                 f.write(line + "\n")
 
