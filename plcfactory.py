@@ -246,8 +246,40 @@ def processTemplateID(templateID, device):
     toProcess = controls # starting with devices controlled by PLC
     processed = set()
 
+
+
     (outputFile, header) =                                        \
-        createFilename(header, device, templateID, deviceType)
+        createFilename(header, device, templateID, deviceType)    
+        
+    # FIXME: return header unmodified
+
+
+    # FIXME: process PLCF in header
+
+    headerFileName = ""
+    headerFiles = filter(lambda x: "HEADER" in x and templateID in x, rootArtefacts)
+
+    if len(headerFiles) >= 1:
+        headerFileName = headerFiles[0]
+
+
+    #saved = ""
+    
+    
+#    if len(header) > 0 and header[0].startswith("#FILENAME"):
+ #       saved  = header[0]
+  #      header = header[1:]
+    
+    if not headerFileName == "":
+        header = pt.process(device, headerFileName)
+    
+   # header = [saved] + header
+    
+    
+    
+
+    
+    
 
     while toProcess != []:
 
@@ -317,7 +349,7 @@ def processTemplateID(templateID, device):
 
     for line in lines:
 
-        if "[PLCF#" in line and "# COUNTER" not in line:
+        if "[PLCF#" in line and "# COUNTER" not in line:            
             line = plcf.evalCounter(line, counters)
 
         elif "[PLCF#" in line and '# COUNTER' in line:
@@ -334,7 +366,8 @@ def processTemplateID(templateID, device):
     with open(outputFile,'w') as f:
         for line in output:
             line = line.rstrip()
-            if not line.startswith("# COUNTER"):
+            if not line.startswith("# COUNTER") \
+               and not line.startswith("#FILENAME"):
                 f.write(line + "\n")
 
     os.chdir("..")
