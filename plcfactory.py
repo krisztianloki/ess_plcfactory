@@ -111,7 +111,7 @@ def createFilename(header, device, templateID, deviceType):
         outputFile = device + "_" + deviceType + "_template-" + templateID \
                    + "_" + glob.timestamp + ".scl"
 
-        return (outputFile, header)
+        return outputFile
 
     else:
 
@@ -121,10 +121,7 @@ def createFilename(header, device, templateID, deviceType):
         filename = filename[len(tag):].strip()
         filename = plcf.keywordsHeader(filename, device, templateID)
 
-        # remove line with tag
-        header.pop(tagPos)
-
-        return (filename, header)
+        return filename
 
 
 def findTag(lines, tag):
@@ -243,44 +240,21 @@ def processTemplateID(templateID, device):
     # for each device, find corresponding template and process it
     output    = []
 
-    toProcess = controls # starting with devices controlled by PLC
-    processed = set()
-
-
-
-    (outputFile, header) =                                        \
+    toProcess  = controls # starting with devices controlled by PLC
+    processed  = set()
+    outputFile =                                                  \
         createFilename(header, device, templateID, deviceType)    
-        
-    # FIXME: return header unmodified
-
-
-    # FIXME: process PLCF in header
 
     headerFileName = ""
     headerFiles = filter(lambda x: "HEADER" in x and templateID in x, rootArtefacts)
 
     if len(headerFiles) >= 1:
         headerFileName = headerFiles[0]
-
-
-    #saved = ""
-    
-    
-#    if len(header) > 0 and header[0].startswith("#FILENAME"):
- #       saved  = header[0]
-  #      header = header[1:]
     
     if not headerFileName == "":
         header = pt.process(device, headerFileName)
     
-   # header = [saved] + header
     
-    
-    
-
-    
-    
-
     while toProcess != []:
 
         elem = toProcess.pop()
