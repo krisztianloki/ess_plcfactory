@@ -73,7 +73,7 @@ def evalCounterIncrease(line, counters):
         line = pre + post
 
     # identify counter
-    counterVar = line.split()[2]
+    counterVar = line.split()[1]
     assert counterVar in counters.keys()
 
     # evaluate
