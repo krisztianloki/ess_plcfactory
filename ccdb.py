@@ -42,10 +42,13 @@ def getDeviceType(device):
     assert isinstance(device, str)
 
     tmp        = getField(device, "deviceType")
-    deviceType = tmp.get("name")
+    #print "ZZZ", tmp
+    
+    #deviceType = tmp.get("name")
 
     # convert from utf-8 to string
-    deviceType = str(deviceType)
+    #deviceType = str(deviceType)
+    deviceType = str(tmp)
 
     return deviceType
 
@@ -54,9 +57,21 @@ def getArtefactNames(device):
     assert isinstance(device, str)
 
     # get names of artefacts
-    tmp        = getField(device, "deviceType")
-    result     = tmp.get("artifacts")
-    deviceType = tmp.get("name")
+    if glob.production:
+        #tmp        = getField(device, "deviceType")
+        #result     = tmp.get("artifacts")
+        #deviceType = tmp.get("name")
+
+        result     = getField(device, "artifacts")
+        print "XXXX", result
+
+        deviceType = getField(device, "deviceType")         
+        print "YYY", deviceType
+
+        
+    else:
+        result     = getField(device, "artifacts")
+        deviceType = getField(device, "deviceType")        
 
     # convert from utf-8 to string
     deviceType = str(deviceType)
@@ -77,8 +92,22 @@ def getArtefact(deviceType, filename):
     if os.path.exists(filename):
         return
 
-    url     = "https://ccdb.esss.lu.se/rest/deviceType/"  \
-               + deviceType + "/download/" + filename
+    # TODO refactoring
+    if glob.production:
+        #url     = "https://ccdb.esss.lu.se/rest/deviceType/"  \
+        url     = "https://ccdb.esss.lu.se/rest/deviceTypes/"  \
+                   + deviceType + "/download/" + filename
+    else:
+        url     = "https://ics-services.esss.lu.se/ccdb-test/rest/deviceTypes/"  \
+                   + deviceType + "/download/" + filename
+
+    print url
+    print "foobar"
+    #exit()
+
+    # TEST: "https://ics-services.esss.lu.se/ccdb-test/rest/slots/" " ccdb.esss.lu.se/rest/deviceType/" 
+    # PRODUCTION: "https://ccdb.esss.lu.se/rest/deviceType/"
+    
 
     results = requests.get(url, verify=False)
 
@@ -93,13 +122,25 @@ def getSimilarDevices(device):
 
     (slot, deviceName) = device.split(":")
 
-    url     = "https://ccdb.esss.lu.se/rest/slot/"
-    # False because SSH connection is unsigned:
-    request = requests.get(url, verify=False)
-    tmpList = json.loads(request.text)
+    # TODO refactoring
+    if glob.production:
+        #url     = "https://ccdb.esss.lu.se/rest/slot/"
+        url     = "https://ccdb.esss.lu.se/rest/slots/"
+        # False because SSH connection is unsigned:
+        print url
+        request = requests.get(url, verify=False)
+        tmpList = json.loads(request.text)
+        
+    else:
+        url     = "https://ics-services.esss.lu.se/ccdb-test/rest/slots/"
+        print url
+        request = requests.get(url, verify=False)
+        tmpList = json.loads(request.text)["slot"]
+        
 
     # get all devices in CCDB
     allDevices = map(lambda x: x["name"], tmpList)
+
 
     # convert unicode to String
     allDevices = map(lambda x: str(x), allDevices)
@@ -124,7 +165,14 @@ def getField(device, field):
 
     if device not in glob.deviceDict.keys():
         # create URL for GET request
-        url     = "https://ccdb.esss.lu.se/rest/slot/" + device
+        # FIXME
+        if glob.production:
+            #url     = "https://ccdb.esss.lu.se/rest/slot/" + device
+            url     = "https://ccdb.esss.lu.se/rest/slots/" + device
+        else:
+            url     = "https://ics-services.esss.lu.se/ccdb-test/rest/slots/" + device
+            print "foo", url
+            #exit()
 
         # False because SSH connection is unsigned:
         request = requests.get(url, verify=False)
@@ -136,7 +184,7 @@ def getField(device, field):
             print "in mind that device names are case-sensitive.\n"
             print "Maybe you meant one of the following devices: "
             print "(Accesing CCDB, may take a few seconds.)\n"
-            print "Ten most simlar device names on CCDB in chosen slot:"
+            print "Most simlar device names on CCDB in chosen slot (max. 10):"
             top10 = getSimilarDevices(device)[:10]
 
             if top10 == []:
@@ -148,6 +196,9 @@ def getField(device, field):
             exit()
 
         tmpDict = json.loads(request.text)
+        print tmpDict
+        print "foo"
+        #exit()
 
         # save downloaded data
         glob.deviceDict[device] = tmpDict
@@ -156,7 +207,30 @@ def getField(device, field):
         # retrieve memoized data
         tmpDict = glob.deviceDict[device]
 
-    return tmpDict.get(field)
+
+    print tmpDict
+    print "jj", field
+    
+   # if field not in tmpDict.keys():
+        
+    #    print tmpDict
+    #    print device
+    #    exit()
+
+
+    #print tmpDict[field]
+        
+
+#    print type(tmpDict), "field: ", field
+    
+#    print tmpDict[field]
+    #print tmpDict.get(field)
+    
+    #exit()
+    
+    
+    # FIXME 
+    return tmpDict.get(field, [])
 
 
 def query(device, field):

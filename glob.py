@@ -16,3 +16,6 @@ timestamp    = None
 
 # md5 hash sum for output file
 hashSum      = None
+
+# choose between production (CCDB) and test (CCDB-test)
+production = True

@@ -43,10 +43,18 @@ def getArtefact(deviceType, filenames, tag, templateID):
     lines = []
 
     for filename in filenames:
+        
+        print filename, tag
+        #tag == "1"
+        
 
         if matchingArtefact(filename, tag, templateID):
 
+            
             ccdb.getArtefact(deviceType, filename)
+
+            print "here"
+            #exit()
 
             with open(filename) as f:
                 lines = f.readlines()
@@ -190,6 +198,8 @@ def processRoot(templateID, device):
     # get artifact names of files attached to root device
     (deviceType, rootArtefacts) = ccdb.getArtefactNames(device)
 
+
+
     # find devices this PLC controls
     controls = ccdb.control(device)
 
@@ -204,6 +214,7 @@ def processRoot(templateID, device):
     os.chdir(TEMPLATE_DIR)
 
     header = getArtefact(deviceType, rootArtefacts, "HEADER", templateID)
+    
 
     if len(header) == 0:
         print "No header found.\n"
@@ -374,6 +385,18 @@ if __name__ == "__main__":
                         nargs = '*',
                         type=str,
                         required=True)
+    parser.add_argument(
+                        '--test',
+                        help='select test database',
+                        action='store_true',
+                        required=False)
+    # this argument is just for show as the corresponding value is
+    # set to True by default                        
+    parser.add_argument(
+                        '--production',
+                        help='select production database',
+                        action='store_true',
+                        required=False)    
 
     # retrieve parameters
     args       = parser.parse_args()
@@ -381,6 +404,9 @@ if __name__ == "__main__":
     # PLC name and template number given as arguments
     device      = args.device
     templateIDs = args.template
+
+    if args.test:
+        glob.production = False
 
     assert len(templateIDs) >= 1, "at least one template ID must be given"
 
