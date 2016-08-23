@@ -1,13 +1,13 @@
 # PLCF Language
 
-The PLCF Language (PLCF#) is a simple embedded domain-specific language for use in template files. It has successfully been used with template files that generate TIA Portial files as well as EPICS database records. The main purpose of PLCF# is to name properties, which will be sustituted with corresponding values from CCDB, and perform simple operations on those properties.
+The PLCF Language (PLCF#) is a simple embedded domain-specific language for use in template files. It has successfully been used with template files that generate TIA Portal files as well as EPICS database records. The main purpose of PLCF# is to name properties, which will be substituted with corresponding values from CCDB, and perform simple operations on those properties.
 
 
 ## Format
 
 The general format of an expression in PLCF# is `[PLCF# <expression> ]`.
 
-A simple examle is `[PLCF# PropertyInteger02 + 1 ]`. In this case, CCDB is used to resolve the reference to `PropertyInteger02` of the given device, and add `1` to it.
+A simple example is `[PLCF# PropertyInteger02 + 1 ]`. In this case, CCDB is used to resolve the reference to `PropertyInteger02` of the given device, and add `1` to it.
 
 In general, PLCF# expressions are valid Python expressions, with the addition of a limited number of keywords, which are specified further below, calls to user-defined functions, and properties, which need to refer to entries in CCDB.
 
@@ -30,7 +30,7 @@ Keywords are reserved terms. Currently, PLCF# has the following keywords:
 - `Counter`
 - `Counter<N>`
 
-Currently, PLCF# recognizes `Counter1` up to and including `Counter9`. In case you need to use more counters, modify the line `numOfCounters = 9` in `plcfactory.py`.
+Currently, PLCF# recognises `Counter1` up to and including `Counter9`. In case you need to use more counters, modify the line `numOfCounters = 9` in `plcfactory.py`.
 
 ## Inbuilt and user-defined functions
 
@@ -50,7 +50,7 @@ In addition, users can define their own functions in the file `plcf_ext.py`. For
 
 In a given hierarchy of devices it may be the case that a particular property of a device `X` needs to be re-used in a device `Y` that is at a lower level in the hierarchy. Instead of defining this property in CCDB for device `Y`, it is possible to reference to a top-level device in a template.
 
-In order to indicate that a property value is to be taken from a device at a higher level in the hierarchy, put the property reference into parentheses, and suffix the resulting sub-expression with a `^`, which is to be read as 'up' and represents a stylized arrow that points upwards.
+In order to indicate that a property value is to be taken from a device at a higher level in the hierarchy, put the property reference into parentheses, and suffix the resulting sub-expression with a `^`, which is to be read as 'up' and represents a stylised arrow that points upwards.
 
 The general pattern is `[PLCF# ^(<property>) ]`, where `^(<property>)` evaluates to the value of a property. Note that technically a property itself is an expression, but it is not generally true that an expression can take the place of a property in the definition above. Thus, a definition like `^(Property01 + 2)` is invalid. Instead, the correct definition is `^(Property01) + 2`.
 
@@ -64,7 +64,7 @@ An expression in PLCF# is evaluated in four distincts steps. We will follow a mo
 
 ### Resolve references to properties in higher levels of the hierarchy
 
-First, `^(PropertyInteger02)` expresses that the desired property does not refer to the current device `X`, but to a device higher up the hierarchy. Thus, an exhautive search is initiated, which will continue until a device `Y` is found that is higher in the hierarchy and for which an entry `PropertyInteger02` exists in CCDB. Note that it is the responsibility of the user to ensure that a corresponding entry exists.
+First, `^(PropertyInteger02)` expresses that the desired property does not refer to the current device `X`, but to a device higher up the hierarchy. Thus, an exhaustive search is initiated, which will continue until a device `Y` is found that is higher in the hierarchy and for which an entry `PropertyInteger02` exists in CCDB. Note that it is the responsibility of the user to ensure that a corresponding entry exists.
 
 Assume said entry is `4`:
 
