@@ -14,6 +14,10 @@ parent_dir = os.path.abspath(os.path.dirname(__file__))
 lib_dir    = os.path.join(parent_dir, 'libs')
 sys.path.append(lib_dir)
 
+# URL prefixes for databases
+PREFIX_CCDB      = "https://ccdb.esss.lu.se/rest/"
+PREFIX_CCDB_TEST = "https://ics-services.esss.lu.se/ccdb-test/rest/"
+
 # third-party libraries, stored in folder 'libs'
 import requests
 
@@ -41,43 +45,20 @@ def properties(device):
 def getDeviceType(device):
     assert isinstance(device, str)
 
-    tmp        = getField(device, "deviceType")
-    #print "ZZZ", tmp
-    
-    #deviceType = tmp.get("name")
+    deviceType = getField(device, "deviceType")
 
     # convert from utf-8 to string
-    #deviceType = str(deviceType)
-    deviceType = str(tmp)
-
-    return deviceType
+    return str(deviceType)
 
 
 def getArtefactNames(device):
     assert isinstance(device, str)
 
-    # get names of artefacts
-    if glob.production:
-        #tmp        = getField(device, "deviceType")
-        #result     = tmp.get("artifacts")
-        #deviceType = tmp.get("name")
-
-        result     = getField(device, "artifacts")
-        print "XXXX", result
-
-        deviceType = getField(device, "deviceType")         
-        print "YYY", deviceType
-
-        
-    else:
-        result     = getField(device, "artifacts")
-        deviceType = getField(device, "deviceType")        
-
-    # convert from utf-8 to string
-    deviceType = str(deviceType)
+    artefacts  = getField(device, "artifacts")
+    deviceType = getDeviceType(device)
 
     artefactNames = []
-    for elem in result:
+    for elem in artefacts:
         artefactNames.append(str(elem.get("name")))
 
     return (deviceType, artefactNames)
@@ -92,23 +73,12 @@ def getArtefact(deviceType, filename):
     if os.path.exists(filename):
         return
 
-    # TODO refactoring
     if glob.production:
-        #url     = "https://ccdb.esss.lu.se/rest/deviceType/"  \
-        url     = "https://ccdb.esss.lu.se/rest/deviceTypes/"  \
-                   + deviceType + "/download/" + filename
+        prefix = PREFIX_CCDB
     else:
-        url     = "https://ics-services.esss.lu.se/ccdb-test/rest/deviceTypes/"  \
-                   + deviceType + "/download/" + filename
+        prefix = PREFIX_CCDB_TEST
 
-    print url
-    print "foobar"
-    #exit()
-
-    # TEST: "https://ics-services.esss.lu.se/ccdb-test/rest/slots/" " ccdb.esss.lu.se/rest/deviceType/" 
-    # PRODUCTION: "https://ccdb.esss.lu.se/rest/deviceType/"
-    
-
+    url     = prefix + "deviceTypes/" + deviceType + "/download/" + filename
     results = requests.get(url, verify=False)
 
     # 'w' overwrites the file if it exists
@@ -122,34 +92,25 @@ def getSimilarDevices(device):
 
     (slot, deviceName) = device.split(":")
 
-    # TODO refactoring
     if glob.production:
-        #url     = "https://ccdb.esss.lu.se/rest/slot/"
-        url     = "https://ccdb.esss.lu.se/rest/slots/"
-        # False because SSH connection is unsigned:
-        print url
-        request = requests.get(url, verify=False)
-        tmpList = json.loads(request.text)
-        
+        prefix = PREFIX_CCDB
     else:
-        url     = "https://ics-services.esss.lu.se/ccdb-test/rest/slots/"
-        print url
-        request = requests.get(url, verify=False)
-        tmpList = json.loads(request.text)["slot"]
-        
+        prefix = PREFIX_CCDB_TEST
+
+    url = prefix + "slots/"
+
+    # False because SSH connection is unsigned:
+    request = requests.get(url, verify=False)
+    tmpList = json.loads(request.text)
 
     # get all devices in CCDB
     allDevices = map(lambda x: x["name"], tmpList)
-
 
     # convert unicode to String
     allDevices = map(lambda x: str(x), allDevices)
 
     # keep only device
     candidates = filter(lambda x: x.startswith(slot), allDevices)
-
-    # discard slot name
-    #candidates = map(lambda x: x.split(":")[1], candidates)
 
     # compute Levenshtein distances
     distances  = \
@@ -165,14 +126,12 @@ def getField(device, field):
 
     if device not in glob.deviceDict.keys():
         # create URL for GET request
-        # FIXME
         if glob.production:
-            #url     = "https://ccdb.esss.lu.se/rest/slot/" + device
-            url     = "https://ccdb.esss.lu.se/rest/slots/" + device
+            prefix = PREFIX_CCDB
         else:
-            url     = "https://ics-services.esss.lu.se/ccdb-test/rest/slots/" + device
-            print "foo", url
-            #exit()
+            prefix = PREFIX_CCDB_TEST
+
+        url     = prefix + "slots/" + device
 
         # False because SSH connection is unsigned:
         request = requests.get(url, verify=False)
@@ -192,13 +151,11 @@ def getField(device, field):
             else:
                 for (score, x) in top10:
                     print x
+
             print "\nExiting.\n"
             exit()
 
         tmpDict = json.loads(request.text)
-        print tmpDict
-        print "foo"
-        #exit()
 
         # save downloaded data
         glob.deviceDict[device] = tmpDict
@@ -207,29 +164,6 @@ def getField(device, field):
         # retrieve memoized data
         tmpDict = glob.deviceDict[device]
 
-
-    print tmpDict
-    print "jj", field
-    
-   # if field not in tmpDict.keys():
-        
-    #    print tmpDict
-    #    print device
-    #    exit()
-
-
-    #print tmpDict[field]
-        
-
-#    print type(tmpDict), "field: ", field
-    
-#    print tmpDict[field]
-    #print tmpDict.get(field)
-    
-    #exit()
-    
-    
-    # FIXME 
     return tmpDict.get(field, [])
 
 
@@ -341,7 +275,6 @@ def getHash():
 
     # compute hash sum
     else:
-
         # build a temporary string
         tmp = ""
 
