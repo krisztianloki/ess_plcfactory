@@ -44,17 +44,8 @@ def getArtefact(deviceType, filenames, tag, templateID):
 
     for filename in filenames:
         
-        print filename, tag
-        #tag == "1"
-        
-
-        if matchingArtefact(filename, tag, templateID):
-
-            
+        if matchingArtefact(filename, tag, templateID):    
             ccdb.getArtefact(deviceType, filename)
-
-            print "here"
-            #exit()
 
             with open(filename) as f:
                 lines = f.readlines()
@@ -197,8 +188,6 @@ def processRoot(templateID, device):
 
     # get artifact names of files attached to root device
     (deviceType, rootArtefacts) = ccdb.getArtefactNames(device)
-
-
 
     # find devices this PLC controls
     controls = ccdb.control(device)
@@ -422,6 +411,5 @@ if __name__ == "__main__":
     os.chdir("..")
 
     map(lambda x: processTemplateID(x, device), templateIDs)
-
 
     print("--- %.1f seconds ---\n" % (time.time() - start_time))
