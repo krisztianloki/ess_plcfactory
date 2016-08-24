@@ -305,7 +305,7 @@ def getHash():
 
         # Now 'tmp' is one string with all keys and their corresponding
         # values in order, e.g.
-        # key_1,value_1, key_2, value_2, ... key_n, value_n
+        # key_1, value_1, key_2, value_2, ... key_n, value_n
 
         # compute checksum of string
         glob.hashSum = str(zlib.crc32(tmp))
