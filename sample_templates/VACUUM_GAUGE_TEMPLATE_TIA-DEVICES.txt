@@ -1,0 +1,13 @@
+"[PLCF#INSTALLATION_SLOT]"(Master:=0,
+                             "Does PLC doing acquisition of the pressure?" := "Utilities".AlwaysXXX,
+                             "Pressure Analog Mesurement AI Address (PLC Tag)" := "[PLCF#INSTALLATION_SLOT]:Pressure.AI",
+                             "Does the first relay assigned to the gauge is used?" := "Utilities".AlwaysXXX,
+                             "Relay 1 DI Address (PLC Tag)":= "[PLCF#INSTALLATION_SLOT]:Rl1.DI",
+                             "Does the second relay assigned to the gauge is used?" := "Utilities".AlwaysXXX,
+                             "Relay 2 DI Address (PLC Tag)" := "[PLCF#INSTALLATION_SLOT]:Rl2.DI",
+                             "Does the third relay assigned to the gauge is used?" := "Utilities".AlwaysXXX,
+                             "Relay 3 DI Address (PLC Tag)":= "[PLCF#INSTALLATION_SLOT]:Rl3.DI",
+                             "Does the fourth relay assigned to the gauge is used?" := "Utilities".AlwaysXXX,
+                             "Relay 4 DI Address (PLC Tag)":= "[PLCF#INSTALLATION_SLOT]:Rl4.DI",
+                             "Gauge Type":=_string_in_,
+                             Pressure=>_real_out_);

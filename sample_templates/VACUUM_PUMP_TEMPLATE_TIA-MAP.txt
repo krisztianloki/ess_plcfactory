@@ -1,0 +1,10 @@
+	"_CommsEPICSDataMappingFB"(EPICSToPLCLength := [PLCF#CommandWordsLength],
+	                           EPICSToPLCDataBlockOffset := [PLCF# ^(EPICSToPLCDataBlockStartOffset) + Counter1],
+	                           PLCToEPICSLength := [PLCF#StatusWordsLength],
+	                           PLCToEPICSDataBlockOffset := [PLCF# ^(PLCToEPICSDataBlockStartOffset) + Counter2],
+	                           EPICSToPLCCommandRegisters := "[PLCF#INSTALLATION_SLOT]".CommandReg,
+	                           PLCToEPICSStatusRegisters := "[PLCF#INSTALLATION_SLOT]".StatusReg,
+	                           EPICSToPLCDataBlock := "[PLCF# ^(EPICSToPLCDataBlockName)]"."Word",
+	                           PLCToEPICSDataBlock := "[PLCF# ^(PLCToEPICSDataBlockName)]"."Word");
+#COUNTER Counter1 = [PLCF#Counter1 + CommandWordsLength];
+#COUNTER Counter2 = [PLCF#Counter2 + StatusWordsLength];

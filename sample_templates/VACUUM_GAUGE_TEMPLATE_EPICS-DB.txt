@@ -1,0 +1,170 @@
+########## [PLCF#INSTALLATION_SLOT] EPICS->PLC commands ##########
+
+record(bo, [PLCF#INSTALLATION_SLOT]:AutoCmd) {
+	field(DTYP,	"asynUInt32Digital")
+	field(OUT,	"@asynMask($(PLCNAME)write, [PLCF# ^(EPICSToPLCDataBlockStartOffset) + Counter1], 0x0001, 100)")
+	field(ZNAM,	"FALSE")
+	field(ONAM,	"TRUE")
+}
+record(bo, [PLCF#INSTALLATION_SLOT]:ManCmd) {
+	field(DTYP,	"asynUInt32Digital")
+	field(OUT,	"@asynMask($(PLCNAME)write, [PLCF# ^(EPICSToPLCDataBlockStartOffset) + Counter1], 0x0002, 100)")
+	field(ZNAM,	"FALSE")
+	field(ONAM,	"TRUE")
+}
+record(bo, [PLCF#INSTALLATION_SLOT]:ManOffCmd) {
+	field(DTYP,	"asynUInt32Digital")
+	field(OUT,	"@asynMask($(PLCNAME)write, [PLCF# ^(EPICSToPLCDataBlockStartOffset) + Counter1], 0x0004, 100)")
+	field(ZNAM,	"FALSE")
+	field(ONAM,	"TRUE")
+}
+record(bo, [PLCF#INSTALLATION_SLOT]:ResetCmd) {
+	field(DTYP,	"asynUInt32Digital")
+	field(OUT,	"@asynMask($(PLCNAME)write, [PLCF# ^(EPICSToPLCDataBlockStartOffset) + Counter1], 0x0080, 100)")
+	field(ZNAM,	"FALSE")
+	field(ONAM,	"TRUE")
+}
+record(ao, [PLCF#INSTALLATION_SLOT]:PressureConvSlopeSP) {
+	field(DTYP,	"asynInt32")
+	field(OUT,	"@asyn($(PLCNAME)write, [PLCF# ^(EPICSToPLCDataBlockStartOffset) + Counter1 + 1], 100)INT16")
+}
+record(ao, [PLCF#INSTALLATION_SLOT]:PressureConvOffsetSP) {
+	field(DTYP,	"asynInt32")
+	field(OUT,	"@asyn($(PLCNAME)write, [PLCF# ^(EPICSToPLCDataBlockStartOffset) + Counter1 + 2], 100)INT16")
+}
+
+####################
+
+########## [PLCF#INSTALLATION_SLOT] PLC->EPICS status ##########
+
+record(bi, [PLCF#INSTALLATION_SLOT]:ManMode) {
+	field(SCAN,	"I/O Intr")
+	field(DTYP,	"S7plc")
+	field(INP,	"@$(PLCNAME)/[PLCF# ( ^(PLCToEPICSDataBlockStartOffset) + Counter2) * 2] T=WORD B=0")
+	field(ZNAM,	"FALSE")
+	field(ONAM,	"TRUE")
+}
+record(bi, [PLCF#INSTALLATION_SLOT]:Off) {
+	field(SCAN,	"I/O Intr")
+	field(DTYP,	"S7plc")
+	field(INP,	"@$(PLCNAME)/[PLCF# ( ^(PLCToEPICSDataBlockStartOffset) + Counter2) * 2] T=WORD B=1")
+	field(ZNAM,	"FALSE")
+	field(ONAM,	"TRUE")
+}
+record(bi, [PLCF#INSTALLATION_SLOT]:On) {
+	field(SCAN,	"I/O Intr")
+	field(DTYP,	"S7plc")
+	field(INP,	"@$(PLCNAME)/[PLCF# ( ^(PLCToEPICSDataBlockStartOffset) + Counter2) * 2] T=WORD B=2")
+	field(ZNAM,	"FALSE")
+	field(ONAM,	"TRUE")
+}
+record(bi, [PLCF#INSTALLATION_SLOT]:ForcedMode) {
+	field(SCAN,	"I/O Intr")
+	field(DTYP,	"S7plc")
+	field(INP,	"@$(PLCNAME)/[PLCF# ( ^(PLCToEPICSDataBlockStartOffset) + Counter2) * 2] T=WORD B=4")
+	field(ZNAM,	"FALSE")
+	field(ONAM,	"TRUE")
+}
+record(bi, [PLCF#INSTALLATION_SLOT]:BlockedOffMode) {
+	field(SCAN,	"I/O Intr")
+	field(DTYP,	"S7plc")
+	field(INP,	"@$(PLCNAME)/[PLCF# ( ^(PLCToEPICSDataBlockStartOffset) + Counter2) * 2] T=WORD B=5")
+	field(ZNAM,	"FALSE")
+	field(ONAM,	"TRUE")
+}
+record(bi, [PLCF#INSTALLATION_SLOT]:Relay1On) {
+	field(SCAN,	"I/O Intr")
+	field(DTYP,	"S7plc")
+	field(INP,	"@$(PLCNAME)/[PLCF# ( ^(PLCToEPICSDataBlockStartOffset) + Counter2) * 2] T=WORD B=6")
+	field(ZNAM,	"FALSE")
+	field(ONAM,	"TRUE")
+}
+record(bi, [PLCF#INSTALLATION_SLOT]:Relay2On) {
+	field(SCAN,	"I/O Intr")
+	field(DTYP,	"S7plc")
+	field(INP,	"@$(PLCNAME)/[PLCF# ( ^(PLCToEPICSDataBlockStartOffset) + Counter2) * 2] T=WORD B=7")
+	field(ZNAM,	"FALSE")
+	field(ONAM,	"TRUE")
+}
+record(bi, [PLCF#INSTALLATION_SLOT]:Valid) {
+	field(SCAN,	"I/O Intr")
+	field(DTYP,	"S7plc")
+	field(INP,	"@$(PLCNAME)/[PLCF# ( ^(PLCToEPICSDataBlockStartOffset) + Counter2) * 2 + 1] T=WORD B=0")
+	field(ZNAM,	"FALSE")
+	field(ONAM,	"TRUE")
+}
+record(bi, [PLCF#INSTALLATION_SLOT]:ManOnCmdActive) {
+	field(SCAN,	"I/O Intr")
+	field(DTYP,	"S7plc")
+	field(INP,	"@$(PLCNAME)/[PLCF# ( ^(PLCToEPICSDataBlockStartOffset) + Counter2) * 2 + 1] T=WORD B=1")
+	field(ZNAM,	"FALSE")
+	field(ONAM,	"TRUE")
+}
+record(bi, [PLCF#INSTALLATION_SLOT]:AutoOnCmdActive) {
+	field(SCAN,	"I/O Intr")
+	field(DTYP,	"S7plc")
+	field(INP,	"@$(PLCNAME)/[PLCF# ( ^(PLCToEPICSDataBlockStartOffset) + Counter2) * 2 + 1] T=WORD B=2")
+	field(ZNAM,	"FALSE")
+	field(ONAM,	"TRUE")
+}
+record(bi, [PLCF#INSTALLATION_SLOT]:Warning) {
+	field(SCAN,	"I/O Intr")
+	field(DTYP,	"S7plc")
+	field(INP,	"@$(PLCNAME)/[PLCF# ( ^(PLCToEPICSDataBlockStartOffset) + Counter2) * 2 + 1] T=WORD B=3")
+	field(ZNAM,	"FALSE")
+	field(ONAM,	"TRUE")
+}
+record(bi, [PLCF#INSTALLATION_SLOT]:Error) {
+	field(SCAN,	"I/O Intr")
+	field(DTYP,	"S7plc")
+	field(INP,	"@$(PLCNAME)/[PLCF# ( ^(PLCToEPICSDataBlockStartOffset) + Counter2) * 2 + 1] T=WORD B=4")
+	field(ZNAM,	"FALSE")
+	field(ONAM,	"TRUE")
+}
+record(bi, [PLCF#INSTALLATION_SLOT]:Intlk) {
+	field(SCAN,	"I/O Intr")
+	field(DTYP,	"S7plc")
+	field(INP,	"@$(PLCNAME)/[PLCF# ( ^(PLCToEPICSDataBlockStartOffset) + Counter2) * 2 + 1] T=WORD B=5")
+	field(ZNAM,	"FALSE")
+	field(ONAM,	"TRUE")
+}
+record(bi, [PLCF#INSTALLATION_SLOT]:Relay3On) {
+	field(SCAN,	"I/O Intr")
+	field(DTYP,	"S7plc")
+	field(INP,	"@$(PLCNAME)/[PLCF# ( ^(PLCToEPICSDataBlockStartOffset) + Counter2) * 2 + 1] T=WORD B=6")
+	field(ZNAM,	"FALSE")
+	field(ONAM,	"TRUE")
+}
+record(bi, [PLCF#INSTALLATION_SLOT]:Relay4On) {
+	field(SCAN,	"I/O Intr")
+	field(DTYP,	"S7plc")
+	field(INP,	"@$(PLCNAME)/[PLCF# ( ^(PLCToEPICSDataBlockStartOffset) + Counter2) * 2 + 1] T=WORD B=7")
+	field(ZNAM,	"FALSE")
+	field(ONAM,	"TRUE")
+}
+record(ai, [PLCF#INSTALLATION_SLOT]:PressureRaw) {
+	field(SCAN,	"I/O Intr")
+	field(DTYP,	"S7plc")
+	field(INP,	"@$(PLCNAME)/[PLCF# ( ^(PLCToEPICSDataBlockStartOffset) + Counter2) * 2 + 2] T=INT32")
+}
+record(ai, [PLCF#INSTALLATION_SLOT]:Pressure) {
+	field(SCAN,	"I/O Intr")
+	field(DTYP,	"S7plc")
+	field(INP,	"@$(PLCNAME)/[PLCF# ( ^(PLCToEPICSDataBlockStartOffset) + Counter2) * 2 + 4] T=REAL32")
+	field(EGU,	"mbar")
+}
+record(ai, [PLCF#INSTALLATION_SLOT]:PressureConvSlope) {
+	field(SCAN,	"I/O Intr")
+	field(DTYP,	"S7plc")
+	field(INP,	"@$(PLCNAME)/[PLCF# ( ^(PLCToEPICSDataBlockStartOffset) + Counter2) * 2 + 8] T=INT16")
+}
+record(ai, [PLCF#INSTALLATION_SLOT]:PressureConvOffset) {
+	field(SCAN,	"I/O Intr")
+	field(DTYP,	"S7plc")
+	field(INP,	"@$(PLCNAME)/[PLCF# ( ^(PLCToEPICSDataBlockStartOffset) + Counter2) * 2 + 12] T=INT16")
+}
+
+####################
+
+#COUNTER Counter1 = [PLCF#Counter1 + CommandWordsLength];
+#COUNTER Counter2 = [PLCF#Counter2 + StatusWordsLength];

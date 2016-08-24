@@ -1,0 +1,17 @@
+#FILENAME [PLCF#INSTALLATION_SLOT]-[PLCF#TEMPLATE]-[PLCF#TIMESTAMP].scl
+#COUNTER Counter1 = [PLCF#Counter1 + 10];
+#COUNTER Counter2 = [PLCF#Counter2 + 10];
+FUNCTION "_CommsEPICSDataMap" : Void
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_TEMP 
+      Hash : DInt;
+   END_VAR
+
+BEGIN
+	//Comms data generation hash
+	#Hash := #HASH;
+	"[PLCF#PLCToEPICSDataBlockName]"."Word"[1] := #Hash;
+	"[PLCF#PLCToEPICSDataBlockName]"."Word"[0] := SHR(IN := #Hash, N := 16);
+
+

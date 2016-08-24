@@ -1,0 +1,227 @@
+########## [PLCF#INSTALLATION_SLOT] EPICS->PLC commands ##########
+
+record(bo, [PLCF#INSTALLATION_SLOT]:AutoCmd) {
+	field(DTYP,	"asynUInt32Digital")
+	field(OUT,	"@asynMask($(PLCNAME)write, [PLCF# ^(EPICSToPLCDataBlockStartOffset) + Counter1], 0x0001, 100)")
+	field(ZNAM,	"FALSE")
+	field(ONAM,	"TRUE")
+}
+record(bo, [PLCF#INSTALLATION_SLOT]:ManCmd) {
+	field(DTYP,	"asynUInt32Digital")
+	field(OUT,	"@asynMask($(PLCNAME)write, [PLCF# ^(EPICSToPLCDataBlockStartOffset) + Counter1], 0x0002, 100)")
+	field(ZNAM,	"FALSE")
+	field(ONAM,	"TRUE")
+}
+record(bo, [PLCF#INSTALLATION_SLOT]:ManStopCmd) {
+	field(DTYP,	"asynUInt32Digital")
+	field(OUT,	"@asynMask($(PLCNAME)write, [PLCF# ^(EPICSToPLCDataBlockStartOffset) + Counter1], 0x0004, 100)")
+	field(ZNAM,	"FALSE")
+	field(ONAM,	"TRUE")
+}
+record(bo, [PLCF#INSTALLATION_SLOT]:ManStartCmd) {
+	field(DTYP,	"asynUInt32Digital")
+	field(OUT,	"@asynMask($(PLCNAME)write, [PLCF# ^(EPICSToPLCDataBlockStartOffset) + Counter1], 0x0008, 100)")
+	field(ZNAM,	"FALSE")
+	field(ONAM,	"TRUE")
+}
+record(bo, [PLCF#INSTALLATION_SLOT]:IntlkBypassCmd) {
+	field(DTYP,	"asynUInt32Digital")
+	field(OUT,	"@asynMask($(PLCNAME)write, [PLCF# ^(EPICSToPLCDataBlockStartOffset) + Counter1], 0x0020, 100)")
+	field(ZNAM,	"FALSE")
+	field(ONAM,	"TRUE")
+}
+record(bo, [PLCF#INSTALLATION_SLOT]:BlockStopCmd) {
+	field(DTYP,	"asynUInt32Digital")
+	field(OUT,	"@asynMask($(PLCNAME)write, [PLCF# ^(EPICSToPLCDataBlockStartOffset) + Counter1], 0x0040, 100)")
+	field(ZNAM,	"FALSE")
+	field(ONAM,	"TRUE")
+}
+record(bo, [PLCF#INSTALLATION_SLOT]:ResetCmd) {
+	field(DTYP,	"asynUInt32Digital")
+	field(OUT,	"@asynMask($(PLCNAME)write, [PLCF# ^(EPICSToPLCDataBlockStartOffset) + Counter1], 0x0080, 100)")
+	field(ZNAM,	"FALSE")
+	field(ONAM,	"TRUE")
+}
+record(bo, [PLCF#INSTALLATION_SLOT]:ResetCountersCmd) {
+	field(DTYP,	"asynUInt32Digital")
+	field(OUT,	"@asynMask($(PLCNAME)write, [PLCF# ^(EPICSToPLCDataBlockStartOffset) + Counter1], 0x0100, 100)")
+	field(ZNAM,	"FALSE")
+	field(ONAM,	"TRUE")
+}
+record(bo, [PLCF#INSTALLATION_SLOT]:ResetIntlkBypassCmd) {
+	field(DTYP,	"asynUInt32Digital")
+	field(OUT,	"@asynMask($(PLCNAME)write, [PLCF# ^(EPICSToPLCDataBlockStartOffset) + Counter1], 0x2000, 100)")
+	field(ZNAM,	"FALSE")
+	field(ONAM,	"TRUE")
+}
+record(bo, [PLCF#INSTALLATION_SLOT]:UnblockStopCmd) {
+	field(DTYP,	"asynUInt32Digital")
+	field(OUT,	"@asynMask($(PLCNAME)write, [PLCF# ^(EPICSToPLCDataBlockStartOffset) + Counter1], 0x4000, 100)")
+	field(ZNAM,	"FALSE")
+	field(ONAM,	"TRUE")
+}
+
+####################
+
+########## [PLCF#INSTALLATION_SLOT] PLC->EPICS status ##########
+
+record(bi, [PLCF#INSTALLATION_SLOT]:ManMode) {
+	field(SCAN,	"I/O Intr")
+	field(DTYP,	"S7plc")
+	field(INP,	"@$(PLCNAME)/[PLCF# ( ^(PLCToEPICSDataBlockStartOffset) + Counter2) * 2] T=WORD B=0")
+	field(ZNAM,	"FALSE")
+	field(ONAM,	"TRUE")
+}
+record(bi, [PLCF#INSTALLATION_SLOT]:Stopped) {
+	field(SCAN,	"I/O Intr")
+	field(DTYP,	"S7plc")
+	field(INP,	"@$(PLCNAME)/[PLCF# ( ^(PLCToEPICSDataBlockStartOffset) + Counter2) * 2] T=WORD B=1")
+	field(ZNAM,	"FALSE")
+	field(ONAM,	"TRUE")
+}
+record(bi, [PLCF#INSTALLATION_SLOT]:RunOutput) {
+	field(SCAN,	"I/O Intr")
+	field(DTYP,	"S7plc")
+	field(INP,	"@$(PLCNAME)/[PLCF# ( ^(PLCToEPICSDataBlockStartOffset) + Counter2) * 2] T=WORD B=2")
+	field(ZNAM,	"FALSE")
+	field(ONAM,	"TRUE")
+}
+record(bi, [PLCF#INSTALLATION_SLOT]:LocalMode) {
+	field(SCAN,	"I/O Intr")
+	field(DTYP,	"S7plc")
+	field(INP,	"@$(PLCNAME)/[PLCF# ( ^(PLCToEPICSDataBlockStartOffset) + Counter2) * 2] T=WORD B=3")
+	field(ZNAM,	"FALSE")
+	field(ONAM,	"TRUE")
+}
+record(bi, [PLCF#INSTALLATION_SLOT]:ForcedMode) {
+	field(SCAN,	"I/O Intr")
+	field(DTYP,	"S7plc")
+	field(INP,	"@$(PLCNAME)/[PLCF# ( ^(PLCToEPICSDataBlockStartOffset) + Counter2) * 2] T=WORD B=4")
+	field(ZNAM,	"FALSE")
+	field(ONAM,	"TRUE")
+}
+record(bi, [PLCF#INSTALLATION_SLOT]:BlockedStoppedMode) {
+	field(SCAN,	"I/O Intr")
+	field(DTYP,	"S7plc")
+	field(INP,	"@$(PLCNAME)/[PLCF# ( ^(PLCToEPICSDataBlockStartOffset) + Counter2) * 2] T=WORD B=5")
+	field(ZNAM,	"FALSE")
+	field(ONAM,	"TRUE")
+}
+record(bi, [PLCF#INSTALLATION_SLOT]:SoftwareIntlk) {
+	field(SCAN,	"I/O Intr")
+	field(DTYP,	"S7plc")
+	field(INP,	"@$(PLCNAME)/[PLCF# ( ^(PLCToEPICSDataBlockStartOffset) + Counter2) * 2] T=WORD B=6")
+	field(ZNAM,	"FALSE")
+	field(ONAM,	"TRUE")
+}
+record(bi, [PLCF#INSTALLATION_SLOT]:NominalSpeed) {
+	field(SCAN,	"I/O Intr")
+	field(DTYP,	"S7plc")
+	field(INP,	"@$(PLCNAME)/[PLCF# ( ^(PLCToEPICSDataBlockStartOffset) + Counter2) * 2] T=WORD B=7")
+	field(ZNAM,	"FALSE")
+	field(ONAM,	"TRUE")
+}
+record(bi, [PLCF#INSTALLATION_SLOT]:Valid) {
+	field(SCAN,	"I/O Intr")
+	field(DTYP,	"S7plc")
+	field(INP,	"@$(PLCNAME)/[PLCF# ( ^(PLCToEPICSDataBlockStartOffset) + Counter2) * 2 + 1] T=WORD B=0")
+	field(ZNAM,	"FALSE")
+	field(ONAM,	"TRUE")
+}
+record(bi, [PLCF#INSTALLATION_SLOT]:ManRunCmdActive) {
+	field(SCAN,	"I/O Intr")
+	field(DTYP,	"S7plc")
+	field(INP,	"@$(PLCNAME)/[PLCF# ( ^(PLCToEPICSDataBlockStartOffset) + Counter2) * 2 + 1] T=WORD B=1")
+	field(ZNAM,	"FALSE")
+	field(ONAM,	"TRUE")
+}
+record(bi, [PLCF#INSTALLATION_SLOT]:AutoRunCmdActive) {
+	field(SCAN,	"I/O Intr")
+	field(DTYP,	"S7plc")
+	field(INP,	"@$(PLCNAME)/[PLCF# ( ^(PLCToEPICSDataBlockStartOffset) + Counter2) * 2 + 1] T=WORD B=2")
+	field(ZNAM,	"FALSE")
+	field(ONAM,	"TRUE")
+}
+record(bi, [PLCF#INSTALLATION_SLOT]:Warning) {
+	field(SCAN,	"I/O Intr")
+	field(DTYP,	"S7plc")
+	field(INP,	"@$(PLCNAME)/[PLCF# ( ^(PLCToEPICSDataBlockStartOffset) + Counter2) * 2 + 1] T=WORD B=3")
+	field(ZNAM,	"FALSE")
+	field(ONAM,	"TRUE")
+}
+record(bi, [PLCF#INSTALLATION_SLOT]:Error) {
+	field(SCAN,	"I/O Intr")
+	field(DTYP,	"S7plc")
+	field(INP,	"@$(PLCNAME)/[PLCF# ( ^(PLCToEPICSDataBlockStartOffset) + Counter2) * 2 + 1] T=WORD B=4")
+	field(ZNAM,	"FALSE")
+	field(ONAM,	"TRUE")
+}
+record(bi, [PLCF#INSTALLATION_SLOT]:StartIntlk) {
+	field(SCAN,	"I/O Intr")
+	field(DTYP,	"S7plc")
+	field(INP,	"@$(PLCNAME)/[PLCF# ( ^(PLCToEPICSDataBlockStartOffset) + Counter2) * 2 + 1] T=WORD B=5")
+	field(ZNAM,	"FALSE")
+	field(ONAM,	"TRUE")
+}
+record(bi, [PLCF#INSTALLATION_SLOT]:StopIntlk) {
+	field(SCAN,	"I/O Intr")
+	field(DTYP,	"S7plc")
+	field(INP,	"@$(PLCNAME)/[PLCF# ( ^(PLCToEPICSDataBlockStartOffset) + Counter2) * 2 + 1] T=WORD B=6")
+	field(ZNAM,	"FALSE")
+	field(ONAM,	"TRUE")
+}
+record(bi, [PLCF#INSTALLATION_SLOT]:Disconnected) {
+	field(SCAN,	"I/O Intr")
+	field(DTYP,	"S7plc")
+	field(INP,	"@$(PLCNAME)/[PLCF# ( ^(PLCToEPICSDataBlockStartOffset) + Counter2) * 2 + 1] T=WORD B=7")
+	field(ZNAM,	"FALSE")
+	field(ONAM,	"TRUE")
+}
+record(bi, [PLCF#INSTALLATION_SLOT]:HardwareStopIntlkBypass) {
+	field(SCAN,	"I/O Intr")
+	field(DTYP,	"S7plc")
+	field(INP,	"@$(PLCNAME)/[PLCF# ( ^(PLCToEPICSDataBlockStartOffset) + Counter2) * 2 + 2] T=WORD B=4")
+	field(ZNAM,	"FALSE")
+	field(ONAM,	"TRUE")
+}
+record(bi, [PLCF#INSTALLATION_SLOT]:HardwareStopIntlk) {
+	field(SCAN,	"I/O Intr")
+	field(DTYP,	"S7plc")
+	field(INP,	"@$(PLCNAME)/[PLCF# ( ^(PLCToEPICSDataBlockStartOffset) + Counter2) * 2 + 2] T=WORD B=5")
+	field(ZNAM,	"FALSE")
+	field(ONAM,	"TRUE")
+}
+record(bi, [PLCF#INSTALLATION_SLOT]:SoftwareStopIntlkBypass) {
+	field(SCAN,	"I/O Intr")
+	field(DTYP,	"S7plc")
+	field(INP,	"@$(PLCNAME)/[PLCF# ( ^(PLCToEPICSDataBlockStartOffset) + Counter2) * 2 + 2] T=WORD B=6")
+	field(ZNAM,	"FALSE")
+	field(ONAM,	"TRUE")
+}
+record(bi, [PLCF#INSTALLATION_SLOT]:SoftwareStopIntlk) {
+	field(SCAN,	"I/O Intr")
+	field(DTYP,	"S7plc")
+	field(INP,	"@$(PLCNAME)/[PLCF# ( ^(PLCToEPICSDataBlockStartOffset) + Counter2) * 2 + 2] T=WORD B=7")
+	field(ZNAM,	"FALSE")
+	field(ONAM,	"TRUE")
+}
+record(ai, [PLCF#INSTALLATION_SLOT]:ObjectStatus) {
+	field(SCAN,	"I/O Intr")
+	field(DTYP,	"S7plc")
+	field(INP,	"@$(PLCNAME)/[PLCF# ( ^(PLCToEPICSDataBlockStartOffset) + Counter2) * 2 + 3] T=BYTE")
+}
+record(ai, [PLCF#INSTALLATION_SLOT]:WarningCode) {
+	field(SCAN,	"I/O Intr")
+	field(DTYP,	"S7plc")
+	field(INP,	"@$(PLCNAME)/[PLCF# ( ^(PLCToEPICSDataBlockStartOffset) + Counter2) * 2 + 4] T=BYTE")
+}
+record(ai, [PLCF#INSTALLATION_SLOT]:ErrorCode) {
+	field(SCAN,	"I/O Intr")
+	field(DTYP,	"S7plc")
+	field(INP,	"@$(PLCNAME)/[PLCF# ( ^(PLCToEPICSDataBlockStartOffset) + Counter2) * 2 + 5] T=BYTE")
+}
+
+####################
+
+#COUNTER Counter1 = [PLCF#Counter1 + CommandWordsLength];
+#COUNTER Counter2 = [PLCF#Counter2 + StatusWordsLength];

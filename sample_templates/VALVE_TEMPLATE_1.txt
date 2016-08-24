@@ -1,8 +1,0 @@
-	"$(INSTALLATION_SLOT)"(    EPICStoPLC_DB:="$[PLCF#PropertyString01]",
-	                             EPICStoPLC_Offset:=$[PLCF#PropertyInteger01],
-	                             PLCtoEPICS_DB:="$[PLCF#PropertyString02]",
-	                             PLCtoEPICS_Offset:=$[PLCF#PropertyInteger02],
-	                             "OpenSt.DI":="$[PLCF#PropertyString03]",
-	                             "CloseSt.DI":="$[PLCF#PropertyString04]",
-	                             "Open.DO":="$[PLCF#PropertyString05]"
-							);

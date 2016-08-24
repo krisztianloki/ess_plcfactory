@@ -1,0 +1,38 @@
+#FILENAME [PLCF#INSTALLATION_SLOT]-[PLCF#TEMPLATE]-[PLCF#TIMESTAMP].db
+######### EPICS -> PLC comms management data ##########
+record(ao, $(PLCNAME):CommsGeneratedHashEPICSToPLC) {
+	field(DTYP,	"asynInt32")
+	field(OUT,	"@asyn($(PLCNAME)write, 0, 100)INT32_BE")
+	field(VAL,	#HASH)
+}
+record(calc, $(PLCNAME):HeartbeatEPICSToPLCCalc) {
+	field(SCAN,	"1 second")
+	field(INPA,	$(PLCNAME):HeartbeatEPICSToPLCCalc.VAL)
+	field(CALC,	"(A >= 32000)? 0 : A + 1")
+	field(FLNK, $(PLCNAME):HeartbeatEPICSToPLC)
+}
+record(ao, $(PLCNAME):HeartbeatEPICSToPLC) {
+	field(DTYP,	"asynInt32")
+	field(OUT,	"@asyn($(PLCNAME)write, 2, 100)")
+	field(OMSL,	"closed_loop")
+	field(DOL,	"$(PLCNAME):HeartbeatEPICSToPLCCalc.VAL")
+	field(OIF,	"Full")
+	field(DRVL,	0)
+	field(DRVH,	32000)
+}
+
+########## PLC -> EPICS comms management data ##########
+record(ai, $(PLCNAME):CommsGeneratedHashPLCToEPICS) {
+	field(SCAN,	"I/O Intr")
+	field(DTYP,	"S7plc")
+	field(INP,	"@$(PLCNAME)/[PLCF#PLCToEPICSDataBlockStartOffset] T=INT32")
+}
+record(ai, $(PLCNAME):HeartbeatPLCToEPICS) {
+	field(SCAN,	"I/O Intr")
+	field(DTYP,	"S7plc")
+	field(INP,	"@$(PLCNAME)/[PLCF#(PLCToEPICSDataBlockStartOffset + 4)] T=INT16")
+}
+
+#COUNTER Counter1 = [PLCF#Counter1 + 10];
+#COUNTER Counter2 = [PLCF#Counter2 + 10];
+
