@@ -1,14 +1,19 @@
-"""
-plcflang.py
+""" PLC Factory: PLCF# Language """
 
+__author__     = "Gregor Ulm"
+__copyright__  = "Copyright 2016, European Spallation Source, Lund"
+__license__    = "GPLv3"
+
+
+"""
 This module processes expressions in 'PLCFLang', the embedded domain-specific
 language of PLC Factory. Please see the documentation for further details.
 
 Note that erroneous input in syntactically valid expressions, for instance
 using a variable name that is not defined as a device property in CCDB,
 will not lead to an error. Instead, such input is simply returned unchanged.
-
 """
+
 
 # Python libraries
 import datetime

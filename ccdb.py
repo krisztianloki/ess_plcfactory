@@ -1,3 +1,10 @@
+""" PLC Factory: CCDB Interactions """
+
+__author__     = "Gregor Ulm"
+__copyright__  = "Copyright 2016, European Spallation Source, Lund"
+__license__    = "GPLv3"
+
+
 # Python libraries
 import json
 import os
@@ -101,7 +108,7 @@ def getSimilarDevices(device):
 
     # False because SSH connection is unsigned:
     request = requests.get(url, verify=False)
-    tmpList = json.loads(request.text)
+    tmpList = json.loads(request.text)["slot"]
 
     # get all devices in CCDB
     allDevices = map(lambda x: x["name"], tmpList)

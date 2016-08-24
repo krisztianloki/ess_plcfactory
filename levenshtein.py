@@ -1,16 +1,31 @@
+""" PLC Factory: String similarity """
 
-# compute the Levenshtein Distance of two strings
-# from Wikipedia article on Levenshtein Distance; Iterative with two matrix rows.
+__author__     = "Gregor Ulm"
+__copyright__  = "Copyright 2016, European Spallation Source, Lund"
+__license__    = "GPLv3"
 
-# Christopher P. Matthews
-# christophermatthews1985@gmail.com
-# Sacramento, CA, USA
+
+"""
+Compute the Levenshtein Distance of two strings
+
+Orignal author:
+Christopher P. Matthews
+christophermatthews1985@gmail.com
+
+Source:
+https://en.wikibooks.org/wiki/Algorithm_Implementation/Strings/Levenshtein_distance#Python
+
+The orignal code was published under the Creative Commons
+Attribution-ShareAlike 3.0 license (CC BY-SA 3.0):
+https://creativecommons.org/licenses/by-sa/3.0/
+
+"""
+
 
 def distance(s, t):
-    ''' From Wikipedia article; Iterative with two matrix rows. '''
     assert isinstance(s, str)
     assert isinstance(t, str)
-    
+
     if s == t:
         return 0
 

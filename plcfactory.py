@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-""" PLC Factory """
+""" PLC Factory: Entry point """
 
 __author__     = "Gregor Ulm"
 __copyright__  = "Copyright 2016, European Spallation Source, Lund"
@@ -10,6 +10,7 @@ __credits__    = [ "Gregor Ulm"
                  , "Francois Bellorini"
                  , "Ricardo Fernandes"
                  ]
+__license__    = "GPLv3"
 __maintainer__ = "Gregor Ulm"
 __email__      = "gregor.ulm@esss.se"
 __status__     = "Production"

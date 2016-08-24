@@ -1,10 +1,7 @@
 # PLC Factory
-(c) European Spallation Source, Lund
+(c) 2016 European Spallation Source, Lund
 
-Authors:
-
-- Gregor Ulm: 2016-07-04 to 2016-09-02
-- ...
+Author: Gregor Ulm
 
 
 ## Overview

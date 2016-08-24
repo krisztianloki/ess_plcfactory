@@ -1,3 +1,9 @@
+""" PLC Factory: Template Processing """
+
+__author__     = "Gregor Ulm"
+__copyright__  = "Copyright 2016, European Spallation Source, Lund"
+__license__    = "GPLv3"
+
 # Python libraries
 import ast
 import json
