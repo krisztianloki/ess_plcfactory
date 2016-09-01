@@ -187,7 +187,34 @@ def evaluateExpression(line, device, propDict):
     # in the hierarchy
     line = evalUp(line)
 
-    for elem in propDict.keys():
+    keys = propDict.keys()
+    keys.sort(key = lambda s: len(s), reverse=True)
+    """
+    Sorting property names from longest to shortest avoids
+    the potential issue that a PLCF# expression can't be fully
+    evaluated when a property name is part of another property name of
+    the same device.
+
+    In more technical terms: the list of propery names that are
+    retrieved via the method keys() is neither sorted nor deterministic,
+    i.e. multiple calls may result in different permutations of the
+    same elements.
+
+    In PLC Factory, property names are processed one by one, as they
+    are encountered (see the for-loop below). Further, there is no
+    semantic analysis of PLCF# expressions. Thus, without
+    sorting, it may happen that a property name "foo" is processed before
+    a property name "foobar", but processing the former would leave "bar"
+    in the resulting expression. This would be bad enough, but imagine
+    what would happen if there was a property name "bar" left to process!
+
+    With sorting by property names by length in reverse, i.e. from longest
+    to shortest, "foobar" is processed before "foo", so the issue described
+    above is entirely avoided. For the curious, this approach is similar
+    to the "maximal munch" concept in compiler theory.
+    """
+
+    for elem in keys:
         if elem in line:
             value = propDict.get(elem)
             tmp   = substitute(line, elem, value)
