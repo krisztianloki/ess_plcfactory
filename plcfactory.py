@@ -239,7 +239,7 @@ def processTemplateID(templateID, device):
         processRoot(templateID, device)
 
     # for each device, find corresponding template and process it
-    output    = []
+    output     = []
 
     toProcess  = controls # starting with devices controlled by PLC
     processed  = set()
