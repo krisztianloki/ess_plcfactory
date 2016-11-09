@@ -230,8 +230,14 @@ def evaluateExpression(line, device, propDict):
 
     # evaluation happens after all substitutions have been performed
     try:
-        result = eval(line)
-
+        #Do not evaluate expressions which consist soley of a quoted string
+        if line.startswith('"') and line.endswith('"'):
+	  result=line
+	elif line.startswith("'") and line.endswith("'"):
+	  result=line
+	else:
+	  #Evaluate this expression
+          result = eval(line)
    # catch references to slot names (and erroneous input)
     except (SyntaxError, NameError) as e:
         result = line
