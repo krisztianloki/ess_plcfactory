@@ -103,7 +103,7 @@ def processLineCounter(line):
     if start == -1:
         return line # nothing to replace
 
-    end        = line.find("]", start)
+    end        = findMatchingSquareParenthesis(line)
     # assert matching square brackets
     assert end != -1
 
@@ -138,7 +138,8 @@ def processLine(line, device, substDict):
     if start == -1:
         return line # nothing to replace
 
-    end         = line.find("]", start)
+    end         = findMatchingSquareParenthesis(line)
+
     # assert matching square brackets
     assert end != -1
 
@@ -230,14 +231,17 @@ def evaluateExpression(line, device, propDict):
 
     # evaluation happens after all substitutions have been performed
     try:
+        wasquoted=False
         #Do not evaluate expressions which consist soley of a quoted string
-        if line.startswith('"') and line.endswith('"'):
-	  result=line
-	elif line.startswith("'") and line.endswith("'"):
-	  result=line
-	else:
-	  #Evaluate this expression
-          result = eval(line)
+        if line.startswith('"') and line.endswith('"') and line.count('"')==2:
+	  wasquoted=True
+#	elif line.startswith("'") and line.endswith("'"):
+#	  result=line
+#	else:
+        #Evaluate this expression
+        result = eval(line)
+        if wasquoted:
+          result='"'+result+'"'
    # catch references to slot names (and erroneous input)
     except (SyntaxError, NameError) as e:
         result = line
@@ -286,4 +290,24 @@ def matchingParentheses(line):
 
 
     return helper(line, 0)
+
+
+#Returns the index of the ] which matches the first [
+def findMatchingSquareParenthesis(line):
+  istart = []  # stack of indices of opening parentheses
+  d = []
+  for i, c in enumerate(line):
+    if c == '[':
+         istart.append(i)
+    if c == ']':
+        try:
+            d.append([istart.pop(), i])
+        except IndexError:
+            print 'Too many closing parentheses'
+            return -1
+  if istart:  # check if stack is empty afterwards
+    print 'Too many opening parentheses'
+    return -1
+  d.sort()
+  return d[0][1]
 

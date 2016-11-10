@@ -40,6 +40,10 @@ PLCF# is embedded in Python and thus standard Python functions can be called. To
 
 The Python function `abs()` computes the absolute value of its argument. Assuming `PropertyInteger02` evaluates to `-2`, the result of evaluating the entire PLCF# expression is `3`.
 
+`[PLCF#"INSTALLATION_SLOT".split(":")[0]]:On.DI`
+
+This uses the python `split()` function to remove only the area structure part of the `INSTALLATION_SLOT`.
+
 In addition, users can define their own functions in the file `plcf_ext.py`. For instance, if that file contains a definition of the function `foo()`, it can be called in PLCF# as follows:
 
 `[PLCF# ext.foo(PropertyInteger02) + 1 ]`
