@@ -235,9 +235,6 @@ def evaluateExpression(line, device, propDict):
         #Do not evaluate expressions which consist soley of a quoted string
         if line.startswith('"') and line.endswith('"') and line.count('"')==2:
 	  wasquoted=True
-#	elif line.startswith("'") and line.endswith("'"):
-#	  result=line
-#	else:
         #Evaluate this expression
         result = eval(line)
         if wasquoted:
