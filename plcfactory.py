@@ -284,7 +284,7 @@ def processTemplateID(templateID, device):
 
         print "This device controls: "
 
-        if len(controls) > 0:
+        if controls != None and len(controls) > 0:
 
             for c in controls:
                 print "\t- " + c #, c in processed

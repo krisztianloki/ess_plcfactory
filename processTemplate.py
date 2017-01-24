@@ -24,6 +24,8 @@ def replaceTag(line, propDict):
 
     lookup = line[tag + 1:end]
     name   = propDict.get(lookup)
+    
+    print lookup, name
 
     return line[:start] + name + line[end + 1:]
 

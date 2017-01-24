@@ -30,18 +30,19 @@ import requests
 
 
 # disable printing of unsigned SSH connection warnings to console
-from requests.packages.urllib3.exceptions import InsecureRequestWarning
-requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+#from requests.packages.urllib3.exceptions import InsecureRequestWarning
+#requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
 
 def controlledBy(device):
     assert isinstance(device, str)
-    return query(device, 'controlBy')
+    return query(device, 'controlledBy')
 
 
 def control(device):
     assert isinstance(device, str)
-    return query(device, 'control')
+    res = query(device, 'controls')
+    return res
 
 
 def properties(device):
@@ -65,7 +66,8 @@ def getArtefactNames(device):
     deviceType = getDeviceType(device)
 
     artefactNames = []
-    for elem in artefacts:
+    if artefacts!=None:
+      for elem in artefacts:
         artefactNames.append(str(elem.get("name")))
 
     return (deviceType, artefactNames)
@@ -130,7 +132,7 @@ def getSimilarDevices(device):
 def getField(device, field):
     assert isinstance(device, str)
     assert isinstance(field,  str)
-
+    
     if device not in glob.deviceDict.keys():
         # create URL for GET request
         if glob.production:
@@ -171,7 +173,8 @@ def getField(device, field):
         # retrieve memoized data
         tmpDict = glob.deviceDict[device]
 
-    return tmpDict.get(field, [])
+    res = tmpDict.get(field, [])
+    return res
 
 
 def query(device, field):
@@ -179,8 +182,9 @@ def query(device, field):
     assert isinstance(field, str)
 
     result = getField(device, field)
-    # convert from utf-8 to ascii for keys
-    result  = map(lambda x: str(x), result)
+    if result != None:
+      # convert from utf-8 to ascii for keys
+      result  = map(lambda x: str(x), result)
 
     return result
 
@@ -231,8 +235,10 @@ def backtrack(prop, device):
 
         # desired property not found in device x
         else:
-            leftToProcess += controlledBy(elem)
-            count         += 1
+	    c = controlledBy(elem)
+	    if c!=None:
+              leftToProcess += controlledBy(elem)
+              count         += 1
 
 
 # recursively process input in order to create an "ordered"
