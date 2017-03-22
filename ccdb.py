@@ -58,6 +58,13 @@ def getDeviceType(device):
     # convert from utf-8 to string
     return str(deviceType)
 
+def getDescription(device):
+    assert isinstance(device, str)
+
+    desc = getField(device, "description")
+
+    # convert from utf-8 to string
+    return str(desc)
 
 def getArtefactNames(device):
     assert isinstance(device, str)

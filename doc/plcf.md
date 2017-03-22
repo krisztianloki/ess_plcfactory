@@ -24,6 +24,7 @@ In general, though, it is the responsibility of the user who creates template fi
 Keywords are reserved terms. Currently, PLCF# has the following keywords:
 
 - `INSTALLATION_SLOT`
+- `INSTALLATION_SLOT_DESC`
 - `TEMPLATE`
 - `TIMESTAMP`
 - `DEVICE_TYPE`

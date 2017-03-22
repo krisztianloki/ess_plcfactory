@@ -35,9 +35,11 @@ def keywordsHeader(filename, device, id):
 
     timestamp  = '{:%Y%m%d%H%M%S}'.format(datetime.datetime.now())
     deviceType = ccdb.getDeviceType(device)
+    desc = ccdb.getDescription(device)
 
     # dictionary of the form key: tag, value: replacement
     substDict = {'INSTALLATION_SLOT': device
+                ,'INSTALLATION_SLOT_DESC': desc
                 ,'TEMPLATE'         : 'template-' + id
                 ,'TIMESTAMP'        : glob.timestamp
                 ,'DEVICE_TYPE'      : deviceType
