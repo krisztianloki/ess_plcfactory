@@ -224,7 +224,11 @@ def evaluateExpression(line, device, propDict):
             # recursion to take care of multiple occurrences of variables
             return evaluateExpression(tmp, device, propDict)
 
-    # an expression like "INSTALLATION_SLOT + 1" is not syntactically correct
+    desc = ccdb.getDescription(device)
+    tag = 'INSTALLATION_SLOT_DESC'
+    if tag in line:
+        line = substitute(line, tag, desc)
+
     tag = 'INSTALLATION_SLOT'
     if tag in line:
         line = substitute(line, tag, device)
