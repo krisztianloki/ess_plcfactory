@@ -95,22 +95,33 @@ def evalCounterIncrease(line, counters):
     return (counters, line)
 
 
-def processLineCounter(line):
-    assert isinstance(line,      str )
+def getPLCFExpression(line):
+    assert isinstance(line, str)
 
     tag    = "[PLCF#"
     start  = line.find(tag)
     offset = len(tag)
 
     if start == -1:
-        return line # nothing to replace
+        return (None, None, None) # nothing to replace
 
-    end        = findMatchingSquareParenthesis(line)
+    end        = findMatchingSquareParenthesis(line[start:]) + start
     # assert matching square brackets
     assert end != -1
 
     expression = line[start + offset : end]
     assert matchingParentheses(expression)
+
+    return (start, expression, end)
+
+
+def processLineCounter(line):
+    assert isinstance(line, str)
+
+    (start, expression, end) = getPLCFExpression(line)
+
+    if expression is None:
+        return line
 
     result = ""
 
@@ -133,20 +144,10 @@ def processLine(line, device, substDict):
     assert isinstance(device,    str )
     assert isinstance(substDict, dict)
 
-    tag    = "[PLCF#"
-    start  = line.find(tag)
-    offset = len(tag)
+    (start, expression, end) = getPLCFExpression(line)
 
-    if start == -1:
-        return line # nothing to replace
-
-    end         = findMatchingSquareParenthesis(line)
-
-    # assert matching square brackets
-    assert end != -1
-
-    expression = line[start + offset : end]
-    assert matchingParentheses(expression)
+    if expression is None:
+        return line
 
     reduced = evaluateExpression(expression, device, substDict)
 
@@ -304,7 +305,10 @@ def findMatchingSquareParenthesis(line):
          istart.append(i)
     if c == ']':
         try:
-            d.append([istart.pop(), i])
+            ci = istart.pop()
+            if not istart:   # check if this closed the first opening parenthesis
+                return i
+            d.append([ci, i])
         except IndexError:
             print 'Too many closing parentheses'
             return -1
