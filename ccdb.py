@@ -120,7 +120,7 @@ def getSimilarDevices(device):
 
     # False because SSH connection is unsigned:
     request = requests.get(url, verify=False)
-    tmpList = json.loads(request.text)["slot"]
+    tmpList = json.loads(request.text)["installationSlots"]
 
     # get all devices in CCDB
     allDevices = map(lambda x: x["name"], tmpList)
