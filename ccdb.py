@@ -97,6 +97,9 @@ def getArtefact(deviceType, filename):
     url     = prefix + "deviceTypes/" + deviceType + "/download/" + filename
     results = requests.get(url, verify=False)
 
+    if results.status_code != 200:
+        results = ""
+
     # 'w' overwrites the file if it exists
     with open(filename, 'wb') as f:
         map(lambda x: f.write(x), results)
