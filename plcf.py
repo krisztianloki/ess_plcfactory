@@ -85,7 +85,7 @@ def evalCounterIncrease(line, counters):
 
     # evaluate
     (counter, line) = processLineCounter(line)
-    assert isinstance(counter, int)
+    assert isinstance(counter, int), counter
     assert isinstance(line,    str)
 
     for key in counters.keys():

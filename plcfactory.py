@@ -85,7 +85,7 @@ def matchingArtefact(filename, tag, templateID):
         return False
 
     # exactly one '.' in filename
-    assert filename.count('.') == 1
+    assert filename.count('.') == 1, filename
 
     filename = filename.split('.')[0] # removing '.txt.
     tmp      = filename.split("_")    # separating fields in filename
