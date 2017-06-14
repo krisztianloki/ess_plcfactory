@@ -28,6 +28,7 @@ import ccdb
 import glob
 import plcf
 import processTemplate as pt
+from future_print import future_print
 
 
 # global variables
@@ -159,6 +160,21 @@ def processHash(header):
     header[pos] = line
 
     return header
+
+
+def getEOL(header):
+    assert isinstance(header, list)
+
+    tag    = "#EOL"
+    tagPos = findTag(header, tag)
+
+    if len(header) == 0 or tagPos == -1:
+        return "\n"
+
+    # this really is a quick and dirty hack
+    # should be replaced by something like
+    # #EOL CR LF
+    return header[tagPos][len(tag):].strip().replace('\\n', '\n').replace('\\r', '\r').translate(None, '"\'')
 
 
 def replaceTag(line, tag, insert):
@@ -303,6 +319,7 @@ def processTemplateID(templateID, device):
 
     # process #HASH keyword in header
     header      = processHash(header)
+    eol         = getEOL(header)
 
     output      = header + output + footer
     outputFile  = sanitizeFilename(outputFile)
@@ -342,8 +359,9 @@ def processTemplateID(templateID, device):
         for line in output:
             line = line.rstrip()
             if not line.startswith("#COUNTER") \
-               and not line.startswith("#FILENAME"):
-                f.write(line + "\n")
+               and not line.startswith("#FILENAME") \
+               and not line.startswith("#EOL"):
+                future_print(line, end=eol, file=f)
 
     os.chdir("..")
 
