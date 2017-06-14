@@ -218,11 +218,11 @@ def backtrack(prop, device):
     while True:
 
         if count > 200:
-            print "something went wrong; too many iterations in backtracking"
+            print "something went wrong; too many iterations in backtracking while searching for property " + prop
             exit()
 
         if len(leftToProcess) == 0:
-            print "error in  backtracking; probably invalid input"
+            print "error in  backtracking; probably invalid input while searching for property " + prop
             return " ==== BACKTRACKING ERROR ==== "
 
         elem = leftToProcess.pop()
