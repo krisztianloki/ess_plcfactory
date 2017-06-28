@@ -819,8 +819,13 @@ class BITS(object):
         if BITS.active_bits is None:
             return BITS(block)
 
-        if BITS.active_bits._num_bits >= 16:
-            excess_bits = BITS.active_bits._num_bits - 16
+        if BITS.active_bits._block.length() % 2:
+            max_num_bits = 8
+        else:
+            max_num_bits = 16
+
+        if BITS.active_bits._num_bits >= max_num_bits:
+            excess_bits = BITS.active_bits._num_bits - max_num_bits
             bits = BITS(block)
             if excess_bits > 0:
                 bits.add_bit(excess_bits)
