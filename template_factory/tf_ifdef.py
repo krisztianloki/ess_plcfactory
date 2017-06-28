@@ -771,7 +771,7 @@ class BASE_TYPE(SOURCE):
 
 
     def bit_number(self):
-        return "0"
+        return 0
 
 
     def block_type(self):

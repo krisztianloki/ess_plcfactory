@@ -93,12 +93,18 @@ HASH
     def _body_format_var(self, var):
         if isinstance(var, BIT) and var._skip:
             return ""
+
         if var.is_overlapped():
             return ""
-        if not isinstance(var, BIT) and var.offset() % 2:
-            bit_number = 8
+
+        if var.offset() % 2:
+            if not isinstance(var, BIT):
+                bit_number = 8
+            else:
+                bit_number = 8 + var.bit_number()
         else:
             bit_number = var.bit_number()
+
         return _iff_template.format(name        = var.name(),
                                     type        = var.plc_type(),
                                     array_index = str(var.offset() // 2),
