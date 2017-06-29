@@ -23,6 +23,8 @@ def printer():
 
 _iff_template = """VARIABLE
 {name}
+EPICS
+{epics}
 TYPE
 {type}
 ARRAY_INDEX
@@ -115,6 +117,7 @@ DEVICE_TYPE
             bit_number = var.bit_number()
 
         return _iff_template.format(name        = var.name(),
+                                    epics       = var.name(),
                                     type        = var.plc_type(),
                                     array_index = str(var.offset() // 2),
                                     bit_number  = bit_number)
