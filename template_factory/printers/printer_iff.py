@@ -6,6 +6,12 @@ __copyright__  = "Copyright 2017, European Spallation Source, Lund"
 __license__    = "GPLv3"
 
 
+#FIXME:
+# ARRAY_INDEX in IFF should be in the format of [PLCF# Counter{3,4} + array_index]
+#TODO:
+# DOCUMENT, DOCUMENT, DOCUMENT
+
+
 from printers import PRINTER
 from tf_ifdef import SOURCE, BLOCK, BASE_TYPE, BIT
 
@@ -62,7 +68,10 @@ HASH
         PRINTER.body(self, if_def, output)
 
         self._append("""DEVICE
-""" + self.plcf("INSTALLATION_SLOT") + "\n", output)
+{slot}
+DEVICE_TYPE
+{type}
+""".format(slot = self.plcf("INSTALLATION_SLOT"), type = self.plcf("DEVICE_TYPE")), output)
 
         for src in if_def.interfaces():
             if isinstance(src, BLOCK):
