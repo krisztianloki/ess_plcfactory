@@ -234,6 +234,11 @@ def evaluateExpression(line, device, propDict):
     if tag in line:
         line = substitute(line, tag, device)
 
+    deviceType = ccdb.getDeviceType(device)
+    tag = 'DEVICE_TYPE'
+    if tag in line:
+        line = substitute(line, tag, deviceType)
+
     current_device = device
 
     # evaluation happens after all substitutions have been performed
