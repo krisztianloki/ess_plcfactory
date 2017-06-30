@@ -114,7 +114,8 @@ class BLOCK(SOURCE):
 
 
     def _is_alignment_needed(self, width):
-        return width > 1 and (self._block_offset % 2) == 1
+        # MODBUS cannot address the individual bytes in a WORD
+        return (self.is_cmd_block() or self.is_param_block() or width > 1) and (self._block_offset % 2) == 1
 
 
     def _sanitize_start_offset(self, start_offset):
