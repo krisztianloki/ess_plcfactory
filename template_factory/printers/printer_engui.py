@@ -8,7 +8,7 @@ __license__    = "GPLv3"
 
 
 from printers import PRINTER
-from tf_ifdef import BASE_TYPE, BIT, FLOAT, ENUM, BITMASK
+from tf_ifdef import BASE_TYPE, BIT, ANALOG, ENUM, BITMASK
 
 
 
@@ -84,7 +84,7 @@ engui opi_end
 
 
     def _body_status(self, var, output):
-        if isinstance(var, BIT) or isinstance(var, FLOAT) or isinstance(var, ENUM):
+        if isinstance(var, BIT) or isinstance(var, ANALOG) or isinstance(var, ENUM):
             if var.is_valid():
                 self._iformat("add_textupdate", var, output)
         else:
@@ -95,7 +95,7 @@ engui opi_end
         if not var.is_valid():
             return
 
-        if isinstance(var, FLOAT):
+        if isinstance(var, ANALOG):
             self._oformat("add_textinput", var, output)
         elif isinstance(var, ENUM):
             self._oformat("add_combo", var, output)

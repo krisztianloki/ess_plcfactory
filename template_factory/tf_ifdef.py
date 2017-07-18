@@ -585,7 +585,7 @@ class IF_DEF(object):
         assert isinstance(name, str), func_param_msg("name", "string")
 
         block = self._active_block()
-        var = FLOAT(self._source, block, name, plc_var_type, keyword_params)
+        var = ANALOG(self._source, block, name, plc_var_type, keyword_params)
         self._add(var)
 
 
@@ -1018,7 +1018,7 @@ class BIT(BASE_TYPE):
 
 
 
-class FLOAT(BASE_TYPE):
+class ANALOG(BASE_TYPE):
     pv_types = { CMD : "ao",   PARAM : "ao",   STATUS : "ai" }
 
     def __init__(self, source, block, name, plc_var_type, keyword_params):
@@ -1032,7 +1032,7 @@ class FLOAT(BASE_TYPE):
 
 
     def pv_type(self):
-        return FLOAT.pv_types[self.block_type()]
+        return ANALOG.pv_types[self.block_type()]
 
 
 
