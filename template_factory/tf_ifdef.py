@@ -474,8 +474,11 @@ class IF_DEF(object):
 
 
     def add(self, source):
-        assert isinstance(source, str), func_param_msg("source", "string")
-        assert self._active,            "The interface definition is no longer active!"
+        if not isinstance(source, str):
+            raise IfDefSyntaxError("Interface definition lines must be strings!")
+
+        if not self._active:
+            raise IfDefSyntaxError("The interface definition is no longer active!")
 
         if source.startswith("_"):
             raise IfDefSyntaxError("Interface definition lines cannot start with '_'")
@@ -495,7 +498,8 @@ class IF_DEF(object):
 
 
     def define_template(self, name, **keyword_params):
-        assert isinstance(name, str),  func_param_msg("name", "string")
+        if not isinstance(name, str):
+            raise IfDefSyntaxError("Template name must be a string!")
 
         BASE_TYPE.add_template(name, keyword_params)
         self._add_source()
@@ -572,7 +576,9 @@ class IF_DEF(object):
     def skip_digitals(self, num):
         if isinstance(num, str):
             num = int(num)
-        assert isinstance(num, int), func_param_msg("num", "int")
+
+        if not isinstance(num, int):
+            raise IfDefSyntaxError("Parameter must be a number!")
 
         self.add_bit(SKIP_BITS = num)
 
@@ -582,7 +588,8 @@ class IF_DEF(object):
 
 
     def add_analog(self, name, plc_var_type = "DINT", **keyword_params):
-        assert isinstance(name, str), func_param_msg("name", "string")
+        if not isinstance(name, str):
+            raise IfDefSyntaxError("Name must be a string!")
 
         block = self._active_block()
         var = ANALOG(self._source, block, name, plc_var_type, keyword_params)
@@ -590,7 +597,8 @@ class IF_DEF(object):
 
 
     def add_enum(self, name, plc_var_type = "INT", nobt = 16, shift = 0, **keyword_params):
-        assert isinstance(name, str), func_param_msg("name", "string")
+        if not isinstance(name, str):
+            raise IfDefSyntaxError("Name must be a string!")
 
         block = self._active_block()
         var = ENUM(self._source, block, name, plc_var_type, nobt, shift, keyword_params)
@@ -598,7 +606,8 @@ class IF_DEF(object):
 
 
     def add_bitmask(self, name, plc_var_type = "INT", nobt = 16, shift = 0, **keyword_params):
-        assert isinstance(name, str), func_param_msg("name", "string")
+        if not isinstance(name, str):
+            raise IfDefSyntaxError("Name must be a string!")
 
         block = self._active_block()
         var = BITMASK(self._source, block, name, plc_var_type, nobt, shift, keyword_params)
@@ -606,7 +615,8 @@ class IF_DEF(object):
 
 
     def add_verbatim(self, verbatim):
-        assert isinstance(verbatim, str), func_param_msg("verbatim", "string")
+        if not isinstance(verbatim, str):
+            raise IfDefSyntaxError("Only strings can be copied verbatim!")
 
         var = VERBATIM(verbatim)
         self._add(var)
