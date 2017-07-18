@@ -7,6 +7,7 @@ __license__    = "GPLv3"
 
 
 import copy
+import inspect
 
 
 
@@ -51,6 +52,47 @@ bits_in_type_map = { 'UINT8'   : 8,  'INT8'   : 8,  'UNSIGN8' : 8,  'BYTE'      
                      'FLOAT32' : 32, 'REAL32' : 32, 'FLOAT'   : 32, 'FLOAT32_LE' : 32, 'FLOAT32_BE' : 32, 'REAL'     : 32,
                      'FLOAT64' : 64, 'REAL64' : 64, 'DOUBLE'  : 64, 'FLOAT64_LE' : 64, 'FLOAT64_BE' : 64,
                      'STRING'  : 40 * 8 }
+
+
+class IfDefException(Exception):
+    def __init__(self, typemsg, *args):
+        self.typemsg = typemsg
+        self.args    = args
+
+
+    def __call__(self, *args):
+        return self.__class__(self.typemsg, *(self.args + args))
+
+
+    def type(self):
+        return self.typemsg
+
+
+class IfDefSyntaxError(IfDefException):
+    def __init__(self, *args):
+        IfDefException.__init__(self, "Syntax error", *args)
+
+
+class IfDefInternalError(IfDefException):
+    def __init__(self, *args):
+        IfDefException.__init__(self, "Internal error", *args)
+
+
+
+def ifdef_assert_instance(var, var_type, var_type_string = None):
+    frame  = inspect.currentframe()
+    oframe = frame.f_back
+    try:
+        all_vars = oframe.f_locals
+        if var_type_string is None:
+            var_type_string = str(var_type)
+        if not isinstance(all_vars[var], var_type):
+            raise IfDefInternalError("'{param}' must be of type {type}!".format(param = var, type = var_type_string))
+    finally:
+        del oframe
+        del frame
+
+
 
 
 class SOURCE(object):
