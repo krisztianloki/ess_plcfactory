@@ -5,7 +5,7 @@ __copyright__  = "Copyright 2017, European Spallation Source, Lund"
 __license__    = "GPLv3"
 
 
-from tf_ifdef import IF_DEF
+from tf_ifdef import IF_DEF, IfDefException
 from printers import get_printer, available_printers
 
 
@@ -25,7 +25,12 @@ def _processLine(if_def, line, num):
     except SyntaxError:
         print errormsg.format(error = "Syntax error", num = num, line = line.strip())
         exit(1)
-    except AssertionError,e :
+    except IfDefException, e :
+        print errormsg.format(error = e.type(), num = num, line = line.strip())
+        if e.args:
+            print e.args[0]
+        exit(1)
+    except AssertionError, e :
         print errormsg.format(error = "Internal error", num = num, line = line.strip())
         if e.args:
             print e.args[0]

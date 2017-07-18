@@ -215,9 +215,9 @@ class BLOCK(SOURCE):
             return self.valid_type_pairs()[plc_type][0]
         except KeyError:
             if plc_type in PLC_types:
-                assert False, "Unsupported PLC type: " + plc_type
+                raise IfDefSyntaxError("Unsupported PLC type: " + plc_type)
             else:
-                assert False, "Unknown PLC type: " + plc_type
+                raise IfDefSyntaxError("Unknown PLC type: " + plc_type)
 
 
     def pair_types(self, keyword_params):
@@ -231,12 +231,13 @@ class BLOCK(SOURCE):
                 continue
 
             if not value in self.valid_var_types():
-                assert False, "Unsupported type: " + value
+                raise IfDefSyntaxError("Unsupported type: " + value)
 
             plcbits   = _bits_in_type(key)
             epicsbits = _bits_in_type(value)
 
-            assert plcbits == epicsbits, "Bit width must be the same: {plc} vs {epics}".format(plc = key, epics = value)
+            if not plcbits == epicsbits:
+                raise IfDefSyntaxError("Bit width must be the same: {plc} vs {epics}".format(plc = key, epics = value))
 
             return (key, value)
 
@@ -270,7 +271,7 @@ class BLOCK(SOURCE):
         if isinstance(num_bytes, int):
             self._block_offset += num_bytes
         else:
-            assert False, "Unknown type: " + str(num_bytes)
+            raise IfDefSyntaxError("Unknown type: " + str(num_bytes))
 
 
 
@@ -372,11 +373,12 @@ class OVERLAP(BLOCK):
         #
         # Check for alignment errors
         #
-        assert self._block._block_offset == self._overlap_offset, "Consistency error: block is " + str(self._block._block_offset) + " while overlap is " + str(self._overlap_offset)
+        if not self._block._block_offset == self._overlap_offset:
+            raise IfDefInternalError("Consistency error: block is " + str(self._block._block_offset) + " while overlap is " + str(self._overlap_offset))
         if self.is_empty():
             self._overlap_alignment_needed = self._is_alignment_needed(width)
         elif self._overlap_alignment_needed != self._is_alignment_needed(width):
-            assert False, "Alignment mismatch during overlap"
+            raise IfDefInternalError("Alignment mismatch during overlap")
 
         return self._overlap_offset
 
@@ -387,7 +389,7 @@ class OVERLAP(BLOCK):
 
 
     def get_overlap(self):
-        assert False, "Cannot nest overlaps!"
+        raise IfDefSyntaxError("Cannot nest overlaps!")
 
 
     def end(self):
@@ -428,7 +430,8 @@ class IF_DEF(object):
 
 
     def _active_block(self):
-        assert self._active_BLOCK is not None,   "Must define a block first!"
+        if self._active_BLOCK is None:
+            raise IfDefSyntaxError("Must define a block first!")
 
         if self._overlap is not None:
             return self._overlap
@@ -464,7 +467,8 @@ class IF_DEF(object):
 
 
     def interfaces(self):
-        assert not self._active, "The interface definition is still active!"
+        if self._active:
+            raise IfDefSyntaxError("The interface definition is still active!")
 
         return self._ifaces
 
@@ -474,7 +478,7 @@ class IF_DEF(object):
         assert self._active,            "The interface definition is no longer active!"
 
         if source.startswith("_"):
-            assert False, "Interface definition lines cannot start with '_'"
+            raise IfDefSyntaxError("Interface definition lines cannot start with '_'")
 
         if source.startswith("#TF#") or source.startswith("#-"):
             return
@@ -498,36 +502,42 @@ class IF_DEF(object):
 
 
     def define_status_block(self):
-        assert self._STATUS is None, "Block redefinition is not possible!"
+        if self._STATUS is not None:
+            raise IfDefSyntaxError("Block redefinition is not possible!")
 
         self._active_BLOCK = self._STATUS = STATUS_BLOCK(self._source)
         self._ifaces.append(self._STATUS)
 
 
     def define_command_block(self):
-        assert self._CMD is None, "Block redefinition is not possible!"
+        if self._CMD is not None:
+            raise IfDefSyntaxError("Block redefinition is not possible!")
 
         self._active_BLOCK = self._CMD = CMD_BLOCK(self._source)
         self._add(self._CMD)
 
 
     def define_parameter_block(self):
-        assert self._PARAM is None, "Block redefinition is not possible!"
+        if self._PARAM is not None:
+            raise IfDefSyntaxError("Block redefinition is not possible!")
 
         self._active_BLOCK = self._PARAM = PARAM_BLOCK(self._source)
         self._add(self._PARAM)
 
 
     def define_overlap(self):
-        assert self._active_BLOCK is not None, "Define block first"
-        assert self._overlap is None, "End current overlap first"
+        if self._active_BLOCK is None:
+            raise IfDefSyntaxError("Define block first")
+        if self._overlap is not None:
+            raise IfDefSyntaxError("End current overlap first")
 
         self._overlap = self._active_BLOCK.get_overlap()
         self._add_source()
 
 
     def end_overlap(self):
-        assert self._overlap is not None, "No overlap found"
+        if self._overlap is None:
+            raise IfDefSyntaxError("No overlap found")
 
         self._overlap.end()
         self._overlap = None
@@ -613,7 +623,7 @@ class IF_DEF(object):
 
     def end(self):
         if self._overlap is not None:
-            assert False, "Overlap is not ended"
+            raise IfDefSyntaxError("Overlap is not ended")
 
         self._end_block(self._cmd_block())
         self._end_block(self._param_block())
@@ -690,7 +700,7 @@ class BASE_TYPE(SOURCE):
         assert isinstance(template, dict),  func_param_msg("template", "dict")
 
         if name in BASE_TYPE.templates:
-            assert False, "Template is already defined: " + name
+            raise IfDefSyntaxError("Template is already defined: " + name)
 
         BASE_TYPE.templates[name] = template
 
@@ -700,7 +710,8 @@ class BASE_TYPE(SOURCE):
             return
 
         tname = self._keyword_params["TEMPLATE"]
-        assert tname in self.templates, "No such template: " + tname
+        if tname not in self.templates:
+            raise IfDefSyntaxError("No such template: " + tname)
 
         template = self.templates[tname]
         for tkey in template.keys():
@@ -880,8 +891,10 @@ class BITS(object):
     def add_bit(self, num):
         assert isinstance(num, int), func_param_msg("num", "integer")
 
-        assert self._started, "BIT is undefined!"
-        assert num >= 0, "Number of bits to skip must be greater than zero!"
+        if not self._started:
+            raise IfDefInternalError("BIT is undefined!")
+        if num < 0:
+            raise IfDefSyntaxError("Number of bits to skip must be greater than zero!")
 
         self._num_bits += num
 
@@ -908,7 +921,7 @@ class BITS(object):
             template = "{mask}, " + ASYN_TIMEOUT
             return template.format(mask = self.calc_mask(bit))
         else:
-            assert False, "Unknown db type: " + self._block.type()
+            raise IfDefInternalError("Unknown db type: " + self._block.type())
 
 
     @staticmethod
@@ -1060,7 +1073,7 @@ class BITMASK(BASE_TYPE):
         elif self.is_command() or self.is_parameter():
             return "0xFFFF, " + ASYN_TIMEOUT
         else:
-            assert False, "Unknown db type: " + self._block.type()
+            raise IfDefInternalError("Unknown db type: " + self._block.type())
 
 
 
@@ -1087,7 +1100,7 @@ def _bits_in_type(var_type):
     try:
         return bits_in_type_map[var_type]
     except KeyError:
-        assert False, "Unknown type: " + var_type
+        raise IfDefSyntaxError("Unknown type: " + var_type)
 
 
 def _bytes_in_type(var_type):
