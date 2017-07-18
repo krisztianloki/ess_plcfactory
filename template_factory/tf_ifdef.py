@@ -970,6 +970,12 @@ class FLOAT(BASE_TYPE):
         BASE_TYPE.__init__(self, source, block, name, plc_var_type, keyword_params)
 
 
+    def pv_template(self):
+        if self._var_type in self._block.valid_type_pairs()["REAL"]:
+            return BASE_TYPE.pv_template(self, "asynFloat64")
+        return BASE_TYPE.pv_template(self)
+
+
     def pv_type(self):
         return FLOAT.pv_types[self.block_type()]
 
