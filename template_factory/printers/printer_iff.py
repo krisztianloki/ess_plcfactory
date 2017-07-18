@@ -6,8 +6,6 @@ __copyright__  = "Copyright 2017, European Spallation Source, Lund"
 __license__    = "GPLv3"
 
 
-#FIXME:
-# ARRAY_INDEX in IFF should be in the format of [PLCF# Counter{3,4} + array_index]
 #TODO:
 # DOCUMENT, DOCUMENT, DOCUMENT
 
