@@ -262,16 +262,9 @@ def processTemplateID(templateID, device):
     outputFile =                                                  \
         createFilename(header, device, templateID, deviceType)    
 
-    headerFileName = ""
-    headerFiles = filter(lambda x: "HEADER" in x and templateID in x, rootArtefacts)
+    if len(header):
+        header = pt.process(device, header)
 
-    if len(headerFiles) >= 1:
-        headerFileName = headerFiles[0]
-    
-    if not headerFileName == "":
-        header = pt.process(device, headerFileName)
-    
-    
     while toProcess != []:
 
         elem = toProcess.pop()
