@@ -110,7 +110,7 @@ class PRINTER(object):
 
 
 _available_printers = []
-for printer in glob.iglob(__name__ + "/printer_*.py"):
+for printer in glob.iglob(os.path.dirname(__file__) + "/printer_*.py"):
     mod = os.path.splitext(os.path.basename(printer))[0]
     importlib.import_module(__name__ + "." + mod)
 
@@ -124,8 +124,8 @@ for printer in glob.iglob(__name__ + "/printer_*.py"):
         pass
 
     del mod
+    del printer
 
 
-del printer
 del glob
 del importlib
