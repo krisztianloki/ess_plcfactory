@@ -12,7 +12,7 @@ import sys
 import zlib
 
 # PLC Factory modules
-import glob
+import plcf_glob as glob
 import processTemplate as pt
 import levenshtein
 

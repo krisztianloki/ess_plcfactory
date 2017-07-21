@@ -20,7 +20,7 @@ import datetime
 
 # PLC Factory modules
 import ccdb
-import glob
+import plcf_glob       as glob
 import plcf_ext        as ext
 import processTemplate as pt
 

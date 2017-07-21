@@ -25,7 +25,7 @@ import time
 
 # PLC Factory modules
 import ccdb
-import glob
+import plcf_glob as glob
 import plcf
 import processTemplate as pt
 from future_print import future_print
