@@ -83,10 +83,12 @@ def getAllLines(filename):
     return lines
 
 
-def process(device, filename):
+def process(device, filename_or_template):
     assert isinstance(device,   str)
-    assert isinstance(filename, str)
 
-    lines = getAllLines(filename)
+    if isinstance(filename_or_template, list):
+        lines = filename_or_template
+    else:
+        lines = getAllLines(filename_or_template)
 
     return processAll(lines, device)
