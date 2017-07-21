@@ -85,20 +85,29 @@ class PRINTER(object):
 
 
     def _append(self, gen, output = None):
+        # the generic format is ("input", "result")
+        # but lets support "result" only formats too
         if not isinstance(gen, tuple):
-            gen = (None, gen)
+            from_inp = ""
+            result = gen
+        else:
+            (from_inp, result) = gen
 
         if output is None:
             output = self._output
 
+        if from_inp is None:
+            from_inp = ""
+
         if output is not None and gen != ("", ""):
-            if self._comments and gen[0] is not None and gen[0] != "":
-                if gen[0].strip() != "":
-                    output.append(self.comment() + gen[0])
+            if self._comments and from_inp != "":
+                # empty lines are special
+                if from_inp.strip() != "":
+                    output.append(self.comment() + from_inp)
                 else:
-                    output.append(gen[0])
-            if gen[1] != "":
-                output.append(gen[1])
+                    output.append(from_inp)
+            if result != "":
+                output += result.splitlines(True)
 
         return gen
 
