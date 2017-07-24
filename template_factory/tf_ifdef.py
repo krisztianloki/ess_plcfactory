@@ -146,13 +146,14 @@ class BLOCK(SOURCE):
         self._block_type    = block_type
 
         assert isinstance(plc_db_length, str), func_param_msg("plc_db_length", "string")
-        self._length_of_db  = plc_db_length
+        self._length_keyword = plc_db_length
 
         start_offset = self._sanitize_start_offset(start_offset)
         assert isinstance(start_offset,  str), func_param_msg("start_offset",  "string")
         self._root_of_db    = start_offset
 
         self._block_offset = 0
+        self._length       = 0
 
 
     def _is_alignment_needed(self, width):
@@ -170,11 +171,11 @@ class BLOCK(SOURCE):
 
 
     def length_keyword(self):
-        return self._length_of_db
+        return self._length_keyword
 
 
     def length(self):
-        return self._block_offset
+        return self._length
 
 
     def offset_for(self, width):
@@ -248,6 +249,8 @@ class BLOCK(SOURCE):
         BITS.end()
         if self._block_offset % 2:
             self._block_offset += 1
+
+        self._length = self._block_offset
 
 
     def link_offset(self, var):
@@ -643,7 +646,7 @@ class IF_DEF(object):
         # Move parameters after commands
         #
         if self._CMD and self._PARAM:
-            cmd_length = self._CMD._block_offset
+            cmd_length = self._CMD.length()
             for src in self._ifaces:
                 if isinstance(src, BASE_TYPE):
                     src.adjust_parameter(cmd_length)
