@@ -11,7 +11,7 @@ __license__    = "GPLv3"
 
 
 from printers import PRINTER
-from tf_ifdef import SOURCE, VERBATIM, BLOCK, BASE_TYPE
+from tf_ifdef import SOURCE, VERBATIM, BLOCK, CMD_BLOCK, STATUS_BLOCK, BASE_TYPE
 
 
 
@@ -25,12 +25,6 @@ def printer():
 # EPICS output
 #
 class EPICS(PRINTER):
-    STATUS       = "STATUS"
-    CMD          = "COMMAND"
-    PARAM        = "PARAMETER"
-    counters     = { CMD : "Counter1",   PARAM : "Counter1",   STATUS : "Counter2" }
-
-
     def __init__(self, comments = True):
         PRINTER.__init__(self, comments)
 
@@ -173,33 +167,17 @@ record(ai, "$(PLCNAME):HeartbeatPLCToEPICS") {
 
 
     def _body_end_cmd(self, if_def, output):
-        block  = if_def._cmd_block()
-        pblock = if_def._param_block()
-
-        if block is None:
-            return
-
-        if pblock is not None:
-            plc_db_length = "{cmd} + {param}".format(cmd = block.length_keyword(), param = pblock.length_keyword())
-        else:
-            plc_db_length = block.length_keyword()
-
-        self._body_end(block.type(), plc_db_length, output)
+        self._body_end(CMD_BLOCK.counter_keyword(), if_def.to_plc_words_length(), output)
 
 
     def _body_end_status(self, if_def, output):
-        block = if_def._status_block()
-
-        if block is None:
-            return
-
-        self._body_end(block.type(), block.length_keyword(), output)
+        self._body_end(STATUS_BLOCK.counter_keyword(), if_def.from_plc_words_length(), output)
 
 
-    def _body_end(self, block_type, plc_db_length, output):
+    def _body_end(self, counter_keyword, plc_db_length, output):
         counter_template = "#COUNTER {counter} = [PLCF# {counter} + {plc_db_length}]\n"
 
-        self._append(counter_template.format(counter = self.counters[block_type], plc_db_length = plc_db_length))
+        self._append(counter_template.format(counter = counter_keyword, plc_db_length = plc_db_length))
 
 
     def _body_verboseend(self, block, output):

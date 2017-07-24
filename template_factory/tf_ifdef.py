@@ -43,9 +43,6 @@ ASYN_TIMEOUT = "100"
 PLC_types = {'BOOL', 'BYTE', 'WORD', 'DWORD', 'INT', 'DINT', 'REAL', 'SSTIME', 'TIME', 'DATE', 'TIME_OF_DAY', 'CHAR' }
 
 
-counters  = { CMD : "Counter1",   PARAM : "Counter1",   STATUS : "Counter2" }
-
-
 bits_in_type_map = { 'UINT8'   : 8,  'INT8'   : 8,  'UNSIGN8' : 8,  'BYTE'       : 8,  'CHAR'       : 8,
                      'UINT16'  : 16, 'INT16'  : 16, 'SHORT'   : 16, 'UNSIGN16'   : 16, 'WORD'       : 16, 'INT16SM'  : 16, 'BCD_UNSIGNED' : 16, 'BCD_SIGNED' : 16, 'INT' : 16,
                      'UINT32'  : 32, 'INT32'  : 32, 'LONG'    : 32, 'UNSIGN32'   : 32, 'DWORD'      : 32, 'INT32_LE' : 32, 'INT32_BE'     : 32, 'DINT' : 32,
@@ -243,7 +240,7 @@ class BLOCK(SOURCE):
 
     def link_offset(self, var):
         offset_template = "[PLCF# ( {root} + {counter} ) + {offset}]"
-        return offset_template.format(root = self._root_of_db, counter = counters[self._block_type], offset = var.offset())
+        return offset_template.format(root = self._root_of_db, counter = self.counter_keyword(), offset = var.offset())
 
 
     def pv_template(self, asyntype = None, asynio = None):
@@ -272,6 +269,11 @@ class STATUS_BLOCK(BLOCK):
         return "StatusWordsLength"
 
 
+    @staticmethod
+    def counter_keyword():
+        return "Counter2"
+
+
     def __init__(self, source):
         BLOCK.__init__(self, source, STATUS, "^(PLCToEPICSDataBlockStartOffset)")
 
@@ -287,7 +289,7 @@ class STATUS_BLOCK(BLOCK):
 
     def link_offset(self, var):
         offset_template = "[PLCF# ( {root} + {counter} ) * 2 + {offset}]"
-        return offset_template.format(root = self._root_of_db, counter = counters[self._block_type], offset = var.offset())
+        return offset_template.format(root = self._root_of_db, counter = self.counter_keyword(), offset = var.offset())
 
 
 
@@ -310,6 +312,11 @@ class CMD_BLOCK(BLOCK):
         return "CommandWordsLength"
 
 
+    @staticmethod
+    def counter_keyword():
+        return "Counter1"
+
+
     def __init__(self, source):
         BLOCK.__init__(self, source, CMD, "^(EPICSToPLCDataBlockStartOffset)")
 
@@ -320,7 +327,7 @@ class CMD_BLOCK(BLOCK):
 
     def link_offset(self, var):
         offset_template = "[PLCF# ( {root} + {counter} ) + {offset}]"
-        return offset_template.format(root = self._root_of_db, counter = counters[self._block_type], offset = var.offset() // 2)
+        return offset_template.format(root = self._root_of_db, counter = self.counter_keyword(), offset = var.offset() // 2)
 
 
 
@@ -328,6 +335,11 @@ class PARAM_BLOCK(BLOCK):
     @staticmethod
     def length_keyword():
         return "ParameterWordsLength"
+
+
+    @staticmethod
+    def counter_keyword():
+        return "Counter1"
 
 
     def __init__(self, source):
@@ -340,7 +352,7 @@ class PARAM_BLOCK(BLOCK):
 
     def link_offset(self, var):
         offset_template = "[PLCF# ( {root} + {counter} ) + {offset}]"
-        return offset_template.format(root = self._root_of_db, counter = counters[self._block_type], offset = var.offset() // 2)
+        return offset_template.format(root = self._root_of_db, counter = self.counter_keyword(), offset = var.offset() // 2)
 
 
 
