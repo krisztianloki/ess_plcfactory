@@ -8,7 +8,7 @@ def get_printer(printer):
     for (n, c) in _available_printers:
         if n is not None and n == printer:
             return c()
-    assert False, "No such printer: " + printer
+
     return None
 
 

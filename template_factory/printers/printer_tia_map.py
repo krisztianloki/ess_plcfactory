@@ -11,6 +11,7 @@ __license__    = "GPLv3"
 
 
 from printers import PRINTER
+from tf_ifdef import CMD_BLOCK
 
 
 
@@ -68,23 +69,18 @@ BEGIN
     def body(self, if_def, output):
         PRINTER.body(self, if_def, output)
 
-        if if_def._param_block() is not None:
-            paramwordslength = "+ ParameterWordsLength"
-        else:
-            paramwordslength = ""
-
         self._append("""
-        "_CommsEPICSDataMappingFB"(EPICSToPLCLength := [PLCF# CommandWordsLength {paramwordslength}],
+        "_CommsEPICSDataMappingFB"(EPICSToPLCLength := [PLCF# {epicstoplclength}],
                                    EPICSToPLCDataBlockOffset := [PLCF# ^(EPICSToPLCDataBlockStartOffset) + Counter1],
-                                   PLCToEPICSLength := [PLCF# StatusWordsLength],
+                                   PLCToEPICSLength := [PLCF# {plctoepicslength}],
                                    PLCToEPICSDataBlockOffset := [PLCF# ^(PLCToEPICSDataBlockStartOffset) + Counter2],
                                    EPICSToPLCCommandRegisters := "[PLCF# INSTALLATION_SLOT]".CommandReg,
                                    PLCToEPICSStatusRegisters := "[PLCF# INSTALLATION_SLOT]".StatusReg,
                                    EPICSToPLCDataBlock := "[PLCF# ^(EPICSToPLCDataBlockName)]"."Word",
                                    PLCToEPICSDataBlock := "[PLCF# ^(PLCToEPICSDataBlockName)]"."Word");
-#COUNTER Counter1 = [PLCF# Counter1 + CommandWordsLength {paramwordslength}];
-#COUNTER Counter2 = [PLCF# Counter2 + StatusWordsLength];
-""".format(paramwordslength = paramwordslength).replace("\n", "\r\n"), output)
+#COUNTER Counter1 = [PLCF# Counter1 + {epicstoplclength}];
+#COUNTER Counter2 = [PLCF# Counter2 + {plctoepicslength}];
+""".format(epicstoplclength = if_def.to_plc_words_length(), plctoepicslength = if_def.from_plc_words_length()).replace("\n", "\r\n"), output)
 
 
 
@@ -176,15 +172,18 @@ BEGIN
         PRINTER.body(self, if_def, output)
 
         self._append("""
-        "_CommsEPICSDataMappingFBFactory"(EPICSToPLCLength := [PLCF# CommandWordsLength + ParameterWordsLength],
+        "_CommsEPICSDataMappingFBFactory"(EPICSToPLCLength := [PLCF# {epicstoplclength}],
                                           EPICSToPLCDataBlockOffset := [PLCF# ^(EPICSToPLCDataBlockStartOffset) + Counter1],
-                                          EPICSToPLCParametersStart := [PLCF# CommandWordsLength],
-                                          PLCToEPICSLength := [PLCF# StatusWordsLength],
+                                          EPICSToPLCParametersStart := [PLCF# {commandwordslength}],
+                                          PLCToEPICSLength := [PLCF# {plctoepicslength}],
                                           PLCToEPICSDataBlockOffset := [PLCF# ^(PLCToEPICSDataBlockStartOffset) + Counter2],
                                           EPICSToPLCCommandRegisters := "DEV_[PLCF#INSTALLATION_SLOT]_iDB".CommandReg,
                                           PLCToEPICSStatusRegisters := "DEV_[PLCF#INSTALLATION_SLOT]_iDB".StatusReg,
                                           EPICSToPLCDataBlock := "[PLCF# ^(EPICSToPLCDataBlockName)]"."Word",
                                           PLCToEPICSDataBlock := "[PLCF# ^(PLCToEPICSDataBlockName)]"."Word");
-#COUNTER Counter1 = [PLCF# Counter1 + CommandWordsLength + ParameterWordsLength];
-#COUNTER Counter2 = [PLCF# Counter2 + StatusWordsLength];
-""".replace("\n", "\r\n"), output)
+#COUNTER Counter1 = [PLCF# Counter1 + {epicstoplclength}];
+#COUNTER Counter2 = [PLCF# Counter2 + {plctoepicslength}];
+""".format(epicstoplclength   = if_def.to_plc_words_length(),
+           plctoepicslength   = if_def.from_plc_words_length(),
+           commandwordslength = str(if_def.properties()[CMD_BLOCK.length_keyword()])
+          ).replace("\n", "\r\n"), output)
