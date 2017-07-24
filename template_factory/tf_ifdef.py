@@ -484,10 +484,10 @@ class IF_DEF(object):
 
     # returns the length of 'block' in (16 bit) words
     def _words_length_of(self, block):
-        assert isinstance(block, BLOCK), func_param_msg("block", "BLOCK")
-
         if block is None:
             return 0
+
+        assert isinstance(block, BLOCK), func_param_msg("block", "BLOCK", type(block))
 
         return self._properties[block.length_keyword()]
 
@@ -1137,8 +1137,10 @@ class BITMASK(BASE_TYPE):
 # Internal functions
 #
 
-def func_param_msg(param, ptype):
-    return "'{param}' must be of type {type}!".format(param = param, type = ptype)
+def func_param_msg(param, ptype, atype = None):
+    if atype is None:
+        return "'{param}' must be of type {type}!".format(param = param, type = ptype)
+    return "'{param}' must be of type {type} (not it is {atype})!".format(param = param, type = ptype, atype = atype)
 
 
 def _test_and_set(keyword_params, key, value):
