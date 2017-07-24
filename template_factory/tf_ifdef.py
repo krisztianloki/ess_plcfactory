@@ -408,14 +408,21 @@ class IF_DEF(object):
     def __init__(self):
         BASE_TYPE.init()
 
-        self._ifaces       = []
-        self._STATUS       = None
-        self._CMD          = None
-        self._PARAM        = None
-        self._active_BLOCK = None
-        self._overlap      = None
-        self._active       = True
-        self._source       = ""
+        self._ifaces                = []
+        self._STATUS                = None
+        self._CMD                   = None
+        self._PARAM                 = None
+        self._active_BLOCK          = None
+        self._overlap               = None
+        self._active                = True
+        self._source                = ""
+        self._properties            = dict()
+        self._to_plc_words_length   = 0
+        self._from_plc_words_length = 0
+
+        self._properties[CMD_BLOCK.length_keyword()]    = 0
+        self._properties[PARAM_BLOCK.length_keyword()]  = 0
+        self._properties[STATUS_BLOCK.length_keyword()] = 0
 
 
     def _eval(self, source):
@@ -452,6 +459,7 @@ class IF_DEF(object):
     def _end_block(self, block):
         if block is not None:
             block.end()
+            self._properties[block.length_keyword()] = block.length() // 2
             print "{var}: {length}".format(var = block.length_keyword(), length = str(block.length() // 2))
 
 
@@ -472,11 +480,36 @@ class IF_DEF(object):
         self._add(SOURCE(SOURCE.fromline(self._source)))
 
 
+    # returns the length of 'block' in (16 bit) words
+    def _words_length_of(self, block):
+        assert isinstance(block, BLOCK), func_param_msg("block", "BLOCK")
+
+        if block is None:
+            return 0
+
+        return self._properties[block.length_keyword()]
+
+
     def interfaces(self):
         if self._active:
             raise IfDefSyntaxError("The interface definition is still active!")
 
         return self._ifaces
+
+
+    def properties(self):
+        if self._active:
+            raise IfDefSyntaxError("The interface definition is still active!")
+
+        return self._properties
+
+
+    def to_plc_words_length(self):
+        return self._to_plc_words_length
+
+
+    def from_plc_words_length(self):
+        return self._from_plc_words_length
 
 
     def add(self, source):
@@ -644,6 +677,9 @@ class IF_DEF(object):
         self._end_block(self._cmd_block())
         self._end_block(self._param_block())
         self._end_block(self._status_block())
+
+        self._to_plc_words_length   = str(self._words_length_of(self._cmd_block()) + self._words_length_of(self._param_block()))
+        self._from_plc_words_length = str(self._words_length_of(self._status_block()))
 
         #
         # Move parameters after commands
