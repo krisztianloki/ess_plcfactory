@@ -7,7 +7,7 @@ __license__    = "GPLv3"
 
 
 #FIXME:
-# Use the counters from tv_ifdef instead of hardcoding Counter1 and Counter2
+# Use the counter_keyword() of the corresponding BLOCK instead of hardcoding Counter1 and Counter2
 
 
 from printers import PRINTER

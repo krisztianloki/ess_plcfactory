@@ -34,12 +34,6 @@ BIT_NUMBER
 
 
 
-#STATUS       = "STATUS"
-#CMD          = "COMMAND"
-#counters          = { CMD : "Counter3",     STATUS : "Counter4" }
-
-
-
 #
 # InterFaceFactory output
 #

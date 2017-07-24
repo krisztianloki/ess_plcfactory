@@ -129,16 +129,13 @@ class VERBATIM(SOURCE):
 # Blocks
 #
 class BLOCK(SOURCE):
-    def __init__(self, source, block_type, start_offset):
+    def __init__(self, source, block_type):
         SOURCE.__init__(self, SOURCE.fromline(source))
 
         BITS.end()
 
         assert isinstance(block_type,    str)
         self._block_type    = block_type
-
-        assert isinstance(start_offset,  str), func_param_msg("start_offset",  "string")
-        self._root_of_db    = start_offset
 
         self._block_offset = 0
         self._length       = 0
@@ -228,11 +225,6 @@ class BLOCK(SOURCE):
         self._length = self._block_offset
 
 
-    def link_offset(self, var):
-        offset_template = "[PLCF# ( {root} + {counter} ) + {offset}]"
-        return offset_template.format(root = self._root_of_db, counter = self.counter_keyword(), offset = var.offset())
-
-
     def pv_template(self, asyntype = None, asynio = None):
         pv_templates = { CMD : outpv_template,   PARAM : outpv_template,   STATUS : inpv_template }
         pv_temp = pv_templates[self.type()]
@@ -264,11 +256,13 @@ class STATUS_BLOCK(BLOCK):
         return "Counter2"
 
 
-    def __init__(self, source):
-        BLOCK.__init__(self, source, STATUS, "^(PLCToEPICSDataBlockStartOffset)")
+    @staticmethod
+    def root_of_db():
+        return "^(PLCToEPICSDataBlockStartOffset)"
 
 
-    def valid_type_pairs(self):
+    @staticmethod
+    def valid_type_pairs():
         return dict(BYTE  = [ "UINT8",   "INT8",    "UNSIGN8", "BYTE", "CHAR" ],
                     WORD  = [ "UINT16",  "UNSIGN16", "WORD" ],
                     INT   = [ "INT16",   "SHORT" ],
@@ -277,13 +271,30 @@ class STATUS_BLOCK(BLOCK):
                     REAL  = [ "FLOAT32", "REAL32",   "FLOAT" ])
 
 
+    def __init__(self, source):
+        BLOCK.__init__(self, source, STATUS)
+
+
     def link_offset(self, var):
         offset_template = "[PLCF# ( {root} + {counter} ) * 2 + {offset}]"
-        return offset_template.format(root = self._root_of_db, counter = self.counter_keyword(), offset = var.offset())
+        return offset_template.format(root = self.root_of_db(), counter = self.counter_keyword(), offset = var.offset())
 
 
 
+#
+# Special class to handle the similarities between CMD_BLOCK and PARAM_BLOCK
+#
 class MODBUS(object):
+    @staticmethod
+    def counter_keyword():
+        return "Counter1"
+
+
+    @staticmethod
+    def root_of_db():
+        return "^(EPICSToPLCDataBlockStartOffset)"
+
+
     @staticmethod
     def valid_type_pairs():
         return dict(BYTE  = [ "UINT16" ],
@@ -294,55 +305,32 @@ class MODBUS(object):
                     REAL  = [ "FLOAT32_BE", "FLOAT32_LE" ] )
 
 
+    def link_offset(self, var):
+        offset_template = "[PLCF# ( {root} + {counter} ) + {offset}]"
+        return offset_template.format(root = self.root_of_db(), counter = self.counter_keyword(), offset = var.offset() // 2)
 
 
-class CMD_BLOCK(BLOCK):
+
+
+class CMD_BLOCK(MODBUS, BLOCK):
     @staticmethod
     def length_keyword():
         return "CommandWordsLength"
 
 
-    @staticmethod
-    def counter_keyword():
-        return "Counter1"
-
-
     def __init__(self, source):
-        BLOCK.__init__(self, source, CMD, "^(EPICSToPLCDataBlockStartOffset)")
-
-
-    def valid_type_pairs(self):
-        return MODBUS.valid_type_pairs()
-
-
-    def link_offset(self, var):
-        offset_template = "[PLCF# ( {root} + {counter} ) + {offset}]"
-        return offset_template.format(root = self._root_of_db, counter = self.counter_keyword(), offset = var.offset() // 2)
+        BLOCK.__init__(self, source, CMD)
 
 
 
-class PARAM_BLOCK(BLOCK):
+class PARAM_BLOCK(MODBUS, BLOCK):
     @staticmethod
     def length_keyword():
         return "ParameterWordsLength"
 
 
-    @staticmethod
-    def counter_keyword():
-        return "Counter1"
-
-
     def __init__(self, source):
-        BLOCK.__init__(self, source, PARAM, "^(EPICSToPLCDataBlockStartOffset)")
-
-
-    def valid_type_pairs(self):
-        return MODBUS.valid_type_pairs()
-
-
-    def link_offset(self, var):
-        offset_template = "[PLCF# ( {root} + {counter} ) + {offset}]"
-        return offset_template.format(root = self._root_of_db, counter = self.counter_keyword(), offset = var.offset() // 2)
+        BLOCK.__init__(self, source, PARAM)
 
 
 
