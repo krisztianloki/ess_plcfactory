@@ -132,21 +132,13 @@ class VERBATIM(SOURCE):
 # Blocks
 #
 class BLOCK(SOURCE):
-    STATUS_LENGTH    = "StatusWordsLength"
-    COMMAND_LENGTH   = "CommandWordsLength"
-    PARAMETER_LENGTH = "ParameterWordsLength"
-
-
-    def __init__(self, source, block_type, start_offset, plc_db_length):
+    def __init__(self, source, block_type, start_offset):
         SOURCE.__init__(self, SOURCE.fromline(source))
 
         BITS.end()
 
         assert isinstance(block_type,    str)
         self._block_type    = block_type
-
-        assert isinstance(plc_db_length, str), func_param_msg("plc_db_length", "string")
-        self._length_keyword = plc_db_length
 
         start_offset = self._sanitize_start_offset(start_offset)
         assert isinstance(start_offset,  str), func_param_msg("start_offset",  "string")
@@ -168,10 +160,6 @@ class BLOCK(SOURCE):
             return str(start_offset)
         else:
             return start_offset
-
-
-    def length_keyword(self):
-        return self._length_keyword
 
 
     def length(self):
@@ -279,8 +267,13 @@ class BLOCK(SOURCE):
 
 
 class STATUS_BLOCK(BLOCK):
+    @staticmethod
+    def length_keyword():
+        return "StatusWordsLength"
+
+
     def __init__(self, source):
-        BLOCK.__init__(self, source, STATUS, "^(PLCToEPICSDataBlockStartOffset)", BLOCK.STATUS_LENGTH)
+        BLOCK.__init__(self, source, STATUS, "^(PLCToEPICSDataBlockStartOffset)")
 
 
     def valid_type_pairs(self):
@@ -312,8 +305,13 @@ class MODBUS(object):
 
 
 class CMD_BLOCK(BLOCK):
+    @staticmethod
+    def length_keyword():
+        return "CommandWordsLength"
+
+
     def __init__(self, source):
-        BLOCK.__init__(self, source, CMD, "^(EPICSToPLCDataBlockStartOffset)", BLOCK.COMMAND_LENGTH)
+        BLOCK.__init__(self, source, CMD, "^(EPICSToPLCDataBlockStartOffset)")
 
 
     def valid_type_pairs(self):
@@ -327,8 +325,13 @@ class CMD_BLOCK(BLOCK):
 
 
 class PARAM_BLOCK(BLOCK):
+    @staticmethod
+    def length_keyword():
+        return "ParameterWordsLength"
+
+
     def __init__(self, source):
-        BLOCK.__init__(self, source, PARAM, "^(EPICSToPLCDataBlockStartOffset)", BLOCK.PARAMETER_LENGTH)
+        BLOCK.__init__(self, source, PARAM, "^(EPICSToPLCDataBlockStartOffset)")
 
 
     def valid_type_pairs(self):
