@@ -137,7 +137,6 @@ class BLOCK(SOURCE):
         assert isinstance(block_type,    str)
         self._block_type    = block_type
 
-        start_offset = self._sanitize_start_offset(start_offset)
         assert isinstance(start_offset,  str), func_param_msg("start_offset",  "string")
         self._root_of_db    = start_offset
 
@@ -148,15 +147,6 @@ class BLOCK(SOURCE):
     def _is_alignment_needed(self, width):
         # MODBUS cannot address the individual bytes in a WORD
         return (self.is_cmd_block() or self.is_param_block() or width > 1) and (self._block_offset % 2) == 1
-
-
-    def _sanitize_start_offset(self, start_offset):
-        if start_offset is None:
-            return "0"
-        elif isinstance(start_offset, int):
-            return str(start_offset)
-        else:
-            return start_offset
 
 
     def length(self):
@@ -245,7 +235,7 @@ class BLOCK(SOURCE):
 
     def pv_template(self, asyntype = None, asynio = None):
         pv_templates = { CMD : outpv_template,   PARAM : outpv_template,   STATUS : inpv_template }
-        pv_temp = pv_templates[self._block_type]
+        pv_temp = pv_templates[self.type()]
 
         if pv_temp is outpv_template:
             assert isinstance(asyntype, str), func_param_msg("asyntype", "string")
@@ -1137,7 +1127,7 @@ class BITMASK(BASE_TYPE):
         elif self.is_command() or self.is_parameter():
             return "0xFFFF, " + ASYN_TIMEOUT
         else:
-            raise IfDefInternalError("Unknown db type: " + self._block.type())
+            raise IfDefInternalError("Unknown db type: " + self.block_type())
 
 
 
