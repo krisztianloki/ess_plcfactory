@@ -7,7 +7,7 @@ __license__    = "GPLv3"
 
 
 import copy
-import inspect
+#import inspect
 
 
 
@@ -76,18 +76,18 @@ class IfDefInternalError(IfDefException):
 
 
 
-def ifdef_assert_instance(var, var_type, var_type_string = None):
-    frame  = inspect.currentframe()
-    oframe = frame.f_back
-    try:
-        all_vars = oframe.f_locals
-        if var_type_string is None:
-            var_type_string = str(var_type)
-        if not isinstance(all_vars[var], var_type):
-            raise IfDefInternalError("'{param}' must be of type {type}!".format(param = var, type = var_type_string))
-    finally:
-        del oframe
-        del frame
+#def ifdef_assert_instance(var, var_type, var_type_string = None):
+#    frame  = inspect.currentframe()
+#    oframe = frame.f_back
+#    try:
+#        all_vars = oframe.f_locals
+#        if var_type_string is None:
+#            var_type_string = str(var_type)
+#        if not isinstance(all_vars[var], var_type):
+#            raise IfDefInternalError("'{param}' must be of type {type}!".format(param = var, type = var_type_string))
+#    finally:
+#        del oframe
+#        del frame
 
 
 
