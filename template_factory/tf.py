@@ -9,8 +9,8 @@ from tf_ifdef import IF_DEF, IfDefException
 from printers import get_printer, available_printers
 
 
-def new():
-    return IF_DEF()
+def new(hashobj = None):
+    return IF_DEF(hashobj)
 
 
 def _processLine(if_def, line, num):
@@ -42,13 +42,18 @@ def _processLine(if_def, line, num):
         exit(1)
 
 
-def processLines(lines, processor = None):
+def processLines(lines, processor = None, **kwargs):
     if isinstance(lines, list):
         assert isinstance(lines[0], str)
     else:
         assert isinstance(lines, file)
 
-    if_def = IF_DEF()
+    if "HASH" in kwargs:
+        hashobj = kwargs["HASH"]
+    else:
+        hashobj = None
+
+    if_def = IF_DEF(hashobj)
 
     if processor is None:
         processor = _processLine
