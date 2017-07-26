@@ -298,8 +298,7 @@ def getHash():
 
     # compute hash sum
     else:
-        # build a temporary string
-        tmp = ""
+        crc32 = 0
 
         # get all devices
         devices = glob.deviceDict.keys()
@@ -309,14 +308,16 @@ def getHash():
 
         # now the same for each device:
         for device in devices:
-            tmp       += device
+            crc32 = zlib.crc32(device, crc32)
+
             properties = glob.deviceDict[device]
             keys       = properties.keys()
             keys.sort()
 
             for k in keys:
-                tmp += k
-                tmp += getOrderedString([properties[k]])
+                crc32 = zlib.crc32(k, crc32)
+                crc32 = zlib.crc32(getOrderedString([properties[k]]), crc32)
+
 
 
         # Now 'tmp' is one string with all keys and their corresponding
@@ -324,6 +325,6 @@ def getHash():
         # key_1, value_1, key_2, value_2, ... key_n, value_n
 
         # compute checksum of string
-        glob.hashSum = str(zlib.crc32(tmp))
+        glob.hashSum = str(crc32)
 
         return glob.hashSum
