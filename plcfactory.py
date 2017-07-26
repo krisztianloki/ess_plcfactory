@@ -47,7 +47,10 @@ def getArtefact(deviceType, filenames, tag, templateID):
     for filename in filenames:
         
         if matchingArtefact(filename, tag, templateID):    
-            ccdb.getArtefact(deviceType, filename)
+            filename = ccdb.getArtefact(deviceType, filename)
+
+            if filename is None:
+                break
 
             with open(filename) as f:
                 lines = f.readlines()
@@ -68,9 +71,10 @@ def getTemplateName(deviceType, filenames, templateID):
 
         if matchingArtefact(filename, "TEMPLATE", templateID):
 
-            result = filename
-            # download header and save in template directory
-            ccdb.getArtefact(deviceType, filename)
+            # download template and save in template directory
+            result = ccdb.getArtefact(deviceType, filename)
+            if result is None:
+                result = ""
             break
 
     return result

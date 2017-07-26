@@ -10,6 +10,7 @@ import json
 import os
 import sys
 import zlib
+import unicodedata
 
 # PLC Factory modules
 import plcf_glob as glob
@@ -80,14 +81,27 @@ def getArtefactNames(device):
     return (deviceType, artefactNames)
 
 
+def sanitizeFilename(filename):
+    if isinstance(filename, str):
+        filename = filename.decode("utf-8")
+
+    # replace accented characters with the unaccented equivalent
+    filename = unicodedata.normalize("NFKD", filename).encode("ASCII", "ignore")
+
+    result = map(lambda x: '_' if x in '<>:"/\|?*' else x, filename)
+    return "".join(result)
+
+
 # download artefact (header/footer), and save in template directory
 def getArtefact(deviceType, filename):
     assert isinstance(deviceType, str)
     assert isinstance(filename,   str)
 
+    saveas = sanitizeFilename(deviceType + "___" + filename)
+
     # check if filename has already been downloaded
-    if os.path.exists(filename):
-        return
+    if os.path.exists(saveas):
+        return saveas
 
     if glob.production:
         prefix = PREFIX_CCDB
@@ -98,11 +112,13 @@ def getArtefact(deviceType, filename):
     results = requests.get(url, verify=False)
 
     if results.status_code != 200:
-        results = ""
+        return None
 
     # 'w' overwrites the file if it exists
-    with open(filename, 'wb') as f:
+    with open(saveas, 'wb') as f:
         map(lambda x: f.write(x), results)
+
+    return saveas
 
 
 def getSimilarDevices(device):
@@ -245,8 +261,8 @@ def backtrack(prop, device):
 
         # desired property not found in device x
         else:
-	    c = controlledBy(elem)
-	    if c!=None:
+            c = controlledBy(elem)
+            if c!=None:
               leftToProcess += controlledBy(elem)
               count         += 1
 
