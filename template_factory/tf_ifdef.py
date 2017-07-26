@@ -480,25 +480,32 @@ class IF_DEF(object):
         return self._properties[block.length_keyword()]
 
 
-    def interfaces(self):
+    def _exception_if_active(self):
         if self._active:
             raise IfDefSyntaxError("The interface definition is still active!")
+
+
+    def interfaces(self):
+        self._exception_if_active()
 
         return self._ifaces
 
 
     def properties(self):
-        if self._active:
-            raise IfDefSyntaxError("The interface definition is still active!")
+        self._exception_if_active()
 
         return self._properties
 
 
     def to_plc_words_length(self):
+        self._exception_if_active()
+
         return self._to_plc_words_length
 
 
     def from_plc_words_length(self):
+        self._exception_if_active()
+
         return self._from_plc_words_length
 
 
