@@ -8,6 +8,7 @@ __license__    = "GPLv3"
 
 import copy
 #import inspect
+import hashlib
 
 
 
@@ -89,6 +90,16 @@ class IfDefInternalError(IfDefException):
 #        del oframe
 #        del frame
 
+
+
+
+class DummyHash(object):
+    def __init__(self):
+        pass
+
+
+    def update(self, string):
+        pass
 
 
 
@@ -395,7 +406,12 @@ class OVERLAP(BLOCK):
 
 
 class IF_DEF(object):
-    def __init__(self):
+    def __init__(self, hashobj = None):
+#        if hashobj is not None and not isinstance(hashobj, hashlib.HASH):
+#            raise IfDefException("Expected a hash object from the hashlib module!")
+        if hashobj is None:
+            hashobj = DummyHash()
+
         BASE_TYPE.init()
 
         self._ifaces                = []
@@ -409,6 +425,7 @@ class IF_DEF(object):
         self._properties            = dict()
         self._to_plc_words_length   = 0
         self._from_plc_words_length = 0
+        self._hash                  = hashobj
 
         self._properties[CMD_BLOCK.length_keyword()]    = 0
         self._properties[PARAM_BLOCK.length_keyword()]  = 0
@@ -529,6 +546,8 @@ class IF_DEF(object):
         if source.strip() == "":
             self._add_comment(source)
             return
+
+        self._hash.update(source)
 
         self._eval(source)
 
@@ -686,6 +705,8 @@ class IF_DEF(object):
             for src in self._ifaces:
                 if isinstance(src, BASE_TYPE):
                     src.adjust_parameter(cmd_length)
+
+        self._hash.update(str(self._properties))
 
         self._active = False
 
