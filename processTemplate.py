@@ -38,14 +38,13 @@ def createPropertyDict(propList):
     result = {}
 
     for elem in propList:
-        assert isinstance(elem, str)
+        assert isinstance(elem, str), type(elem)
 
         # convert string to dictionary
         elem  = ast.literal_eval(elem)
 
-        # input converted from utf-8 to ascii
-        name  = str(elem.get("name"))
-        value = str(elem.get("value"))
+        name  = elem.get("name")
+        value = elem.get("value")
 
         # remove prefix if it exists
         tag   = name.find("#")
@@ -65,12 +64,12 @@ def processAll(lines, device):
     assert isinstance(lines,  list)
     assert isinstance(device, str )
 
-    # read each line, process them, add one by one to accumulator
     propList = ccdb.properties(device)
 
     # create dictionary of properties
     propDict = createPropertyDict(propList)
 
+    # read each line, process them, add one by one to accumulator
     return map(lambda x: plcf.processLine(x, device, propDict), lines)
 
 

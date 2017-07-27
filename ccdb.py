@@ -35,40 +35,64 @@ import requests
 #requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
 
+def tostring(string):
+    if isinstance(string, str) or string is None:
+        return string
+
+    if isinstance(string, list):
+        return [tostring(s) for s in string]
+
+    if isinstance(string, dict):
+        newdict = dict()
+        for k in string:
+            newdict[tostring(k)] = tostring(string[k])
+
+        return newdict
+
+    assert isinstance(string, unicode), type(string)
+
+    try:
+        return string.encode("unicode-escape").decode("string-escape").decode("utf-8").encode("utf-8")
+    except UnicodeDecodeError, e:
+        return string.encode("utf-8")
+
+
 def controlledBy(device):
-    assert isinstance(device, str)
+    assert isinstance(device, str), type(device)
+
     return query(device, 'controlledBy')
 
 
 def control(device):
-    assert isinstance(device, str)
-    res = query(device, 'controls')
-    return res
+    assert isinstance(device, str), type(device)
+
+    return query(device, 'controls')
 
 
 def properties(device):
-    assert isinstance(device, str)
+    assert isinstance(device, str), type(device)
+
     return query(device, 'properties')
 
 
 def getDeviceType(device):
-    assert isinstance(device, str)
+    assert isinstance(device, str), type(device)
 
     deviceType = getField(device, "deviceType")
 
-    # convert from utf-8 to string
-    return str(deviceType)
+    return deviceType
+
 
 def getDescription(device):
-    assert isinstance(device, str)
+    assert isinstance(device, str), type(device)
 
     desc = getField(device, "description")
 
-    # convert from utf-8 to string
-    return str(desc)
+    return desc
+
 
 def getArtefactNames(device):
-    assert isinstance(device, str)
+    assert isinstance(device, str), type(device)
 
     artefacts  = getField(device, "artifacts")
     deviceType = getDeviceType(device)
@@ -76,7 +100,7 @@ def getArtefactNames(device):
     artefactNames = []
     if artefacts!=None:
       for elem in artefacts:
-        artefactNames.append(str(elem.get("name")))
+        artefactNames.append(elem.get("name"))
 
     return (deviceType, artefactNames)
 
@@ -95,7 +119,7 @@ def sanitizeFilename(filename):
 # download artefact (header/footer), and save in template directory
 def getArtefact(deviceType, filename):
     assert isinstance(deviceType, str)
-    assert isinstance(filename,   str)
+    assert isinstance(filename,   basestring)
 
     saveas = sanitizeFilename(deviceType + "___" + filename)
 
@@ -190,7 +214,7 @@ def getField(device, field):
             print "\nExiting.\n"
             exit()
 
-        tmpDict = json.loads(request.text)
+        tmpDict = tostring(json.loads(request.text))
 
         # save downloaded data
         glob.deviceDict[device] = tmpDict
@@ -205,11 +229,11 @@ def getField(device, field):
 
 def query(device, field):
     assert isinstance(device,   str)
-    assert isinstance(field, str)
+    assert isinstance(field,    str)
 
     result = getField(device, field)
     if result != None:
-      # convert from utf-8 to ascii for keys
+      # convert list elements to string
       result  = map(lambda x: str(x), result)
 
     return result
@@ -279,7 +303,7 @@ def getOrderedString(inp):
 
         head = toProcess.pop(0)
 
-        if isinstance(head, unicode):
+        if isinstance(head, basestring):
             res += head
 
         elif isinstance(head, list):
