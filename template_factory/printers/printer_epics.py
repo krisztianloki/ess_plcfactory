@@ -44,19 +44,51 @@ class EPICS(PRINTER):
     def header(self, output):
         PRINTER.header(self, output)
         epics_db_header = """#FILENAME {inst_slot}-[PLCF#TEMPLATE]-[PLCF#TIMESTAMP].db
-########################################################
-########## EPICS -> PLC comms management data ##########
-########################################################
-record(asyn, "{inst_slot}:Asyn") {{
+#########################################################
+########## EPICS <-> PLC connection management ##########
+#########################################################
+record(asyn, "{inst_slot}:iAsyn") {{
 	field(DTYP,	"asynRecordDevice")
 	field(PORT,	"$(PLCNAME)")
 }}
 record(bi, "{inst_slot}:Connected") {{
-	field(INP,	"{inst_slot}:Asyn.CNCT CP")
+	field(INP,	"{inst_slot}:iAsyn.CNCT CP")
 	field(ONAM,	"Connected")
 	field(ZNAM,	"Disconnected")
 	field(FLNK,	"{inst_slot}:CommsGeneratedHashEPICSToPLC")
 }}
+record(bi, "{inst_slot}:PLCHashCorrect") {{
+	field(ONAM,	"Correct")
+	field(ZNAM,	"Incorrect")
+}}
+record(bi, "{inst_slot}:Alive") {{
+	field(ONAM,	"Alive")
+	field(ZNAM,	"Not responding")
+}}
+record(calcout, "{inst_slot}:iCheckHash") {{
+	field(INPA,	"{inst_slot}:iCommsGeneratedHashEPICSToPLC")
+	field(INPB,	"{inst_slot}:CommsGeneratedHashPLCToEPICS")
+	field(CALC,	"A = B")
+	field(OOPT,	"On Change")
+	field(OUT,	"{inst_slot}:PLCHashCorrect PP")
+}}
+record(bi, "{inst_slot}:one") {{
+	field(DISP,	"1")
+	field(PINI,	"YES")
+	field(VAL,	"1")
+}}
+record(bo, "{inst_slot}:iGotHeartbeat") {{
+	field(DOL,	"{inst_slot}:one")
+	field(OMSL,	"closed_loop")
+	field(OUT,	"{inst_slot}:iKickAlive PP")
+}}
+record(bo, "{inst_slot}:iKickAlive") {{
+	field(HIGH,	"5")
+	field(OUT,	"{inst_slot}:Alive PP")
+}}
+########################################################
+########## EPICS -> PLC comms management data ##########
+########################################################
 record(ao, "{inst_slot}:iCommsGeneratedHashEPICSToPLC") {{
 	field(DISP,	"1")
 	field(PINI,	"YES")
@@ -72,7 +104,7 @@ record(calc, "{inst_slot}:iHeartbeatEPICSToPLCCalc") {{
 	field(SCAN,	"1 second")
 	field(INPA,	"{inst_slot}:iHeartbeatEPICSToPLCCalc.VAL")
 	field(CALC,	"(A >= 32000)? 0 : A + 1")
-	field(FLNK,     "{inst_slot}:HeartbeatEPICSToPLC")
+	field(FLNK,	"{inst_slot}:HeartbeatEPICSToPLC")
 }}
 record(ao, "{inst_slot}:HeartbeatEPICSToPLC") {{
 	field(DTYP,	"asynInt32")
@@ -91,11 +123,13 @@ record(ai, "{inst_slot}:CommsGeneratedHashPLCToEPICS") {{
 	field(SCAN,	"I/O Intr")
 	field(DTYP,	"S7plc")
 	field(INP,	"@$(PLCNAME)/[PLCF#PLCToEPICSDataBlockStartOffset] T=INT32")
+	field(FLNK,	"{inst_slot}:iCheckHash")
 }}
 record(ai, "{inst_slot}:HeartbeatPLCToEPICS") {{
 	field(SCAN,	"I/O Intr")
 	field(DTYP,	"S7plc")
 	field(INP,	"@$(PLCNAME)/[PLCF#(PLCToEPICSDataBlockStartOffset + 4)] T=INT16")
+	field(FLNK,	"{inst_slot}:iGotHeartbeat")
 }}
 
 #COUNTER Counter1 = [PLCF#Counter1 + 10];
