@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python2
 
 """ PLC Factory: Entry point """
 
@@ -20,8 +20,10 @@ __env__        = "Python version 2.7"
 import argparse
 import datetime
 import os
+import errno
 import sys
 import time
+import hashlib
 
 # PLC Factory modules
 import ccdb
@@ -30,10 +32,23 @@ import plcf
 import processTemplate as pt
 from future_print import future_print
 
+# Template Factory
+parent_dir = os.path.abspath(os.path.dirname(__file__))
+tf_dir     = os.path.join(parent_dir, 'template_factory')
+sys.path.append(tf_dir)
+del parent_dir
+del tf_dir
+
+import tf
+
 
 # global variables
 TEMPLATE_DIR = "templates"
 OUTPUT_DIR   = "output"
+TEMPLATE_TAG = "TEMPLATE"
+IFDEF_TAG    = ".def"
+hashobj      = hashlib.sha256()
+ifdefs       = dict()
 
 
 def getArtefact(deviceType, filenames, tag, templateID):
@@ -65,16 +80,14 @@ def getTemplateName(deviceType, filenames, templateID):
     assert isinstance(filenames,  list)
     assert isinstance(templateID, str )
 
-    result = ""
+    result = None
 
     for filename in filenames:
 
-        if matchingArtefact(filename, "TEMPLATE", templateID):
+        if matchingArtefact(filename, TEMPLATE_TAG, templateID):
 
             # download template and save in template directory
             result = ccdb.getArtefact(deviceType, filename)
-            if result is None:
-                result = ""
             break
 
     return result
@@ -86,7 +99,7 @@ def matchingArtefact(filename, tag, templateID):
     assert isinstance(templateID, str)
 
     # attached artefacts may be of different file types, e.g. PDF
-    if not filename.endswith('.txt'):
+    if not filename.endswith('.txt') or tag not in filename:
         return False
 
     # exactly one '.' in filename
@@ -98,7 +111,7 @@ def matchingArtefact(filename, tag, templateID):
     # extract template ID
     name     = tmp[-1]
 
-    return name == templateID and tag in filename
+    return name == templateID
 
 
 def createFilename(header, device, templateID, deviceType):
@@ -130,10 +143,13 @@ def createFilename(header, device, templateID, deviceType):
 
 
 def findTag(lines, tag):
+    tagPos = -1
+
+    if lines is None:
+        return tagPos
+
     assert isinstance(lines, list)
     assert isinstance(tag,   str )
-
-    tagPos = -1
 
     for i in range(len(lines)):
         if lines[i].startswith(tag):
@@ -147,7 +163,7 @@ def processHash(header):
     assert isinstance(header, list)
 
     tag     = "#HASH"
-    hashSum = ccdb.getHash()
+    hashSum = ccdb.getHash(hashobj)
     pos     = -1
 
     for i in range(len(header)):
@@ -194,24 +210,61 @@ def replaceTag(line, tag, insert):
     return line[:start] + insert + line[end:]
 
 
-# ensures that filenames are legal in Windows
-# (OSX automatically replaces illegal characters)
-def sanitizeFilename(filename):
-    assert isinstance(filename, str)
+def getArtefactNames(device):
+    assert isinstance(device, str)
 
-    result = map(lambda x: '_' if x in '<>:"/\|?*' else x, filename)
-    return "".join(result)
+    # get artifact names of files attached to a device
+    deviceType = ccdb.getDeviceType(device)
+    artefacts  = ccdb.getArtefactNames(device)
+
+    return (deviceType, artefacts)
 
 
-def processRoot(templateID, device):
-    assert isinstance(templateID, str)
-    assert isinstance(device,     str)
+#
+# Returns an interface definition object
+#
+def getIfDef(device):
+    assert isinstance(device, str)
 
-    # get artifact names of files attached to root device
-    (deviceType, rootArtefacts) = ccdb.getArtefactNames(device)
+    deviceType = ccdb.getDeviceType(device)
 
-    # find devices this PLC controls
-    controls = ccdb.control(device)
+    if deviceType in ifdefs:
+        print "Device type: " + deviceType
+
+        return ifdefs[deviceType]
+
+    artefacts = ccdb.getArtefactNames(device)
+
+    template = None
+    for artefact in artefacts:
+        if not artefact.endswith(IFDEF_TAG):
+            continue
+        template = artefact
+        break
+
+    if template is None:
+        return None
+
+    filename = ccdb.getArtefact(deviceType, template)
+    if filename is None:
+        return None
+
+    with open(filename) as f:
+        ifdef = tf.processLines(f, HASH = hashobj)
+
+    if ifdef is not None:
+        print "Device type: " + deviceType
+
+        ifdefs[deviceType] = ifdef
+
+    return ifdef
+
+
+def buildControlsList(device):
+    assert isinstance(device, str)
+
+    # find devices this device _directly_ controls
+    controls = ccdb.controls(device)
 
     print device + " controls: "
 
@@ -220,54 +273,71 @@ def processRoot(templateID, device):
 
     print "\n"
 
+    return controls
+
+
+def getHeaderFooter(templateID, deviceType, artefacts):
+    assert isinstance(templateID, str)
+    assert isinstance(deviceType, str)
+    assert isinstance(artefacts,  list)
+
     # change working directory to template directory
     os.chdir(TEMPLATE_DIR)
 
-    header = getArtefact(deviceType, rootArtefacts, "HEADER", templateID)
-    
+    templatePrinter = tf.get_printer(templateID)
+    if templatePrinter is not None:
+        header = []
+        templatePrinter.header(header)
+        footer = []
+        templatePrinter.footer(footer)
+    else:
+        header = getArtefact(deviceType, artefacts, "HEADER", templateID)
+        footer = getArtefact(deviceType, artefacts, "FOOTER", templateID)
 
     if len(header) == 0:
         print "No header found.\n"
     else:
         print "Header read.\n"
 
-    footer = getArtefact(deviceType, rootArtefacts, "FOOTER", templateID)
-
     if len(footer) == 0:
         print "No footer found.\n"
     else:
         print "Footer read.\n"
 
-    print "Processing entire tree of controls-relationships:\n"
-
-    return (deviceType, rootArtefacts, controls, header, footer)
+    return (header, footer, templatePrinter)
 
 
-def processTemplateID(templateID, device):
-    assert isinstance(templateID, str)
-    assert isinstance(device,     str)
+def processTemplateID(templateID, rootDevice, rootDeviceType, rootArtefacts, controls):
+    assert isinstance(templateID,      str)
+    assert isinstance(rootDevice,      str)
+    assert isinstance(rootDeviceType,  str)
+    assert isinstance(rootArtefacts,   list)
+    assert isinstance(controls,        list)
 
     print "#" * 60
     print "Template ID " + templateID
-    print "Device at root: " + device + "\n"
+    print "Device at root: " + rootDevice + "\n"
 
     # collect lines to be written at the end
     output = []
 
     # process header/footer
-    (deviceType, rootArtefacts, controls, header, footer) =       \
-        processRoot(templateID, device)
+    (header, footer, templatePrinter) = getHeaderFooter(templateID, rootDeviceType, rootArtefacts)
+
+    print "Processing entire tree of controls-relationships:\n"
 
     # for each device, find corresponding template and process it
     output     = []
 
-    toProcess  = controls # starting with devices controlled by PLC
+    # starting with devices controlled by the root device
+#    toProcess  = controls[::-1]  # reverse the list (_NOT_ in-place) so that pop will actually give elements in the right order
+    toProcess  = list(controls)
     processed  = set()
-    outputFile =                                                  \
-        createFilename(header, device, templateID, deviceType)    
+    outputFile = createFilename(header, rootDevice, templateID, rootDeviceType)
+    outputFile  = ccdb.sanitizeFilename(outputFile)
 
     if len(header):
-        header = pt.process(device, header)
+        header = pt.process(rootDevice, header)
 
     while toProcess != []:
 
@@ -279,21 +349,29 @@ def processTemplateID(templateID, device):
         print elem
 
         # get template
-        (deviceType, artefacts) = ccdb.getArtefactNames(elem)
-        print "Device type: " + deviceType
+        template = None
+        if templatePrinter is not None:
+            ifdef = getIfDef(elem)
+            if ifdef is not None:
+                template = []
+                templatePrinter.body(ifdef, template)
 
-        filename = getTemplateName(deviceType, artefacts, templateID)
+        if template is None:
+            (deviceType, artefacts) = getArtefactNames(elem)
+            print "Device type: " + deviceType
 
-        if filename != "":
+            template = getTemplateName(deviceType, artefacts, templateID)
+
+        if template is not None:
             # process template and add result to output
-            output += pt.process(elem, filename)
+            output += pt.process(elem, template)
             output.append("\n\n")
             print "Template processed."
 
         else:
             print "No template found."
 
-        controls = ccdb.control(elem)
+        controls = ccdb.controls(elem)
 
         print "This device controls: "
 
@@ -319,7 +397,6 @@ def processTemplateID(templateID, device):
     eol         = getEOL(header)
 
     output      = header + output + footer
-    outputFile  = sanitizeFilename(outputFile)
 
     if len(output) == 0:
         print "There were no templates for ID = " + templateID + ".\n"
@@ -366,66 +443,122 @@ def processTemplateID(templateID, device):
     print "Hash sum: " + glob.hashSum
 
 
+def processDevice(device, templateIDs):
+    assert isinstance(device,      str)
+    assert isinstance(templateIDs, list)
+
+    print "#" * 60
+    print "Device at root: " + device + "\n"
+
+    # get artifact names of files attached to the root device
+    (deviceType, rootArtefacts) = getArtefactNames(device)
+
+    # find devices this device controls
+    controls = buildControlsList(device)
+
+    map(lambda x: processTemplateID(x, device, deviceType, rootArtefacts, controls), templateIDs)
+
+
+def _mkdir(name):
+    try:
+        os.mkdir(name)
+    except OSError as ose:
+        if ose.errno != errno.EEXIST:
+            raise
+
+
 if __name__ == "__main__":
 
-    os.system('clear')
+    parser         = argparse.ArgumentParser(add_help = False)
 
-    start_time     = time.time()
+    # --zip to create zip from generated files
 
-    glob.timestamp = '{:%Y%m%d%H%M%S}'.format(datetime.datetime.now())
+    parser.add_argument(
+                        '--plc',
+                        dest = "plc",
+                        help = 'use the default templates for PLCs',
+                        action = "store_true"
+                       )
+
+    args = parser.parse_known_args()[0]
+
+    plc = args.plc
 
     parser         = argparse.ArgumentParser()
 
     parser.add_argument(
+                        '--plc',
+                        dest   = "plc",
+                        help   = 'use the default templates for PLCs',
+                        action = "store_true"
+                       )
+
+    parser.add_argument(
+                        '--test',
+                        help     = 'select test database',
+                        action   = 'store_true',
+                        required = False)
+
+    # this argument is just for show as the corresponding value is
+    # set to True by default                        
+    parser.add_argument(
+                        '--production',
+                        help     = 'select production database',
+                        action   = 'store_true',
+                        required = False)    
+
+    parser.add_argument(
                         '-d',
                         '--device',
-                        help='device / installation slot',
-                        required=True
+                        help     = 'device / installation slot',
+                        required = True
                         )
 
     parser.add_argument(
                         '-t',
                         '--template',
-                        help='template name',
-                        nargs = '*',
-                        type=str,
-                        required=True)
-    parser.add_argument(
-                        '--test',
-                        help='select test database',
-                        action='store_true',
-                        required=False)
-    # this argument is just for show as the corresponding value is
-    # set to True by default                        
-    parser.add_argument(
-                        '--production',
-                        help='select production database',
-                        action='store_true',
-                        required=False)    
+                        help     = 'template name',
+                        nargs    = '*',
+                        type     = str,
+                        default  = [],
+                        required = not plc)
 
     # retrieve parameters
     args       = parser.parse_args()
 
-    # PLC name and template number given as arguments
-    device      = args.device
-    templateIDs = args.template
+    start_time     = time.time()
+
+    glob.timestamp = '{:%Y%m%d%H%M%S}'.format(datetime.datetime.now())
 
     if args.test:
         glob.production = False
 
-    assert len(templateIDs) >= 1, "at least one template ID must be given"
+    if plc:
+        plc_printers = [ "EPICS-DB", "IFA", "TIA-MAPX" ]
+        if not set(plc_printers) <= set(tf.available_printers()):
+            print "Your PLCFactory does not support generating the following necessary templates: ", list(set(plc_printers) - set(tf.available_printers()))
+            exit(1)
 
+        templateIDs = plc_printers + [ t for t in args.template if t not in plc_printers ]
+    else:
+        templateIDs = args.template
+
+    device = args.device
+
+    os.system('clear')
+
+    _mkdir(TEMPLATE_DIR)
+    _mkdir(OUTPUT_DIR)
 
     # remove templates downloaded in a previous run
-    os.chdir(TEMPLATE_DIR)
+    for f in os.listdir(TEMPLATE_DIR):
+        f = os.path.join(TEMPLATE_DIR, f)
+        if not os.path.isfile(f):
+            continue
 
-    files = [f for f in os.listdir('.') if os.path.isfile(f)]
-    for f in files:
-        if "TEMPLATE" in f:
+        if TEMPLATE_TAG in f or f.endswith(IFDEF_TAG):
             os.remove(f)
 
-    os.chdir("..")
-
-    map(lambda x: processTemplateID(x, device), templateIDs)
+    processDevice(device, templateIDs)
 
     print("--- %.1f seconds ---\n" % (time.time() - start_time))

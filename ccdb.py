@@ -63,7 +63,7 @@ def controlledBy(device):
     return query(device, 'controlledBy')
 
 
-def control(device):
+def controls(device):
     assert isinstance(device, str), type(device)
 
     return query(device, 'controls')
@@ -95,14 +95,13 @@ def getArtefactNames(device):
     assert isinstance(device, str), type(device)
 
     artefacts  = getField(device, "artifacts")
-    deviceType = getDeviceType(device)
 
     artefactNames = []
     if artefacts!=None:
       for elem in artefacts:
         artefactNames.append(elem.get("name"))
 
-    return (deviceType, artefactNames)
+    return artefactNames
 
 
 def sanitizeFilename(filename):
@@ -331,12 +330,14 @@ def getOrderedString(inp):
     return res
 
 
-def getHash():
+def getHash(hashobj = None):
 
     if not glob.hashSum == None:
         return glob.hashSum
 
-    # compute hash sum
+    # compute checksum and hash
+    # from all keys and their corresponding values in order, e.g.
+    # key_1, value_1, key_2, value_2, ... key_n, value_n
     else:
         crc32 = 0
 
@@ -349,22 +350,27 @@ def getHash():
         # now the same for each device:
         for device in devices:
             crc32 = zlib.crc32(device, crc32)
+            if hashobj is not None:
+                hashobj.update(device)
 
             properties = glob.deviceDict[device]
             keys       = properties.keys()
             keys.sort()
 
             for k in keys:
+                tmp = getOrderedString([properties[k]])
+
                 crc32 = zlib.crc32(k, crc32)
-                crc32 = zlib.crc32(getOrderedString([properties[k]]), crc32)
+                crc32 = zlib.crc32(tmp, crc32)
+
+                if hashobj is not None:
+                    hashobj.update(k)
+                    hashobj.update(tmp)
 
 
+        if hashobj is not None:
+            crc32 = zlib.crc32(hashobj.hexdigest())
 
-        # Now 'tmp' is one string with all keys and their corresponding
-        # values in order, e.g.
-        # key_1, value_1, key_2, value_2, ... key_n, value_n
-
-        # compute checksum of string
         glob.hashSum = str(crc32)
 
         return glob.hashSum
