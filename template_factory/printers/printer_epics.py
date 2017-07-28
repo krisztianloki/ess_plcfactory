@@ -43,64 +43,64 @@ class EPICS(PRINTER):
     #
     def header(self, output):
         PRINTER.header(self, output)
-        epics_db_header = """#FILENAME [PLCF#INSTALLATION_SLOT]-[PLCF#TEMPLATE]-[PLCF#TIMESTAMP].db
+        epics_db_header = """#FILENAME {inst_slot}-[PLCF#TEMPLATE]-[PLCF#TIMESTAMP].db
 ########################################################
 ########## EPICS -> PLC comms management data ##########
 ########################################################
-record(asyn, "$(PLCNAME):Asyn") {
+record(asyn, "{inst_slot}:Asyn") {{
 	field(DTYP,	"asynRecordDevice")
 	field(PORT,	"$(PLCNAME)")
-}
-record(bi, "$(PLCNAME):Connected") {
-	field(INP,	"$(PLCNAME):Asyn.CNCT CP")
+}}
+record(bi, "{inst_slot}:Connected") {{
+	field(INP,	"{inst_slot}:Asyn.CNCT CP")
 	field(ONAM,	"Connected")
 	field(ZNAM,	"Disconnected")
-	field(FLNK,	"$(PLCNAME):CommsGeneratedHashEPICSToPLC")
-}
-record(ao, "$(PLCNAME):iCommsGeneratedHashEPICSToPLC") {
+	field(FLNK,	"{inst_slot}:CommsGeneratedHashEPICSToPLC")
+}}
+record(ao, "{inst_slot}:iCommsGeneratedHashEPICSToPLC") {{
 	field(DISP,	"1")
 	field(PINI,	"YES")
 	field(VAL,	"#HASH")
-}
-record(ao, "$(PLCNAME):CommsGeneratedHashEPICSToPLC") {
+}}
+record(ao, "{inst_slot}:CommsGeneratedHashEPICSToPLC") {{
 	field(DTYP,	"asynInt32")
 	field(OUT,	"@asyn($(PLCNAME)write, 0, 100)INT32_BE")
 	field(OMSL,	"closed_loop")
-	field(DOL,	"$(PLCNAME):iCommsGeneratedHashEPICSToPLC")
-}
-record(calc, "$(PLCNAME):iHeartbeatEPICSToPLCCalc") {
+	field(DOL,	"{inst_slot}:iCommsGeneratedHashEPICSToPLC")
+}}
+record(calc, "{inst_slot}:iHeartbeatEPICSToPLCCalc") {{
 	field(SCAN,	"1 second")
-	field(INPA,	"$(PLCNAME):iHeartbeatEPICSToPLCCalc.VAL")
+	field(INPA,	"{inst_slot}:iHeartbeatEPICSToPLCCalc.VAL")
 	field(CALC,	"(A >= 32000)? 0 : A + 1")
-	field(FLNK,     "$(PLCNAME):HeartbeatEPICSToPLC")
-}
-record(ao, "$(PLCNAME):HeartbeatEPICSToPLC") {
+	field(FLNK,     "{inst_slot}:HeartbeatEPICSToPLC")
+}}
+record(ao, "{inst_slot}:HeartbeatEPICSToPLC") {{
 	field(DTYP,	"asynInt32")
 	field(OUT,	"@asyn($(PLCNAME)write, 2, 100)")
 	field(OMSL,	"closed_loop")
-	field(DOL,	"$(PLCNAME):iHeartbeatEPICSToPLCCalc.VAL")
+	field(DOL,	"{inst_slot}:iHeartbeatEPICSToPLCCalc.VAL")
 	field(OIF,	"Full")
 	field(DRVL,	"0")
 	field(DRVH,	"32000")
-}
+}}
 
 ########################################################
 ########## PLC -> EPICS comms management data ##########
 ########################################################
-record(ai, "$(PLCNAME):CommsGeneratedHashPLCToEPICS") {
+record(ai, "{inst_slot}:CommsGeneratedHashPLCToEPICS") {{
 	field(SCAN,	"I/O Intr")
 	field(DTYP,	"S7plc")
 	field(INP,	"@$(PLCNAME)/[PLCF#PLCToEPICSDataBlockStartOffset] T=INT32")
-}
-record(ai, "$(PLCNAME):HeartbeatPLCToEPICS") {
+}}
+record(ai, "{inst_slot}:HeartbeatPLCToEPICS") {{
 	field(SCAN,	"I/O Intr")
 	field(DTYP,	"S7plc")
 	field(INP,	"@$(PLCNAME)/[PLCF#(PLCToEPICSDataBlockStartOffset + 4)] T=INT16")
-}
+}}
 
 #COUNTER Counter1 = [PLCF#Counter1 + 10];
 #COUNTER Counter2 = [PLCF#Counter2 + 10];
-"""
+""".format(inst_slot = self.inst_slot())
 
         self._append(epics_db_header, output)
         return self
