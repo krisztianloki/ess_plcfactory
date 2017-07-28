@@ -52,20 +52,20 @@ class IFF(PRINTER):
 
 
     def header(self, output):
-        PRINTER.header(self, output)._append("""#FILENAME [PLCF#INSTALLATION_SLOT]-[PLCF#TEMPLATE]-[PLCF#TIMESTAMP].ifa
+        PRINTER.header(self, output)._append("""#FILENAME {inst_slot}-[PLCF#TEMPLATE]-[PLCF#TIMESTAMP].ifa
 HASH
 #HASH
-""", output)
+""".format(inst_slot = self.inst_slot()), output)
 
 
     def body(self, if_def, output):
         PRINTER.body(self, if_def, output)
 
         self._append("""DEVICE
-{slot}
+{inst_slot}
 DEVICE_TYPE
 {type}
-""".format(slot = self.plcf("INSTALLATION_SLOT"), type = self.plcf("DEVICE_TYPE")), output)
+""".format(inst_slot = self.inst_slot(), type = self.plcf("DEVICE_TYPE")), output)
 
         for src in if_def.interfaces():
             if isinstance(src, BLOCK):

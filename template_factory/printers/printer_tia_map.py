@@ -41,12 +41,12 @@ class TIA_MAP(PRINTER):
     def header(self, output):
         PRINTER.header(self, output)
 
-        self._append("""#FILENAME [PLCF#INSTALLATION_SLOT]-[PLCF#TEMPLATE]-[PLCF#TIMESTAMP].scl
+        self._append("""#FILENAME {inst_slot}-[PLCF#TEMPLATE]-[PLCF#TIMESTAMP].scl
 #EOL "\\r\\n"
 #COUNTER Counter1 = [PLCF# Counter1 + 10];
 #COUNTER Counter2 = [PLCF# Counter2 + 10];
 FUNCTION "_CommsEPICSDataMap" : Void
-{ S7_Optimized_Access := 'TRUE' }
+{{ S7_Optimized_Access := 'TRUE' }}
 VERSION : 0.1
    VAR_TEMP
       Hash : DInt;
@@ -58,9 +58,9 @@ BEGIN
         "[PLCF#PLCToEPICSDataBlockName]"."Word"[1] := DINT_TO_WORD(#Hash);
         "[PLCF#PLCToEPICSDataBlockName]"."Word"[0] := DINT_TO_WORD(SHR(IN := #Hash, N := 16));
 
-  // [PLCF#INSTALLATION_SLOT]: PLC <-> EPICS Communication Mapping
+  // {inst_slot}: PLC <-> EPICS Communication Mapping
   //------------------------------------------------------------------------
-""".replace("\n", "\r\n"), output)
+""".format(inst_slot = self.inst_slot()).replace("\n", "\r\n"), output)
 
 
     #
@@ -74,13 +74,16 @@ BEGIN
                                    EPICSToPLCDataBlockOffset := [PLCF# ^(EPICSToPLCDataBlockStartOffset) + Counter1],
                                    PLCToEPICSLength := [PLCF# {plctoepicslength}],
                                    PLCToEPICSDataBlockOffset := [PLCF# ^(PLCToEPICSDataBlockStartOffset) + Counter2],
-                                   EPICSToPLCCommandRegisters := "[PLCF# INSTALLATION_SLOT]".CommandReg,
-                                   PLCToEPICSStatusRegisters := "[PLCF# INSTALLATION_SLOT]".StatusReg,
+                                   EPICSToPLCCommandRegisters := "{inst_slot}".CommandReg,
+                                   PLCToEPICSStatusRegisters := "{inst_slot}".StatusReg,
                                    EPICSToPLCDataBlock := "[PLCF# ^(EPICSToPLCDataBlockName)]"."Word",
                                    PLCToEPICSDataBlock := "[PLCF# ^(PLCToEPICSDataBlockName)]"."Word");
 #COUNTER Counter1 = [PLCF# Counter1 + {epicstoplclength}];
 #COUNTER Counter2 = [PLCF# Counter2 + {plctoepicslength}];
-""".format(epicstoplclength = if_def.to_plc_words_length(), plctoepicslength = if_def.from_plc_words_length()).replace("\n", "\r\n"), output)
+""".format(inst_slot        = self.inst_slot(),
+           epicstoplclength = if_def.to_plc_words_length(),
+           plctoepicslength = if_def.from_plc_words_length()
+          ).replace("\n", "\r\n"), output)
 
 
 
@@ -143,12 +146,12 @@ class TIA_MAPX(TIA_MAP):
     def header(self, output):
         PRINTER.header(self, output)
 
-        self._append("""#FILENAME [PLCF#INSTALLATION_SLOT]-[PLCF#TEMPLATE]-[PLCF#TIMESTAMP].scl
+        self._append("""#FILENAME {inst_slot}-[PLCF#TEMPLATE]-[PLCF#TIMESTAMP].scl
 #EOL "\\r\\n"
 #COUNTER Counter1 = [PLCF# Counter1 + 10];
 #COUNTER Counter2 = [PLCF# Counter2 + 10];
 FUNCTION "_CommsEPICSDataMap" : Void
-{ S7_Optimized_Access := 'TRUE' }
+{{ S7_Optimized_Access := 'TRUE' }}
 VERSION : 0.1
    VAR_TEMP
       Hash : DInt;
@@ -160,9 +163,9 @@ BEGIN
         "[PLCF#PLCToEPICSDataBlockName]"."Word"[1] := DINT_TO_WORD(#Hash);
         "[PLCF#PLCToEPICSDataBlockName]"."Word"[0] := DINT_TO_WORD(SHR(IN := #Hash, N := 16));
 
-  // [PLCF#INSTALLATION_SLOT]: PLC <-> EPICS Communication Mapping
+  // {inst_slot}: PLC <-> EPICS Communication Mapping
   //------------------------------------------------------------------------
-""".replace("\n", "\r\n"), output)
+""".format(inst_slot = self.inst_slot()).replace("\n", "\r\n"), output)
 
 
     #
@@ -177,13 +180,14 @@ BEGIN
                                           EPICSToPLCParametersStart := [PLCF# {commandwordslength}],
                                           PLCToEPICSLength := [PLCF# {plctoepicslength}],
                                           PLCToEPICSDataBlockOffset := [PLCF# ^(PLCToEPICSDataBlockStartOffset) + Counter2],
-                                          EPICSToPLCCommandRegisters := "DEV_[PLCF#INSTALLATION_SLOT]_iDB".CommandReg,
-                                          PLCToEPICSStatusRegisters := "DEV_[PLCF#INSTALLATION_SLOT]_iDB".StatusReg,
+                                          EPICSToPLCCommandRegisters := "DEV_{inst_slot}_iDB".CommandReg,
+                                          PLCToEPICSStatusRegisters := "DEV_{inst_slot}_iDB".StatusReg,
                                           EPICSToPLCDataBlock := "[PLCF# ^(EPICSToPLCDataBlockName)]"."Word",
                                           PLCToEPICSDataBlock := "[PLCF# ^(PLCToEPICSDataBlockName)]"."Word");
 #COUNTER Counter1 = [PLCF# Counter1 + {epicstoplclength}];
 #COUNTER Counter2 = [PLCF# Counter2 + {plctoepicslength}];
-""".format(epicstoplclength   = if_def.to_plc_words_length(),
+""".format(inst_slot          = self.inst_slot(),
+           epicstoplclength   = if_def.to_plc_words_length(),
            plctoepicslength   = if_def.from_plc_words_length(),
            commandwordslength = str(if_def.properties()[CMD_BLOCK.length_keyword()])
           ).replace("\n", "\r\n"), output)

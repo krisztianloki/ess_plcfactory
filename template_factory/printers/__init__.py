@@ -46,6 +46,10 @@ class PRINTER(object):
         return "[PLCF#{plcf}]".format(plcf = plcf_expr)
 
 
+    def inst_slot(self):
+        return self.plcf("INSTALLATION_SLOT")
+
+
     def comment(self):
         return ""
 
