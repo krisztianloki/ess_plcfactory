@@ -49,6 +49,7 @@ TEMPLATE_TAG = "TEMPLATE"
 IFDEF_TAG    = ".def"
 hashobj      = hashlib.sha256()
 ifdefs       = dict()
+output_files = list()
 
 
 def getArtefact(deviceType, filenames, tag, templateID):
@@ -439,6 +440,8 @@ def processTemplateID(templateID, rootDevice, rootDeviceType, rootArtefacts, con
 
     os.chdir("..")
 
+    output_files.append(outputFile)
+
     print "Output file written: " + outputFile + "\n",
     print "Hash sum: " + glob.hashSum
 
@@ -471,8 +474,6 @@ if __name__ == "__main__":
 
     parser         = argparse.ArgumentParser(add_help = False)
 
-    # --zip to create zip from generated files
-
     parser.add_argument(
                         '--plc',
                         dest = "plc",
@@ -491,6 +492,16 @@ if __name__ == "__main__":
                         dest   = "plc",
                         help   = 'use the default templates for PLCs',
                         action = "store_true"
+                       )
+
+    parser.add_argument(
+                        '--zip',
+                        dest    = "zipit",
+                        help    = 'create a zipfile containing the generated files',
+                        metavar = "zipfile name",
+                        nargs   = "?",
+                        type    = str,
+                        const   = ""
                        )
 
     parser.add_argument(
@@ -560,5 +571,25 @@ if __name__ == "__main__":
             os.remove(f)
 
     processDevice(device, templateIDs)
+
+    if args.zipit is not None and len(output_files):
+        import zipfile
+
+        if args.zipit == "":
+            zipit = device
+        else:
+            zipit = args.zipit
+
+        if not zipit.endswith(".zip"):
+            zipit += ".zip"
+
+        zipit = ccdb.sanitizeFilename(zipit)
+
+        z = zipfile.ZipFile(zipit, "w", zipfile.ZIP_DEFLATED)
+        for f in output_files:
+            z.write(os.path.join(OUTPUT_DIR, f), f)
+        z.close()
+
+        print "Zipfile created: " + zipit
 
     print("--- %.1f seconds ---\n" % (time.time() - start_time))
