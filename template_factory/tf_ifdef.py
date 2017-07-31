@@ -732,8 +732,6 @@ class BASE_TYPE(SOURCE):
         assert isinstance(plc_var_type, str),                                func_param_msg("plc_var_type",   "string")
         assert keyword_params is None or isinstance(keyword_params, dict),   func_param_msg("keyword_params", "dict")
 
-        self._end_bits()
-
         self._keyword_params = keyword_params
         self._expand_templates()
 
@@ -753,6 +751,9 @@ class BASE_TYPE(SOURCE):
         self._block          = block
         self._name           = name
         self._width          = _bytes_in_type(self._plc_type)
+
+        # Has to be after _width is initialized
+        self._end_bits()
 
         if isinstance(block, OVERLAP):
             self._overlapped = not block.is_empty()
@@ -790,7 +791,7 @@ class BASE_TYPE(SOURCE):
 
 
     def _end_bits(self):
-        BITS.end()
+        BITS.end(self._width)
 
 
     def name(self):
@@ -930,6 +931,7 @@ class BITS(object):
         BITS.end()
 
         self._num_bits     = 0
+        self._var_type     = "UINT16"
         self._started      = True
         self._block        = block
         self._offset       = -1
@@ -970,10 +972,7 @@ class BITS(object):
 
 
     def var_type(self):
-        if self._num_bits <= 8:
-            return "UINT8"
-        else:
-            return "UINT16"
+        return self._var_type
 
 
     def compute_offset(self, byte):
@@ -995,13 +994,16 @@ class BITS(object):
 
 
     @staticmethod
-    def end():
+    def end(next_var_width = None):
         if BITS.active_bits is None:
             return
 
         self = BITS.active_bits
         if self._started == False:
             return
+
+        if self._num_bits <= 8 and next_var_width is not None and next_var_width == 1:
+            self._var_type = "UINT8"
 
         byte_width   = _bytes_in_type(self.var_type())
         self._offset = self._block.offset_for(byte_width)
