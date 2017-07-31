@@ -33,13 +33,14 @@ outpv_template = """record({{recordtype}}, "[PLCF#INSTALLATION_SLOT]:{{name}}")
 
 
 
-PV_PREFIX    = "PV_"
-PV_ALIAS     = PV_PREFIX + "ALIAS"
-PV_NAME      = PV_PREFIX + "NAME"
-STATUS       = "STATUS"
-CMD          = "COMMAND"
-PARAM        = "PARAMETER"
-ASYN_TIMEOUT = "100"
+OPTIMIZE_S7DB = False
+PV_PREFIX     = "PV_"
+PV_ALIAS      = PV_PREFIX + "ALIAS"
+PV_NAME       = PV_PREFIX + "NAME"
+STATUS        = "STATUS"
+CMD           = "COMMAND"
+PARAM         = "PARAMETER"
+ASYN_TIMEOUT  = "100"
 
 
 PLC_types = {'BOOL', 'BYTE', 'WORD', 'DWORD', 'INT', 'DINT', 'REAL', 'SSTIME', 'TIME', 'DATE', 'TIME_OF_DAY', 'CHAR' }
@@ -154,8 +155,11 @@ class BLOCK(SOURCE):
 
 
     def _is_alignment_needed(self, width):
-        # MODBUS cannot address the individual bytes in a WORD
-        return (self.is_cmd_block() or self.is_param_block() or width > 1) and (self._block_offset % 2) == 1
+        if not OPTIMIZE_S7DB:
+            return (self._block_offset % 2) == 1
+        else:
+            # MODBUS cannot address the individual bytes in a WORD
+            return (self.is_cmd_block() or self.is_param_block() or width > 1) and (self._block_offset % 2) == 1
 
 
     def length(self):
@@ -955,10 +959,13 @@ class BITS(object):
         if BITS.active_bits is None:
             return BITS(block)
 
-        if BITS.active_bits._block.length() % 2:
-            max_num_bits = 8
-        else:
+        if not OPTIMIZE_S7DB:
             max_num_bits = 16
+        else:
+            if BITS.active_bits._block.length() % 2:
+                max_num_bits = 8
+            else:
+                max_num_bits = 16
 
         if BITS.active_bits._num_bits >= max_num_bits:
             excess_bits = BITS.active_bits._num_bits - max_num_bits
@@ -1012,7 +1019,7 @@ class BITS(object):
         if self._started == False:
             return
 
-        if self._num_bits <= 8 and next_var_width is not None and next_var_width == 1:
+        if OPTIMIZE_S7DB and self._num_bits <= 8 and next_var_width is not None and next_var_width == 1:
             self._var_type = "UINT8"
 
         byte_width   = _bytes_in_type(self.var_type())
