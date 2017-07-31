@@ -35,6 +35,7 @@ outpv_template = """record({{recordtype}}, "[PLCF#INSTALLATION_SLOT]:{{name}}")
 
 PV_PREFIX    = "PV_"
 PV_ALIAS     = PV_PREFIX + "ALIAS"
+PV_NAME      = PV_PREFIX + "NAME"
 STATUS       = "STATUS"
 CMD          = "COMMAND"
 PARAM        = "PARAMETER"
@@ -764,6 +765,11 @@ class BASE_TYPE(SOURCE):
 
         self.compute_offset()
 
+        if PV_NAME in self._keyword_params:
+            self._pvname = self._keyword_params[PV_NAME]
+        else:
+            self._pvname = self._name
+
 
     @staticmethod
     def add_template(name, template):
@@ -799,6 +805,10 @@ class BASE_TYPE(SOURCE):
            The name of the variable
         """
         return self._name
+
+
+    def pv_name(self):
+        return self._pvname
 
 
     def var_type(self):
@@ -860,7 +870,7 @@ class BASE_TYPE(SOURCE):
 
         pv_extra_fields = "\n"
         for key in sorted(self._keyword_params.keys()):
-            if key.startswith(PV_PREFIX) and key != PV_ALIAS:
+            if key.startswith(PV_PREFIX) and key != PV_ALIAS and key != PV_NAME:
                 if len(key) == 6:
                     pv_field_formatter = pv_field3
                 else:
@@ -887,7 +897,7 @@ class BASE_TYPE(SOURCE):
     def toEPICS(self):
         return (self.source(),
                  self.pv_template().format(recordtype = self.pv_type(),
-                                           name       = self.name(),
+                                           name       = self.pv_name(),
                                            alias      = self._build_pv_alias(),
                                            offset     = self.link_offset(),
                                            var_type   = self.var_type(),

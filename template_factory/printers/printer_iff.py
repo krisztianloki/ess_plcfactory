@@ -109,7 +109,7 @@ DEVICE_TYPE
             bit_number = var.bit_number()
 
         return _iff_template.format(name        = var.name(),
-                                    epics       = var.name(),
+                                    epics       = var.pv_name(),
                                     type        = var.plc_type(),
                                     array_index = str(var.offset() // 2),
                                     bit_number  = bit_number)
