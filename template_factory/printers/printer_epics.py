@@ -11,7 +11,7 @@ __license__    = "GPLv3"
 
 
 from printers import PRINTER
-from tf_ifdef import SOURCE, VERBATIM, BLOCK, CMD_BLOCK, STATUS_BLOCK, BASE_TYPE
+from tf_ifdef import IfDefInternalError, SOURCE, VERBATIM, BLOCK, CMD_BLOCK, STATUS_BLOCK, BASE_TYPE
 
 
 
@@ -95,6 +95,7 @@ record(ao, "{inst_slot}:iCommsGeneratedHashEPICSToPLC") {{
 	field(VAL,	"#HASH")
 }}
 record(ao, "{inst_slot}:CommsGeneratedHashEPICSToPLC") {{
+	field(SCAN,	"1 second")
 	field(DTYP,	"asynInt32")
 	field(OUT,	"@asyn($(PLCNAME)write, 0, 100)INT32_BE")
 	field(OMSL,	"closed_loop")
@@ -147,6 +148,19 @@ record(ai, "{inst_slot}:HeartbeatPLCToEPICS") {{
         PRINTER.body(self, if_def, output)
         self._output = output
 
+        self._append("""
+##########
+########## [PLCF#INSTALLATION_SLOT] ##########
+##########
+""")
+        self._body_verboseheader(if_def._cmd_block(), output)
+        self._body_verboseheader(if_def._param_block(), output)
+        self._body_verboseheader(if_def._status_block(), output)
+
+        self._append("""##########
+
+""")
+
         for src in if_def.interfaces():
             if isinstance(src, BLOCK):
                 self._body_block(src, output)
@@ -163,28 +177,17 @@ record(ai, "{inst_slot}:HeartbeatPLCToEPICS") {{
         self._body_end_cmd(if_def, output)
         self._body_end_status(if_def, output)
 
-        self._append("\n\n")
-        self._body_verboseend(if_def._cmd_block(), output)
-        self._body_verboseend(if_def._param_block(), output)
-        self._body_verboseend(if_def._status_block(), output)
-
-        self._append("""
-
-####################
-####################
-
-""")
-
 
     def _body_block(self, block, output):
         if block.is_status_block():
-            comment = "PLC -> EPICS status"
+            comment = "PLC   -> EPICS status  "
         elif block.is_cmd_block():
-            comment = "EPICS -> PLC commands"
+            comment = "EPICS -> PLC commands  "
         elif block.is_param_block():
             comment = "EPICS -> PLC parameters"
         else:
-            assert False, "Unsupported block type: " + block.type()
+            raise IfDefInternalError("Unsupported block type: " + block.type())
+
         self._append((block.source(), """
 ##########
 ########## [PLCF#INSTALLATION_SLOT] {dir} ##########
@@ -214,8 +217,8 @@ record(ai, "{inst_slot}:HeartbeatPLCToEPICS") {{
         self._append(counter_template.format(counter = counter_keyword, plc_db_length = plc_db_length))
 
 
-    def _body_verboseend(self, block, output):
+    def _body_verboseheader(self, block, output):
         if block is None:
             return
 
-        self._append("#{keyword}: {length}\n".format(keyword = block.length_keyword(), length = block.length() // 2))
+        self._append("########## {keyword}: {length}\n".format(keyword = block.length_keyword(), length = block.length() // 2))
