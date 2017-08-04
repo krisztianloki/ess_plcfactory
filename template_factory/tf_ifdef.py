@@ -43,12 +43,12 @@ PARAM         = "PARAMETER"
 ASYN_TIMEOUT  = "100"
 
 
-PLC_types = {'BOOL', 'BYTE', 'WORD', 'DWORD', 'INT', 'DINT', 'REAL', 'SSTIME', 'TIME', 'DATE', 'TIME_OF_DAY', 'CHAR' }
+PLC_types = {'BOOL', 'BYTE', 'WORD', 'DWORD', 'INT', 'DINT', 'REAL', 'SSTIME', 'TIME', 'LTIME', 'DATE', 'TIME_OF_DAY', 'CHAR' }
 
 
 bits_in_type_map = { 'UINT8'   : 8,  'INT8'   : 8,  'UNSIGN8' : 8,  'BYTE'       : 8,  'CHAR'       : 8,
-                     'UINT16'  : 16, 'INT16'  : 16, 'SHORT'   : 16, 'UNSIGN16'   : 16, 'WORD'       : 16, 'INT16SM'  : 16, 'BCD_UNSIGNED' : 16, 'BCD_SIGNED' : 16, 'INT' : 16,
-                     'UINT32'  : 32, 'INT32'  : 32, 'LONG'    : 32, 'UNSIGN32'   : 32, 'DWORD'      : 32, 'INT32_LE' : 32, 'INT32_BE'     : 32, 'DINT' : 32,
+                     'UINT16'  : 16, 'INT16'  : 16, 'SHORT'   : 16, 'UNSIGN16'   : 16, 'WORD'       : 16, 'INT16SM'  : 16, 'BCD_UNSIGNED' : 16, 'BCD_SIGNED' : 16, 'INT'  : 16,
+                     'UINT32'  : 32, 'INT32'  : 32, 'LONG'    : 32, 'UNSIGN32'   : 32, 'DWORD'      : 32, 'INT32_LE' : 32, 'INT32_BE'     : 32, 'DINT'       : 32, 'TIME' : 32,
                      'FLOAT32' : 32, 'REAL32' : 32, 'FLOAT'   : 32, 'FLOAT32_LE' : 32, 'FLOAT32_BE' : 32, 'REAL'     : 32,
                      'FLOAT64' : 64, 'REAL64' : 64, 'DOUBLE'  : 64, 'FLOAT64_LE' : 64, 'FLOAT64_BE' : 64,
                      'STRING'  : 40 * 8 }
@@ -284,7 +284,8 @@ class STATUS_BLOCK(BLOCK):
                     INT   = [ "INT16",   "SHORT" ],
                     DWORD = [ "UINT32",  "UNSIGN32", "DWORD" ],
                     DINT  = [ "INT32",   "LONG" ],
-                    REAL  = [ "FLOAT32", "REAL32",   "FLOAT" ])
+                    REAL  = [ "FLOAT32", "REAL32",   "FLOAT" ],
+                    TIME  = [ "INT32",   "LONG" ])
 
 
     def __init__(self, source):
@@ -318,7 +319,8 @@ class MODBUS(object):
                     INT   = [ "INT16",      "BCD_SIGNED",  "INT16SM" ],
                     DWORD = [ "INT32_BE",   "INT32_LE" ],
                     DINT  = [ "INT32_BE",   "INT32_LE" ],
-                    REAL  = [ "FLOAT32_BE", "FLOAT32_LE" ] )
+                    REAL  = [ "FLOAT32_BE", "FLOAT32_LE" ],
+                    TIME  = [ "INT32_BE",   "INT32_LE" ])
 
 
     def link_offset(self, var):
@@ -654,6 +656,14 @@ class IF_DEF(object):
         block = self._active_block()
         var = ANALOG(self._source, block, name, plc_var_type, keyword_params)
         self._add(var)
+
+
+    def add_time(self, name, **keyword_params):
+        if not isinstance(name, str):
+            raise IfDefSyntaxError("Name must be a string!")
+
+        keyword_params[PV_PREFIX + "EGU"] = "ms"
+        self.add_analog(name, "TIME", **keyword_params)
 
 
     def add_enum(self, name, plc_var_type = "INT", nobt = 16, shift = 0, **keyword_params):
