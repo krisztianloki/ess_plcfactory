@@ -847,6 +847,7 @@ class BASE_TYPE(SOURCE):
             - DINT
             - DWORD
             - REAL
+            - TIME
         """
         return self._plc_type
 
@@ -1015,12 +1016,12 @@ class BITS(object):
 
 
     def calc_mask(self, bit):
-        return '0x{:04X}'.format(1 << bit._bit_num)
+        return '0x{:04X}'.format(1 << bit.bit_number())
 
 
     def link_extra(self, bit):
         if self._block.is_status_block():
-            return " B={bit_num}".format(bit_num = bit._bit_num)
+            return " B={bit_num}".format(bit_num = bit.bit_number())
         elif self._block.is_cmd_block() or self._block.is_param_block():
             template = "{mask}, " + ASYN_TIMEOUT
             return template.format(mask = self.calc_mask(bit))
