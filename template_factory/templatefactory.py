@@ -57,6 +57,19 @@ if __name__ == "__main__":
                         choices  = available_printers,
                         type     = str)
 
+    parser.add_argument('--optimize',
+                        help    = "(default) optimize the created interface (won't be compatible with generated PLC mapper)",
+                        default = True,
+                        action  = 'store_true',
+                        dest    = "optimize",
+                        )
+
+    parser.add_argument('--no-optimize',
+                        help    = "do NOT optimize the created interface",
+                        action  = 'store_false',
+                        dest    = "optimize",
+                        )
+
     parser.add_argument('definitions',
                         help     = 'interface definitions',
                         nargs    = '+',
@@ -64,7 +77,16 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+    if args.optimize:
+        print """
+******************************
+*Using datablock optimization*
+******************************
+"""
+
     if args.printers is None:
         args.printers = available_printers
+
+    tf.optimize_s7db(args.optimize)
 
     map(lambda t: processDefinitionFile(t, args.printers), args.definitions)
