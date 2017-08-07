@@ -8,6 +8,13 @@ __license__    = "GPLv3"
 from tf_ifdef import IF_DEF, IfDefException
 from printers import get_printer, available_printers
 
+OPTIMIZE_S7DB = False
+
+def optimize_s7db(optimize):
+    global OPTIMIZE_S7DB
+
+    OPTIMIZE_S7DB = optimize
+
 
 def new(hashobj = None):
     return IF_DEF(hashobj)
@@ -53,7 +60,12 @@ def processLines(lines, processor = None, **kwargs):
     else:
         hashobj = None
 
-    if_def = IF_DEF(hashobj)
+    if "OPTIMIZE" in kwargs:
+        optimize = kwargs["OPTIMIZE"]
+    else:
+        optimize = OPTIMIZE_S7DB
+
+    if_def = IF_DEF(optimize, hashobj)
 
     if processor is None:
         processor = _processLine
