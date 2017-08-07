@@ -33,7 +33,6 @@ outpv_template = """record({{recordtype}}, "[PLCF#INSTALLATION_SLOT]:{{name}}")
 
 
 
-OPTIMIZE_S7DB = False
 PV_PREFIX     = "PV_"
 PV_ALIAS      = PV_PREFIX + "ALIAS"
 PV_NAME       = PV_PREFIX + "NAME"
@@ -142,24 +141,30 @@ class VERBATIM(SOURCE):
 # Blocks
 #
 class BLOCK(SOURCE):
-    def __init__(self, source, block_type):
+    def __init__(self, source, block_type, optimize):
         SOURCE.__init__(self, SOURCE.fromline(source))
 
         BITS.end()
 
         assert isinstance(block_type,    str)
+        assert isinstance(optimize,      bool)
         self._block_type    = block_type
 
-        self._block_offset = 0
-        self._length       = 0
+        self._block_offset  = 0
+        self._length        = 0
+        self._optimize_s7db = optimize
 
 
     def _is_alignment_needed(self, width):
-        if not OPTIMIZE_S7DB:
+        if not self.optimize():
             return (self._block_offset % 2) == 1
         else:
             # MODBUS cannot address the individual bytes in a WORD
             return (self.is_cmd_block() or self.is_param_block() or width > 1) and (self._block_offset % 2) == 1
+
+
+    def optimize(self):
+        return self._optimize_s7db
 
 
     def length(self):
@@ -288,8 +293,8 @@ class STATUS_BLOCK(BLOCK):
                     TIME  = [ "INT32",   "LONG" ])
 
 
-    def __init__(self, source):
-        BLOCK.__init__(self, source, STATUS)
+    def __init__(self, source, optimize):
+        BLOCK.__init__(self, source, STATUS, optimize)
 
 
     def link_offset(self, var):
@@ -336,8 +341,8 @@ class CMD_BLOCK(MODBUS, BLOCK):
         return "CommandWordsLength"
 
 
-    def __init__(self, source):
-        BLOCK.__init__(self, source, CMD)
+    def __init__(self, source, optimize):
+        BLOCK.__init__(self, source, CMD, optimize)
 
 
 
@@ -347,8 +352,8 @@ class PARAM_BLOCK(MODBUS, BLOCK):
         return "ParameterWordsLength"
 
 
-    def __init__(self, source):
-        BLOCK.__init__(self, source, PARAM)
+    def __init__(self, source, optimize):
+        BLOCK.__init__(self, source, PARAM, optimize)
 
 
 
@@ -413,7 +418,9 @@ class OVERLAP(BLOCK):
 
 
 class IF_DEF(object):
-    def __init__(self, hashobj = None):
+    def __init__(self, optimize, hashobj = None):
+        assert isinstance(optimize, bool)
+
 #        if hashobj is not None and not isinstance(hashobj, hashlib.HASH):
 #            raise IfDefException("Expected a hash object from the hashlib module!")
         if hashobj is None:
@@ -433,6 +440,7 @@ class IF_DEF(object):
         self._to_plc_words_length   = 0
         self._from_plc_words_length = 0
         self._hash                  = hashobj
+        self._optimize              = optimize
 
         self._properties[CMD_BLOCK.length_keyword()]    = 0
         self._properties[PARAM_BLOCK.length_keyword()]  = 0
@@ -571,7 +579,7 @@ class IF_DEF(object):
         if self._STATUS is not None:
             raise IfDefSyntaxError("Block redefinition is not possible!")
 
-        self._active_BLOCK = self._STATUS = STATUS_BLOCK(self._source)
+        self._active_BLOCK = self._STATUS = STATUS_BLOCK(self._source, self._optimize)
         self._ifaces.append(self._STATUS)
 
 
@@ -579,7 +587,7 @@ class IF_DEF(object):
         if self._CMD is not None:
             raise IfDefSyntaxError("Block redefinition is not possible!")
 
-        self._active_BLOCK = self._CMD = CMD_BLOCK(self._source)
+        self._active_BLOCK = self._CMD = CMD_BLOCK(self._source, self._optimize)
         self._add(self._CMD)
 
 
@@ -587,7 +595,7 @@ class IF_DEF(object):
         if self._PARAM is not None:
             raise IfDefSyntaxError("Block redefinition is not possible!")
 
-        self._active_BLOCK = self._PARAM = PARAM_BLOCK(self._source)
+        self._active_BLOCK = self._PARAM = PARAM_BLOCK(self._source, self._optimize)
         self._add(self._PARAM)
 
 
@@ -969,7 +977,7 @@ class BITS(object):
         if BITS.active_bits is None:
             return BITS(block)
 
-        if not OPTIMIZE_S7DB:
+        if not block.optimize():
             max_num_bits = 16
         else:
             if BITS.active_bits._block.length() % 2:
@@ -1029,7 +1037,7 @@ class BITS(object):
         if self._started == False:
             return
 
-        if OPTIMIZE_S7DB and self._num_bits <= 8 and next_var_width is not None and next_var_width == 1:
+        if self._block.optimize() and self._num_bits <= 8 and next_var_width is not None and next_var_width == 1:
             self._var_type = "UINT8"
 
         byte_width   = _bytes_in_type(self.var_type())
