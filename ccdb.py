@@ -75,6 +75,32 @@ def properties(device):
     return query(device, 'properties')
 
 
+def propertiesDict(device, prefixToIgnore = "PLCF#"):
+    propList = properties(device)
+    result = {}
+
+    for elem in propList:
+        assert isinstance(elem, dict), type(elem)
+
+        name  = elem.get("name")
+        value = elem.get("value")
+
+        if value == "null" and "List" in elem.get("dataType"):
+            value = []
+
+        # remove prefix if it exists
+        if name.startswith(prefixToIgnore):
+            name = name[len(prefixToIgnore):]
+
+        # sanity check against duplicate values, which would point to an
+        # issue with the entered data
+        assert name not in result
+
+        result[name] = value
+
+    return result
+
+
 def getDeviceType(device):
     assert isinstance(device, str), type(device)
 
@@ -231,9 +257,6 @@ def query(device, field):
     assert isinstance(field,    str)
 
     result = getField(device, field)
-    if result != None:
-      # convert list elements to string
-      result  = map(lambda x: str(x), result)
 
     return result
 
@@ -247,7 +270,7 @@ def backtrack(prop, device):
     # in a higher level of the hierarchy that has that property
 
     # starting point: all devices 'device' is controlled by
-    leftToProcess = controlledBy(device)
+    leftToProcess = list(controlledBy(device))
     processed     = []
 
     # keep track of number of iterations
@@ -269,8 +292,7 @@ def backtrack(prop, device):
 
         if elem not in glob.cached.keys():
             # get properties of device
-            propList = properties(elem)
-            propDict = pt.createPropertyDict(propList)
+            propDict = propertiesDict(elem)
             # add to dict
             glob.cached[elem] = propDict
 
@@ -278,7 +300,7 @@ def backtrack(prop, device):
             # retrievce cached dictionary
             propDict = glob.cached.get(elem)
 
-        if prop in propDict.keys():
+        if prop in propDict:
             val = propDict.get(prop)
             return val
 
@@ -296,7 +318,7 @@ def getOrderedString(inp):
     assert isinstance(inp, list)
 
     res       = ""
-    toProcess = inp
+    toProcess = list(inp)
 
     while not toProcess == []:
 
