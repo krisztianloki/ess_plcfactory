@@ -152,6 +152,10 @@ class CC(object):
                 return " ==== BACKTRACKING ERROR ==== "
 
             elem = leftToProcess.pop()
+
+            if elem in processed:
+                continue
+
             processed.append(elem)
 
             # get properties of device
@@ -167,8 +171,8 @@ class CC(object):
             else:
                 c = self.controlledBy(elem)
                 if c is not None:
-                  leftToProcess += c
-                  count         += 1
+                  leftToProcess = c + leftToProcess
+                  count        += 1
 
 
     def getHash(self, hashobj = None):
