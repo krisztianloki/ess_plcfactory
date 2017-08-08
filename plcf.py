@@ -19,7 +19,6 @@ will not lead to an error. Instead, such input is simply returned unchanged.
 import datetime
 
 # PLC Factory modules
-import ccdb
 import plcf_glob       as glob
 import plcf_ext        as ext
 import processTemplate as pt
@@ -34,8 +33,8 @@ def keywordsHeader(filename, device, id):
     assert isinstance(id,       str)
 
     timestamp  = '{:%Y%m%d%H%M%S}'.format(datetime.datetime.now())
-    deviceType = ccdb.getDeviceType(device)
-    desc = ccdb.getDescription(device)
+    deviceType = glob.ccdb.getDeviceType(device)
+    desc = glob.ccdb.getDescription(device)
 
     # dictionary of the form key: tag, value: replacement
     substDict = {'INSTALLATION_SLOT': device
@@ -172,7 +171,7 @@ def evalUp(line):
         prop  = line[start + 2:end]
 
         # backtrack
-        val  = ccdb.backtrack(prop, current_device)
+        val  = glob.ccdb.backtrack(prop, current_device)
         line = line[:start] + val + line[end+1:]
 
     return line
@@ -225,7 +224,7 @@ def evaluateExpression(line, device, propDict):
             # recursion to take care of multiple occurrences of variables
             return evaluateExpression(tmp, device, propDict)
 
-    desc = ccdb.getDescription(device)
+    desc = glob.ccdb.getDescription(device)
     tag = 'INSTALLATION_SLOT_DESC'
     if tag in line:
         line = substitute(line, tag, desc)
@@ -234,7 +233,7 @@ def evaluateExpression(line, device, propDict):
     if tag in line:
         line = substitute(line, tag, device)
 
-    deviceType = ccdb.getDeviceType(device)
+    deviceType = glob.ccdb.getDeviceType(device)
     tag = 'DEVICE_TYPE'
     if tag in line:
         line = substitute(line, tag, deviceType)

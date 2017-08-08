@@ -26,7 +26,6 @@ import time
 import hashlib
 
 # PLC Factory modules
-import ccdb
 import plcf_glob as glob
 import plcf
 import processTemplate as pt
@@ -63,7 +62,7 @@ def getArtefact(deviceType, filenames, tag, templateID):
     for filename in filenames:
         
         if matchingArtefact(filename, tag, templateID):    
-            filename = ccdb.getArtefact(deviceType, filename)
+            filename = glob.ccdb.getArtefact(deviceType, filename)
 
             if filename is None:
                 break
@@ -88,7 +87,7 @@ def getTemplateName(deviceType, filenames, templateID):
         if matchingArtefact(filename, TEMPLATE_TAG, templateID):
 
             # download template and save in template directory
-            result = ccdb.getArtefact(deviceType, filename)
+            result = glob.ccdb.getArtefact(deviceType, filename)
             break
 
     return result
@@ -164,7 +163,7 @@ def processHash(header):
     assert isinstance(header, list)
 
     tag     = "#HASH"
-    hashSum = ccdb.getHash(hashobj)
+    hashSum = glob.ccdb.getHash(hashobj)
     pos     = -1
 
     for i in range(len(header)):
@@ -215,8 +214,8 @@ def getArtefactNames(device):
     assert isinstance(device, str)
 
     # get artifact names of files attached to a device
-    deviceType = ccdb.getDeviceType(device)
-    artefacts  = ccdb.getArtefactNames(device)
+    deviceType = glob.ccdb.getDeviceType(device)
+    artefacts  = glob.ccdb.getArtefactNames(device)
 
     return (deviceType, artefacts)
 
@@ -227,14 +226,14 @@ def getArtefactNames(device):
 def getIfDef(device):
     assert isinstance(device, str)
 
-    deviceType = ccdb.getDeviceType(device)
+    deviceType = glob.ccdb.getDeviceType(device)
 
     if deviceType in ifdefs:
         print "Device type: " + deviceType
 
         return ifdefs[deviceType]
 
-    artefacts = ccdb.getArtefactNames(device)
+    artefacts = glob.ccdb.getArtefactNames(device)
 
     template = None
     for artefact in artefacts:
@@ -246,7 +245,7 @@ def getIfDef(device):
     if template is None:
         return None
 
-    filename = ccdb.getArtefact(deviceType, template)
+    filename = glob.ccdb.getArtefact(deviceType, template)
     if filename is None:
         return None
 
@@ -265,7 +264,7 @@ def buildControlsList(device):
     assert isinstance(device, str)
 
     # find devices this device _directly_ controls
-    controls = ccdb.controls(device)
+    controls = glob.ccdb.controls(device)
 
     print device + " controls: "
 
@@ -335,7 +334,7 @@ def processTemplateID(templateID, rootDevice, rootDeviceType, rootArtefacts, con
     toProcess  = list(controls)
     processed  = set()
     outputFile = createFilename(header, rootDevice, templateID, rootDeviceType)
-    outputFile  = ccdb.sanitizeFilename(outputFile)
+    outputFile  = glob.ccdb.sanitizeFilename(outputFile)
 
     if len(header):
         header = pt.process(rootDevice, header)
@@ -372,7 +371,7 @@ def processTemplateID(templateID, rootDevice, rootDeviceType, rootArtefacts, con
         else:
             print "No template found."
 
-        controls = ccdb.controls(elem)
+        controls = glob.ccdb.controls(elem)
 
         print "This device controls: "
 
@@ -443,7 +442,7 @@ def processTemplateID(templateID, rootDevice, rootDeviceType, rootArtefacts, con
     output_files.append(outputFile)
 
     print "Output file written: " + outputFile + "\n",
-    print "Hash sum: " + glob.hashSum
+    print "Hash sum: " + glob.ccdb.getHash(hashobj)
 
 
 def processDevice(device, templateIDs):
@@ -542,7 +541,11 @@ if __name__ == "__main__":
     glob.timestamp = '{:%Y%m%d%H%M%S}'.format(datetime.datetime.now())
 
     if args.test:
-        glob.production = False
+        from ccdb import CCDB_TEST
+        glob.ccdb = CCDB_TEST()
+    else:
+        from ccdb import CCDB
+        glob.ccdb = CCDB()
 
     if plc:
         plc_printers = [ "EPICS-DB", "IFA", "TIA-MAPX" ]
@@ -583,7 +586,7 @@ if __name__ == "__main__":
         if not zipit.endswith(".zip"):
             zipit += ".zip"
 
-        zipit = ccdb.sanitizeFilename(zipit)
+        zipit = glob.ccdb.sanitizeFilename(zipit)
 
         z = zipfile.ZipFile(zipit, "w", zipfile.ZIP_DEFLATED)
         for f in output_files:
