@@ -548,7 +548,7 @@ if __name__ == "__main__":
         glob.ccdb = CCDB()
 
     if plc:
-        plc_printers = [ "EPICS-DB", "IFA", "TIA-MAPX" ]
+        plc_printers = [ "EPICS-DB", "IFA", "TIA-MAP-NG" ]
         if not set(plc_printers) <= set(tf.available_printers()):
             print "Your PLCFactory does not support generating the following necessary templates: ", list(set(plc_printers) - set(tf.available_printers()))
             exit(1)

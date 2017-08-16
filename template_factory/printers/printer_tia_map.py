@@ -137,7 +137,7 @@ class TIA_MAP_NG(TIA_MAP):
 
     @staticmethod
     def name():
-        return "TIA-MAPX"
+        return "TIA-MAP-NG"
 
 
     #
