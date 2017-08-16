@@ -11,7 +11,7 @@ __license__    = "GPLv3"
 
 
 from printers import PRINTER
-from tf_ifdef import SOURCE, BLOCK, BASE_TYPE, BIT
+from tf_ifdef import SOURCE, BLOCK, CMD_BLOCK, BASE_TYPE, BIT
 
 
 def printer():
@@ -52,6 +52,9 @@ class IFF(PRINTER):
 
 
     def header(self, output):
+        #
+        # No need to initialize counters to 10, IFA does not need it
+        #
         PRINTER.header(self, output)._append("""#FILENAME {inst_slot}-[PLCF#TEMPLATE]-[PLCF#TIMESTAMP].ifa
 HASH
 #HASH
@@ -65,7 +68,23 @@ HASH
 {inst_slot}
 DEVICE_TYPE
 {type}
-""".format(inst_slot = self.inst_slot(), type = self.plcf("DEVICE_TYPE")), output)
+EPICSTOPLCLENGTH
+{epicstoplclength}
+EPICSTOPLCDATABLOCKOFFSET
+{epicstoplcdatablockoffset}
+EPICSTOPLCPARAMETERSSTART
+{epicstoplcparametersstart}
+PLCTOEPICSDATABLOCKOFFSET
+{plctoepicsdatablockoffset}
+#COUNTER Counter1 = [PLCF# Counter1 + {epicstoplclength}];
+#COUNTER Counter2 = [PLCF# Counter2 + {plctoepicslength}];
+""".format(inst_slot                 = self.inst_slot(),
+           type                      = self.plcf("DEVICE_TYPE"),
+           epicstoplcdatablockoffset = self.plcf("^(EPICSToPLCDataBlockStartOffset) + Counter1"),
+           plctoepicsdatablockoffset = self.plcf("^(PLCToEPICSDataBlockStartOffset) + Counter2"),
+           epicstoplcparametersstart = self.plcf(str(if_def.properties()[CMD_BLOCK.length_keyword()])),
+           epicstoplclength          = if_def.to_plc_words_length(),
+           plctoepicslength          = if_def.from_plc_words_length()), output)
 
         for src in if_def.interfaces():
             if isinstance(src, BLOCK):
