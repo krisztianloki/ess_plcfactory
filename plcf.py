@@ -23,8 +23,8 @@ import plcf_ext        as ext
 
 
 
-def keywordsHeader(filename, device, id):
-    assert isinstance(filename, str)
+def keywordsHeader(line, device, id):
+    assert isinstance(line,     str)
     assert isinstance(device,   str)
     assert isinstance(id,       str)
 
@@ -39,7 +39,7 @@ def keywordsHeader(filename, device, id):
                 ,'DEVICE_TYPE'      : deviceType
                 }
 
-    return processLine(filename, device, substDict)
+    return processLine(line, device, substDict)
 
 
 def evalCounter(line, counters):
