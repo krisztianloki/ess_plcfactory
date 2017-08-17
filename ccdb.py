@@ -41,22 +41,33 @@ class CCDB(CC):
             self._url = url
 
 
+    @staticmethod
+    def _ensure(var, default):
+        #
+        # Do not return None
+        #
+        if var is not None:
+            return var
+
+        return default
+
+
     def controls(self, device):
         assert isinstance(device, str)
 
-        return self._getField(device, 'controls')
+        return self._ensure(self._getField(device, 'controls'), [])
 
 
     def controlledBy(self, device):
         assert isinstance(device, str)
 
-        return self._getField(device, 'controlledBy')
+        return self._ensure(self._getField(device, 'controlledBy'), [])
 
 
     def properties(self, device):
         assert isinstance(device, str)
 
-        return self._getField(device, 'properties')
+        return self._ensure(self._getField(device, 'properties'), [])
 
 
     def propertiesDict(self, device, prefixToIgnore = "PLCF#"):
