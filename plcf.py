@@ -21,10 +21,7 @@ import datetime
 # PLC Factory modules
 import plcf_glob       as glob
 import plcf_ext        as ext
-import processTemplate as pt
 
-# global vars
-current_device = None
 
 
 def keywordsHeader(filename, device, id):
@@ -106,7 +103,7 @@ def getPLCFExpression(line):
 
     end        = findMatchingSquareParenthesis(line[start:]) + start
     # assert matching square brackets
-    assert end != -1
+    assert end != -1, "Unclosed PLCF# expression in line {line}".format(line = line)
 
     expression = line[start + offset : end]
     assert matchingParentheses(expression)
@@ -160,7 +157,7 @@ def processLine(line, device, substDict):
     return processLine(result, device, substDict)
 
 
-def evalUp(line):
+def evalUp(line, device):
     assert isinstance(line, str)
 
     while line.find("^(") != -1:
@@ -171,7 +168,7 @@ def evalUp(line):
         prop  = line[start + 2:end]
 
         # backtrack
-        val  = glob.ccdb.backtrack(prop, current_device)
+        val  = glob.ccdb.backtrack(prop, device)
         line = line[:start] + val + line[end+1:]
 
     return line
@@ -184,11 +181,9 @@ def evaluateExpression(line, device, propDict):
     assert isinstance(device,   str )
     assert isinstance(propDict, dict)
 
-    global current_device
-
     # resolve all references to properties in devices on a higher level
     # in the hierarchy
-    line = evalUp(line)
+    line = evalUp(line, device)
 
     keys = propDict.keys()
     keys.sort(key = lambda s: len(s), reverse=True)
@@ -237,8 +232,6 @@ def evaluateExpression(line, device, propDict):
     tag = 'DEVICE_TYPE'
     if tag in line:
         line = substitute(line, tag, deviceType)
-
-    current_device = device
 
     # evaluation happens after all substitutions have been performed
     try:
