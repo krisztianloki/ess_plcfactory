@@ -28,15 +28,12 @@ def keywordsHeader(line, device, id):
     assert isinstance(device,   str)
     assert isinstance(id,       str)
 
-    deviceType = glob.ccdb.getDeviceType(device)
-    desc = glob.ccdb.getDescription(device)
-
     # dictionary of the form key: tag, value: replacement
-    substDict = {'INSTALLATION_SLOT': device
-                ,'INSTALLATION_SLOT_DESC': desc
-                ,'TEMPLATE'         : 'template-' + id
-                ,'TIMESTAMP'        : glob.timestamp
-                ,'DEVICE_TYPE'      : deviceType
+    substDict = {'INSTALLATION_SLOT'      : device,
+                 'INSTALLATION_SLOT_DESC' : glob.ccdb.getDescription(device),
+                 'TEMPLATE'               : 'template-' + id,
+                 'TIMESTAMP'              : glob.timestamp,
+                 'DEVICE_TYPE'            : glob.ccdb.getDeviceType(device)
                 }
 
     return processLine(line, device, substDict)
