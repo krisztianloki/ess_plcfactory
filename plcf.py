@@ -16,7 +16,6 @@ will not lead to an error. Instead, such input is simply returned unchanged.
 
 
 # Python libraries
-import datetime
 
 # PLC Factory modules
 import plcf_glob       as glob
@@ -29,7 +28,6 @@ def keywordsHeader(filename, device, id):
     assert isinstance(device,   str)
     assert isinstance(id,       str)
 
-    timestamp  = '{:%Y%m%d%H%M%S}'.format(datetime.datetime.now())
     deviceType = glob.ccdb.getDeviceType(device)
     desc = glob.ccdb.getDescription(device)
 
