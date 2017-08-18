@@ -163,7 +163,6 @@ def processHash(header):
     assert isinstance(header, list)
 
     tag     = "#HASH"
-    hashSum = glob.ccdb.getHash(hashobj)
     pos     = -1
 
     for i in range(len(header)):
@@ -174,6 +173,7 @@ def processHash(header):
     if pos == -1:
         return header
 
+    hashSum     = glob.ccdb.getHash(hashobj)
     line        = header[pos]
     tagPos      = line.find(tag)
     line        = line[:tagPos] + hashSum + line[tagPos + len(tag):]
@@ -339,6 +339,9 @@ def processTemplateID(templateID, rootDevice, rootDeviceType, rootArtefacts, con
     if len(header):
         header = pt.process(rootDevice, header)
 
+    if len(footer):
+        footer = pt.process(rootDevice, footer)
+
     while toProcess != []:
 
         elem = toProcess.pop()
@@ -392,8 +395,10 @@ def processTemplateID(templateID, rootDevice, rootDeviceType, rootArtefacts, con
 
     os.chdir("..")
 
-    # process #HASH keyword in header
+    # process #HASH keyword in header and footer
     header      = processHash(header)
+    footer      = processHash(footer)
+
     eol         = getEOL(header)
 
     output      = header + output + footer
@@ -422,7 +427,8 @@ def processTemplateID(templateID, rootDevice, rootDeviceType, rootArtefacts, con
             (counters, line) = plcf.evalCounterIncrease(line, counters)
 
         assert isinstance(line, str)
-        assert "[PLCF#" not in line  # PLCF should now all be be processed
+        # PLCF should now all be be processed
+        assert "[PLCF#" not in line, "Leftover PLCF# expression in line: {line}".format(line = line)
         output.append(line)
 
 
