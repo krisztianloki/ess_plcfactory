@@ -576,6 +576,9 @@ if __name__ == "__main__":
 
     processDevice(device, templateIDs)
 
+    # create a dump of CCDB
+    output_files.append(glob.ccdb.dump("-".join([device, glob.timestamp]), OUTPUT_DIR))
+
     if args.zipit is not None and len(output_files):
         import zipfile
 

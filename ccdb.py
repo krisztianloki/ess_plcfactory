@@ -147,6 +147,8 @@ class CCDB(CC):
         with open(saveas, 'wb') as f:
             map(lambda x: f.write(x), result)
 
+        self._artifacts.append(saveas)
+
         return saveas
 
 

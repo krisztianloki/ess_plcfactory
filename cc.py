@@ -24,6 +24,9 @@ class CC(object):
         # key: (device, expression), value: property
         self._backtrackCache = dict()
 
+        # list of the path names of downloaded artifacts
+        self._artifacts      = list()
+
 
     @staticmethod
     def sanitizeFilename(filename):
@@ -127,6 +130,23 @@ class CC(object):
         assert isinstance(device, str)
 
         raise NotImplementedError
+
+
+    def dump(self, filename, directory = "."):
+        assert isinstance(filename, str)
+
+        import zipfile
+        if not filename.endswith(".ccdb.zip"):
+            filename += ".ccdb.zip"
+
+        filename = os.path.join(directory, self.sanitizeFilename(filename))
+        dumpfile = zipfile.ZipFile(filename, "w", zipfile.ZIP_DEFLATED)
+
+        dumpfile.writestr("ccdb.dump", str(self._deviceDict))
+        for template in self._artifacts:
+            dumpfile.write(template)
+
+        return filename
 
 
     def backtrack(self, prop, device):
