@@ -152,36 +152,36 @@ def processLine(line, device, substDict):
     return processLine(result, device, substDict)
 
 
-def evalUp(line, device):
-    assert isinstance(line, str)
+def evalUp(expression, device):
+    assert isinstance(expression, str)
 
-    while line.find("^(") != -1:
+    while expression.find("^(") != -1:
 
         # extract property
-        start = line.find("^(")
-        end   = line.find(")", start)
-        prop  = line[start + 2:end]
+        start = expression.find("^(")
+        end   = expression.find(")", start)
+        prop  = expression[start + 2:end]
 
         # backtrack
         val  = glob.ccdb.backtrack(prop, device)
-        line = line[:start] + val + line[end+1:]
+        expression = expression[:start] + val + expression[end+1:]
 
-    return line
+    return expression
 
 
 # replaces all variables in a PLCFLang expression with values
 # from CCDB and returns the evaluated expression
-def evaluateExpression(line, device, propDict):
-    assert isinstance(line,     str )
+def evaluateExpression(expression, device, propDict):
+    assert isinstance(expression,     str )
     assert isinstance(device,   str )
     assert isinstance(propDict, dict)
 
     # resolve all references to properties in devices on a higher level
     # in the hierarchy
-    line = evalUp(line, device)
+    expression = evalUp(expression, device)
 
     keys = propDict.keys()
-    keys.sort(key = lambda s: len(s), reverse=True)
+    keys.sort(key = lambda s: len(s), reverse = True)
     """
     Sorting property names from longest to shortest avoids
     the potential issue that a PLCF# expression can't be fully
@@ -208,44 +208,44 @@ def evaluateExpression(line, device, propDict):
     """
 
     for elem in keys:
-        if elem in line:
+        if elem in expression:
             value = propDict.get(elem)
-            tmp   = substitute(line, elem, value)
+            tmp   = substitute(expression, elem, value)
             # recursion to take care of multiple occurrences of variables
             return evaluateExpression(tmp, device, propDict)
 
     desc = glob.ccdb.getDescription(device)
     tag = 'INSTALLATION_SLOT_DESC'
-    if tag in line:
-        line = substitute(line, tag, desc)
+    if tag in expression:
+        expression = substitute(expression, tag, desc)
 
     tag = 'INSTALLATION_SLOT'
-    if tag in line:
-        line = substitute(line, tag, device)
+    if tag in expression:
+        expression = substitute(expression, tag, device)
 
     deviceType = glob.ccdb.getDeviceType(device)
     tag = 'DEVICE_TYPE'
-    if tag in line:
-        line = substitute(line, tag, deviceType)
+    if tag in expression:
+        expression = substitute(expression, tag, deviceType)
 
     # evaluation happens after all substitutions have been performed
     try:
-        wasquoted=False
+        wasquoted = False
         #Do not evaluate expressions which consist soley of a quoted string
-        if line.startswith('"') and line.endswith('"') and line.count('"')==2:
-          wasquoted=True
+        if expression.startswith('"') and expression.endswith('"') and expression.count('"') == 2:
+            wasquoted = True
         #Evaluate this expression
-        result = eval(line)
+        result = eval(expression)
         if wasquoted:
-          result='"'+result+'"'
-   # catch references to slot names (and erroneous input)
+            result = '"' + result + '"'
+    # catch references to slot names (and erroneous input)
     except (SyntaxError, NameError) as e:
-        result = line
+        result = expression
 
     return str(result)
 
 
-# substitutes a variable in an expression with the proviced value
+# substitutes a variable in an expression with the provided value
 def substitute(expr, variable, value):
     assert isinstance(expr,     str)
     assert isinstance(variable, str)
