@@ -135,21 +135,23 @@ def processLine(line, device, substDict):
     assert isinstance(device,    str )
     assert isinstance(substDict, dict)
 
-    (start, expression, end) = getPLCFExpression(line)
+    result = ""
+    while True:
+        # recurse until all PLCF_Lang expressions have been processed
+        (start, expression, end) = getPLCFExpression(line)
 
-    if expression is None:
-        return line
+        if expression is None:
+            return result + line
 
-    reduced = evaluateExpression(expression, device, substDict)
+        reduced = evaluateExpression(expression, device, substDict)
 
-    # maintain PLCF tag if a counter variable is part of the expression
-    if 'Counter' in reduced:
-        return line[:start] + "[PLCF#" + reduced + line[end:]
+        # maintain PLCF tag if a counter variable is part of the expression
+        if 'Counter' in reduced:
+            result += line[:start] + "[PLCF#" + reduced + "]"
+        else:
+            result += line[:start] + reduced
 
-    result = line[:start] + reduced + line[end + 1:]
-
-    # recurse until all PLCF_Lang expressions have been processed
-    return processLine(result, device, substDict)
+        line = line[end + 1:]
 
 
 def evalUp(expression, device):
