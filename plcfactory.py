@@ -51,7 +51,11 @@ ifdefs       = dict()
 output_files = list()
 
 
-def getArtefact(deviceType, filenames, tag, templateID):
+def getArtefact(deviceType, filename):
+    return glob.ccdb.getArtefact(deviceType, filename, TEMPLATE_DIR)
+
+
+def openArtefact(deviceType, filenames, tag, templateID):
     assert isinstance(deviceType, str )
     assert isinstance(filenames,  list)
     assert isinstance(tag,        str )
@@ -62,7 +66,7 @@ def getArtefact(deviceType, filenames, tag, templateID):
     for filename in filenames:
         
         if matchingArtefact(filename, tag, templateID):    
-            filename = glob.ccdb.getArtefact(deviceType, filename)
+            filename = getArtefact(deviceType, filename)
 
             if filename is None:
                 break
@@ -87,7 +91,8 @@ def getTemplateName(deviceType, filenames, templateID):
         if matchingArtefact(filename, TEMPLATE_TAG, templateID):
 
             # download template and save in template directory
-            result = glob.ccdb.getArtefact(deviceType, filename)
+            result = getArtefact(deviceType, filename)
+
             break
 
     return result
@@ -129,7 +134,7 @@ def createFilename(header, device, templateID, deviceType):
         outputFile = device + "_" + deviceType + "_template-" + templateID \
                    + "_" + glob.timestamp + ".scl"
 
-        return outputFile
+        return CCDB.sanitizeFilename(outputFile)
 
     else:
 
@@ -139,7 +144,7 @@ def createFilename(header, device, templateID, deviceType):
         filename = filename[len(tag):].strip()
         filename = plcf.keywordsHeader(filename, device, templateID)
 
-        return filename
+        return CCDB.sanitizeFilename(filename)
 
 
 def findTag(lines, tag):
@@ -245,7 +250,7 @@ def getIfDef(device):
     if template is None:
         return None
 
-    filename = glob.ccdb.getArtefact(deviceType, template)
+    filename = getArtefact(deviceType, template)
     if filename is None:
         return None
 
@@ -281,9 +286,6 @@ def getHeaderFooter(templateID, deviceType, artefacts):
     assert isinstance(deviceType, str)
     assert isinstance(artefacts,  list)
 
-    # change working directory to template directory
-    os.chdir(TEMPLATE_DIR)
-
     templatePrinter = tf.get_printer(templateID)
     if templatePrinter is not None:
         header = []
@@ -291,8 +293,8 @@ def getHeaderFooter(templateID, deviceType, artefacts):
         footer = []
         templatePrinter.footer(footer)
     else:
-        header = getArtefact(deviceType, artefacts, "HEADER", templateID)
-        footer = getArtefact(deviceType, artefacts, "FOOTER", templateID)
+        header = openArtefact(deviceType, artefacts, "HEADER", templateID)
+        footer = openArtefact(deviceType, artefacts, "FOOTER", templateID)
 
     if len(header) == 0:
         print "No header found.\n"
@@ -333,8 +335,7 @@ def processTemplateID(templateID, rootDevice, rootDeviceType, rootArtefacts, con
 #    toProcess  = controls[::-1]  # reverse the list (_NOT_ in-place) so that pop will actually give elements in the right order
     toProcess  = list(controls)
     processed  = set()
-    outputFile = createFilename(header, rootDevice, templateID, rootDeviceType)
-    outputFile  = glob.ccdb.sanitizeFilename(outputFile)
+    outputFile = os.path.join(OUTPUT_DIR, createFilename(header, rootDevice, templateID, rootDeviceType))
 
     if len(header):
         header = pt.process(rootDevice, header)
@@ -393,8 +394,6 @@ def processTemplateID(templateID, rootDevice, rootDeviceType, rootArtefacts, con
 
     print "\n"
 
-    os.chdir("..")
-
     # process #HASH keyword in header and footer
     header      = processHash(header)
     footer      = processHash(footer)
@@ -433,8 +432,6 @@ def processTemplateID(templateID, rootDevice, rootDeviceType, rootArtefacts, con
 
 
     #write file
-    os.chdir(OUTPUT_DIR)
-
     with open(outputFile,'w') as f:
         for line in output:
             line = line.rstrip()
@@ -442,8 +439,6 @@ def processTemplateID(templateID, rootDevice, rootDeviceType, rootArtefacts, con
                and not line.startswith("#FILENAME") \
                and not line.startswith("#EOL"):
                 future_print(line, end=eol, file=f)
-
-    os.chdir("..")
 
     output_files.append(outputFile)
 
@@ -596,7 +591,7 @@ if __name__ == "__main__":
 
         z = zipfile.ZipFile(zipit, "w", zipfile.ZIP_DEFLATED)
         for f in output_files:
-            z.write(os.path.join(OUTPUT_DIR, f), f)
+            z.write(f, os.path.basename(f))
         z.close()
 
         print "Zipfile created: " + zipit

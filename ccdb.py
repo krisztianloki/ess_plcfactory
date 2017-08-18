@@ -127,11 +127,11 @@ class CCDB(CC):
 
 
     # download artefact and save in template directory
-    def getArtefact(self, deviceType, filename):
+    def getArtefact(self, deviceType, filename, directory = "."):
         assert isinstance(deviceType, str)
         assert isinstance(filename,   basestring)
 
-        saveas = self.sanitizeFilename(deviceType + "___" + filename)
+        saveas = self.saveas(deviceType, filename, directory)
 
         # check if filename has already been downloaded
         if os.path.exists(saveas):

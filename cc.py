@@ -6,6 +6,7 @@ __license__    = "GPLv3"
 
 
 # Python libraries
+import os
 import zlib
 import unicodedata
 
@@ -34,6 +35,11 @@ class CC(object):
 
         result = map(lambda x: '_' if x in '<>:"/\|?*' else x, filename)
         return "".join(result)
+
+
+    @staticmethod
+    def saveas(deviceType, filename, directory):
+        return os.path.join(directory, CC.sanitizeFilename(deviceType + "___" + filename))
 
 
     @staticmethod
@@ -109,7 +115,7 @@ class CC(object):
 
 
     # Returns: ""
-    def getArtefact(self, deviceType, filename):
+    def getArtefact(self, deviceType, filename, directory = "."):
         assert isinstance(deviceType, str)
         assert isinstance(filename,   basestring)
 
