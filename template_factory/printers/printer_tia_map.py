@@ -146,7 +146,7 @@ class TIA_MAP_NG(TIA_MAP):
     def header(self, output):
         PRINTER.header(self, output)
 
-        self._append("""#FILENAME {inst_slot}-[PLCF#TEMPLATE]-[PLCF#TIMESTAMP].scl
+        self._append("""#FILENAME {inst_slot}-{template}-{timestamp}.scl
 #EOL "\\r\\n"
 #COUNTER Counter1 = [PLCF# Counter1 + 10];
 #COUNTER Counter2 = [PLCF# Counter2 + 10];
@@ -165,7 +165,9 @@ BEGIN
 
   // {inst_slot}: PLC <-> EPICS Communication Mapping
   //------------------------------------------------------------------------
-""".format(inst_slot = self.inst_slot()).replace("\n", "\r\n"), output)
+""".format(inst_slot = self.inst_slot(),
+           template  = self.template(),
+           timestamp = self.timestamp()).replace("\n", "\r\n"), output)
 
 
     #
@@ -175,10 +177,10 @@ BEGIN
         PRINTER.body(self, if_def, output)
 
         self._append("""
-        "_CommsEPICSDataMappingFBFactory"(EPICSToPLCLength := [PLCF# {epicstoplclength}],
+        "_CommsEPICSDataMappingFBFactory"(EPICSToPLCLength := {epicstoplclength},
                                           EPICSToPLCDataBlockOffset := [PLCF# ^(EPICSToPLCDataBlockStartOffset) + Counter1],
-                                          EPICSToPLCParametersStart := [PLCF# {commandwordslength}],
-                                          PLCToEPICSLength := [PLCF# {plctoepicslength}],
+                                          EPICSToPLCParametersStart := {commandwordslength},
+                                          PLCToEPICSLength := {plctoepicslength},
                                           PLCToEPICSDataBlockOffset := [PLCF# ^(PLCToEPICSDataBlockStartOffset) + Counter2],
                                           EPICSToPLCCommandRegisters := "DEV_{inst_slot}_iDB".CommandReg,
                                           PLCToEPICSStatusRegisters := "DEV_{inst_slot}_iDB".StatusReg,
@@ -205,7 +207,7 @@ END_FUNCTION
 
 //########## EPICS->PLC datablock ##########
 DATA_BLOCK "EPICSToPLC"
-{ S7_Optimized_Access := 'FALSE' }
+{{ S7_Optimized_Access := 'FALSE' }}
 VERSION : 0.1
 NON_RETAIN
    STRUCT
@@ -218,7 +220,7 @@ END_DATA_BLOCK
 
 //########## PLC->EPICS datablock ##########
 DATA_BLOCK "PLCToEPICS"
-{ S7_Optimized_Access := 'FALSE' }
+{{ S7_Optimized_Access := 'FALSE' }}
 VERSION : 0.1
 NON_RETAIN
    STRUCT
@@ -230,7 +232,7 @@ BEGIN
 END_DATA_BLOCK
 
 FUNCTION "_CommsEPICS" : Void
-{ S7_Optimized_Access := 'TRUE' }
+{{ S7_Optimized_Access := 'TRUE' }}
 VERSION : 0.1
 
 BEGIN
@@ -241,18 +243,27 @@ BEGIN
 	        "PLCToEPICS"."Word"[2] := 0;
 	    END_IF;
 	END_IF;
-	
+
 	// Call the comms block to provide PLC<->EPICS comms
 	"_CommsPLC_EPICS_DB"(Enable:="Utilities".AlwaysOn,
 	                    SendTrigger:="Utilities".Pulse_200ms,
-	                    BytesToSend:=[PLCF# 2 * Counter2],
-	                    InterfaceID:= DINT_TO_WORD(72), // 16#48,
+	                    BytesToSend:={bytestosend},
+	                    InterfaceID:={interfaceid},
+	                    S7ConnectionID:={s7connectionid},
+	                    MBConnectionID:={mbconnectionid},
+	                    S7Port:={s7port},
+	                    MBPort:={mbport},
 	                    PLCToEPICSData:="PLCToEPICS"."Word",
 	                    EPICSToPLCData:="EPICSToPLC"."Word");
 	
 	//Map all devices command and status registers to EPICS->PLC and PLC->EPICS data exchange blocks
 	"_CommsEPICSDataMap"();
-	
+
 END_FUNCTION
 
-""".replace("\n", "\r\n"), output)
+""".format(bytestosend    = self.plcf("2 * Counter2"),
+           interfaceid    = self.plcf("PLC-EPICS-COMMS: InterfaceID"),
+           s7connectionid = self.plcf("PLC-EPICS-COMMS: S7ConnectionID"),
+           mbconnectionid = self.plcf("PLC-EPICS-COMMS: MBConnectionID"),
+           s7port         = self.plcf("PLC-EPICS-COMMS: S7Port"),
+           mbport         = self.plcf("PLC-EPICS-COMMS: MBPort")).replace("\n", "\r\n"), output)
