@@ -50,6 +50,14 @@ class PRINTER(object):
         return self.plcf("INSTALLATION_SLOT")
 
 
+    def template(self):
+        return self.plcf("TEMPLATE")
+
+
+    def timestamp(self):
+        return self.plcf("TIMESTAMP")
+
+
     def comment(self):
         return ""
 
