@@ -369,7 +369,6 @@ def processTemplateID(templateID, rootDevice, rootDeviceType, rootArtefacts, con
         if template is not None:
             # process template and add result to output
             output += pt.process(elem, template)
-            output.append("\n\n")
             print "Template processed."
 
         else:
@@ -438,7 +437,7 @@ def processTemplateID(templateID, rootDevice, rootDeviceType, rootArtefacts, con
             if not line.startswith("#COUNTER") \
                and not line.startswith("#FILENAME") \
                and not line.startswith("#EOL"):
-                future_print(line, end=eol, file=f)
+                future_print(line, end = eol, file = f)
 
     output_files.append(outputFile)
 
