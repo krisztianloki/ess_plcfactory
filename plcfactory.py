@@ -29,7 +29,8 @@ import hashlib
 import plcf_glob as glob
 import plcf
 import processTemplate as pt
-from future_print import future_print
+from   ccdb import CCDB
+from   future_print import future_print
 
 # Template Factory
 parent_dir = os.path.abspath(os.path.dirname(__file__))
@@ -544,7 +545,6 @@ if __name__ == "__main__":
         from ccdb import CCDB_TEST
         glob.ccdb = CCDB_TEST()
     else:
-        from ccdb import CCDB
         glob.ccdb = CCDB()
 
     if plc:
