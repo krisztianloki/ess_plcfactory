@@ -142,9 +142,9 @@ class CC(object):
         filename = os.path.join(directory, self.sanitizeFilename(filename))
         dumpfile = zipfile.ZipFile(filename, "w", zipfile.ZIP_DEFLATED)
 
-        dumpfile.writestr("ccdb.dump", str(self._deviceDict))
+        dumpfile.writestr(os.path.join("ccdb", "device.dict"), str(self._deviceDict))
         for template in self._artifacts:
-            dumpfile.write(template)
+            dumpfile.write(template, os.path.join("ccdb", template))
 
         return filename
 
