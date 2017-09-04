@@ -49,7 +49,7 @@ TEMPLATE_TAG = "TEMPLATE"
 IFDEF_TAG    = ".def"
 hashobj      = hashlib.sha256()
 ifdefs       = dict()
-output_files = list()
+output_files = dict()
 
 
 def getArtefact(deviceType, filename):
@@ -440,7 +440,7 @@ def processTemplateID(templateID, rootDevice, rootDeviceType, rootArtefacts, con
                and not line.startswith("#EOL"):
                 future_print(line, end = eol, file = f)
 
-    output_files.append(outputFile)
+    output_files[templateID] = outputFile
 
     print "Output file written: " + outputFile + "\n",
     print "Hash sum: " + glob.ccdb.getHash(hashobj)
@@ -487,7 +487,7 @@ def create_zipfile(zipit):
     print "Zipfile created: " + zipit
 
 
-if __name__ == "__main__":
+def main():
 
     parser         = argparse.ArgumentParser(add_help = False)
 
@@ -496,6 +496,14 @@ if __name__ == "__main__":
                         dest = "plc",
                         help = 'use the default templates for PLCs',
                         action = "store_true"
+                       )
+
+    parser.add_argument(
+                        '--eee',
+                        '--eem',
+                        dest    = "eem",
+                        help    = "create a minimal EEE module with EPICS-DB and startup snippet",
+                        action  = "store_true"
                        )
 
     parser.add_argument(
@@ -508,6 +516,7 @@ if __name__ == "__main__":
     args = parser.parse_known_args()[0]
 
     plc    = args.plc
+    eem    = args.eem
     device = args.device
 
     parser         = argparse.ArgumentParser()
@@ -517,6 +526,14 @@ if __name__ == "__main__":
                         dest   = "plc",
                         help   = 'use the default templates for PLCs',
                         action = "store_true"
+                       )
+
+    parser.add_argument(
+                        '--eee',
+                        '--eem',
+                        dest    = "eem",
+                        help    = "create a minimal EEE module with EPICS-DB and startup snippet",
+                        action  = "store_true"
                        )
 
     parser.add_argument(
@@ -567,7 +584,7 @@ if __name__ == "__main__":
                         nargs    = '*',
                         type     = str,
                         default  = [],
-                        required = not plc)
+                        required = not (plc or eem))
 
     # retrieve parameters
     args       = parser.parse_args()
@@ -585,13 +602,21 @@ if __name__ == "__main__":
     else:
         glob.ccdb = CCDB()
 
+    default_printers = []
+    def add_to_default_printers(new_list):
+        default_printers.extend([ p for p in new_list if p not in default_printers])
+
     if plc:
-        plc_printers = [ "EPICS-DB", "IFA", "TIA-MAP-NG" ]
-        if not set(plc_printers) <= set(tf.available_printers()):
-            print "Your PLCFactory does not support generating the following necessary templates: ", list(set(plc_printers) - set(tf.available_printers()))
+        add_to_default_printers( [ "EPICS-DB", "IFA", "TIA-MAP-NG" ] )
+    if eem:
+        add_to_default_printers( [ "EPICS-DB", "ST-CMD" ] )
+
+    if default_printers:
+        if not set(default_printers) <= set(tf.available_printers()):
+            print "Your PLCFactory does not support generating the following necessary templates: ", list(set(default_printers) - set(tf.available_printers()))
             exit(1)
 
-        templateIDs = plc_printers + [ t for t in args.template if t not in plc_printers ]
+        templateIDs = default_printers + [ t for t in args.template if t not in default_printers ]
     else:
         templateIDs = args.template
 
@@ -612,9 +637,40 @@ if __name__ == "__main__":
     processDevice(device, templateIDs)
 
     # create a dump of CCDB
-    output_files.append(glob.ccdb.dump("-".join([device, glob.timestamp]), OUTPUT_DIR))
+    output_files["CCDB-DUMP"] = glob.ccdb.dump("-".join([device, glob.timestamp]), OUTPUT_DIR)
 
     if args.zipit is not None:
         create_zipfile(args.zipit)
 
+    if eem:
+        basename = CCDB.sanitizeFilename(device.lower())
+        mdir     = "-".join(["m-epics", basename])
+        out_mdir = os.path.join(OUTPUT_DIR, mdir)
+        _mkdir(out_mdir)
+
+        with open(os.path.join(out_mdir, "Makefile"), "w") as makefile:
+            future_print("""include ${EPICS_ENV_PATH}/module.Makefile
+
+USR_DEPENDENCIES = s7plc_comms
+""", file = makefile)
+
+        from shutil import copy2
+        def m_cp(f, d, newname):
+            od = os.path.join(out_mdir, d)
+            _mkdir(od)
+            copy2(f, os.path.join(od, newname))
+
+        m_cp(output_files['EPICS-DB'],  "db",      basename + ".db")
+        m_cp(output_files['ST-CMD'],    "startup", basename + ".cmd")
+        if output_files['CCDB-DUMP'] is not None:
+            import zipfile
+            z = zipfile.ZipFile(output_files['CCDB-DUMP'], "r")
+            z.extractall(os.path.join(out_mdir, "misc"))
+
     print("--- %.1f seconds ---\n" % (time.time() - start_time))
+
+
+
+
+if __name__ == "__main__":
+    main()
