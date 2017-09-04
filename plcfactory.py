@@ -498,15 +498,17 @@ if __name__ == "__main__":
                         '--zip',
                         dest    = "zipit",
                         help    = 'create a zipfile containing the generated files',
-                        metavar = "zipfile name",
+                        metavar = "zipfile-name",
                         nargs   = "?",
                         type    = str,
                         const   = ""
                        )
 
     parser.add_argument(
+                        '--ccdb-test',
                         '--test',
-                        help     = 'select test database',
+                        dest     = "ccdb_test",
+                        help     = 'select CCDB test database',
                         action   = 'store_true',
                         required = False)
 
@@ -516,6 +518,14 @@ if __name__ == "__main__":
                         '--production',
                         help     = 'select production database',
                         action   = 'store_true',
+                        required = False)    
+
+    parser.add_argument(
+                        '--ccdb',
+                        dest     = "ccdb",
+                        help     = 'use a CCDB dump as backend',
+                        metavar  = 'directory-to-CCDB-dump-or-name-of-.ccdb.zip',
+                        type     = str,
                         required = False)    
 
     parser.add_argument(
@@ -541,7 +551,10 @@ if __name__ == "__main__":
 
     glob.timestamp = '{:%Y%m%d%H%M%S}'.format(datetime.datetime.now())
 
-    if args.test:
+    if args.ccdb:
+        from ccdb_file import CCDB_FILE
+        glob.ccdb = CCDB_FILE(args.ccdb)
+    elif args.ccdb_test:
         from ccdb import CCDB_TEST
         glob.ccdb = CCDB_TEST()
     else:
@@ -593,7 +606,8 @@ if __name__ == "__main__":
 
         z = zipfile.ZipFile(zipit, "w", zipfile.ZIP_DEFLATED)
         for f in output_files:
-            z.write(f, os.path.basename(f))
+            if f is not None:
+                z.write(f, os.path.basename(f))
         z.close()
 
         print "Zipfile created: " + zipit
