@@ -470,6 +470,23 @@ def _mkdir(name):
             raise
 
 
+def create_zipfile(zipit):
+    import zipfile
+
+    if not zipit.endswith(".zip"):
+        zipit += ".zip"
+
+    zipit = glob.ccdb.sanitizeFilename(zipit)
+
+    z = zipfile.ZipFile(zipit, "w", zipfile.ZIP_DEFLATED)
+    for f in output_files.itervalues():
+        if f is not None:
+            z.write(f, os.path.basename(f))
+    z.close()
+
+    print "Zipfile created: " + zipit
+
+
 if __name__ == "__main__":
 
     parser         = argparse.ArgumentParser(add_help = False)
@@ -481,9 +498,17 @@ if __name__ == "__main__":
                         action = "store_true"
                        )
 
+    parser.add_argument(
+                        '-d',
+                        '--device',
+                        help     = 'device / installation slot',
+                        required = True
+                        )
+
     args = parser.parse_known_args()[0]
 
-    plc = args.plc
+    plc    = args.plc
+    device = args.device
 
     parser         = argparse.ArgumentParser()
 
@@ -501,7 +526,7 @@ if __name__ == "__main__":
                         metavar = "zipfile-name",
                         nargs   = "?",
                         type    = str,
-                        const   = ""
+                        const   = device
                        )
 
     parser.add_argument(
@@ -524,7 +549,7 @@ if __name__ == "__main__":
                         '--ccdb',
                         dest     = "ccdb",
                         help     = 'use a CCDB dump as backend',
-                        metavar  = 'directory-to-CCDB-dump-or-name-of-.ccdb.zip',
+                        metavar  = 'directory-to-CCDB-dump / name-of-.ccdb.zip',
                         type     = str,
                         required = False)    
 
@@ -570,8 +595,6 @@ if __name__ == "__main__":
     else:
         templateIDs = args.template
 
-    device = args.device
-
     os.system('clear')
 
     _mkdir(TEMPLATE_DIR)
@@ -591,25 +614,7 @@ if __name__ == "__main__":
     # create a dump of CCDB
     output_files.append(glob.ccdb.dump("-".join([device, glob.timestamp]), OUTPUT_DIR))
 
-    if args.zipit is not None and len(output_files):
-        import zipfile
-
-        if args.zipit == "":
-            zipit = device
-        else:
-            zipit = args.zipit
-
-        if not zipit.endswith(".zip"):
-            zipit += ".zip"
-
-        zipit = glob.ccdb.sanitizeFilename(zipit)
-
-        z = zipfile.ZipFile(zipit, "w", zipfile.ZIP_DEFLATED)
-        for f in output_files:
-            if f is not None:
-                z.write(f, os.path.basename(f))
-        z.close()
-
-        print "Zipfile created: " + zipit
+    if args.zipit is not None:
+        create_zipfile(args.zipit)
 
     print("--- %.1f seconds ---\n" % (time.time() - start_time))
