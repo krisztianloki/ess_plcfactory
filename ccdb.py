@@ -33,110 +33,38 @@ class CCDB(CC):
     def __init__(self, url = None):
         CC.__init__(self)
 
-        self._propDict = dict()
-
         if url is None:
             self._url = "https://ccdb.esss.lu.se/rest/"
         else:
             self._url = url
 
 
-    @staticmethod
-    def _ensure(var, default):
-        #
-        # Do not return None
-        #
-        if var is not None:
-            return var
-
-        return default
+    def _controls(self, device):
+        return self._getField(device, 'controls')
 
 
-    def controls(self, device):
-        assert isinstance(device, str)
-
-        return self._ensure(self._getField(device, 'controls'), [])
+    def _controlledBy(self, device):
+        return self._getField(device, 'controlledBy')
 
 
-    def controlledBy(self, device):
-        assert isinstance(device, str)
-
-        return self._ensure(self._getField(device, 'controlledBy'), [])
+    def _properties(self, device):
+        return self._getField(device, 'properties')
 
 
-    def properties(self, device):
-        assert isinstance(device, str)
-
-        return self._ensure(self._getField(device, 'properties'), [])
-
-
-    def propertiesDict(self, device, prefixToIgnore = "PLCF#"):
-        if (device, prefixToIgnore) in self._propDict:
-            return self._propDict[device, prefixToIgnore]
-
-        propList = self.properties(device)
-        result = {}
-
-        for elem in propList:
-            assert isinstance(elem, dict), type(elem)
-
-            name  = elem.get("name")
-            value = elem.get("value")
-
-            if value == "null" and "List" in elem.get("dataType"):
-                value = []
-
-            # remove prefix if it exists
-            if name.startswith(prefixToIgnore):
-                name = name[len(prefixToIgnore):]
-
-            # sanity check against duplicate values, which would point to an
-            # issue with the entered data
-            assert name not in result
-
-            result[name] = value
-
-        self._propDict[device, prefixToIgnore] = result
-
-        return result
-
-
-    def getDeviceType(self, device):
-        assert isinstance(device, str), type(device)
-
+    def _getDeviceType(self, device):
         return self._getField(device, "deviceType")
 
 
-    def getDescription(self, device):
-        assert isinstance(device, str), type(device)
-
+    def _getDescription(self, device):
         return self._getField(device, "description")
 
 
-    def getArtefactNames(self, device):
-        assert isinstance(device, str), type(device)
-
-        artefacts  = self._getField(device, "artifacts")
-
-        artefactNames = []
-        if artefacts is not None:
-          for elem in artefacts:
-            artefactNames.append(elem.get("name"))
-
-        return artefactNames
+    def _getArtefactNames(self, device):
+        return self._getField(device, "artifacts")
 
 
-    # download artefact and save in template directory
-    def getArtefact(self, deviceType, filename, directory = "."):
-        assert isinstance(deviceType, str)
-        assert isinstance(filename,   basestring)
-
-        saveas = self.saveas(deviceType, filename, directory)
-
-        # check if filename has already been downloaded
-        if os.path.exists(saveas):
-            return saveas
-
+    # download artefact and save as saveas
+    def _getArtefact(self, deviceType, filename, saveas):
         url    = self._url + "deviceTypes/" + deviceType + "/download/" + filename
         result = self._get(url)
 

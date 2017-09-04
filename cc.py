@@ -20,6 +20,9 @@ class CC(object):
         # key: device, value: dict of all properties/values
         self._deviceDict     = dict()
 
+        # cache for device, property dictionary
+        self._propDict       = dict()
+
         # cache for ^() expressions
         # key: (device, expression), value: property
         self._backtrackCache = dict()
@@ -42,7 +45,7 @@ class CC(object):
 
     @staticmethod
     def saveas(deviceType, filename, directory):
-        return os.path.join(directory, CC.sanitizeFilename(deviceType + "___" + filename))
+        return os.path.normpath(os.path.join(directory, CC.sanitizeFilename(deviceType + "___" + filename)))
 
 
     @staticmethod
@@ -68,53 +71,126 @@ class CC(object):
             return string.encode("utf-8")
 
 
+    @staticmethod
+    def _ensure(var, default):
+        #
+        # Do not return None
+        #
+        if var is not None:
+            return var
+
+        return default
+
+
+    def _getCached(self, device, field):
+        return self._deviceDict[device].get(field, [])
+
+
     # Returns: []
     def controls(self, device):
         assert isinstance(device, str)
 
-        raise NotImplementedError
+        try:
+            cached = self._getCached(device, 'controls')
+        except KeyError:
+            cached = self._controls(device)
+
+        return self._ensure(cached, [])
 
 
     # Returns: []
     def controlledBy(self, device):
         assert isinstance(device, str)
 
-        raise NotImplementedError
+        try:
+            cached = self._getCached(device, 'controlledBy')
+        except KeyError:
+            cached = self._controlledBy(device)
+
+        return self._ensure(cached, [])
 
 
     # Returns: []
     def properties(self, device):
         assert isinstance(device, str)
 
-        raise NotImplementedError
+        try:
+            cached = self._getCached(device, 'properties')
+        except KeyError:
+            cached = self._properties(device)
+
+        return self._ensure(cached, [])
 
 
     # Returns: {}
-    def propertiesDict(self, device):
+    def propertiesDict(self, device, prefixToIgnore = "PLCF#"):
         assert isinstance(device, str)
 
-        raise NotImplementedError
+        if (device, prefixToIgnore) in self._propDict:
+            return self._propDict[device, prefixToIgnore]
+
+        propList = self.properties(device)
+        result = {}
+
+        for elem in propList:
+            assert isinstance(elem, dict), type(elem)
+
+            name  = elem.get("name")
+            value = elem.get("value")
+
+            if value == "null" and "List" in elem.get("dataType"):
+                value = []
+
+            # remove prefix if it exists
+            if name.startswith(prefixToIgnore):
+                name = name[len(prefixToIgnore):]
+
+            # sanity check against duplicate values, which would point to an
+            # issue with the entered data
+            assert name not in result
+
+            result[name] = value
+
+        self._propDict[device, prefixToIgnore] = result
+
+        return result
 
 
     # Returns: ""
     def getDeviceType(self, device):
         assert isinstance(device, str), type(device)
 
-        raise NotImplementedError
+        try:
+            return self._getCached(device, "deviceType")
+        except KeyError:
+            return self._getDeviceType(device)
 
 
     # Returns: ""
     def getDescription(self, device):
         assert isinstance(device, str), type(device)
 
-        raise NotImplementedError
+        try:
+            return self._getCached(device, "description")
+        except KeyError:
+            return self._getDescription(device)
 
 
     # Returns: []
     def getArtefactNames(self, device):
         assert isinstance(device, str), type(device)
 
-        raise NotImplementedError
+        try:
+            artefacts  = self._getCached(device, "artifacts")
+        except KeyError:
+            artefacts = self._getArtefactNames(device)
+
+        artefactNames = []
+        if artefacts is not None:
+          for elem in artefacts:
+            artefactNames.append(elem.get("name"))
+
+        return artefactNames
 
 
     # Returns: ""
@@ -122,7 +198,13 @@ class CC(object):
         assert isinstance(deviceType, str)
         assert isinstance(filename,   basestring)
 
-        raise NotImplementedError
+        saveas = self.saveas(deviceType, filename, directory)
+
+        # check if filename has already been downloaded
+        if os.path.exists(saveas):
+            return saveas
+
+        return self._getArtefact(deviceType, filename, saveas)
 
 
     # Returns: []
