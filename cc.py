@@ -13,6 +13,9 @@ import unicodedata
 
 
 class CC(object):
+    paths_cached = dict()
+
+
     def __init__(self):
         self._hashSum        = None
 
@@ -44,8 +47,25 @@ class CC(object):
 
 
     @staticmethod
-    def saveas(deviceType, filename, directory):
-        return os.path.normpath(os.path.join(directory, CC.sanitizeFilename(deviceType + "___" + filename)))
+    def makedirs(path):
+        try:
+            os.makedirs(path)
+        except OSError:
+            if not os.path.isdir(path):
+                raise
+
+
+    @staticmethod
+    def saveas(deviceType, filename, directory, CreateDir = True):
+        try:
+            return CC.paths_cached[deviceType, filename, directory]
+        except KeyError:
+            dtdir = os.path.join(directory, CC.sanitizeFilename(deviceType))
+            if CreateDir:
+                CC.makedirs(dtdir)
+            path = os.path.normpath(os.path.join(dtdir, CC.sanitizeFilename(filename)))
+            CC.paths_cached[deviceType, filename, directory] = path
+            return path
 
 
     @staticmethod

@@ -66,7 +66,7 @@ class CCDB_FILE(CC):
         assert isinstance(deviceType, str)
         assert isinstance(filename,   basestring)
 
-        saveas = self.saveas(deviceType, filename, os.path.join(self._rootpath, "templates"))
+        saveas = self.saveas(deviceType, filename, os.path.join(self._rootpath, "templates"), CreateDir = False)
 
         # check if filename has already been downloaded
         if os.path.exists(saveas):
@@ -77,7 +77,7 @@ class CCDB_FILE(CC):
 
     # extract artefact and save as saveas
     def _getArtefactFromZip(self, deviceType, filename, saveas):
-        with self._zipfile.open(self.saveas(deviceType, filename, os.path.join("ccdb", "templates"))) as r:
+        with self._zipfile.open(self.saveas(deviceType, filename, os.path.join("ccdb", "templates"), CreateDir = False)) as r:
             with open(saveas, "w") as w:
                 w.writelines(r)
 
