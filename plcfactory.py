@@ -462,11 +462,11 @@ def processDevice(device, templateIDs):
     map(lambda x: processTemplateID(x, device, deviceType, rootArtefacts, controls), templateIDs)
 
 
-def _mkdir(name):
+def makedirs(path):
     try:
-        os.mkdir(name)
+        os.makedirs(path)
     except OSError as ose:
-        if ose.errno != errno.EEXIST:
+        if not os.path.isdir(path):
             raise
 
 
@@ -622,8 +622,8 @@ def main():
 
     os.system('clear')
 
-    _mkdir(TEMPLATE_DIR)
-    _mkdir(OUTPUT_DIR)
+    makedirs(TEMPLATE_DIR)
+    makedirs(OUTPUT_DIR)
 
     # remove templates downloaded in a previous run
     for f in os.listdir(TEMPLATE_DIR):
@@ -646,7 +646,7 @@ def main():
         basename = CCDB.sanitizeFilename(device.lower())
         mdir     = "-".join(["m-epics", basename])
         out_mdir = os.path.join(OUTPUT_DIR, mdir)
-        _mkdir(out_mdir)
+        makedirs(out_mdir)
 
         with open(os.path.join(out_mdir, "Makefile"), "w") as makefile:
             future_print("""include ${EPICS_ENV_PATH}/module.Makefile
@@ -657,7 +657,7 @@ USR_DEPENDENCIES = s7plc_comms
         from shutil import copy2
         def m_cp(f, d, newname):
             od = os.path.join(out_mdir, d)
-            _mkdir(od)
+            makedirs(od)
             copy2(f, os.path.join(od, newname))
 
         m_cp(output_files['EPICS-DB'],  "db",      basename + ".db")
