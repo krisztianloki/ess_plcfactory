@@ -487,8 +487,33 @@ def create_zipfile(zipit):
     print "Zipfile created: " + zipit
 
 
-def main():
+def create_eem(device):
+    basename = CCDB.sanitizeFilename(device.lower())
+    mdir     = "-".join(["m-epics", basename])
+    out_mdir = os.path.join(OUTPUT_DIR, mdir)
+    makedirs(out_mdir)
 
+    with open(os.path.join(out_mdir, "Makefile"), "w") as makefile:
+        future_print("""include ${EPICS_ENV_PATH}/module.Makefile
+
+USR_DEPENDENCIES = s7plc_comms
+""", file = makefile)
+
+    from shutil import copy2
+    def m_cp(f, d, newname):
+        od = os.path.join(out_mdir, d)
+        makedirs(od)
+        copy2(f, os.path.join(od, newname))
+
+    m_cp(output_files['EPICS-DB'],  "db",      basename + ".db")
+    m_cp(output_files['ST-CMD'],    "startup", basename + ".cmd")
+    if output_files['CCDB-DUMP'] is not None:
+        import zipfile
+        z = zipfile.ZipFile(output_files['CCDB-DUMP'], "r")
+        z.extractall(os.path.join(out_mdir, "misc"))
+
+
+def main():
     parser         = argparse.ArgumentParser(add_help = False)
 
     parser.add_argument(
@@ -643,29 +668,7 @@ def main():
         create_zipfile(args.zipit)
 
     if eem:
-        basename = CCDB.sanitizeFilename(device.lower())
-        mdir     = "-".join(["m-epics", basename])
-        out_mdir = os.path.join(OUTPUT_DIR, mdir)
-        makedirs(out_mdir)
-
-        with open(os.path.join(out_mdir, "Makefile"), "w") as makefile:
-            future_print("""include ${EPICS_ENV_PATH}/module.Makefile
-
-USR_DEPENDENCIES = s7plc_comms
-""", file = makefile)
-
-        from shutil import copy2
-        def m_cp(f, d, newname):
-            od = os.path.join(out_mdir, d)
-            makedirs(od)
-            copy2(f, os.path.join(od, newname))
-
-        m_cp(output_files['EPICS-DB'],  "db",      basename + ".db")
-        m_cp(output_files['ST-CMD'],    "startup", basename + ".cmd")
-        if output_files['CCDB-DUMP'] is not None:
-            import zipfile
-            z = zipfile.ZipFile(output_files['CCDB-DUMP'], "r")
-            z.extractall(os.path.join(out_mdir, "misc"))
+        create_eem(device)
 
     print("--- %.1f seconds ---\n" % (time.time() - start_time))
 
