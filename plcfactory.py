@@ -647,17 +647,25 @@ def main():
 
     os.system('clear')
 
-    makedirs(TEMPLATE_DIR)
-    makedirs(OUTPUT_DIR)
+    from shutil import rmtree
+    def onrmtreeerror(func, path, exc_info):
+        if path != TEMPLATE_DIR:
+            raise
+
+        if not (func is os.listdir or func is os.rmdir):
+            raise
+
+        if not exc_info[0] is OSError:
+            raise
+
+        if exc_info[1].errno != 2:
+            raise
 
     # remove templates downloaded in a previous run
-    for f in os.listdir(TEMPLATE_DIR):
-        f = os.path.join(TEMPLATE_DIR, f)
-        if not os.path.isfile(f):
-            continue
+    rmtree(TEMPLATE_DIR, onerror = onrmtreeerror)
 
-        if TEMPLATE_TAG in f or f.endswith(IFDEF_TAG):
-            os.remove(f)
+    makedirs(TEMPLATE_DIR)
+    makedirs(OUTPUT_DIR)
 
     processDevice(device, templateIDs)
 
