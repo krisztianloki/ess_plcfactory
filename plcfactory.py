@@ -517,6 +517,23 @@ USR_DEPENDENCIES = s7plc_comms
     return out_mdir
 
 
+class PLCFArgumentError(Exception):
+    def __init__(self, status):
+        self.status = status
+
+
+class PLCFArgumentParser(argparse.ArgumentParser):
+    def __init__(self):
+        argparse.ArgumentParser.__init__(self)
+
+
+    def exit(self, status = 0, message = None):
+        if message:
+            self._print_message(message, sys.stderr)
+
+        raise PLCFArgumentError(status)
+
+
 def main(argv):
     parser         = argparse.ArgumentParser(add_help = False)
 
@@ -548,7 +565,7 @@ def main(argv):
     eem    = args.eem
     device = args.device
 
-    parser         = argparse.ArgumentParser()
+    parser         = PLCFArgumentParser()
 
     parser.add_argument(
                         '--plc',
@@ -688,4 +705,7 @@ def main(argv):
 
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    try:
+        main(sys.argv[1:])
+    except PLCFArgumentError, e:
+        exit(e.status)
