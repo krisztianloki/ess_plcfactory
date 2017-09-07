@@ -636,7 +636,7 @@ def main():
         default_printers.extend([ p for p in new_list if p not in default_printers])
 
     if plc:
-        add_to_default_printers( [ "EPICS-DB", "IFA", "TIA-MAP-NG" ] )
+        add_to_default_printers( [ "EPICS-DB", "IFA", "TIA-MAP-NG", "DIAG" ] )
     if eem:
         add_to_default_printers( [ "EPICS-DB", "ST-CMD" ] )
 
