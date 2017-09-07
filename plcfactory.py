@@ -517,7 +517,7 @@ USR_DEPENDENCIES = s7plc_comms
     return out_mdir
 
 
-def main():
+def main(argv):
     parser         = argparse.ArgumentParser(add_help = False)
 
     parser.add_argument(
@@ -542,7 +542,7 @@ def main():
                         required = True
                         )
 
-    args = parser.parse_known_args()[0]
+    args = parser.parse_known_args(argv)[0]
 
     plc    = args.plc
     eem    = args.eem
@@ -616,7 +616,7 @@ def main():
                         required = not (plc or eem))
 
     # retrieve parameters
-    args       = parser.parse_args()
+    args       = parser.parse_args(argv)
 
     start_time     = time.time()
 
@@ -688,4 +688,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1:])
