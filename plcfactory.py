@@ -485,6 +485,7 @@ def create_zipfile(zipit):
     z.close()
 
     print "Zipfile created: " + zipit
+    return zipit
 
 
 def create_eem(device):
@@ -511,6 +512,9 @@ USR_DEPENDENCIES = s7plc_comms
         import zipfile
         z = zipfile.ZipFile(output_files['CCDB-DUMP'], "r")
         z.extractall(os.path.join(out_mdir, "misc"))
+
+    print "Module created: " + out_mdir
+    return out_mdir
 
 
 def main():
