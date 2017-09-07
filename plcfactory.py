@@ -539,7 +539,7 @@ def main(argv):
                         '-d',
                         '--device',
                         help     = 'device / installation slot',
-                        required = True
+                        const    = None
                         )
 
     args = parser.parse_known_args(argv)[0]
