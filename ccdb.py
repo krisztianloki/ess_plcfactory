@@ -30,13 +30,15 @@ import requests
 
 
 class CCDB(CC):
-    def __init__(self, url = None):
+    def __init__(self, url = None, verify = True):
         CC.__init__(self)
 
         if url is None:
             self._url = "https://ccdb.esss.lu.se/rest/"
         else:
             self._url = url
+
+        self._verify = verify
 
 
     def _controls(self, device):
@@ -151,12 +153,11 @@ class CCDB(CC):
 
 
     def _get(self, url):
-        # False because SSH connection is unsigned:
-        return requests.get(url, verify = False)
+        return requests.get(url, verify = self._verify)
 
 
 
 
 class CCDB_TEST(CCDB):
     def __init__(self):
-        CCDB.__init__(self, "https://ics-services.esss.lu.se/ccdb-test/rest/")
+        CCDB.__init__(self, "https://ics-services.esss.lu.se/ccdb-test/rest/", verify = False)
