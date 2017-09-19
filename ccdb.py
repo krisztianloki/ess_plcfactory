@@ -71,7 +71,12 @@ class CCDB(CC):
         result = self._get(url)
 
         if result.status_code != 200:
-            return None
+            print """ERROR:
+Cannot get artifact {dtyp}.{art}: error {code}""".format(dtyp = deviceType,
+                                                         art  = filename,
+                                                         code = result.status_code)
+
+            exit(1)
 
         # 'w' overwrites the file if it exists
         with open(saveas, 'wb') as f:
@@ -136,7 +141,7 @@ class CCDB(CC):
                         print dev
 
                 print "\nExiting.\n"
-                exit()
+                exit(1)
 
             tmpDict = self.tostring(json.loads(result.text))
 
