@@ -535,22 +535,38 @@ class PLCFArgumentParser(argparse.ArgumentParser):
 
 
 def main(argv):
+    def add_common_parser_args(parser):
+        #
+        # -d/--device cannot be added to the common args, because it is not a required option in the first pass but a required one in the second pass
+        #
+        parser.add_argument(
+                            '--plc',
+                            dest = "plc",
+                            help = 'use the default templates for PLCs',
+                            action = "store_true"
+                           )
+
+        parser.add_argument(
+                            '--eee',
+                            '--eem',
+                            dest    = "eem",
+                            help    = "create a minimal EEE module with EPICS-DB and startup snippet",
+                            action  = "store_true"
+                           )
+
+        parser.add_argument(
+                            '--list-templates',
+                            dest    = "list_templates",
+                            help    = "give a list of the possible templates that can be generated on-the-fly from an interface definition",
+                            action  = "store_true"
+                           )
+
+        return parser
+
+
     parser         = argparse.ArgumentParser(add_help = False)
 
-    parser.add_argument(
-                        '--plc',
-                        dest = "plc",
-                        help = 'use the default templates for PLCs',
-                        action = "store_true"
-                       )
-
-    parser.add_argument(
-                        '--eee',
-                        '--eem',
-                        dest    = "eem",
-                        help    = "create a minimal EEE module with EPICS-DB and startup snippet",
-                        action  = "store_true"
-                       )
+    add_common_parser_args(parser)
 
     parser.add_argument(
                         '-d',
@@ -561,26 +577,24 @@ def main(argv):
 
     args = parser.parse_known_args(argv)[0]
 
+    if args.list_templates:
+        print tf.available_printers()
+        exit(0)
+
     plc    = args.plc
     eem    = args.eem
     device = args.device
 
     parser         = PLCFArgumentParser()
 
-    parser.add_argument(
-                        '--plc',
-                        dest   = "plc",
-                        help   = 'use the default templates for PLCs',
-                        action = "store_true"
-                       )
+    add_common_parser_args(parser)
 
     parser.add_argument(
-                        '--eee',
-                        '--eem',
-                        dest    = "eem",
-                        help    = "create a minimal EEE module with EPICS-DB and startup snippet",
-                        action  = "store_true"
-                       )
+                        '-d',
+                        '--device',
+                        help     = 'device / installation slot',
+                        required = True
+                        )
 
     parser.add_argument(
                         '--zip',
@@ -615,13 +629,6 @@ def main(argv):
                         metavar  = 'directory-to-CCDB-dump / name-of-.ccdb.zip',
                         type     = str,
                         required = False)    
-
-    parser.add_argument(
-                        '-d',
-                        '--device',
-                        help     = 'device / installation slot',
-                        required = True
-                        )
 
     parser.add_argument(
                         '-t',
