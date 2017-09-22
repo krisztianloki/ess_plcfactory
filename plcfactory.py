@@ -479,9 +479,23 @@ def create_zipfile(zipit):
     zipit = glob.ccdb.sanitizeFilename(zipit)
 
     z = zipfile.ZipFile(zipit, "w", zipfile.ZIP_DEFLATED)
+
+    tostrip = OUTPUT_DIR + os.path.sep
+    def removeoutdir(path):
+        try:
+            return path[path.index(tostrip) + len(tostrip):]
+        except:
+            return path
+
     for f in output_files.itervalues():
-        if f is not None:
-            z.write(f, os.path.basename(f))
+        if f is None:
+            continue
+
+        if isinstance(f, str):
+            z.write(f, removeoutdir(f))
+        elif isinstance(f, list):
+            for ff in f:
+                z.write(ff, removeoutdir(ff))
     z.close()
 
     print "Zipfile created: " + zipit
@@ -489,12 +503,13 @@ def create_zipfile(zipit):
 
 
 def create_eem(device):
-    basename = CCDB.sanitizeFilename(device.lower())
-    mdir     = "-".join(["m-epics", basename])
-    out_mdir = os.path.join(OUTPUT_DIR, mdir)
+    eem_files = []
+    basename  = CCDB.sanitizeFilename(device.lower())
+    out_mdir  = os.path.join(OUTPUT_DIR, "-".join(["m-epics", basename]))
     makedirs(out_mdir)
 
     with open(os.path.join(out_mdir, "Makefile"), "w") as makefile:
+        eem_files.append(makefile.name)
         future_print("""include ${EPICS_ENV_PATH}/module.Makefile
 
 USR_DEPENDENCIES = s7plc_comms
@@ -504,14 +519,22 @@ USR_DEPENDENCIES = s7plc_comms
     def m_cp(f, d, newname):
         od = os.path.join(out_mdir, d)
         makedirs(od)
-        copy2(f, os.path.join(od, newname))
+        of = os.path.join(od, newname)
+        copy2(f, of)
+        eem_files.append(of)
 
     m_cp(output_files['EPICS-DB'],  "db",      basename + ".db")
     m_cp(output_files['ST-CMD'],    "startup", basename + ".cmd")
+
     if output_files['CCDB-DUMP'] is not None:
         import zipfile
+        miscdir = os.path.join(out_mdir, "misc")
         z = zipfile.ZipFile(output_files['CCDB-DUMP'], "r")
-        z.extractall(os.path.join(out_mdir, "misc"))
+        z.extractall(miscdir)
+        eem_files.extend(map(lambda x: os.path.join(miscdir, x), z.namelist()))
+        z.close()
+
+    output_files['EEM'] = eem_files
 
     print "Module created: " + out_mdir
     return out_mdir
@@ -700,11 +723,11 @@ def main(argv):
     # create a dump of CCDB
     output_files["CCDB-DUMP"] = glob.ccdb.dump("-".join([device, glob.timestamp]), OUTPUT_DIR)
 
-    if args.zipit is not None:
-        create_zipfile(args.zipit)
-
     if eem:
         create_eem(device)
+
+    if args.zipit is not None:
+        create_zipfile(args.zipit)
 
     print("--- %.1f seconds ---\n" % (time.time() - start_time))
 
