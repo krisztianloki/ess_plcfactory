@@ -417,6 +417,17 @@ class OVERLAP(BLOCK):
 
 
 
+def ifdef_interface(func):
+    def ifdef_interface_func(*args, **kwargs):
+        if args is not None and isinstance(args, tuple) and len(args) > 0 and isinstance(args[0], IF_DEF):
+            func(*args, **kwargs)
+        else:
+            raise IfDefException("Trying to call non-interface function {f}".format(f = func.__name__))
+
+    return ifdef_interface_func
+
+
+
 class IF_DEF(object):
     def __init__(self, optimize, hashobj = None):
         assert isinstance(optimize, bool)
@@ -446,10 +457,19 @@ class IF_DEF(object):
         self._properties[PARAM_BLOCK.length_keyword()]  = 0
         self._properties[STATUS_BLOCK.length_keyword()] = 0
 
+        self._evalEnv = dict()
+        for f in dir(self):
+            val = getattr(self, f)
+            if not hasattr(val, '__call__') or f.startswith('_'):
+                continue
+
+            if val.func_name == "ifdef_interface_func":
+                self._evalEnv[f] = val
+
 
     def _eval(self, source):
         self._source = source
-        eval("self." + source.strip())
+        eval(source.strip(), self._evalEnv)
 
 
     def _status_block(self):
@@ -567,6 +587,7 @@ class IF_DEF(object):
         self._eval(source)
 
 
+    @ifdef_interface
     def define_template(self, name, **keyword_params):
         if not isinstance(name, str):
             raise IfDefSyntaxError("Template name must be a string!")
@@ -575,6 +596,7 @@ class IF_DEF(object):
         self._add_source()
 
 
+    @ifdef_interface
     def define_status_block(self):
         if self._STATUS is not None:
             raise IfDefSyntaxError("Block redefinition is not possible!")
@@ -583,6 +605,7 @@ class IF_DEF(object):
         self._ifaces.append(self._STATUS)
 
 
+    @ifdef_interface
     def define_command_block(self):
         if self._CMD is not None:
             raise IfDefSyntaxError("Block redefinition is not possible!")
@@ -591,6 +614,7 @@ class IF_DEF(object):
         self._add(self._CMD)
 
 
+    @ifdef_interface
     def define_parameter_block(self):
         if self._PARAM is not None:
             raise IfDefSyntaxError("Block redefinition is not possible!")
@@ -599,6 +623,7 @@ class IF_DEF(object):
         self._add(self._PARAM)
 
 
+    @ifdef_interface
     def define_overlap(self):
         if self._active_BLOCK is None:
             raise IfDefSyntaxError("Define block first")
@@ -609,6 +634,7 @@ class IF_DEF(object):
         self._add_source()
 
 
+    @ifdef_interface
     def end_overlap(self):
         if self._overlap is None:
             raise IfDefSyntaxError("No overlap found")
@@ -618,10 +644,12 @@ class IF_DEF(object):
         self._add_source()
 
 
+    @ifdef_interface
     def add_bit(self, name = None, **keyword_params):
         self.add_digital(name, **keyword_params)
 
 
+    @ifdef_interface
     def add_digital(self, name = None, **keyword_params):
         block = self._active_block()
         bit_def = self._active_bit_def()
@@ -631,18 +659,22 @@ class IF_DEF(object):
         self._add(var)
 
 
+    @ifdef_interface
     def skip_bit(self):
         self.skip_digital()
 
 
+    @ifdef_interface
     def skip_digital(self):
         self.skip_digitals(1)
 
 
+    @ifdef_interface
     def skip_bits(self, num):
         self.skip_digitals(num)
 
 
+    @ifdef_interface
     def skip_digitals(self, num):
         if isinstance(num, str):
             num = int(num)
@@ -653,10 +685,12 @@ class IF_DEF(object):
         self.add_bit(SKIP_BITS = num)
 
 
+    @ifdef_interface
     def add_float(self, name, plc_var_type = "DINT", **keyword_params):
         self.add_analog(name, plc_var_type, **keyword_params)
 
 
+    @ifdef_interface
     def add_analog(self, name, plc_var_type = "DINT", **keyword_params):
         if not isinstance(name, str):
             raise IfDefSyntaxError("Name must be a string!")
@@ -666,6 +700,7 @@ class IF_DEF(object):
         self._add(var)
 
 
+    @ifdef_interface
     def add_time(self, name, **keyword_params):
         if not isinstance(name, str):
             raise IfDefSyntaxError("Name must be a string!")
@@ -674,6 +709,7 @@ class IF_DEF(object):
         self.add_analog(name, "TIME", **keyword_params)
 
 
+    @ifdef_interface
     def add_enum(self, name, plc_var_type = "INT", nobt = 16, shift = 0, **keyword_params):
         if not isinstance(name, str):
             raise IfDefSyntaxError("Name must be a string!")
@@ -683,6 +719,7 @@ class IF_DEF(object):
         self._add(var)
 
 
+    @ifdef_interface
     def add_bitmask(self, name, plc_var_type = "INT", nobt = 16, shift = 0, **keyword_params):
         if not isinstance(name, str):
             raise IfDefSyntaxError("Name must be a string!")
@@ -692,6 +729,7 @@ class IF_DEF(object):
         self._add(var)
 
 
+    @ifdef_interface
     def add_verbatim(self, verbatim):
         if not isinstance(verbatim, str):
             raise IfDefSyntaxError("Only strings can be copied verbatim!")
@@ -700,10 +738,12 @@ class IF_DEF(object):
         self._add(var)
 
 
+    @ifdef_interface
     def end_bits(self):
         self.end_digitals()
 
 
+    @ifdef_interface
     def end_digitals(self):
         self._add_source()
         BITS.end()
