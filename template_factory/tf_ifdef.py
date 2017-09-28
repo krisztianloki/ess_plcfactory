@@ -105,12 +105,14 @@ class DummyHash(object):
 
 
 class SOURCE(object):
-    def __init__(self, source, comment = False):
-        assert isinstance(source,  str),  func_param_msg("source",  "string")
-        assert isinstance(comment, bool), func_param_msg("comment", "bool")
+    def __init__(self, source, sourcenum = -1, comment = False):
+        assert isinstance(source,     str),  func_param_msg("source",     "string")
+        assert isinstance(sourcenum,  int),  func_param_msg("sourcenum",  "integer")
+        assert isinstance(comment,    bool), func_param_msg("comment",    "bool")
 
-        self._source  = source
-        self._comment = comment
+        self._source    = source
+        self._sourcenum = sourcenum
+        self._comment   = comment
 
 
     @staticmethod
@@ -118,8 +120,16 @@ class SOURCE(object):
         return "<<<--- " + str(source).lstrip()
 
 
+    def set_sourcenum(self, sourcenum):
+        self._sourcenum = sourcenum
+
+
     def source(self):
         return self._source
+
+
+    def sourcenum(self):
+        return self._sourcenum
 
 
 
@@ -510,13 +520,15 @@ class IF_DEF(object):
     def _add(self, var):
         assert isinstance(var, SOURCE), func_param_msg("var", "SOURCE")
 
+        var.set_sourcenum(self._sourcenum)
         self._ifaces.append(var)
 
 
-    def _add_comment(self, line, linenum):
+    def _add_comment(self, line):
         assert isinstance(line, str), func_param_msg("line", "string")
 
-        var   = SOURCE(line, True)
+        var   = SOURCE(line, comment = True)
+        self._sourcenum = -1
         self._add(var)
 
 
@@ -577,11 +589,11 @@ class IF_DEF(object):
             return
 
         if source.startswith("#"):
-            self._add_comment(source[1:], linenum)
+            self._add_comment(source[1:])
             return
 
         if source.strip() == "":
-            self._add_comment(source, linenum)
+            self._add_comment(source)
             return
 
         self._hash.update(source)
@@ -604,7 +616,7 @@ class IF_DEF(object):
             raise IfDefSyntaxError("Block redefinition is not possible!")
 
         self._active_BLOCK = self._STATUS = STATUS_BLOCK(self._source, self._optimize)
-        self._ifaces.append(self._STATUS)
+        self._add(self._STATUS)
 
 
     @ifdef_interface
@@ -684,7 +696,7 @@ class IF_DEF(object):
         if not isinstance(num, int):
             raise IfDefSyntaxError("Parameter must be a number!")
 
-        self.add_bit(SKIP_BITS = num)
+        self.add_digital(SKIP_BITS = num)
 
 
     @ifdef_interface
