@@ -421,10 +421,10 @@ class IF_DEF(object):
     def __init__(self, optimize, hashobj = None):
         assert isinstance(optimize, bool)
 
-#        if hashobj is not None and not isinstance(hashobj, hashlib.HASH):
-#            raise IfDefException("Expected a hash object from the hashlib module!")
         if hashobj is None:
             hashobj = DummyHash()
+        elif "update" not in dir(hashobj) or not callable(hashobj.update):
+            raise IfDefException("Expected a hash object from the hashlib module!")
 
         BASE_TYPE.init()
 
