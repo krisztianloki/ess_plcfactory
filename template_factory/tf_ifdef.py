@@ -447,6 +447,7 @@ class IF_DEF(object):
         self._overlap               = None
         self._active                = True
         self._source                = ""
+        self._sourcenum             = -1
         self._properties            = dict()
         self._to_plc_words_length   = 0
         self._from_plc_words_length = 0
@@ -467,8 +468,9 @@ class IF_DEF(object):
                 self._evalEnv[f] = val
 
 
-    def _eval(self, source):
-        self._source = source
+    def _eval(self, source, linenum):
+        self._source    = source
+        self._sourcenum = linenum
         eval(source.strip(), self._evalEnv)
 
 
@@ -511,7 +513,7 @@ class IF_DEF(object):
         self._ifaces.append(var)
 
 
-    def _add_comment(self, line):
+    def _add_comment(self, line, linenum):
         assert isinstance(line, str), func_param_msg("line", "string")
 
         var   = SOURCE(line, True)
@@ -561,7 +563,7 @@ class IF_DEF(object):
         return self._from_plc_words_length
 
 
-    def add(self, source):
+    def add(self, source, linenum = -1):
         if not isinstance(source, str):
             raise IfDefSyntaxError("Interface definition lines must be strings!")
 
@@ -575,16 +577,16 @@ class IF_DEF(object):
             return
 
         if source.startswith("#"):
-            self._add_comment(source[1:])
+            self._add_comment(source[1:], linenum)
             return
 
         if source.strip() == "":
-            self._add_comment(source)
+            self._add_comment(source, linenum)
             return
 
         self._hash.update(source)
 
-        self._eval(source)
+        self._eval(source, linenum)
 
 
     @ifdef_interface

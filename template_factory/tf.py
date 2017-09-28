@@ -28,7 +28,7 @@ def _processLine(if_def, line, num):
     errormsg = "{error} at line {num}: {line}"
 
     try:
-        if_def.add(line)
+        if_def.add(line, num)
     except SyntaxError:
         print errormsg.format(error = "Syntax error", num = num, line = line.strip())
         exit(1)
