@@ -158,7 +158,7 @@ Cannot get artifact {dtyp}.{art}: error {code}""".format(dtyp = deviceType,
 
 
     def _get(self, url):
-        return requests.get(url, verify = self._verify)
+        return requests.get(url, headers = { 'Accept' : 'application/json' }, verify = self._verify)
 
 
 
