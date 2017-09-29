@@ -142,6 +142,12 @@ Cannot get artifact {dtyp}.{art}: error {code}""".format(dtyp = deviceType,
 
                 print "\nExiting.\n"
                 exit(1)
+            elif result.status_code != 200:
+                print "ERROR:"
+                print "Server returned status code {code}".format(code = result.status_code)
+                print "\nExiting.\n"
+
+                exit(1)
 
             tmpDict = self.tostring(json.loads(result.text))
 
