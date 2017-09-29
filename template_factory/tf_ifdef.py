@@ -105,7 +105,12 @@ class DummyHash(object):
 
 
 class SOURCE(object):
-    def __init__(self, source, sourcenum = -1, comment = False):
+    def __init__(self, source, comment = False):
+        if isinstance(source, tuple):
+            source, sourcenum = source
+        else:
+            sourcenum = -1
+
         assert isinstance(source,     str),  func_param_msg("source",     "string")
         assert isinstance(sourcenum,  int),  func_param_msg("sourcenum",  "integer")
         assert isinstance(comment,    bool), func_param_msg("comment",    "bool")
@@ -117,6 +122,8 @@ class SOURCE(object):
 
     @staticmethod
     def fromline(source):
+        if isinstance(source, tuple):
+            return (SOURCE.fromline(source[0]), source[1])
         return "<<<--- " + str(source).lstrip()
 
 
@@ -457,7 +464,6 @@ class IF_DEF(object):
         self._overlap               = None
         self._active                = True
         self._source                = ""
-        self._sourcenum             = -1
         self._properties            = dict()
         self._to_plc_words_length   = 0
         self._from_plc_words_length = 0
@@ -479,8 +485,7 @@ class IF_DEF(object):
 
 
     def _eval(self, source, linenum):
-        self._source    = source
-        self._sourcenum = linenum
+        self._source    = (source, linenum)
         eval(source.strip(), self._evalEnv)
 
 
@@ -520,7 +525,6 @@ class IF_DEF(object):
     def _add(self, var):
         assert isinstance(var, SOURCE), func_param_msg("var", "SOURCE")
 
-        var.set_sourcenum(self._sourcenum)
         self._ifaces.append(var)
 
 
@@ -528,7 +532,6 @@ class IF_DEF(object):
         assert isinstance(line, str), func_param_msg("line", "string")
 
         var   = SOURCE(line, comment = True)
-        self._sourcenum = -1
         self._add(var)
 
 
