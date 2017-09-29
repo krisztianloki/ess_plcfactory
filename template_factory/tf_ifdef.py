@@ -844,10 +844,12 @@ class BASE_TYPE(SOURCE):
 
         self.compute_offset()
 
-        if PV_NAME in self._keyword_params:
-            self._pvname = self._keyword_params[PV_NAME]
-        else:
-            self._pvname = self._name
+        if PV_NAME not in self._keyword_params:
+            self._keyword_params[PV_NAME] = self._name
+
+        self._check_pv_extra()
+        self._pvname = self._keyword_params[PV_NAME]
+
 
 
     @staticmethod
@@ -942,6 +944,30 @@ class BASE_TYPE(SOURCE):
 
     def is_valid(self):
         return True
+
+
+    def _check_pv_extra(self):
+        field_length = { PV_NAME            : 20,
+                         PV_ALIAS           : 20,
+                         PV_PREFIX + 'DESC' : 40,
+                         PV_PREFIX + 'EGU'  : 16,
+                         PV_PREFIX + 'ONAM' : 26,
+                         PV_PREFIX + 'ZNAM' : 26
+                       }
+
+        for key, value in self._keyword_params.iteritems():
+            if not key.startswith(PV_PREFIX):
+                continue
+            try:
+                if len(value) > field_length[key]:
+                    if self.sourcenum() != -1:
+                        print "At line number {lnum}:".format(lnum = self.sourcenum())
+                    print "The field {field} of the pv is too long: {value} (length: {len} / {max_len})".format(field   = key,
+                                                                                                                value   = value,
+                                                                                                                len     = len(value),
+                                                                                                                max_len = field_length[key])
+            except KeyError:
+                pass
 
 
     def _build_pv_extra(self):
