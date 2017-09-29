@@ -42,7 +42,8 @@ class CCDB(CC):
 
 
     def _controls(self, device):
-        url     = "".join([ self._url, "slots/", device, "/controls" ])
+        # Greedily request transitive controls information
+        url    = "".join([ self._url, "slots/", device, "/controls/?transitive=", str(True) ])
 
         result = self._get(url)
         if result.status_code == 200:
@@ -50,6 +51,7 @@ class CCDB(CC):
             for slot in slots:
                 self._deviceDict[slot["name"]] = slot
 
+        # Also retrieve the device itself
         return self._getField(device, 'controls')
 
 
