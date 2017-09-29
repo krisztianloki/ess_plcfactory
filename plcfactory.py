@@ -453,11 +453,11 @@ def processDevice(device, templateIDs):
     print "#" * 60
     print "Device at root: " + device + "\n"
 
-    # get artifact names of files attached to the root device
-    (deviceType, rootArtefacts) = getArtefactNames(device)
-
     # find devices this device controls
     controls = buildControlsList(device)
+
+    # get artifact names of files attached to the root device
+    (deviceType, rootArtefacts) = getArtefactNames(device)
 
     map(lambda x: processTemplateID(x, device, deviceType, rootArtefacts, controls), templateIDs)
 
