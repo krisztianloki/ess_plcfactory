@@ -93,11 +93,11 @@ Cannot get artifact {dtyp}.{art}: error {code}""".format(dtyp = deviceType,
 
         (slot, deviceName) = device.split(":")
 
-        url = self._url + "slots/"
+        url = self._url + "slotNames/"
 
         # False because SSH connection is unsigned:
         result  = self._get(url)
-        tmpList = json.loads(result.text)["installationSlots"]
+        tmpList = json.loads(result.text)["names"]
 
         # get all devices in CCDB
         allDevices = map(lambda x: x["name"], tmpList)
@@ -131,7 +131,7 @@ Cannot get artifact {dtyp}.{art}: error {code}""".format(dtyp = deviceType,
                 print "in mind that device names are case-sensitive.\n"
                 print "Maybe you meant one of the following devices: "
                 print "(Accesing CCDB, may take a few seconds.)\n"
-                print "Most simlar device names in CCDB in chosen slot (max. 10):"
+                print "Most similar device names in CCDB in chosen slot (max. 10):"
                 top10 = self.getSimilarDevices(device)[:10]
 
                 if top10 == []:
