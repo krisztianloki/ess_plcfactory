@@ -42,6 +42,14 @@ class CCDB(CC):
 
 
     def _controls(self, device):
+        url     = "".join([ self._url, "slots/", device, "/controls" ])
+
+        result = self._get(url)
+        if result.status_code == 200:
+            slots = self.tostring(json.loads(result.text)["installationSlots"])
+            for slot in slots:
+                self._deviceDict[slot["name"]] = slot
+
         return self._getField(device, 'controls')
 
 
