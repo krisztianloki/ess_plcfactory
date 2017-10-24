@@ -42,12 +42,16 @@ PARAM         = "PARAMETER"
 ASYN_TIMEOUT  = "100"
 
 
-PLC_types = {'BOOL', 'BYTE', 'WORD', 'DWORD', 'INT', 'DINT', 'REAL', 'SSTIME', 'TIME', 'LTIME', 'DATE', 'TIME_OF_DAY', 'CHAR' }
+# Data types for S7 PLCs
+PLC_types = { 'BOOL', 'BYTE', 'WORD', 'DWORD', 'INT', 'DINT', 'REAL', 'SSTIME', 'TIME', 'LTIME', 'DATE', 'TIME_OF_DAY', 'CHAR' }
+
+# New data types for S7-1200/1500
+PLC_types.update({ 'USINT', 'SINT', 'UINT', 'UDINT' })
 
 
-bits_in_type_map = { 'UINT8'   : 8,  'INT8'   : 8,  'UNSIGN8' : 8,  'BYTE'       : 8,  'CHAR'       : 8,
-                     'UINT16'  : 16, 'INT16'  : 16, 'SHORT'   : 16, 'UNSIGN16'   : 16, 'WORD'       : 16, 'INT16SM'  : 16, 'BCD_UNSIGNED' : 16, 'BCD_SIGNED' : 16, 'INT'  : 16,
-                     'UINT32'  : 32, 'INT32'  : 32, 'LONG'    : 32, 'UNSIGN32'   : 32, 'DWORD'      : 32, 'INT32_LE' : 32, 'INT32_BE'     : 32, 'DINT'       : 32, 'TIME' : 32,
+bits_in_type_map = { 'UINT8'   :  8, 'INT8'   :  8, 'UNSIGN8' :  8, 'BYTE'       :  8, 'CHAR'       :  8, 'USINT'    :  8, 'SINT'         :  8,
+                     'UINT16'  : 16, 'INT16'  : 16, 'SHORT'   : 16, 'UNSIGN16'   : 16, 'WORD'       : 16, 'INT16SM'  : 16, 'BCD_UNSIGNED' : 16, 'BCD_SIGNED' : 16, 'INT'  : 16, 'UINT'  : 16,
+                     'UINT32'  : 32, 'INT32'  : 32, 'LONG'    : 32, 'UNSIGN32'   : 32, 'DWORD'      : 32, 'INT32_LE' : 32, 'INT32_BE'     : 32, 'DINT'       : 32, 'TIME' : 32, 'UDINT' : 32,
                      'FLOAT32' : 32, 'REAL32' : 32, 'FLOAT'   : 32, 'FLOAT32_LE' : 32, 'FLOAT32_BE' : 32, 'REAL'     : 32,
                      'FLOAT64' : 64, 'REAL64' : 64, 'DOUBLE'  : 64, 'FLOAT64_LE' : 64, 'FLOAT64_BE' : 64,
                      'STRING'  : 40 * 8 }
@@ -301,10 +305,14 @@ class STATUS_BLOCK(BLOCK):
 
     @staticmethod
     def valid_type_pairs():
-        return dict(BYTE  = [ "UINT8",   "INT8",    "UNSIGN8", "BYTE", "CHAR" ],
+        return dict(BYTE  = [ "UINT8",   "UNSIGN8", "BYTE", "CHAR" ],
+                    USINT = [ "UINT8",   "UNSIGN8", "BYTE", "CHAR" ],
+                    SINT  = [ "INT8" ],
                     WORD  = [ "UINT16",  "UNSIGN16", "WORD" ],
+                    UINT  = [ "UINT16",  "UNSIGN16", "WORD" ],
                     INT   = [ "INT16",   "SHORT" ],
                     DWORD = [ "UINT32",  "UNSIGN32", "DWORD" ],
+                    UDINT = [ "UINT32",  "UNSIGN32", "DWORD" ],
                     DINT  = [ "INT32",   "LONG" ],
                     REAL  = [ "FLOAT32", "REAL32",   "FLOAT" ],
                     TIME  = [ "INT32",   "LONG" ])
@@ -337,9 +345,15 @@ class MODBUS(object):
     @staticmethod
     def valid_type_pairs():
         return dict(BYTE  = [ "UINT16" ],
+                    USINT = [ "UINT16" ],
+                    SINT  = [ "INT16" ],
                     WORD  = [ "UINT16",     "BCD_UNSIGNED" ],
+                    UINT  = [ "UINT16",     "BCD_UNSIGNED" ],
                     INT   = [ "INT16",      "BCD_SIGNED",  "INT16SM" ],
-                    DWORD = [ "INT32_BE",   "INT32_LE" ],
+# DWORD and UDINT are unsigned types, but MODBUS does not support writing (or reading) unsigned 32bit integers
+# so make it an error to use them
+#                    DWORD = [ "INT32_BE",   "INT32_LE" ],
+#                    UDINT = [ "INT32_BE",   "INT32_LE" ],
                     DINT  = [ "INT32_BE",   "INT32_LE" ],
                     REAL  = [ "FLOAT32_BE", "FLOAT32_LE" ],
                     TIME  = [ "INT32_BE",   "INT32_LE" ])
