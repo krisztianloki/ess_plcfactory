@@ -826,6 +826,9 @@ class BASE_TYPE(SOURCE):
         assert isinstance(plc_var_type, str),                                func_param_msg("plc_var_type",   "string")
         assert keyword_params is None or isinstance(keyword_params, dict),   func_param_msg("keyword_params", "dict")
 
+        if name == "":
+            raise IfDefSyntaxError("Empty name")
+
         self._keyword_params = keyword_params
         self._expand_templates()
 
@@ -863,6 +866,9 @@ class BASE_TYPE(SOURCE):
 
         self._check_pv_extra()
         self._pvname = self._keyword_params[PV_NAME]
+
+        if self._pvname == "":
+            raise IfDefSyntaxError("Empty PV_NAME")
 
 
 
@@ -968,6 +974,12 @@ class BASE_TYPE(SOURCE):
                          PV_PREFIX + 'ONAM' : 26,
                          PV_PREFIX + 'ZNAM' : 26
                        }
+
+        try:
+            if self._keyword_params[PV_ALIAS] == "":
+                raise IfDefSyntaxError("Empty PV_ALIAS")
+        except KeyError:
+            pass
 
         for key, value in self._keyword_params.iteritems():
             if not key.startswith(PV_PREFIX):
