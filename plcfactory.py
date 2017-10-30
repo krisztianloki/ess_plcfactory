@@ -573,6 +573,13 @@ def main(argv):
                            )
 
         parser.add_argument(
+                            '--legacy-plc',
+                            dest = "legacy_plc",
+                            help = 'use the default templates for legacy PLCs',
+                            action = "store_true"
+                           )
+
+        parser.add_argument(
                             '--eee',
                             '--eem',
                             dest    = "eem",
@@ -607,9 +614,10 @@ def main(argv):
         print tf.available_printers()
         exit(0)
 
-    plc    = args.plc
-    eem    = args.eem
-    device = args.device
+    plc        = args.plc
+    legacy_plc = args.legacy_plc
+    eem        = args.eem
+    device     = args.device
 
     parser         = PLCFArgumentParser()
 
@@ -663,7 +671,7 @@ def main(argv):
                         nargs    = '*',
                         type     = str,
                         default  = [],
-                        required = not (plc or eem))
+                        required = not (plc or eem or legacy_plc))
 
     # retrieve parameters
     args       = parser.parse_args(argv)
@@ -687,6 +695,11 @@ def main(argv):
 
     if plc:
         add_to_default_printers( [ "EPICS-DB", "IFA", "TIA-MAP-NG", "DIAG" ] )
+
+    if legacy_plc:
+        tf.optimize_s7db(True)
+        add_to_default_printers( [ "EPICS-DB", "TIA-MAP" ] )
+
     if eem:
         add_to_default_printers( [ "EPICS-DB", "ST-CMD" ] )
 
@@ -698,6 +711,15 @@ def main(argv):
         templateIDs = default_printers + [ t for t in args.template if t not in default_printers ]
     else:
         templateIDs = args.template
+
+    # Make sure that OPTIMIZE_S7DB is turned on if TIA-MAP is requested
+    if "TIA-MAP" in templateIDs:
+        tf.optimize_s7db(True)
+
+        # TIA-MAP and TIA-MAP-NG are incompatible
+        if "TIA-MAP-NG" in templateIDs:
+            print "Cannot use TIA-MAP and TIA-MAP-NG at the same time. They are incompatible."
+            exit(1)
 
     os.system('clear')
 
