@@ -241,17 +241,20 @@ def getIfDef(device):
 
     artefacts = glob.ccdb.getArtefactNames(device)
 
-    template = None
+    template = list()
     for artefact in artefacts:
         if not artefact.endswith(IFDEF_TAG):
             continue
-        template = artefact
-        break
+        template.append(artefact)
 
-    if template is None:
+    if len(template) == 0:
         return None
 
-    filename = getArtefact(deviceType, template)
+    if len(template) > 1:
+        print "More than one Interface Definiton files were found for {device}: {defs}".format(device = device, defs = template)
+        exit(1)
+
+    filename = getArtefact(deviceType, template[0])
     if filename is None:
         return None
 
