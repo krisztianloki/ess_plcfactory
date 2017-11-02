@@ -65,6 +65,10 @@ class PRINTER(object):
         return ""
 
 
+    def origin(self):
+        return "<<<--- "
+
+
     def empty_line(self):
         return "\n"
 
@@ -134,7 +138,7 @@ class PRINTER(object):
 
         assert isinstance(result, str)
         if self._show_origin and from_inp != "":
-            output.append(self.comment() + from_inp)
+            output.append(self.comment() + self.origin() + from_inp)
         if result != "":
             output += result.splitlines(True)
 

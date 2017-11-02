@@ -119,16 +119,9 @@ class SOURCE(object):
         assert isinstance(sourcenum,  int),  func_param_msg("sourcenum",  "integer")
         assert isinstance(comment,    bool), func_param_msg("comment",    "bool")
 
-        self._source    = source
+        self._source    = source.lstrip()
         self._sourcenum = sourcenum
         self._comment   = comment
-
-
-    @staticmethod
-    def fromline(source):
-        if isinstance(source, tuple):
-            return (SOURCE.fromline(source[0]), source[1])
-        return "<<<--- " + str(source).lstrip()
 
 
     def is_comment(self):
@@ -145,10 +138,11 @@ class SOURCE(object):
 
 
 class VERBATIM(SOURCE):
-    def __init__(self, verbatim):
+    def __init__(self, source, verbatim):
+        assert isinstance(source, tuple),  func_param_msg("source",   "tuple")
         assert isinstance(verbatim, str),  func_param_msg("verbatim", "string")
 
-        SOURCE.__init__(self, SOURCE.fromline("add_verbatim()\n"))
+        SOURCE.__init__(self, source)
 
         self._verbatim = verbatim
 
@@ -163,7 +157,7 @@ class VERBATIM(SOURCE):
 #
 class BLOCK(SOURCE):
     def __init__(self, source, block_type, optimize):
-        SOURCE.__init__(self, SOURCE.fromline(source))
+        SOURCE.__init__(self, source)
 
         BITS.end()
 
@@ -550,7 +544,7 @@ class IF_DEF(object):
 
 
     def _add_source(self):
-        self._add(SOURCE(SOURCE.fromline(self._source)))
+        self._add(SOURCE(self._source))
 
 
     # returns the length of 'block' in (16 bit) words
@@ -789,7 +783,7 @@ class IF_DEF(object):
         if not isinstance(verbatim, str):
             raise IfDefSyntaxError("Only strings can be copied verbatim!")
 
-        var = VERBATIM(verbatim)
+        var = VERBATIM(("add_verbatim()\n", self._source[1]), verbatim)
         self._add(var)
 
 
@@ -843,7 +837,7 @@ class BASE_TYPE(SOURCE):
 
 
     def __init__(self, source, block, name, plc_var_type, keyword_params):
-        SOURCE.__init__(self, SOURCE.fromline(source))
+        SOURCE.__init__(self, source)
 
         assert isinstance(block,        BLOCK),                              func_param_msg("block",          "BLOCK")
         assert isinstance(name,         str),                                func_param_msg("name",           "string")
