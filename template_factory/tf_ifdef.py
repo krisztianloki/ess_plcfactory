@@ -829,11 +829,13 @@ class IF_DEF(object):
 #
 class BASE_TYPE(SOURCE):
     templates = dict()
+    pv_names  = set()
 
 
     @staticmethod
     def init():
         BASE_TYPE.templates = dict()
+        BASE_TYPE.pv_names  = set()
 
 
     def __init__(self, source, block, name, plc_var_type, keyword_params):
@@ -887,6 +889,11 @@ class BASE_TYPE(SOURCE):
 
         if self._pvname == "":
             raise IfDefSyntaxError("Empty PV_NAME")
+
+        if self._pvname in BASE_TYPE.pv_names:
+            raise IfDefSyntaxError("PV Names must be unique")
+
+        BASE_TYPE.pv_names.add(self._pvname)
 
 
 
