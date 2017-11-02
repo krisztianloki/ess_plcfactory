@@ -131,8 +131,8 @@ class SOURCE(object):
         return "<<<--- " + str(source).lstrip()
 
 
-    def set_sourcenum(self, sourcenum):
-        self._sourcenum = sourcenum
+    def is_comment(self):
+        return self._comment
 
 
     def source(self):

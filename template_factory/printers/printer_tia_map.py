@@ -22,8 +22,8 @@ def printer():
 
 
 class TIA_MAP(PRINTER):
-    def __init__(self, comments = False):
-        PRINTER.__init__(self, comments)
+    def __init__(self):
+        PRINTER.__init__(self, comments = False, preserve_empty_lines = False, show_origin = False)
 
 
     def comment(self):
@@ -131,8 +131,8 @@ END_DATA_BLOCK
 
 
 class TIA_MAP_NG(TIA_MAP):
-    def __init__(self, comments = False):
-        TIA_MAP.__init__(self, comments)
+    def __init__(self):
+        TIA_MAP.__init__(self)
 
 
     @staticmethod

@@ -19,8 +19,8 @@ def printer():
 
 
 class ENGUI(PRINTER):
-    def __init__(self, comments = False):
-        PRINTER.__init__(self, comments)
+    def __init__(self):
+        PRINTER.__init__(self)
         self._iformatstring = "engui {cmd} \"[PLCF#INSTALLATION_SLOT]:{pvname}\"	|| return 1 2>/dev/null || exit 1\n"
         self._oformatstring = "engui {cmd} \"[PLCF#INSTALLATION_SLOT]:{pvname}\" \"[PLCF#INSTALLATION_SLOT]:{pvname}\"	|| return 1 2>/dev/null || exit 1\n"
 

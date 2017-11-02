@@ -18,8 +18,8 @@ def printer():
 
 
 class ST_CMD(PRINTER):
-    def __init__(self, comments = False):
-        PRINTER.__init__(self, comments)
+    def __init__(self):
+        PRINTER.__init__(self)
 
 
     @staticmethod

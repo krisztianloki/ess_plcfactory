@@ -38,12 +38,12 @@ BIT_NUMBER
 # InterFaceFactory output
 #
 class IFF(PRINTER):
-    def __init__(self, comments = False):
-        PRINTER.__init__(self, comments)
+    def __init__(self):
+        PRINTER.__init__(self, comments = True, preserve_empty_lines = False, show_origin = False)
 
 
     def comment(self):
-        return "#"
+        return "//"
 
 
     @staticmethod
@@ -104,12 +104,7 @@ PLCTOEPICSDATABLOCKOFFSET
 
 
     def _body_source(self, var, output):
-        if var.source().strip() == "":
-            return
-        #
-        # Do not include comments
-        #
-#        self._append((var.source(), ""), output)
+        self._append(var, output)
 
 
     def _body_format_var(self, var):

@@ -25,8 +25,8 @@ def printer():
 # EPICS output
 #
 class EPICS(PRINTER):
-    def __init__(self, comments = True):
-        PRINTER.__init__(self, comments)
+    def __init__(self):
+        PRINTER.__init__(self, comments = True, show_origin = True, preserve_empty_lines = True)
 
 
     def comment(self):
@@ -200,7 +200,7 @@ record(ai, "{inst_slot}:HeartbeatPLCToEPICS") {{
 
 
     def _body_source(self, var, output):
-        self._append((var.source(), ""))
+        self._append(var)
 
 
     def _body_end_cmd(self, if_def, output):

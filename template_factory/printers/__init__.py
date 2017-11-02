@@ -22,18 +22,21 @@ def available_printers():
 
 
 
-from tf_ifdef import IF_DEF
+from tf_ifdef import IF_DEF, SOURCE
 
 #
 # PRINTER
 #
 class PRINTER(object):
-    def __init__(self, comments = True):
-        assert isinstance(comments, bool),    func_param_msg("comments", "bool")
+    def __init__(self, comments = False, preserve_empty_lines = False, show_origin = False):
+        assert isinstance(comments,             bool),    func_param_msg("comments",             "bool")
+        assert isinstance(preserve_empty_lines, bool),    func_param_msg("preserve_empty_lines", "bool")
+        assert isinstance(show_origin,          bool),    func_param_msg("show_origin",          "bool")
 
-        self._output   = None
-        self._comments = comments
-        pass
+        self._output         = None
+        self._comments       = comments
+        self._preserve_empty = preserve_empty_lines
+        self._show_origin    = show_origin
 
 
     def _check_if_list(self, output):
@@ -60,6 +63,10 @@ class PRINTER(object):
 
     def comment(self):
         return ""
+
+
+    def empty_line(self):
+        return "\n"
 
 
     @staticmethod
@@ -96,7 +103,24 @@ class PRINTER(object):
         return self
 
 
+    def _append_source(self, source, output = None):
+        if source.is_comment() and self._comments:
+            if source.source().strip() != "":
+                output.append(self.comment() + source.source())
+            elif self._preserve_empty:
+                output.append(self.empty_line())
+
+
     def _append(self, gen, output = None):
+        if output is None:
+            output = self._output
+
+        if output is None:
+            return
+
+        if isinstance(gen, SOURCE):
+            return self._append_source(gen, output)
+
         # the generic format is ("input", "result")
         # but lets support "result" only formats too
         if not isinstance(gen, tuple):
@@ -105,21 +129,14 @@ class PRINTER(object):
         else:
             (from_inp, result) = gen
 
-        if output is None:
-            output = self._output
-
         if from_inp is None:
             from_inp = ""
 
-        if output is not None and gen != ("", ""):
-            if self._comments and from_inp != "":
-                # empty lines are special
-                if from_inp.strip() != "":
-                    output.append(self.comment() + from_inp)
-                else:
-                    output.append(from_inp)
-            if result != "":
-                output += result.splitlines(True)
+        assert isinstance(result, str)
+        if self._show_origin and from_inp != "":
+            output.append(self.comment() + from_inp)
+        if result != "":
+            output += result.splitlines(True)
 
         return gen
 
