@@ -29,7 +29,7 @@ def processDefinitionFile(definition, printers):
     assert isinstance(definition, str)
     assert isinstance(printers,   list)
 
-    print "Processing " + definition + "..."
+    print "Processing {definition}...".format(definition = definition)
 
     with open(definition) as m:
         if_def = tf.processLines(m)
@@ -46,7 +46,7 @@ def processDefinitionFile(definition, printers):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description = "Parses interface definitons and creates PLCFactory templates")
+    parser = argparse.ArgumentParser(description = "Parses interface definitons and creates PLCFactory templates", add_help = False)
 
     available_printers = tf.available_printers()
 
@@ -54,26 +54,42 @@ if __name__ == "__main__":
                         '-p',
                         help     = 'template printers',
                         nargs    = '+',
-                        choices  = available_printers,
-                        type     = str)
+                        choices  = available_printers + [ 'all' ],
+                        type     = str
+                       )
+
+    parser.add_argument('--show-printers',
+                        help     = 'show the available printers',
+                        default  = False,
+                        action   = 'store_true',
+                        dest     = 'show_printers'
+                       )
 
     parser.add_argument('--optimize',
-                        help    = "(default) optimize the created interface (won't be compatible with generated PLC mapper)",
-                        default = True,
-                        action  = 'store_true',
-                        dest    = "optimize",
-                        )
+                        help     = "(default) optimize the created interface (won't be compatible with the new PLC mapper)",
+                        default  = True,
+                        action   = 'store_true',
+                        dest     = "optimize",
+                       )
 
     parser.add_argument('--no-optimize',
-                        help    = "do NOT optimize the created interface",
-                        action  = 'store_false',
-                        dest    = "optimize",
-                        )
+                        help     = "do NOT optimize the created interface (for legacy PLC mapper)",
+                        action   = 'store_false',
+                        dest     = "optimize",
+                       )
 
+    args = parser.parse_known_args()[0]
+
+    if args.show_printers:
+        print available_printers
+        exit(0)
+
+    parser = argparse.ArgumentParser(parents = [ parser ])
     parser.add_argument('definitions',
                         help     = 'interface definitions',
                         nargs    = '+',
-                        type     = str)
+                        type     = str
+                       )
 
     args = parser.parse_args()
 
@@ -85,6 +101,10 @@ if __name__ == "__main__":
 """
 
     if args.printers is None:
+        # Do a syntax check only
+        args.printers = []
+
+    if 'all' in args.printers:
         args.printers = available_printers
 
     tf.optimize_s7db(args.optimize)
