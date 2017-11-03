@@ -10,7 +10,7 @@ __license__    = "GPLv3"
 # convert EPICS to proper header/body/footer style
 
 
-from printers import PRINTER
+from . import PRINTER
 from tf_ifdef import IfDefInternalError, SOURCE, VERBATIM, BLOCK, CMD_BLOCK, STATUS_BLOCK, BASE_TYPE
 
 

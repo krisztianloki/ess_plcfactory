@@ -7,7 +7,7 @@ __license__    = "GPLv3"
 
 
 
-from printers import PRINTER
+from . import PRINTER
 from tf_ifdef import BASE_TYPE, BIT, ANALOG, ENUM, BITMASK
 
 

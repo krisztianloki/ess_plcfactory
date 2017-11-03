@@ -10,7 +10,7 @@ __license__    = "GPLv3"
 # Use the counter_keyword() of the corresponding BLOCK instead of hardcoding Counter1 and Counter2
 
 
-from printers import PRINTER
+from . import PRINTER
 from tf_ifdef import CMD_BLOCK
 
 

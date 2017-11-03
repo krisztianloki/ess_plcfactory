@@ -10,7 +10,7 @@ __license__    = "GPLv3"
 # DOCUMENT, DOCUMENT, DOCUMENT
 
 
-from printers import PRINTER
+from . import PRINTER
 from tf_ifdef import SOURCE, BLOCK, CMD_BLOCK, BASE_TYPE, BIT
 
 
