@@ -676,12 +676,20 @@ class IF_DEF(object):
 
     @ifdef_interface
     def add_digital(self, name = None, **keyword_params):
-        block = self._active_block()
         bit_def = self._active_bit_def()
-        if name is None and "SKIP_BITS" not in keyword_params:
-            keyword_params.update(SKIP_BITS = 1)
-        var = BIT(self._source, bit_def, name, keyword_params)
-        self._add(var)
+
+        if name is None:
+            if "SKIP_BITS" not in keyword_params:
+                keyword_params.update(SKIP_BITS = 1)
+
+            if len(keyword_params) != 1:
+                raise IfDefSyntaxError("Skipped digitals cannot have parameters")
+
+            BIT.skip(bit_def, keyword_params["SKIP_BITS"])
+            self._add_source()
+        else:
+            var = BIT(self._source, bit_def, name, keyword_params)
+            self._add(var)
 
 
     def _add_alarm(self, name, sevr, alarm, **keyword_params):
@@ -1188,6 +1196,11 @@ class BIT(BASE_TYPE):
     bits_so_far = 0
     pv_types    = { CMD : "bo",   PARAM : "bo",   STATUS : "bi" }
     var_types   = { CMD : "",     PARAM : "",     STATUS : "WORD" }
+
+    @staticmethod
+    def skip(bit_def, num):
+        bit_def.add_bit(num)
+
 
     def __init__(self, source, bit_def, name, keyword_params):
         assert isinstance(bit_def, BITS), func_param_msg("bit_def", "BITS")
