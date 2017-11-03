@@ -1193,7 +1193,6 @@ class BITS(object):
 
 
 class BIT(BASE_TYPE):
-    bits_so_far = 0
     pv_types    = { CMD : "bo",   PARAM : "bo",   STATUS : "bi" }
     var_types   = { CMD : "",     PARAM : "",     STATUS : "WORD" }
 
@@ -1208,26 +1207,11 @@ class BIT(BASE_TYPE):
         self._bit_def  = bit_def
         self._bit_num  = bit_def._num_bits
 
-        if name is None:
-            self._skip = True
-            # Generate a unique name
-            name       = "__spare_bit_" + str(BIT.bits_so_far)
-            BIT.bits_so_far += 1
-        else:
-            self._skip = False
-
         #
         # BASE_TYPE.__init__ must be after self initialization
         #
         # 'WORD' is used as a placeholder only
         BASE_TYPE.__init__(self, source, bit_def._block, name, "WORD", keyword_params)
-
-
-    def toEPICS(self):
-        if self.is_valid():
-            return BASE_TYPE.toEPICS(self)
-        else:
-            return (self.source(), "")
 
 
     def _end_bits(self):
@@ -1246,19 +1230,12 @@ class BIT(BASE_TYPE):
         return self._bit_def._offset + self._param_offset
 
 
-    def is_valid(self):
-        return not self._skip
-
-
     def bit_number(self):
         return self._bit_num
 
 
     def compute_offset(self):
-        num = 1
-        if self._skip:
-            num = self._keyword_params["SKIP_BITS"]
-        self._bit_def.add_bit(num)
+        self._bit_def.add_bit(1)
 
 
     def pv_template(self):
