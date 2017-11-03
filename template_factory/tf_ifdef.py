@@ -995,10 +995,6 @@ class BASE_TYPE(SOURCE):
         return self._overlapped
 
 
-    def is_valid(self):
-        return True
-
-
     def _check_pv_extra(self):
         field_length = { PV_NAME            : 20,
                          PV_ALIAS           : 20,
