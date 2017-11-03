@@ -108,9 +108,6 @@ PLCTOEPICSDATABLOCKOFFSET
 
 
     def _body_format_var(self, var):
-        if isinstance(var, BIT) and var._skip:
-            return ""
-
         if var.is_overlapped():
             return ""
 

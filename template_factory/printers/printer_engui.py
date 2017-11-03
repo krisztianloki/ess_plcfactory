@@ -85,16 +85,12 @@ engui opi_end
 
     def _body_status(self, var, output):
         if isinstance(var, BIT) or isinstance(var, ANALOG) or isinstance(var, ENUM):
-            if var.is_valid():
-                self._iformat("add_textupdate", var, output)
+            self._iformat("add_textupdate", var, output)
         else:
             print "Skipping {pvname} of type {pvtype}\n".format(pvname = var.name(), pvtype = var.pv_type())
 
 
     def _body_command(self, var, output):
-        if not var.is_valid():
-            return
-
         if isinstance(var, ANALOG):
             self._oformat("add_textinput", var, output)
         elif isinstance(var, ENUM):
