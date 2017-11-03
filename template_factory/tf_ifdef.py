@@ -454,12 +454,12 @@ def ifdef_interface(func):
 
 
 class IF_DEF(object):
-    def __init__(self, optimize, hashobj = None):
-        assert isinstance(optimize, bool)
+    def __init__(self, OPTIMIZE = False, HASH = None):
+        assert isinstance(OPTIMIZE, bool)
 
-        if hashobj is None:
-            hashobj = DummyHash()
-        elif "update" not in dir(hashobj) or not callable(hashobj.update):
+        if HASH is None:
+            HASH = DummyHash()
+        elif "update" not in dir(HASH) or not callable(HASH.update):
             raise IfDefException("Expected a hash object from the hashlib module!")
 
         BASE_TYPE.init()
@@ -475,8 +475,8 @@ class IF_DEF(object):
         self._properties            = dict()
         self._to_plc_words_length   = 0
         self._from_plc_words_length = 0
-        self._hash                  = hashobj
-        self._optimize              = optimize
+        self._hash                  = HASH
+        self._optimize              = OPTIMIZE
 
         self._properties[CMD_BLOCK.length_keyword()]    = 0
         self._properties[PARAM_BLOCK.length_keyword()]  = 0

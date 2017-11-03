@@ -55,17 +55,10 @@ def processLines(lines, processor = None, **kwargs):
     else:
         assert isinstance(lines, file)
 
-    if "HASH" in kwargs:
-        hashobj = kwargs["HASH"]
-    else:
-        hashobj = None
+    if "OPTIMIZE" not in kwargs:
+        kwargs["OPTIMIZE"] = OPTIMIZE_S7DB
 
-    if "OPTIMIZE" in kwargs:
-        optimize = kwargs["OPTIMIZE"]
-    else:
-        optimize = OPTIMIZE_S7DB
-
-    if_def = IF_DEF(optimize, hashobj)
+    if_def = IF_DEF(**kwargs)
 
     if processor is None:
         processor = _processLine
