@@ -1185,25 +1185,28 @@ class BITS(object):
 
 
 class BIT(BASE_TYPE):
-    pv_types  = { CMD : "bo",   PARAM : "bo",   STATUS : "bi" }
-    var_types = { CMD : "",     PARAM : "",     STATUS : "WORD" }
+    bits_so_far = 0
+    pv_types    = { CMD : "bo",   PARAM : "bo",   STATUS : "bi" }
+    var_types   = { CMD : "",     PARAM : "",     STATUS : "WORD" }
 
     def __init__(self, source, bit_def, name, keyword_params):
         assert isinstance(bit_def, BITS), func_param_msg("bit_def", "BITS")
 
-        if name is None:
-            self._skip = True
-            name       = "N/A"
-        else:
-            self._skip = False
-
-        # 'WORD' is used as a placeholder only
         self._bit_def  = bit_def
         self._bit_num  = bit_def._num_bits
+
+        if name is None:
+            self._skip = True
+            # Generate a unique name
+            name       = "__spare_bit_" + str(BIT.bits_so_far)
+            BIT.bits_so_far += 1
+        else:
+            self._skip = False
 
         #
         # BASE_TYPE.__init__ must be after self initialization
         #
+        # 'WORD' is used as a placeholder only
         BASE_TYPE.__init__(self, source, bit_def._block, name, "WORD", keyword_params)
 
 
@@ -1359,9 +1362,3 @@ def _bytes_in_type(var_type):
 
 if __name__ == "__main__":
     pass
-    bl = STATUS_BLOCK("foo")
-    print bl.valid_var_types()
-    bl = CMD_BLOCK("foo")
-    print bl.valid_var_types()
-    bl = PARAM_BLOCK("foo")
-    print bl.valid_var_types()
