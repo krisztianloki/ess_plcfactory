@@ -65,7 +65,6 @@ del parent_dir
 import plcf_glob as glob
 import plcf
 from plcf_ext import PLCFExtException
-import processTemplate as pt
 from   ccdb import CCDB
 import helpers
 import plcf_git as git
@@ -81,6 +80,7 @@ IFDEF_EXTENSION = ".def"
 hashobj         = None
 ifdefs          = dict()
 ifdef_params    = dict(PLC_TYPE = "SIEMENS")
+plcfs           = dict()
 output_files    = dict()
 previous_files  = None
 device_tag      = None
@@ -215,28 +215,24 @@ def matchingArtifact(artifact, tag, templateID):
     return filename.endswith(match)
 
 
-def createFilename(header, device, templateID, **kwargs):
+def createFilename(cplcf, header):
     assert isinstance(header,     list)
-    assert isinstance(templateID, str )
 
     tag    = "#FILENAME"
     tagPos = findTag(header, tag)
 
     # default filename is chosen when no custom filename is specified
-    if len(header) == 0 or tagPos == -1:
-        outputFile = device.name() + "_" + device.deviceType() + "_template-" + templateID \
-                   + "_" + glob.timestamp + ".scl"
+    if tagPos == -1:
+        header = [ '{} [PLCF#INSTALLATION_SLOT]_[PLCF#DEVICE_TYPE]_template-[PLCF#TEMPLATE_ID]_[PLCF#TIMESTAMP].scl'.format(tag) ]
+        tagPos = 0
 
-        return helpers.sanitizeFilename(outputFile)
+    filename = header[tagPos]
 
-    else:
-        filename = header[tagPos]
+    # remove tag and strip surrounding whitespace
+    filename = filename[len(tag):].strip()
+    filename = cplcf.process(filename)
 
-        # remove tag and strip surrounding whitespace
-        filename = filename[len(tag):].strip()
-        filename = plcf.keywordsHeader(filename, device, templateID, **kwargs)
-
-        return helpers.sanitizeFilename(filename)
+    return helpers.sanitizeFilename(filename)
 
 
 def findTag(lines, tag):
@@ -346,6 +342,17 @@ def getFooter(device, templateID_or_printer):
     return footer
 
 
+def getPLCF(device):
+    global plcfs
+
+    try:
+        return plcfs[device.name()]
+    except KeyError:
+        cplcf = plcf.PLCF(device)
+        plcfs[device.name()] = cplcf
+        return cplcf
+
+
 def processTemplateID(templateID, devices):
     assert isinstance(templateID,      str)
     assert isinstance(devices,         list)
@@ -353,6 +360,8 @@ def processTemplateID(templateID, devices):
     start_time = time.time()
 
     rootDevice = devices[0]
+    rcplcf      = getPLCF(rootDevice)
+    rcplcf.register_template(templateID)
 
     if device_tag:
         tagged_templateID = "_".join([ device_tag, templateID ])
@@ -370,10 +379,10 @@ def processTemplateID(templateID, devices):
     (header, templatePrinter) = getHeader(rootDevice, templateID)
     # has to acquire filename _before_ processing the header
     # there are some special tags that are only valid in the header
-    outputFile = os.path.join(OUTPUT_DIR, createFilename(header, rootDevice, templateID))
+    outputFile = os.path.join(OUTPUT_DIR, createFilename(rcplcf, header))
 
     if header:
-        header = pt.process(rootDevice, header)
+        header = rcplcf.process(header)
 
     print("Processing entire tree of controls-relationships:\n")
 
@@ -385,6 +394,8 @@ def processTemplateID(templateID, devices):
     output     = []
     for device in devices:
         deviceType = device.deviceType()
+        cplcf      = getPLCF(device)
+        cplcf.register_template(templateID)
 
         print(device.name())
         print("Device type: " + deviceType)
@@ -422,7 +433,11 @@ def processTemplateID(templateID, devices):
         if template is not None:
             # process template and add result to output
             try:
-                output += pt.process(device, template)
+                if isinstance(template, str):
+                    with open(template, 'r') as f:
+                        output += cplcf.process(f)
+                else:
+                    output += cplcf.process(template)
             except (plcf.PLCFException, PLCFExtException) as e:
                 raise ProcessTemplateException(device.name(), templateID, e)
 
@@ -440,7 +455,7 @@ def processTemplateID(templateID, devices):
 
     footer = getFooter(rootDevice, templatePrinter if templatePrinter is not None else templateID)
     if footer:
-        footer = pt.process(rootDevice, footer)
+        footer = rcplcf.process(footer)
 
     # process #HASH keyword in header and footer
     header      = processHash(header)
@@ -521,10 +536,12 @@ def processDevice(deviceName, templateIDs):
         else:
             glob.snippet = glob.modulename
 
+    cplcf = getPLCF(device)
+
     hash_base = """EPICSToPLCDataBlockStartOffset: [PLCF#EPICSToPLCDataBlockStartOffset]
 PLCToEPICSDataBlockStartOffset: [PLCF#PLCToEPICSDataBlockStartOffset]
 PLC-EPICS-COMMS:Endianness: [PLCF#PLC-EPICS-COMMS:Endianness]"""
-    hash_base = "\n".join(pt.process(device, hash_base.splitlines()))
+    hash_base = "\n".join(cplcf.process(hash_base.splitlines()))
 
     # create a stable list of controlled devices
     devices = device.buildControlsList(include_self = True, verbose = True)
@@ -594,9 +611,11 @@ def m_copytree(src, dst):
         else:
             copied.append(dstname)
             if name == "CONFIG_MODULE":
-                with open(dstname, 'w') as f:
-                    for line in pt.process(None, srcname):
-                        print(line, end = '', file = f)
+                with open(srcname, 'r') as src_f:
+                    cplcf = plcf.PLCF(None)
+                    with open(dstname, 'w') as dst_f:
+                        for line in cplcf.process(src_f):
+                            print(line, end = '', file = dst_f)
             else:
                 copy2(srcname, dstname)
 
@@ -933,7 +952,7 @@ THE FOLLOWING FILES WERE NOT CHECKED:
 
 
 def record_args(root_device):
-    creator = os.path.join(OUTPUT_DIR, createFilename(["#FILENAME [PLCF#INSTALLATION_SLOT]-creator-[PLCF#TIMESTAMP]"], root_device, ""))
+    creator = os.path.join(OUTPUT_DIR, createFilename(getPLCF(root_device), ["#FILENAME [PLCF#INSTALLATION_SLOT]-creator-[PLCF#TIMESTAMP]"]))
     with open(creator, 'w') as f:
         print("""#!/bin/sh
 

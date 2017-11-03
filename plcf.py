@@ -24,12 +24,15 @@ will not lead to an error. Instead, such input is simply returned unchanged.
 import plcf_glob       as glob
 import plcf_ext
 
-evalenv = { "ext": plcf_ext }
 
 
 class PLCFException(Exception):
+    pass
+
+
+class PLCFEvalException(PLCFException):
     def __init__(self, expression, exception, *args):
-        super(PLCFException, self).__init__(*args)
+        super(PLCFEvalException, self).__init__(*args)
         self.expression = expression
         self.exception  = exception
 
@@ -41,31 +44,13 @@ class PLCFException(Exception):
 
 
 
-def keywordsHeader(line, device, templateID, **kwargs):
-    assert isinstance(line,       str)
-    assert isinstance(templateID, str)
-
-    # dictionary of the form key: tag, value: replacement
-    substDict = {'INSTALLATION_SLOT'      : device.name(),
-                 'INSTALLATION_SLOT_DESC' : device.description(),
-                 'TEMPLATE'               : 'template-' + templateID,
-                 'TIMESTAMP'              : glob.timestamp,
-                 'DEVICE_TYPE'            : device.deviceType(),
-                 'ROOT_INSTALLATION_SLOT' : glob.root_installation_slot
-                }
-
-    substDict.update(kwargs)
-
-    return processLine(line, device, substDict)
-
-
 def evalCounter(line, counters):
     assert isinstance(line,     str )
     assert isinstance(counters, dict)
 
     # substitutions
     for key in counters.keys():
-        line = substitute(line, key, str(counters[key]))
+        line = PLCF.substitute(line, key, str(counters[key]))
 
     # evaluation
     (_, line) = processLineCounter(line)
@@ -86,7 +71,7 @@ def evalCounterIncrease(line, counters):
         post = line[pos:]
 
         for key in counters.keys():
-            post = substitute(post, key, str(counters[key]))
+            post = PLCF.substitute(post, key, str(counters[key]))
 
         line = pre + post
 
@@ -106,33 +91,13 @@ def evalCounterIncrease(line, counters):
     return (counters, line)
 
 
-def getPLCFExpression(line):
-    assert isinstance(line, str)
-
-    tag    = "[PLCF#"
-    start  = line.find(tag)
-    offset = len(tag)
-
-    if start == -1:
-        return (None, None, None) # nothing to replace
-
-    end        = findMatchingSquareParenthesis(line[start:]) + start
-    # assert matching square brackets
-    assert end != -1, "Unclosed PLCF# expression in line {line}".format(line = line)
-
-    expression = line[start + offset : end]
-    assert matchingParentheses(expression)
-
-    return (start, expression, end)
-
-
 def processLineCounter(line):
     assert isinstance(line, str)
 
-    (start, expression, end) = getPLCFExpression(line)
+    (start, expression, end) = PLCF.getPLCFExpression(line)
 
     if expression is None:
-        return line
+        return (None, line)
 
     result = ""
 
@@ -147,200 +112,322 @@ def processLineCounter(line):
     return (result, line[:start] + str(result) + line[end + 1:])
 
 
-# extracts a PLFCLang expression from a line in a template,
-# evaluates the expression, and returns a new line with
-# the result of the evaluation
-def processLine(line, device, substDict):
-    assert isinstance(line,      str )
-    assert isinstance(substDict, dict)
 
-    result = ""
-    while True:
-        # recurse until all PLCF_Lang expressions have been processed
-        (start, expression, end) = getPLCFExpression(line)
 
-        if expression is None:
-            return result + line
+class PLCF(object):
+    plcf_tag     = "[PLCF#"
+    plcf_tag_len = len(plcf_tag)
+    plcf_up      = "^("
+    plcf_up_len  = len(plcf_up)
 
-        reduced = evaluateExpression(expression, device, substDict)
+    @staticmethod
+    def __specialProperties(device):
+        sp = { 'TIMESTAMP'              : glob.timestamp,
+               'ROOT_INSTALLATION_SLOT' : glob.root_installation_slot
+             }
 
-        # maintain PLCF tag if a counter variable is part of the expression
-        if 'Counter' in reduced:
-            result += line[:start] + "[PLCF#" + reduced + "]"
+        if device is not None:
+            sp.update({ 'INSTALLATION_SLOT'      : device.name(),
+                        'INSTALLATION_SLOT_DESC' : device.description(),
+                        'DEVICE_TYPE'            : device.deviceType(),
+                      })
+
+        return sp
+
+
+    def __init__(self, device):
+        self._device  = device
+        self._evalenv = { "ext": plcf_ext }
+
+        """
+        Sorting property names from longest to shortest avoids
+        the potential issue that a PLCF# expression can't be fully
+        evaluated when a property name is part of another property name of
+        the same device.
+
+        In more technical terms: the list of propery names that are
+        retrieved via the method keys() is neither sorted nor deterministic,
+        i.e. multiple calls may result in different permutations of the
+        same elements.
+
+        In PLC Factory, property names are processed one by one, as they
+        are encountered (see the for-loop below). Further, there is no
+        semantic analysis of PLCF# expressions. Thus, without
+        sorting, it may happen that a property name "foo" is processed before
+        a property name "foobar", but processing the former would leave "bar"
+        in the resulting expression. This would be bad enough, but imagine
+        what would happen if there was a property name "bar" left to process!
+
+        With sorting by property names by length in reverse, i.e. from longest
+        to shortest, "foobar" is processed before "foo", so the issue described
+        above is entirely avoided. For the curious, this approach is similar
+        to the "maximal munch" concept in compiler theory.
+        """
+
+        if device is not None:
+            # Need to use dict() to create a new instance
+            #  as it will be modified locally
+            self._properties = dict(device.propertiesDict())
         else:
-            result += line[:start] + reduced
+            self._properties = dict()
+        self._keys = self._properties.keys()
 
-        line = line[end + 1:]
+        sp   = self.__specialProperties(device)
+        # Pre-register a TEMPLATE property without an actual value
+        keys = sp.keys()
+        keys.append('TEMPLATE')
 
+        if set(keys) <= set(self._keys):
+            raise PLCFException("Redefinition of the following reserved properties is not allowed: {}".format(set(self._keys).intersection(set(keys))))
 
-def evalUp(expression, device):
-    assert isinstance(expression, str)
+        self._keys.extend(keys)
+        self._keys.sort(key = lambda s: len(s), reverse = True)
 
-    while expression.find("^(") != -1:
-
-        # extract property
-        start = expression.find("^(")
-        end   = expression.find(")", start)
-        prop  = expression[start + 2:end]
-
-        # backtrack
-        val  = device.backtrack(prop)
-        expression = expression[:start] + val + expression[end+1:]
-
-    return expression
+        self._properties.update(sp)
 
 
-# replaces all variables in a PLCFLang expression with values
-# from CCDB and returns the evaluated expression
-def evaluateExpression(expression, device, propDict):
-    assert isinstance(expression,     str )
-    assert isinstance(propDict, dict)
-
-    # resolve all references to properties in devices on a higher level
-    # in the hierarchy
-    expression = evalUp(expression, device)
-
-    """
-    Sorting property names from longest to shortest avoids
-    the potential issue that a PLCF# expression can't be fully
-    evaluated when a property name is part of another property name of
-    the same device.
-
-    In more technical terms: the list of propery names that are
-    retrieved via the method keys() is neither sorted nor deterministic,
-    i.e. multiple calls may result in different permutations of the
-    same elements.
-
-    In PLC Factory, property names are processed one by one, as they
-    are encountered (see the for-loop below). Further, there is no
-    semantic analysis of PLCF# expressions. Thus, without
-    sorting, it may happen that a property name "foo" is processed before
-    a property name "foobar", but processing the former would leave "bar"
-    in the resulting expression. This would be bad enough, but imagine
-    what would happen if there was a property name "bar" left to process!
-
-    With sorting by property names by length in reverse, i.e. from longest
-    to shortest, "foobar" is processed before "foo", so the issue described
-    above is entirely avoided. For the curious, this approach is similar
-    to the "maximal munch" concept in compiler theory.
-    """
-
-    for elem in sorted(propDict.keys(), key = lambda s: len(s), reverse = True):
-        if elem in expression:
-            value = propDict.get(elem)
-            tmp   = substitute(expression, elem, value)
-            # recursion to take care of multiple occurrences of variables
-            return evaluateExpression(tmp, device, propDict)
-
-    tag = 'INSTALLATION_SLOT_DESC'
-    if tag in expression:
-        expression = substitute(expression, tag, device.description())
-
-    tag = 'ROOT_INSTALLATION_SLOT'
-    if tag in expression:
-        expression = substitute(expression, tag, glob.root_installation_slot)
-
-    tag = 'INSTALLATION_SLOT'
-    if tag in expression:
-        expression = substitute(expression, tag, device.name())
-
-    tag = 'DEVICE_TYPE'
-    if tag in expression:
-        expression = substitute(expression, tag, device.deviceType())
-
-    # evaluation happens after all substitutions have been performed
-    wasquoted = False
-
-    #Do not evaluate expressions which consist soley of a quoted string
-    if (expression.startswith('"') and expression.endswith('"') and expression.count('"') == 2) or \
-       (expression.startswith("'") and expression.endswith("'") and expression.count("'") == 2):
-        wasquoted = expression[0]
-
-    if expression.startswith("ext."):
-        try:
-            #Evaluate ext module call
-            result = eval(expression, evalenv)
-        except plcf_ext.PLCFExtException as e:
-            raise e #from None
-        except Exception as e:
-            raise PLCFException(expression, e) #from None
-    else:
-        try:
-            #Evaluate this expression
-            result = eval(expression)
-            if wasquoted:
-                result = wasquoted + result + wasquoted
-        # catch references to slot names (and erroneous input)
-        except (SyntaxError, NameError) as e:
-            result = expression
-        except Exception as e:
-            raise PLCFException(expression, e) #from None
-
-    return str(result)
+    def register_template(self, templateId):
+        self._properties['TEMPLATE'] = 'template-' + templateId
 
 
-# substitutes a variable in an expression with the provided value
-def substitute(expr, variable, value):
-    assert isinstance(expr,     str)
-    assert isinstance(variable, str)
-    assert isinstance(value,    str)
+    def process(self, line_or_lines):
+        if isinstance(line_or_lines, str):
+            return self.processLine(line_or_lines)
 
-    if variable not in expr:
-        return expr
-
-    start = expr.find(variable)
-    end   = start + len(variable)
-
-    return expr[:start] + value + expr[end:]
+        # read each line, process them, add one by one to accumulator
+        return map(lambda x: self.processLine(x), line_or_lines)
 
 
-# checks for basic validity of expression by determining whether
-# open and closed parentheses match
-def matchingParentheses(line):
-    assert isinstance(line, str)
+    # extracts a PLFCLang expression from a line in a template,
+    # evaluates the expression, and returns a new line with
+    # the result of the evaluation
+    def processLine(self, line):
+        assert isinstance(line, str)
 
-    def helper(line, acc):
+        result = ""
+        while True:
+            # recurse until all PLCF_Lang expressions have been processed
+            (start, expression, end) = self.getPLCFExpression(line)
 
-        if acc < 0:
-            return False
+            if expression is None:
+                return result + line
 
-        if line == "":
-            return acc == 0
+            reduced = self._evaluateExpression(expression)
 
+            # maintain PLCF tag if a counter variable is part of the expression
+            if 'Counter' in reduced:
+                result += line[:start] + self.plcf_tag + reduced + "]"
+            else:
+                result += line[:start] + reduced
+
+            line = line[end + 1:]
+
+
+    def _evalUp(self, expression):
+        assert isinstance(expression, str)
+
+        while True:
+            # extract property
+            start = expression.find(self.plcf_up)
+            if start == -1:
+                break
+
+            # FIXME: which one makes more sense?
+            end   = expression.find(")", start)
+#            end   = PLCF.findMatchingParenthesis(expression[start:], '()') + start
+            prop  = expression[start + self.plcf_up_len:end]
+
+            # backtrack
+            val  = self._device.backtrack(prop)
+            expression = expression[:start] + val + expression[end + 1:]
+
+        return expression
+
+
+    # replaces all variables in a PLCFLang expression with values
+    # from CCDB and returns the evaluated expression
+    def _evaluateExpression(self, expression):
+        assert isinstance(expression, str)
+
+        # resolve all references to properties in devices on a higher level
+        # in the hierarchy
+        expression = self._evalUp(expression)
+
+        for elem in self._keys:
+            if elem in expression:
+                value = self._properties.get(elem)
+                tmp   = self.substitute(expression, elem, value)
+                # recursion to take care of multiple occurrences of variables
+                return self._evaluateExpression(tmp)
+
+        # evaluation happens after all substitutions have been performed
+        wasquoted = False
+        #Do not evaluate expressions which consist solely of a quoted string
+        if (expression.startswith('"') and expression.endswith('"') and expression.count('"') == 2) or \
+           (expression.startswith("'") and expression.endswith("'") and expression.count("'") == 2):
+            wasquoted = expression[0]
+
+        if expression.startswith("ext."):
+            try:
+                #Evaluate ext module call
+                result = eval(expression, self._evalenv)
+            except plcf_ext.PLCFExtException as e:
+                raise e #from None
+            except Exception as e:
+                raise PLCFEvalException(expression, e) #from None
         else:
+            try:
+                #Evaluate this expression
+                result = eval(expression)
+                if wasquoted:
+                    result = wasquoted + result + wasquoted
+            # catch references to slot names (and erroneous input)
+            except (SyntaxError, NameError) as e:
+                result = expression
+            except Exception as e:
+                raise PLCFEvalException(expression, e) #from None
 
-            if line[0] == '(':
-                return helper(line[1:], acc + 1)
+        return str(result)
 
-            elif line[0] == ')':
-                return helper(line[1:], acc - 1)
+
+    @staticmethod
+    def getPLCFExpression(line):
+        assert isinstance(line, str)
+
+        start = line.find(PLCF.plcf_tag)
+
+        if start == -1:
+            return (None, None, None) # nothing to replace
+
+        try:
+            end = PLCF.findMatchingParenthesis(line[start:], '[]') + start
+        except PLCFException as e:
+            raise PLCFException("Malformatted PLCF# expression ({error}) in line {line}".format(error = e.args[0], line = line))
+        assert end != -1, "Unclosed PLCF# expression in line {line}".format(line = line)
+
+        expression = line[start + PLCF.plcf_tag_len : end]
+        assert PLCF.matchingParentheses(expression)
+
+        return (start, expression, end)
+
+
+    #Returns the index of the closing paren which matches the first opening paren
+    @staticmethod
+    def findMatchingParenthesis(line, paren):
+        istart = []  # stack of indices of opening parentheses
+        d      = []
+        oparen = paren[0]
+        cparen = paren[1]
+
+        for i, c in enumerate(line):
+            if c == oparen:
+                istart.append(i)
+
+            if c == cparen:
+                try:
+                    ci = istart.pop()
+                    if not istart:   # check if this closed the first opening parenthesis
+                        return i
+
+                    d.append([ci, i])
+                except IndexError:
+                    raise PLCFException('Too many closing parentheses')
+
+        if istart:  # check if stack is empty afterwards
+            raise PLCFException('Too many opening parentheses')
+
+        d.sort()
+
+        return d[0][1]
+
+
+    # substitutes a variable in an expression with the provided value
+    @staticmethod
+    def substitute(expr, variable, value):
+        assert isinstance(expr,     str)
+        assert isinstance(variable, str)
+        assert isinstance(value,    str)
+
+        if variable not in expr:
+            return expr
+
+        start = expr.find(variable)
+        end   = start + len(variable)
+
+        return expr[:start] + value + expr[end:]
+
+    # checks for basic validity of expression by determining whether
+    # open and closed parentheses match
+    @staticmethod
+    def matchingParentheses(line):
+        assert isinstance(line, str)
+
+        def helper(line, acc):
+
+            if acc < 0:
+                return False
+
+            if line == "":
+                return acc == 0
 
             else:
-                return helper(line[1:], acc)
+
+                if line[0] == '(':
+                    return helper(line[1:], acc + 1)
+
+                elif line[0] == ')':
+                    return helper(line[1:], acc - 1)
+
+                else:
+                    return helper(line[1:], acc)
 
 
-    return helper(line, 0)
+        return helper(line, 0)
 
 
-#Returns the index of the ] which matches the first [
-def findMatchingSquareParenthesis(line):
-  istart = []  # stack of indices of opening parentheses
-  d = []
-  for i, c in enumerate(line):
-    if c == '[':
-         istart.append(i)
-    if c == ']':
+
+
+if __name__ == "__main__":
+    class FakeDevice(object):
+        def name(self):
+            return "FakeDevice"
+        def description(self):
+            return "FakeDescription"
+        def deviceType(self):
+            return "FakeDeviceType"
+        def propertiesDict(self):
+            return {}
+        def backtrack(self, prop):
+            return prop
+
+
+    cplcf = PLCF(FakeDevice())
+
+    def noException(line):
+        print("Checking {}... {}".format(line, cplcf.processLine(line)))
+
+
+    def expectException(line):
         try:
-            ci = istart.pop()
-            if not istart:   # check if this closed the first opening parenthesis
-                return i
-            d.append([ci, i])
-        except IndexError:
-            print('Too many closing parentheses')
-            return -1
-  if istart:  # check if stack is empty afterwards
-    print('Too many opening parentheses')
-    return -1
-  d.sort()
-  return d[0][1]
+            print("Checking {}...".format(line))
+            cplcf.processLine(line)
+            raise RuntimeError("Test failed for {}".format(line))
+        except (PLCFException, AssertionError):
+            pass
 
+    noException("[PLCF#]")
+
+    expectException("[PLCF#")
+
+    expectException("[PLCF#[]")
+
+#    noException("[PLCF#(]")
+    expectException("[PLCF#(]")
+
+    noException("[PLCF#^(this is (a) weird property)]")
+
+    expectException("[PLCF#(property]")
+
+    expectException("[PLCF#ext.(]")
+
+    expectException("[PLCF#ext.fn(()]")
