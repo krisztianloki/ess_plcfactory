@@ -14,13 +14,18 @@ import sys
 from   cc import CC
 import levenshtein
 
-# add directory for third-party libraries to module search path
-parent_dir = os.path.abspath(os.path.dirname(__file__))
-lib_dir    = os.path.join(parent_dir, 'libs')
-sys.path.append(lib_dir)
+try:
+    import requests
+except ImportError:
+    # add directory for third-party libraries to module search path
+    parent_dir = os.path.abspath(os.path.dirname(__file__))
+    lib_dir    = os.path.join(parent_dir, 'libs')
+    sys.path.append(lib_dir)
+    del parent_dir
+    del lib_dir
 
-# third-party libraries, stored in folder 'libs'
-import requests
+    # third-party libraries, stored in folder 'libs'
+    import requests
 
 
 # disable printing of unsigned SSH connection warnings to console
