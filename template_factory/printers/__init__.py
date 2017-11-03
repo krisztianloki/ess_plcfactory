@@ -107,12 +107,19 @@ class PRINTER(object):
         return self
 
 
+    def _append_origin(self, origin, output = None):
+        if self._show_origin and origin.strip() != "":
+            output.append(self.comment() + self.origin() + origin)
+
     def _append_source(self, source, output = None):
-        if source.is_comment() and self._comments:
-            if source.source().strip() != "":
-                output.append(self.comment() + source.source())
-            elif self._preserve_empty:
-                output.append(self.empty_line())
+        if source.is_comment():
+            if self._comments:
+                if source.source().strip() != "":
+                    output.append(self.comment() + source.source())
+                elif self._preserve_empty:
+                    output.append(self.empty_line())
+        else:
+            self._append_origin(source.source(), output)
 
 
     def _append(self, gen, output = None):
@@ -137,8 +144,7 @@ class PRINTER(object):
             from_inp = ""
 
         assert isinstance(result, str)
-        if self._show_origin and from_inp != "":
-            output.append(self.comment() + self.origin() + from_inp)
+        self._append_origin(from_inp, output)
         if result != "":
             output += result.splitlines(True)
 
