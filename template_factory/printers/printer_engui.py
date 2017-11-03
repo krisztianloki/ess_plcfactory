@@ -21,8 +21,8 @@ def printer():
 class ENGUI(PRINTER):
     def __init__(self):
         PRINTER.__init__(self)
-        self._iformatstring = "engui {cmd} \"[PLCF#INSTALLATION_SLOT]:{pvname}\"	|| return 1 2>/dev/null || exit 1\n"
-        self._oformatstring = "engui {cmd} \"[PLCF#INSTALLATION_SLOT]:{pvname}\" \"[PLCF#INSTALLATION_SLOT]:{pvname}\"	|| return 1 2>/dev/null || exit 1\n"
+        self._iformatstring = "engui {cmd} \"{pvname}\" '${{DEVICE}}:{pvname}'	|| return 1 2>/dev/null || exit 1\n"
+        self._oformatstring = "engui {cmd} \"{pvname}\" '${{DEVICE}}:{pvname}' '${{DEVICE}}:{pvname}'	|| return 1 2>/dev/null || exit 1\n"
 
 
     @staticmethod
