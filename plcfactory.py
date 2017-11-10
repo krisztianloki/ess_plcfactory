@@ -241,11 +241,7 @@ def getIfDef(device):
 
     artefacts = glob.ccdb.getArtefactNames(device)
 
-    template = list()
-    for artefact in artefacts:
-        if not artefact.endswith(IFDEF_TAG):
-            continue
-        template.append(artefact)
+    template = filter(lambda ida: ida.endswith(IFDEF_TAG), artefacts)
 
     if len(template) == 0:
         return None
