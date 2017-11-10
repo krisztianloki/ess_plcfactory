@@ -226,6 +226,24 @@ class CC(object):
         return self._getArtefact(deviceType, filename, saveas)
 
 
+    def getArtefactURL(self, device, name):
+        assert isinstance(device, str), type(device)
+        assert isinstance(name, str),   type(name)
+
+        try:
+            artefacts  = self._getCached(device, "artifacts")
+        except KeyError:
+            artefacts = self._artefacts(device)
+
+        if artefacts is None:
+            return None
+
+        uris = filter(lambda ua: ua.get("type") == "URI" and ua.get("name") == name, artefacts)
+        assert len(uris) == 1
+
+        return uris[0].get("uri")
+
+
     # Returns: []
     def getSimilarDevices(self, device):
         assert isinstance(device, str)
