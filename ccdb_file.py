@@ -58,7 +58,7 @@ class CCDB_FILE(CC):
         return self._inconsistent(device, "description")
 
 
-    def _getArtefactNames(self, device):
+    def _artefacts(self, device):
         return self._inconsistent(device, "artifacts")
 
 

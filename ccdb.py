@@ -76,7 +76,7 @@ class CCDB(CC):
         return self._getField(device, "description")
 
 
-    def _getArtefactNames(self, device):
+    def _artefacts(self, device):
         return self._getField(device, "artifacts")
 
 

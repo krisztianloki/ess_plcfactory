@@ -203,7 +203,7 @@ class CC(object):
         try:
             artefacts  = self._getCached(device, "artifacts")
         except KeyError:
-            artefacts = self._getArtefactNames(device)
+            artefacts = self._artefacts(device)
 
         artefactNames = []
         if artefacts is not None:
