@@ -207,8 +207,7 @@ class CC(object):
 
         artefactNames = []
         if artefacts is not None:
-          for elem in artefacts:
-            artefactNames.append(elem.get("name"))
+          artefactNames = map(lambda an: an.get("name"), filter(lambda fa: fa.get("type") == "FILE", artefacts))
 
         return artefactNames
 
