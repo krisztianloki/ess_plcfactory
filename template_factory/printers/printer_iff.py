@@ -58,7 +58,16 @@ class IFF(PRINTER):
         PRINTER.header(self, output)._append("""#FILENAME {inst_slot}-[PLCF#TEMPLATE]-[PLCF#TIMESTAMP].ifa
 HASH
 #HASH
-""".format(inst_slot = self.inst_slot()), output)
+MAX_IO_DEVICES
+{max_io_devices}
+MAX_LOCAL_MODULES
+{max_local_modules}
+MAX_MODULES_IN_IO_DEVICE
+{max_modules_in_io_device}
+""".format(inst_slot                = self.inst_slot(),
+           max_io_devices           = self.plcf("PLC-DIAG:Max-IO-Devices"),
+           max_local_modules        = self.plcf("PLC-DIAG:Max-Local-Modules"),
+           max_modules_in_io_device = self.plcf("PLC-DIAG:Max-Modules-In-IO-Device")), output)
 
 
     def body(self, if_def, output):
