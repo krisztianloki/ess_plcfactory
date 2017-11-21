@@ -239,7 +239,10 @@ class CC(object):
             return None
 
         uris = filter(lambda ua: ua.get("type") == "URI" and ua.get("name") == name, artefacts)
-        assert len(uris) == 1
+        if len(uris) == 0:
+            return None
+
+        assert len(uris) == 1, uris
 
         return uris[0].get("uri")
 
