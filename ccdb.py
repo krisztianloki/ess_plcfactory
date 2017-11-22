@@ -83,23 +83,19 @@ class CCDB(CC):
     # download artefact and save as saveas
     def _getArtefact(self, deviceType, filename, saveas):
         url    = self._url + "deviceTypes/" + deviceType + "/download/" + filename
-        result = self._get(url)
 
-        if result.status_code != 200:
+        try:
+            return self.download(url, saveas)
+        except RuntimeError, e:
             print """ERROR:
 Cannot get artifact {dtyp}.{art}: error {code}""".format(dtyp = deviceType,
                                                          art  = filename,
-                                                         code = result.status_code)
-
+                                                         code = e)
             exit(1)
 
-        # 'w' overwrites the file if it exists
-        with open(saveas, 'wb') as f:
-            map(lambda x: f.write(x), result)
 
-        self._artifacts.append(saveas)
-
-        return saveas
+    def download(self, url, saveas):
+        return CC.download(url, saveas, verify = self._verify)
 
 
     def getSimilarDevices(self, device):

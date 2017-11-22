@@ -6,9 +6,27 @@ __license__    = "GPLv3"
 
 
 # Python libraries
-import os
+from   os import makedirs as os_makedirs
+from   os import path     as os_path
 import zlib
 import unicodedata
+from   urlparse import urlsplit
+
+try:
+    import requests
+except ImportError:
+    from sys import path as sys_path
+
+    # add directory for third-party libraries to module search path
+    parent_dir = os_path.abspath(os_path.dirname(__file__))
+    lib_dir    = os_path.join(parent_dir, 'libs')
+    sys_path.append(lib_dir)
+    del parent_dir
+    del lib_dir
+
+    # third-party libraries, stored in folder 'libs'
+    import requests
+
 
 
 
@@ -17,21 +35,21 @@ class CC(object):
 
 
     def __init__(self):
-        self._hashSum        = None
+        self._hashSum              = None
 
         # all devices and their properties
         # key: device, value: dict of all properties/values
-        self._deviceDict     = dict()
+        self._deviceDict           = dict()
 
         # cache for device, property dictionary
-        self._propDict       = dict()
+        self._propDict             = dict()
 
         # cache for ^() expressions
         # key: (device, expression), value: property
-        self._backtrackCache = dict()
+        self._backtrackCache       = dict()
 
         # list of the path names of downloaded artifacts
-        self._artifacts      = list()
+        self._downloadedArtifacts  = list()
 
 
     @staticmethod
@@ -47,11 +65,23 @@ class CC(object):
 
 
     @staticmethod
+    def urlToDir(url):
+        url_comps = urlsplit(url)
+
+        comps = url_comps.netloc + url_comps.path
+        comps = comps.split('/')
+        # ignore the last component, it is assumed to be a filename
+        del comps[-1]
+
+        return os_path.join(*map(lambda sde: CC.sanitizeFilename(sde), comps))
+
+
+    @staticmethod
     def makedirs(path):
         try:
-            os.makedirs(path)
+            os_makedirs(path)
         except OSError:
-            if not os.path.isdir(path):
+            if not os_path.isdir(path):
                 raise
 
 
@@ -60,10 +90,10 @@ class CC(object):
         try:
             return CC.paths_cached[deviceType, filename, directory]
         except KeyError:
-            dtdir = os.path.join(directory, CC.sanitizeFilename(deviceType))
+            dtdir = os_path.join(directory, CC.sanitizeFilename(deviceType))
             if CreateDir:
                 CC.makedirs(dtdir)
-            path = os.path.normpath(os.path.join(dtdir, CC.sanitizeFilename(filename)))
+            path = os_path.normpath(os_path.join(dtdir, CC.sanitizeFilename(filename)))
             CC.paths_cached[deviceType, filename, directory] = path
             return path
 
@@ -100,6 +130,20 @@ class CC(object):
             return var
 
         return default
+
+
+    @staticmethod
+    def download(url, saveas, verify = True):
+        result = requests.get(url, verify = verify)
+
+        if result.status_code != 200:
+            raise RuntimeError(result.status_code)
+
+        # 'w' overwrites the file if it exists
+        with open(saveas, 'wb') as f:
+            map(lambda x: f.write(x), result)
+
+        return saveas
 
 
     def _getCached(self, device, field):
@@ -220,10 +264,32 @@ class CC(object):
         saveas = self.saveas(deviceType, filename, directory)
 
         # check if filename has already been downloaded
-        if os.path.exists(saveas):
+        if os_path.exists(saveas):
             return saveas
 
-        return self._getArtefact(deviceType, filename, saveas)
+        self._getArtefact(deviceType, filename, saveas)
+        self._downloadedArtifacts.append(saveas)
+
+        return saveas
+
+
+    # Returns: ""
+    def getArtefactFromURL(self, url, deviceType, filename, directory = "."):
+        assert isinstance(url,        basestring)
+        assert isinstance(deviceType, str)
+        assert isinstance(filename,   basestring)
+
+        # ignore deviceType, the URL already makes the path unique
+        saveas = self.saveas("", filename, os_path.join(directory, CC.urlToDir(url)))
+
+        # check if filename has already been downloaded
+        if os_path.exists(saveas):
+            return saveas
+
+        self.download(url, saveas)
+        self._downloadedArtifacts.append(saveas)
+
+        return saveas
 
 
     def getArtefactURL(self, device, name):
@@ -261,12 +327,12 @@ class CC(object):
         if not filename.endswith(".ccdb.zip"):
             filename += ".ccdb.zip"
 
-        filename = os.path.join(directory, self.sanitizeFilename(filename))
+        filename = os_path.join(directory, self.sanitizeFilename(filename))
         dumpfile = zipfile.ZipFile(filename, "w", zipfile.ZIP_DEFLATED)
 
-        dumpfile.writestr(os.path.join("ccdb", "device.dict"), str(self._deviceDict))
-        for template in self._artifacts:
-            dumpfile.write(template, os.path.join("ccdb", template))
+        dumpfile.writestr(os_path.join("ccdb", "device.dict"), str(self._deviceDict))
+        for template in self._downloadedArtifacts:
+            dumpfile.write(template, os_path.join("ccdb", template))
 
         return filename
 

@@ -7,8 +7,7 @@ __license__    = "GPLv3"
 
 # Python libraries
 import ast
-import os
-import sys
+from   os import path as os_path
 
 # PLC Factory modules
 from   cc import CC
@@ -18,9 +17,9 @@ class CCDB_FILE(CC):
     def __init__(self, filename):
         CC.__init__(self)
 
-        if os.path.isdir(filename):
+        if os_path.isdir(filename):
             self._readdir(filename)
-        elif os.path.isfile(filename):
+        elif os_path.isfile(filename):
             self._readzip(filename)
         else:
             raise RuntimeError("No CCDB dump found at " + filename)
@@ -66,10 +65,10 @@ class CCDB_FILE(CC):
         assert isinstance(deviceType, str)
         assert isinstance(filename,   basestring)
 
-        saveas = self.saveas(deviceType, filename, os.path.join(self._rootpath, "templates"), CreateDir = False)
+        saveas = self.saveas(deviceType, filename, os_path.join(self._rootpath, "templates"), CreateDir = False)
 
         # check if filename has already been downloaded
-        if os.path.exists(saveas):
+        if os_path.exists(saveas):
             return saveas
 
         return self._getArtefact(deviceType, filename, None)
@@ -77,7 +76,7 @@ class CCDB_FILE(CC):
 
     # extract artefact and save as saveas
     def _getArtefactFromZip(self, deviceType, filename, saveas):
-        with self._zipfile.open(self.saveas(deviceType, filename, os.path.join("ccdb", "templates"), CreateDir = False)) as r:
+        with self._zipfile.open(self.saveas(deviceType, filename, os_path.join("ccdb", "templates"), CreateDir = False)) as r:
             with open(saveas, "w") as w:
                 w.writelines(r)
 
@@ -86,6 +85,11 @@ class CCDB_FILE(CC):
 
     def _getArtefact(self, deviceType, filename, saveas):
         raise RuntimeError("Inconsistent CCDB dump: there is no template for {device} with name {filename}".format(device = deviceType, filename = filename))
+
+
+    # prevent downloading possibly new revisions of def files
+    def download(self, url, saveas):
+        raise RuntimeError("Inconsistent CCDB dump: there is no template downloaded from URL: {}".format(url))
 
 
     def getSimilarDevices(self, device):
@@ -97,13 +101,13 @@ class CCDB_FILE(CC):
 
 
     def _readdir(self, directory):
-        if os.path.isdir(os.path.join(directory, "ccdb")):
-            self._rootpath = os.path.join(directory, "ccdb")
+        if os_path.isdir(os_path.join(directory, "ccdb")):
+            self._rootpath = os_path.join(directory, "ccdb")
         else:
             self._rootpath = directory
 
         try:
-            with open(os.path.join(self._rootpath, "device.dict")) as dd:
+            with open(os_path.join(self._rootpath, "device.dict")) as dd:
                 devicedict = dd.readline()
         except IOError, e:
             if e.errno == 2:
@@ -120,7 +124,7 @@ class CCDB_FILE(CC):
         self._zipfile = zipfile.ZipFile(filename, "r")
 
         try:
-            self._createDeviceDict(self._zipfile.read(os.path.join("ccdb", "device.dict")))
+            self._createDeviceDict(self._zipfile.read(os_path.join("ccdb", "device.dict")))
         except KeyError:
             raise RuntimeError("Required file 'device.dict' does not exist!")
 

@@ -226,6 +226,23 @@ def getArtefactNames(device):
     return (deviceType, artefacts)
 
 
+def deviceTypeToFilename(deviceType):
+    return glob.ccdb.sanitizeFilename(deviceType)
+
+
+def getIfDefFromURL(device, deviceType):
+    url = glob.ccdb.getArtefactURL(device, "EPI")
+    if url is None:
+        return None
+
+    filename = deviceTypeToFilename(deviceType).upper() + ".def"
+    url = "/".join([ url, "raw/master", filename ])
+
+    print "Trying to download Interface Definition file from", url
+
+    return glob.ccdb.getArtefactFromURL(url, deviceType, filename, TEMPLATE_DIR)
+
+
 #
 # Returns an interface definition object
 #
@@ -243,16 +260,24 @@ def getIfDef(device):
 
     template = filter(lambda ida: ida.endswith(IFDEF_TAG), artefacts)
 
-    if len(template) == 0:
-        return None
-
     if len(template) > 1:
         print "More than one Interface Definiton files were found for {device}: {defs}".format(device = device, defs = template)
         exit(1)
 
-    filename = getArtefact(deviceType, template[0])
+    if len(template) == 0:
+        filename = getIfDefFromURL(device, deviceType)
+        template = deviceTypeToFilename(deviceType)
+    else:
+        filename = None
+        template = template[0]
+
+
     if filename is None:
-        return None
+        filename = getArtefact(deviceType, template)
+
+    if filename is None:
+        print "Could not download Interface Definition file {f} for device {d}".format(f = template, d = device)
+        exit(1)
 
     with open(filename) as f:
         ifdef = tf.processLines(f, HASH = hashobj)
