@@ -266,6 +266,9 @@ def getIfDef(device):
 
     if len(template) == 0:
         filename = getIfDefFromURL(device, deviceType)
+        if filename is None:
+            return None
+
         template = deviceTypeToFilename(deviceType)
     else:
         filename = None
