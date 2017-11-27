@@ -497,6 +497,7 @@ class IF_DEF(object):
         self._from_plc_words_length = 0
         self._hash                  = HASH
         self._optimize              = OPTIMIZE
+        self._plc_array             = None
 
         self._properties[CMD_BLOCK.length_keyword()]    = 0
         self._properties[PARAM_BLOCK.length_keyword()]  = 0
@@ -687,6 +688,30 @@ class IF_DEF(object):
         self._overlap.end()
         self._overlap = None
         self._add_source()
+
+
+    @ifdef_interface
+    def define_plc_array(self, name):
+        if self._plc_array is not None:
+            raise IfDefSyntaxError("Nesting of arrays is not possible")
+
+        # check if there is a block defined
+        self._active_block()
+        var = METADATA(self._source, "IFA", "DEFINE_ARRAY\n{}\n".format(name))
+        self._plc_array = name
+        self._add(var)
+
+
+    @ifdef_interface
+    def end_plc_array(self):
+        if self._plc_array is None:
+            raise IfDefSyntaxError("No array is defined yet")
+
+        # check if there is a block defined
+        self._active_block()
+        var = METADATA(self._source, "IFA", "END_ARRAY\n{}\n".format(self._plc_array))
+        self._plc_array = None
+        self._add(var)
 
 
     @ifdef_interface
