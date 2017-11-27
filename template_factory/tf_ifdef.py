@@ -137,6 +137,26 @@ class SOURCE(object):
 
 
 
+class METADATA(SOURCE):
+    def __init__(self, source, printers, metadata):
+        if isinstance(printers, str):
+            printers = [ printers ]
+        assert isinstance(printers, list), func_param_msg("printers", "list")
+
+        SOURCE.__init__(self, source)
+
+        self._printers = printers
+        self._metadata = metadata
+
+
+    def get(self, printer):
+        if printer not in self._printers:
+            return None
+
+        return self._metadata
+
+
+
 class VERBATIM(SOURCE):
     def __init__(self, source, verbatim):
         assert isinstance(source, tuple),  func_param_msg("source",   "tuple")

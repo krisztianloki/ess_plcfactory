@@ -22,7 +22,7 @@ def available_printers():
 
 
 
-from tf_ifdef import IF_DEF, SOURCE
+from tf_ifdef import IF_DEF, SOURCE, METADATA
 
 #
 # PRINTER
@@ -112,6 +112,10 @@ class PRINTER(object):
             output.append(self.comment() + self.origin() + origin)
 
     def _append_source(self, source, output = None):
+        if isinstance(source, METADATA) and source.get(self.name()) is not None:
+            self._append_origin(source, output)
+            self._append(str(source.get(self.name())), output)
+
         if source.is_comment():
             if self._comments:
                 if source.source().strip() != "":
