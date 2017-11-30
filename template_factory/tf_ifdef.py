@@ -462,10 +462,16 @@ class OVERLAP(BLOCK):
 
 
 
+class IF_DEF_INTERFACE_FUNC(object):
+    def __init__(self):
+        pass
+
+
 def ifdef_interface(func):
     def ifdef_interface_func(*args, **kwargs):
         if args is not None and isinstance(args, tuple) and len(args) > 0 and isinstance(args[0], IF_DEF):
             func(*args, **kwargs)
+            return IF_DEF_INTERFACE_FUNC()
         else:
             raise IfDefException("Trying to call non-interface function {f}".format(f = func.__name__))
 
@@ -504,6 +510,7 @@ class IF_DEF(object):
         self._properties[STATUS_BLOCK.length_keyword()] = 0
 
         self._evalEnv = dict()
+        self._evalEnv['__builtins__'] = None
         for f in dir(self):
             val = getattr(self, f)
             if not hasattr(val, '__call__') or f.startswith('_'):
@@ -513,9 +520,14 @@ class IF_DEF(object):
                 self._evalEnv[f] = val
 
 
-    def _eval(self, source, linenum):
+    def _eval(self, source, stripped_source, linenum):
+        if stripped_source.split('(')[0] not in self._evalEnv:
+            raise IfDefSyntaxError("Not supported keyword")
+
         self._source    = (source, linenum)
-        eval(source.strip(), self._evalEnv)
+        result = eval(stripped_source, self._evalEnv)
+        if not isinstance(result, IF_DEF_INTERFACE_FUNC):
+            raise IfDefSyntaxError("Missing parentheses?")
 
 
     def _status_block(self):
@@ -631,7 +643,7 @@ class IF_DEF(object):
 
         self._hash.update(source)
 
-        self._eval(source, linenum)
+        self._eval(source, stripped_source, linenum)
 
 
     @ifdef_interface
