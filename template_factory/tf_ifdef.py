@@ -614,17 +614,18 @@ class IF_DEF(object):
         if not self._active:
             raise IfDefSyntaxError("The interface definition is no longer active!")
 
-        if source.startswith("_"):
+        stripped_source = source.strip()
+        if stripped_source.startswith("_"):
             raise IfDefSyntaxError("Interface definition lines cannot start with '_'")
 
-        if source.startswith("#TF#") or source.startswith("#-"):
+        if stripped_source.startswith("#TF#") or stripped_source.startswith("#-"):
             return
 
-        if source.startswith("#"):
+        if stripped_source.startswith("#"):
             self._add_comment(source[1:])
             return
 
-        if source.strip() == "":
+        if stripped_source == "":
             self._add_comment(source)
             return
 
