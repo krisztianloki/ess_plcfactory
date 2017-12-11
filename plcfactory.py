@@ -65,8 +65,7 @@ def openArtefact(deviceType, filenames, tag, templateID):
     lines = []
 
     for filename in filenames:
-        
-        if matchingArtefact(filename, tag, templateID):    
+        if matchingArtefact(filename, tag, templateID):
             filename = getArtefact(deviceType, filename)
 
             if filename is None:
@@ -446,7 +445,7 @@ def processTemplateID(templateID, rootDevice, rootDeviceType, rootArtefacts, con
 
     for line in lines:
 
-        if "[PLCF#" in line and "#COUNTER" not in line:            
+        if "[PLCF#" in line and "#COUNTER" not in line:
             line = plcf.evalCounter(line, counters)
 
         elif "[PLCF#" in line and '#COUNTER' in line:
@@ -678,7 +677,7 @@ def main(argv):
                         '--production',
                         help     = 'select production database',
                         action   = 'store_true',
-                        required = False)    
+                        required = False)
 
     parser.add_argument(
                         '--ccdb',
@@ -686,7 +685,7 @@ def main(argv):
                         help     = 'use a CCDB dump as backend',
                         metavar  = 'directory-to-CCDB-dump / name-of-.ccdb.zip',
                         type     = str,
-                        required = False)    
+                        required = False)
 
     parser.add_argument(
                         '-t',
