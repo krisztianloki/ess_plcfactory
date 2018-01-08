@@ -801,14 +801,16 @@ class IF_DEF(object):
 
 
     @ifdef_interface
-    def add_float(self, name, plc_var_type = "DINT", **keyword_params):
+    def add_float(self, name, plc_var_type, **keyword_params):
         self.add_analog(name, plc_var_type, **keyword_params)
 
 
     @ifdef_interface
-    def add_analog(self, name, plc_var_type = "DINT", **keyword_params):
+    def add_analog(self, name, plc_var_type, **keyword_params):
         if not isinstance(name, str):
             raise IfDefSyntaxError("Name must be a string!")
+        if not isinstance(plc_var_type, str):
+            raise IfDefSyntaxError("PLC type must be a string!")
 
         block = self._active_block()
         var = ANALOG(self._source, block, name, plc_var_type, keyword_params)
