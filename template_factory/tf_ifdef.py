@@ -750,28 +750,28 @@ class IF_DEF(object):
             self._add(var)
 
 
-    def _add_alarm(self, name, sevr, alarm, **keyword_params):
+    def _add_alarm(self, name, sevr, alarm_message, **keyword_params):
         if not sevr in [ "MINOR", "MAJOR" ]:
             raise IfDefSyntaxError("Invalid alarm severity: " + sevr)
-        if not isinstance(alarm, str):
-            raise IfDefSyntaxError("Alarm status is missing: {func}({name}, \"status\")".format(name = name, func = "add_minor_alarm" if sevr == "MINOR" else "add_major_alarm"))
+        if not isinstance(alarm_message, str):
+            raise IfDefSyntaxError("Alarm message is missing: {func}(\"{name}\", \"Short alarm message\")".format(name = name, func = "add_minor_alarm" if sevr == "MINOR" else "add_major_alarm"))
 
         keyword_params.update(PV_OSV  = sevr)
-        keyword_params.update(PV_ONAM = alarm)
+        keyword_params.update(PV_ONAM = alarm_message)
 
         self.add_digital(name, **keyword_params)
 
 
-    # Accept None as alarm, so that we could display a meaningful
+    # Accept None as alarm_message, so that we could display a meaningful
     #  error message in _add_alarm() if it is not provided
     @ifdef_interface
-    def add_minor_alarm(self, name, alarm = None, **keyword_params):
-        self._add_alarm(name, "MINOR", alarm, **keyword_params)
+    def add_minor_alarm(self, name, alarm_message = None, **keyword_params):
+        self._add_alarm(name, "MINOR", alarm_message, **keyword_params)
 
 
     @ifdef_interface
-    def add_major_alarm(self, name, alarm = None, **keyword_params):
-        self._add_alarm(name, "MAJOR", alarm, **keyword_params)
+    def add_major_alarm(self, name, alarm_message = None, **keyword_params):
+        self._add_alarm(name, "MAJOR", alarm_message, **keyword_params)
 
 
     @ifdef_interface
