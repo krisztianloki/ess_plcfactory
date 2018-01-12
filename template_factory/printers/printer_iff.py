@@ -51,6 +51,10 @@ class IFF(PRINTER):
         return "IFA"
 
 
+    def plcdiag_orzero(self, plc_diag):
+        return self.plcf("'PLC-DIAG:{plc_diag}' if not 'PLC-DIAG:{plc_diag}'.startswith('PLC-DIAG') else 0".format(plc_diag = plc_diag))
+
+
     def header(self, output):
         #
         # No need to initialize counters to 10, IFA does not need it
@@ -65,9 +69,9 @@ MAX_LOCAL_MODULES
 MAX_MODULES_IN_IO_DEVICE
 {max_modules_in_io_device}
 """.format(inst_slot                = self.inst_slot(),
-           max_io_devices           = self.plcf("PLC-DIAG:Max-IO-Devices"),
-           max_local_modules        = self.plcf("PLC-DIAG:Max-Local-Modules"),
-           max_modules_in_io_device = self.plcf("PLC-DIAG:Max-Modules-In-IO-Device")), output)
+           max_io_devices           = self.plcdiag_orzero("Max-IO-Devices"),
+           max_local_modules        = self.plcdiag_orzero("Max-Local-Modules"),
+           max_modules_in_io_device = self.plcdiag_orzero("Max-Modules-In-IO-Device")), output)
 
 
     def body(self, if_def, output):
