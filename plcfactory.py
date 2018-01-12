@@ -764,6 +764,8 @@ def main(argv):
     rmtree(TEMPLATE_DIR, onerror = onrmtreeerror)
 
     makedirs(TEMPLATE_DIR)
+    global OUTPUT_DIR
+    OUTPUT_DIR = os.path.join(OUTPUT_DIR, CCDB.sanitizeFilename(device.lower()))
     makedirs(OUTPUT_DIR)
 
     processDevice(device, templateIDs)
