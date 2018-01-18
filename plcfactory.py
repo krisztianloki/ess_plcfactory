@@ -641,6 +641,7 @@ def main(argv):
     legacy_plc = args.legacy_plc
     eem        = args.eem
     device     = args.device
+    glob.root_installation_slot = device
 
     parser         = PLCFArgumentParser()
 

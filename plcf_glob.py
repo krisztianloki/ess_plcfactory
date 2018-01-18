@@ -5,7 +5,10 @@ __copyright__  = "Copyright 2016, European Spallation Source, Lund"
 __license__    = "GPLv3"
 
 # timestamp for names of output files
-timestamp    = None
+timestamp              = None
 
 # the CCDB backend
-ccdb         = None
+ccdb                   = None
+
+# the root installation slot
+root_installation_slot = None

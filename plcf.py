@@ -33,7 +33,8 @@ def keywordsHeader(line, device, id):
                  'INSTALLATION_SLOT_DESC' : glob.ccdb.getDescription(device),
                  'TEMPLATE'               : 'template-' + id,
                  'TIMESTAMP'              : glob.timestamp,
-                 'DEVICE_TYPE'            : glob.ccdb.getDeviceType(device)
+                 'DEVICE_TYPE'            : glob.ccdb.getDeviceType(device),
+                 'ROOT_INSTALLATION_SLOT' : glob.root_installation_slot
                 }
 
     return processLine(line, device, substDict)
@@ -220,6 +221,10 @@ def evaluateExpression(expression, device, propDict):
     tag = 'INSTALLATION_SLOT_DESC'
     if tag in expression:
         expression = substitute(expression, tag, desc)
+
+    tag = 'ROOT_INSTALLATION_SLOT'
+    if tag in expression:
+        expression = substitute(expression, tag, glob.root_installation_slot)
 
     tag = 'INSTALLATION_SLOT'
     if tag in expression:
