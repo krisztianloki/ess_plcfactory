@@ -51,29 +51,48 @@ record(asyn, "{inst_slot}:iAsyn") {{
 	field(DTYP,	"asynRecordDevice")
 	field(PORT,	"$(PLCNAME)")
 }}
-record(bi, "{inst_slot}:Connected") {{
-	field(DESC,	"Shows if the PLC is connected")
+record(bi, "{inst_slot}:ModbusConnectedR") {{
+	field(DESC,	"Shows if the MODBUS channel connected")
 	field(INP,	"{inst_slot}:iAsyn.CNCT CP")
 	field(ONAM,	"Connected")
 	field(ZNAM,	"Disconnected")
-	field(FLNK,	"{inst_slot}:CommsHashToPLC")
+	field(FLNK,	"{inst_slot}:CommsHashToPLCS")
 }}
-record(bi, "{inst_slot}:PLCHashCorrect") {{
+record(bi, "{inst_slot}:S7ConnectedR") {{
+	field(DESC,	"Shows if the S7 channel is connected")
+	field(SCAN,	"I/O Intr")
+	field(DTYP,	"S7plc stat")
+	field(INP,	"@$(PLCNAME)")
+	field(ONAM,	"Connected")
+	field(ZNAM,	"Disconnected")
+}}
+record(calcout, "{inst_slot}:iCalcConn") {{
+	field(INPA,	"{inst_slot}:S7ConnectedR CP")
+	field(INPB,	"{inst_slot}:ModbusConnectedR CP")
+	field(CALC,	"A && B")
+	field(OUT,	"{inst_slot}:ConnectedR PP")
+}}
+record(bi, "{inst_slot}:ConnectedR") {{
+	field(DESC,	"Shows if the PLC is connected")
+	field(ONAM,	"Connected")
+	field(ZNAM,	"Disconnected")
+}}
+record(bi, "{inst_slot}:PLCHashCorrectR") {{
 	field(DESC,	"Shows if the comms hash is correct")
 	field(ONAM,	"Correct")
 	field(ZNAM,	"Incorrect")
 }}
-record(bi, "{inst_slot}:Alive") {{
+record(bi, "{inst_slot}:AliveR") {{
 	field(DESC,	"Shows if the PLC is sending heartbeats")
 	field(ONAM,	"Alive")
 	field(ZNAM,	"Not responding")
 }}
 record(calcout, "{inst_slot}:iCheckHash") {{
 	field(INPA,	"{inst_slot}:iCommsHashToPLC")
-	field(INPB,	"{inst_slot}:CommsHashFromPLC")
+	field(INPB,	"{inst_slot}:CommsHashFromPLCR")
 	field(CALC,	"A = B")
 	field(OOPT,	"On Change")
-	field(OUT,	"{inst_slot}:PLCHashCorrect PP")
+	field(OUT,	"{inst_slot}:PLCHashCorrectR PP")
 }}
 record(bi, "{inst_slot}:iOne") {{
 	field(DISP,	"1")
@@ -87,7 +106,7 @@ record(bo, "{inst_slot}:iGotHeartbeat") {{
 }}
 record(bo, "{inst_slot}:iKickAlive") {{
 	field(HIGH,	"5")
-	field(OUT,	"{inst_slot}:Alive PP")
+	field(OUT,	"{inst_slot}:AliveR PP")
 }}
 ########################################################
 ########## EPICS -> PLC comms management data ##########
@@ -97,21 +116,25 @@ record(ao, "{inst_slot}:iCommsHashToPLC") {{
 	field(PINI,	"YES")
 	field(VAL,	"#HASH")
 }}
-record(ao, "{inst_slot}:CommsHashToPLC") {{
+record(ao, "{inst_slot}:CommsHashToPLCS") {{
 	field(DESC,	"Sends comms hash to PLC")
 	field(SCAN,	"1 second")
 	field(DTYP,	"asynInt32")
 	field(OUT,	"@asyn($(PLCNAME)write, 0, 100)INT32_BE")
 	field(OMSL,	"closed_loop")
 	field(DOL,	"{inst_slot}:iCommsHashToPLC")
+	field(DISV,	"0")
+	field(SDIS,	"{inst_slot}:ConnectedR")
 }}
 record(calc, "{inst_slot}:iHeartbeatToPLC") {{
 	field(SCAN,	"1 second")
 	field(INPA,	"{inst_slot}:iHeartbeatToPLC.VAL")
 	field(CALC,	"(A >= 32000)? 0 : A + 1")
-	field(FLNK,	"{inst_slot}:HeartbeatToPLC")
+	field(FLNK,	"{inst_slot}:HeartbeatToPLCS")
+	field(DISV,	"0")
+	field(SDIS,	"{inst_slot}:ConnectedR")
 }}
-record(ao, "{inst_slot}:HeartbeatToPLC") {{
+record(ao, "{inst_slot}:HeartbeatToPLCS") {{
 	field(DESC,	"Sends heartbeat to PLC")
 	field(DTYP,	"asynInt32")
 	field(OUT,	"@asyn($(PLCNAME)write, 2, 100)")
@@ -125,14 +148,14 @@ record(ao, "{inst_slot}:HeartbeatToPLC") {{
 ########################################################
 ########## PLC -> EPICS comms management data ##########
 ########################################################
-record(ai, "{inst_slot}:CommsHashFromPLC") {{
+record(ai, "{inst_slot}:CommsHashFromPLCR") {{
 	field(DESC,	"Comms hash from PLC")
 	field(SCAN,	"I/O Intr")
 	field(DTYP,	"S7plc")
 	field(INP,	"@$(PLCNAME)/[PLCF#PLCToEPICSDataBlockStartOffset] T=INT32")
 	field(FLNK,	"{inst_slot}:iCheckHash")
 }}
-record(ai, "{inst_slot}:HeartbeatFromPLC") {{
+record(ai, "{inst_slot}:HeartbeatFromPLCR") {{
 	field(DESC,	"Heartbeat from PLC")
 	field(SCAN,	"I/O Intr")
 	field(DTYP,	"S7plc")
