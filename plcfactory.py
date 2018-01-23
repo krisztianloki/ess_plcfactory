@@ -774,6 +774,10 @@ def main(argv):
     # create a dump of CCDB
     output_files["CCDB-DUMP"] = glob.ccdb.dump("-".join([device, glob.timestamp]), OUTPUT_DIR)
 
+    if plc:
+        from InterfaceFactory import produce as ifa_produce
+        output_files.update(ifa_produce(OUTPUT_DIR, output_files["IFA"], output_files["TIA-MAP-NG"]))
+
     if eem:
         create_eem(device)
 
