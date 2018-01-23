@@ -20,12 +20,24 @@ inpv_template  = """record({recordtype}, "[PLCF#INSTALLATION_SLOT]:{name}")
 }}
 
 """
+test_inpv_template  = """record({recordtype}, "[PLCF#INSTALLATION_SLOT]:{name}")
+{{{alias}
+	{pv_extra}
+}}
+
+"""
 
 
 outpv_template = """record({{recordtype}}, "[PLCF#INSTALLATION_SLOT]:{{name}}")
 {{{{{{alias}}
 	field(DTYP, "{asyntype}")
 	field(OUT,  "@{asynio}($(PLCNAME)write, {{offset}}, {{link_extra}}){{var_type}}"){{pv_extra}}
+}}}}
+
+"""
+test_outpv_template = """record({{recordtype}}, "[PLCF#INSTALLATION_SLOT]:{{name}}")
+{{{{{{alias}}
+	{{pv_extra}}
 }}}}
 
 """
@@ -281,11 +293,14 @@ class BLOCK(SOURCE):
         self._length = self._block_offset
 
 
-    def pv_template(self, asyntype = None, asynio = None):
-        pv_templates = { CMD : outpv_template,   PARAM : outpv_template,   STATUS : inpv_template }
+    def pv_template(self, test = False, asyntype = None, asynio = None):
+        if test:
+            pv_templates = { CMD : test_outpv_template,   PARAM : test_outpv_template,   STATUS : test_inpv_template }
+        else:
+            pv_templates = { CMD : outpv_template,   PARAM : outpv_template,   STATUS : inpv_template }
         pv_temp = pv_templates[self.type()]
 
-        if pv_temp is outpv_template:
+        if not self.is_status_block():
             assert isinstance(asyntype, str), func_param_msg("asyntype", "string")
             assert isinstance(asynio,   str), func_param_msg("asynio",   "string")
 
@@ -1122,15 +1137,15 @@ class BASE_TYPE(SOURCE):
 
         return ""
 
-    def toEPICS(self):
+    def toEPICS(self, test = False):
         return (self.source(),
-                 self.pv_template().format(recordtype = self.pv_type(),
-                                           name       = self.pv_name(),
-                                           alias      = self._build_pv_alias(),
-                                           offset     = self.link_offset(),
-                                           var_type   = self.var_type(),
-                                           link_extra = self.link_extra() + self._get_user_link_extra(),
-                                           pv_extra   = self._build_pv_extra()))
+                 self.pv_template(test = test).format(recordtype = self.pv_type(),
+                                                      name       = self.pv_name(),
+                                                      alias      = self._build_pv_alias(),
+                                                      offset     = self.link_offset(),
+                                                      var_type   = self.var_type(),
+                                                      link_extra = self.link_extra() + self._get_user_link_extra(),
+                                                      pv_extra   = self._build_pv_extra()))
 
 
     def bit_number(self):
@@ -1150,8 +1165,8 @@ class BASE_TYPE(SOURCE):
         return self._block.link_offset(self)
 
 
-    def pv_template(self, asyntype = "asynInt32", asynio = "asyn"):
-        return self._block.pv_template(asyntype, asynio)
+    def pv_template(self, test = False, asyntype = "asynInt32", asynio = "asyn"):
+        return self._block.pv_template(test = test, asyntype = asyntype, asynio = asynio)
 
 
     def link_extra(self):
@@ -1301,8 +1316,8 @@ class BIT(BASE_TYPE):
         self._bit_def.add_bit(1)
 
 
-    def pv_template(self):
-        return self._block.pv_template("asynUInt32Digital", "asynMask")
+    def pv_template(self, test = False):
+        return self._block.pv_template(test = test, asyntype = "asynUInt32Digital", asynio = "asynMask")
 
 
     def link_extra(self):
@@ -1323,10 +1338,10 @@ class ANALOG(BASE_TYPE):
         BASE_TYPE.__init__(self, source, block, name, plc_var_type, keyword_params)
 
 
-    def pv_template(self):
+    def pv_template(self, test = False):
         if self._var_type in self._block.valid_type_pairs()["REAL"]:
-            return BASE_TYPE.pv_template(self, "asynFloat64")
-        return BASE_TYPE.pv_template(self)
+            return BASE_TYPE.pv_template(self, test = test, asyntype = "asynFloat64")
+        return BASE_TYPE.pv_template(self, test = test)
 
 
     def pv_type(self):
@@ -1361,8 +1376,8 @@ class BITMASK(BASE_TYPE):
         return BITMASK.pv_types[self.block_type()]
 
 
-    def pv_template(self):
-        return self._block.pv_template("asynUInt32Digital", "asynMask")
+    def pv_template(self, test = False):
+        return self._block.pv_template(test = test, asyntype = "asynUInt32Digital", asynio = "asynMask")
 
 
     def link_extra(self):
