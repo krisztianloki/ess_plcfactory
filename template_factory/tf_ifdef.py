@@ -525,7 +525,14 @@ class IF_DEF(object):
             raise IfDefSyntaxError("Not supported keyword")
 
         self._source    = (source, linenum)
-        result = eval(stripped_source, self._evalEnv)
+        try:
+            result = eval(stripped_source, self._evalEnv)
+        except AssertionError, e:
+            raise IfDefInternalError(e)
+        except SyntaxError, e:
+            raise IfDefSyntaxError(e)
+        except NameError, e:
+            raise IfDefSyntaxError(e)
         if not isinstance(result, IF_DEF_INTERFACE_FUNC):
             raise IfDefSyntaxError("Missing parentheses?")
 
