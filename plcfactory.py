@@ -750,7 +750,7 @@ def main(argv):
         default_printers.extend([ p for p in new_list if p not in default_printers])
 
     if plc:
-        add_to_default_printers( [ "EPICS-DB", "IFA", "TIA-MAP-NG", "DIAG" ] )
+        add_to_default_printers( [ "EPICS-DB", "IFA", "TIA-MAP-NG" ] )
 
     if legacy_plc:
         tf.optimize_s7db(True)
