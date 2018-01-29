@@ -549,8 +549,12 @@ USR_DEPENDENCIES = s7plc_comms
         copy2(f, of)
         eem_files.append(of)
 
-    m_cp(output_files['EPICS-DB'],  "db",      basename + ".db")
-    m_cp(output_files['ST-CMD'],    "startup", basename + ".cmd")
+    m_cp(output_files['EPICS-DB'],       "db",      basename + ".db")
+    try:
+        m_cp(output_files['EPICS-TEST-DB'],  "db",      basename + "-test.db")
+    except KeyError:
+        pass
+    m_cp(output_files['ST-CMD'],         "startup", basename + ".cmd")
 
     if output_files['CCDB-DUMP'] is not None:
         import zipfile
