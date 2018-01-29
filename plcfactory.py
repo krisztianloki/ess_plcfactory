@@ -25,22 +25,38 @@ import sys
 import time
 import hashlib
 
+# Template Factory
+parent_dir = os.path.abspath(os.path.dirname(__file__))
+tf_dir     = os.path.join(parent_dir, 'template_factory')
+sys.path.append(tf_dir)
+del tf_dir
+
+try:
+    import tf
+except AttributeError, e:
+    if e.args[0] == "'module' object has no attribute 'iglob'":
+        # glob.py has been renamed to plcf_glob.py but the .pyc can still be
+        # there. Remove the .pyc and reload glob and try to import tf again
+        os.unlink(os.path.join(parent_dir, "glob.pyc"))
+        import glob
+        from imp import reload as imp_reload
+        imp_reload(glob)
+        del glob
+        del imp_reload
+
+        import tf
+    else:
+        raise
+
+del parent_dir
+
+
 # PLC Factory modules
 import plcf_glob as glob
 import plcf
 import processTemplate as pt
 from   ccdb import CCDB
 from   future_print import future_print
-
-# Template Factory
-parent_dir = os.path.abspath(os.path.dirname(__file__))
-tf_dir     = os.path.join(parent_dir, 'template_factory')
-sys.path.append(tf_dir)
-del parent_dir
-del tf_dir
-
-import tf
-
 
 # global variables
 TEMPLATE_DIR = "templates"
