@@ -567,8 +567,9 @@ USR_DEPENDENCIES = s7plc_comms
 
 
 class PLCFArgumentError(Exception):
-    def __init__(self, status):
-        self.status = status
+    def __init__(self, status, message = None):
+        self.status  = status
+        self.message = message
 
 
 class PLCFArgumentParser(argparse.ArgumentParser):
@@ -590,16 +591,17 @@ def main(argv):
         #
         parser.add_argument(
                             '--plc',
-                            dest = "plc",
-                            help = 'use the default templates for PLCs',
-                            action = "store_true"
+                            dest    = "plc",
+                            help    = 'use the default templates for PLCs and generate PLC comms and diagnostics code',
+                            metavar = 'TIA Portal version',
+                            type    = str
                            )
 
         parser.add_argument(
                             '--legacy-plc',
-                            dest = "legacy_plc",
-                            help = 'use the default templates for legacy PLCs',
-                            action = "store_true"
+                            dest    = "legacy_plc",
+                            help    = 'use the default legacy templates for PLCs',
+                            action  = "store_true"
                            )
 
         parser.add_argument(
@@ -637,7 +639,20 @@ def main(argv):
         print tf.available_printers()
         exit(0)
 
-    plc        = args.plc
+    if args.plc is not None:
+        plc = True
+        tia13 = set({"13", "v13", "tia13", "tiav13"})
+        tia14 = set({"14", "v14", "tia14", "tiav14"})
+
+        if args.plc.lower() in tia13:
+            tia_version = 13
+        elif args.plc.lower() in tia14:
+            tia_version = 14
+        else:
+            raise PLCFArgumentError(1, "Invalid TIA version: " + args.plc)
+    else:
+        plc = False
+
     legacy_plc = args.legacy_plc
     eem        = args.eem
     device     = args.device
@@ -689,6 +704,20 @@ def main(argv):
                         required = False)
 
     parser.add_argument(
+                        '--plc-no-diag',
+                        dest     = "plc_no_diag",
+                        help     = 'do not generate PLC diagnostics code (if used with --plc)',
+                        action   = 'store_true',
+                        required = False)
+
+    parser.add_argument(
+                        '--plc-only-diag',
+                        dest     = "plc_only_diag",
+                        help     = 'generate PLC diagnostics code only (if used with --plc)',
+                        action   = 'store_true',
+                        required = False)
+
+    parser.add_argument(
                         '-t',
                         '--template',
                         help     = 'template name',
@@ -712,6 +741,9 @@ def main(argv):
         glob.ccdb = CCDB_TEST()
     else:
         glob.ccdb = CCDB()
+
+    if args.plc_no_diag and args.plc_only_diag:
+        raise PLCFArgumentError("--plc-no-diag and --plc-only-diag are mutually exclusive")
 
     default_printers = []
     def add_to_default_printers(new_list):
@@ -742,8 +774,7 @@ def main(argv):
 
         # TIA-MAP and TIA-MAP-NG are incompatible
         if "TIA-MAP-NG" in templateIDs:
-            print "Cannot use TIA-MAP and TIA-MAP-NG at the same time. They are incompatible."
-            exit(1)
+            raise PLCFArgumentParser("Cannot use TIA-MAP and TIA-MAP-NG at the same time. They are incompatible.")
 
     os.system('clear')
 
@@ -776,7 +807,7 @@ def main(argv):
 
     if plc:
         from InterfaceFactory import produce as ifa_produce
-        output_files.update(ifa_produce(OUTPUT_DIR, output_files["IFA"], output_files["TIA-MAP-NG"]))
+        output_files.update(ifa_produce(OUTPUT_DIR, output_files["IFA"], output_files["TIA-MAP-NG"], tia_version, nodiag = args.plc_no_diag, onlydiag = args.plc_only_diag))
 
     if eem:
         create_eem(device)
@@ -793,4 +824,5 @@ if __name__ == "__main__":
     try:
         main(sys.argv[1:])
     except PLCFArgumentError, e:
+        future_print(e.message, file = sys.stderr)
         exit(e.status)

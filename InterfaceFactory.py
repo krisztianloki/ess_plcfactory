@@ -9,7 +9,7 @@ __credits__    = [ "Krisztian Loki"
 				]
 __license__    = "GPLv3"
 __maintainer__ = "Miklos Boros"
-__email__      = "miklos.boros@esss.se"
+__email__      = "miklos.boros@esss.se; borosmiklos@gmail.com"
 __status__     = "Production"
 __env__        = "Python version 2.7"
 
@@ -365,7 +365,7 @@ def WriteEPICS_device_calls_test():
 	EPICS_device_calls_test_body = []
 	EPICS_device_calls_test_header = []
 
-def WriteDiagnostics():
+def WriteDiagnostics(TIAVersion):
 	
 	global ExternalSourceFile
 	global MAX_IO_DEVICES
@@ -1119,7 +1119,10 @@ def WriteDiagnostics():
 	ExternalSourceFile.append("{ S7_Optimized_Access := 'TRUE' }")
 	ExternalSourceFile.append("VERSION : 0.1")
 	ExternalSourceFile.append("   VAR_INPUT ")
-	ExternalSourceFile.append("      laddr : HW_DEVICE;   // Hardware identifier")
+	if (TIAVersion == "13"):
+		ExternalSourceFile.append("      laddr : HW_IO;   // Hardware identifier")
+	if (TIAVersion == "14"):
+		ExternalSourceFile.append("      laddr : HW_DEVICE;   // Hardware identifier")
 	ExternalSourceFile.append("      eventClass : Byte;   // Event class")
 	ExternalSourceFile.append("      faultId : Byte;   // Fault identifier")
 	ExternalSourceFile.append("   END_VAR")
@@ -1468,7 +1471,7 @@ def WriteDiagnostics():
 	ExternalSourceFile.append("	")
 	ExternalSourceFile.append("END_ORGANIZATION_BLOCK")
 
-def WriteStandardPLCCode():
+def WriteStandardPLCCode(TIAVersion):
 	
 	global ExternalSourceFile
 
@@ -1518,7 +1521,10 @@ def WriteStandardPLCCode():
 	ExternalSourceFile.append("      AlwaysFalse : Bool;   // Bit always FALSE")
 	ExternalSourceFile.append("      FirstScan : Bool;   // Bit TRUE for only the first scan of the PLC")
 	ExternalSourceFile.append("      StartupDelayDn : Bool;   // Bit initially FALSE, turning TRUE after preset delay")
-	ExternalSourceFile.append("      StartupDelayTmr {OriginalPartName := 'IEC_TIMER'; LibVersion := '1.0'} : IEC_TIMER;")
+	if (TIAVersion == "13"):
+		ExternalSourceFile.append("      StartupDelayTmr {OriginalPartName := 'IEC_TIMER'; LibVersion := '1.0'} : TON_TIME;")
+	if (TIAVersion == "14"):
+		ExternalSourceFile.append("      StartupDelayTmr {OriginalPartName := 'IEC_TIMER'; LibVersion := '1.0'} : IEC_TIMER;")
 	ExternalSourceFile.append("      Square_100ms : Bool;   // Bit FALSE/TRUE based on square wave (100 ms frequency)")
 	ExternalSourceFile.append("      Square_100msONS : Bool;")
 	ExternalSourceFile.append("      Pulse_100ms : Bool;   // Bit TRUE every 100 ms for one PLC scan")
@@ -1574,9 +1580,14 @@ def WriteStandardPLCCode():
 	ExternalSourceFile.append("	#AlwaysFalse := #CPUSytemMemoryBits.%X3;")
 	ExternalSourceFile.append("	")
 	ExternalSourceFile.append("	//Bit initially FALSE, turning TRUE after preset delay")
-	ExternalSourceFile.append("	#StartupDelayTmr.TON(IN := #AlwaysTrue,")
-	ExternalSourceFile.append("	                     PT := #StartupDelaySP,")
-	ExternalSourceFile.append("	                     Q => #StartupDelayDn);")
+	if (TIAVersion == "13"):
+		ExternalSourceFile.append("	#StartupDelayTmr(IN := #AlwaysTrue,")
+		ExternalSourceFile.append("	                 PT := #StartupDelaySP,")
+		ExternalSourceFile.append("	                 Q => #StartupDelayDn);")
+	if (TIAVersion == "14"):
+		ExternalSourceFile.append("	#StartupDelayTmr.TON(IN := #AlwaysTrue,")
+		ExternalSourceFile.append("	                     PT := #StartupDelaySP,")
+		ExternalSourceFile.append("	                     Q => #StartupDelayDn);")
 	ExternalSourceFile.append("	")
 	ExternalSourceFile.append("	//Bit TRUE every 100 ms FOR one PLC scan")
 	ExternalSourceFile.append("	#Square_100ms := #CPUClockMemoryBits.%X0;")
@@ -1918,7 +1929,7 @@ def WriteStandardPLCCode():
 	ExternalSourceFile.append("END_FUNCTION")
 	
 	
-def ProcessIFADevTypes(OutputDir, IfaPath):
+def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 
 	#Process IFA devices	
 	print "Processing .ifa file..."
@@ -2053,7 +2064,7 @@ def ProcessIFADevTypes(OutputDir, IfaPath):
 			EPICS_device_calls_body.append("");    
 			EPICS_device_calls_body.append("        //********************************************");
 			EPICS_device_calls_body.append("        // Device name: "+ActualDeviceName);
-			EPICS_device_calls_body.append("        // Device type: "+ActVariableType);
+			EPICS_device_calls_body.append("        // Device type: "+ActualDeviceType);
 			EPICS_device_calls_body.append("        //********************************************");
 			EPICS_device_calls_body.append("");
 			EPICS_device_calls_body.append("      \"DEV_"+ActualDeviceName+"_iDB\" ();")
@@ -2062,7 +2073,7 @@ def ProcessIFADevTypes(OutputDir, IfaPath):
 			EPICS_device_calls_test_body.append("");    
 			EPICS_device_calls_test_body.append("      //********************************************");
 			EPICS_device_calls_test_body.append("      // Device name: "+ActualDeviceName);
-			EPICS_device_calls_test_body.append("      // Device type: "+ActVariableType);
+			EPICS_device_calls_test_body.append("      // Device type: "+ActualDeviceType);
 			EPICS_device_calls_test_body.append("      //********************************************");
 			EPICS_device_calls_test_body.append("");
 			EPICS_device_calls_test_body.append("      \"DEV_"+ActualDeviceName+"_iDB\" (")
@@ -2191,15 +2202,25 @@ def ProcessIFADevTypes(OutputDir, IfaPath):
 			if InStatus:
 				DevTypeVAR_INPUT.append("      \"" + ActVariablePLCName + "\" "+"{ S7_HMI_Accessible := 'False'; S7_HMI_Visible := 'False'} : "+ ActVariableType+";   //EPICS Status variable: "+ActVariableEPICSName)
 				EPICS_PLC_TesterDB.append("      \"" + ActualDeviceName+"_" + ActVariablePLCName + "\" "+"{ S7_HMI_Accessible := 'False'; S7_HMI_Visible := 'False'} : "+ ActVariableType+";   //EPICS Status variable: "+ActVariableEPICSName)
-				EPICS_device_calls_test_body.append("                                 "+ActVariablePLCName+" := \"EPICS_PLC_Tester\".#\""+ ActualDeviceName+"_" + ActVariablePLCName + "\",")					
+				if (TIAVersion == "13"):
+					EPICS_device_calls_test_body.append("                                 "+ActVariablePLCName+" := \"EPICS_PLC_Tester\".#\""+ ActualDeviceName+"_" + ActVariablePLCName + "\",")
+				if (TIAVersion == "14"):
+					EPICS_device_calls_test_body.append("                                 "+"\""+ActVariablePLCName+"\""+" := \"EPICS_PLC_Tester\".#\""+ ActualDeviceName+"_" + ActVariablePLCName + "\",")
+					
 			if InCommand:
 				DevTypeVAR_OUTPUT.append("      \"" + ActVariablePLCName + "\" "+"{ S7_HMI_Accessible := 'False'; S7_HMI_Visible := 'False'} : "+ ActVariableType+";   //EPICS Command variable: "+ActVariableEPICSName)
 				EPICS_PLC_TesterDB.append("      \"" + ActualDeviceName+"_" + ActVariablePLCName + "\" "+"{ S7_HMI_Accessible := 'False'; S7_HMI_Visible := 'False'} : "+ ActVariableType+";   //EPICS Command variable: "+ActVariableEPICSName)
-				EPICS_device_calls_test_body.append("                                 "+ActVariablePLCName+" => \"EPICS_PLC_Tester\".#\""+ ActualDeviceName+"_" + ActVariablePLCName + "\",")					
+				if (TIAVersion == "13"):
+					EPICS_device_calls_test_body.append("                                 "+ActVariablePLCName+" => \"EPICS_PLC_Tester\".#\""+ ActualDeviceName+"_" + ActVariablePLCName + "\",")
+				if (TIAVersion == "14"):
+					EPICS_device_calls_test_body.append("                                 "+"\""+ActVariablePLCName+"\""+" => \"EPICS_PLC_Tester\".#\""+ ActualDeviceName+"_" + ActVariablePLCName + "\",")
 			if InParameter:
 				DevTypeVAR_OUTPUT.append("      \"" + ActVariablePLCName + "\" "+"{ S7_HMI_Accessible := 'False'; S7_HMI_Visible := 'False'} : "+ ActVariableType+";   //EPICS Parameter variable: "+ActVariableEPICSName)
 				EPICS_PLC_TesterDB.append("      \"" + ActualDeviceName+"_" + ActVariablePLCName + "\" "+"{ S7_HMI_Accessible := 'False'; S7_HMI_Visible := 'False'} : "+ ActVariableType+";   //EPICS Parameter variable: "+ActVariableEPICSName)
-				EPICS_device_calls_test_body.append("                                 "+ActVariablePLCName+" => \"EPICS_PLC_Tester\".#\""+ ActualDeviceName+"_" + ActVariablePLCName + "\",")					
+				if (TIAVersion == "13"):
+					EPICS_device_calls_test_body.append("                                 "+ActVariablePLCName+" => \"EPICS_PLC_Tester\".#\""+ ActualDeviceName+"_" + ActVariablePLCName + "\",")
+				if (TIAVersion == "14"):
+					EPICS_device_calls_test_body.append("                                 "+"\""+ActVariablePLCName+"\""+" => \"EPICS_PLC_Tester\".#\""+ ActualDeviceName+"_" + ActVariablePLCName + "\",")
 
 			#SUPPORTED TYPES
 			#PLC_types = {'BOOL', 'BYTE', 'WORD', 'DWORD', 'INT', 'DINT', 'REAL', 'TIME' }
@@ -2395,14 +2416,14 @@ def ProcessIFADevTypes(OutputDir, IfaPath):
 						EndString = ""
 			#==========================		
 			if InStatus:
-				if ActVariableArrayIndex > MaxStatusReg:
+				if ActVariableArrayIndex >= MaxStatusReg:
 					if IsDouble:
 						MaxStatusReg = ActVariableArrayIndex + 1
 					else:
 						MaxStatusReg = ActVariableArrayIndex
 					
 			if InParameter or InCommand:
-				if ActVariableArrayIndex > MaxCommandReg:
+				if ActVariableArrayIndex >= MaxCommandReg:
 					if IsDouble:
 						MaxCommandReg = ActVariableArrayIndex + 1
 					else:
@@ -2432,7 +2453,7 @@ def ProcessIFADevTypes(OutputDir, IfaPath):
 	print "Total ("+ str(len(DeviceTypeList)) + ") device type(s) generated.\n"
 
 
-def produce(OutputDir, IfaPath, SclPath):
+def produce(OutputDir, IfaPath, SclPath, TIAVersion, **kwargs):
 	Pre_ProcessIFA(IfaPath)
 	if HASH <> "" and DeviceNum <> 0:
 		generated_files = dict()
@@ -2441,34 +2462,51 @@ def produce(OutputDir, IfaPath, SclPath):
 		global ExternalSourceFile
 		ExternalSourceFile = []
 
-		#WriteStandardPLCCode
-		WriteStandardPLCCode()
+		TIAVersion = str(TIAVersion)
+		try:
+			onlydiag = kwargs['onlydiag']
+		except KeyError:
+			onlydiag = False
+		try:
+			nodiag = kwargs['nodiag']
+		except KeyError:
+			nodiag = False
 
-		standardPath = os.path.join(OutputDir, "InterfaceFactory_external_source_standard.scl")
-		with open(standardPath, 'wb') as standardScl:
-			for line in ExternalSourceFile:
-				standardScl.write(line + '\r\n')
+		if not onlydiag:
+			#WriteStandardPLCCode
+			WriteStandardPLCCode(TIAVersion)
 
-		generated_files["STANDARD_SCL"] = standardPath
+			standardPath = os.path.join(OutputDir, "InterfaceFactory_external_source_standard_TIAv{tiaversion}.scl".format(tiaversion = TIAVersion))
+			with open(standardPath, 'wb') as standardScl:
+				for line in ExternalSourceFile:
+					standardScl.write(line + '\r\n')
 
-		ExternalSourceFile = []
+			generated_files["STANDARD_SCL"] = standardPath
 
-		#Process devices/device types
-		ProcessIFADevTypes(OutputDir, IfaPath)
+			ExternalSourceFile = []
 
-		#WriteDiagnostics
-		WriteDiagnostics()
+			#Process devices/device types
+			ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion)
+
+		if not nodiag:
+			#WriteDiagnostics
+			WriteDiagnostics(TIAVersion)
+		else:
+			print "NOTE:\nSkipping diagnostics"
 
 		#Write the output fo file
-		externalPath = os.path.join(OutputDir, "InterfaceFactory_external_source.scl")
+		externalPath = os.path.join(OutputDir, "InterfaceFactory_external_source_TIAv{tiaversion}.scl".format(tiaversion = TIAVersion))
 		with open(externalPath, 'wb') as externalScl:
 			for line in ExternalSourceFile:
 				externalScl.write(line + '\r\n')
 
-			#Copy the .SCL from the ZIP file to the end of the code
-			with open(SclPath, 'r') as tiamap:
-				for line in tiamap:
-					externalScl.write(line)
+			if not onlydiag:
+				#Copy the .SCL from the ZIP file to the end of the code
+				with open(SclPath, 'r') as tiamap:
+					for line in tiamap:
+						externalScl.write(line)
+			else:
+				print "NOTE:\nOnly diagnostics code is generated"
 
 		generated_files["EXTERNAL_SCL"] = externalPath
 
@@ -2508,18 +2546,63 @@ def main(argv):
 						required = True
 						)
 
+	parser.add_argument(
+						'-TIA',
+						'--TIA',
+						dest     = "TIAVersion",
+						help     = 'TIA Portal version V13 or V14',
+						required = True
+						)
 
+	parser.add_argument(
+						'-nodiag',
+						'--nodiag',
+						dest    = "nodiag",
+						help    = "create the PLC code without the diagnostic blocks",
+						action  = "store_true"
+						)
 
+	parser.add_argument(
+						'-onlydiag',
+						'--onlydiag',
+						dest    = "onlydiag",
+						help    = "create the PLC code only with diagnostic blocks",
+						action  = "store_true"
+						)
+						
 
 	# Retrieve parameters
 	args       = parser.parse_args(argv)
 
 	inputzipfile = args.inputzipfile
+	nodiag       = args.nodiag
+	onlydiag     = args.onlydiag
+	TIAVersion   = args.TIAVersion
+	
 
 	start_time     = time.time()
 
+	if (nodiag) and (onlydiag):
+		print "ERROR:"
+		print "You have selected NoDiagnostics and OnlyDiagnostics in the same time!"
+		print "Remove unconsistant parameter!\n\n"
+		print("--- %.1f seconds ---\n" % (time.time() - start_time))
+		sys.exit()		
+	
+	
+	#Check TIA Portal version
+	if (TIAVersion <> "13") and (TIAVersion <> "14"):
+	
+		print "ERROR:"
+		print "InterfaceFactory supports only TIA Portal v13 or v14"
+		print "The selected version was: TIA v"+TIAVersion+"\n\n" 
+		print("--- %.1f seconds ---\n" % (time.time() - start_time))
+		sys.exit()		
+	print "The selected version was: TIA v"+TIAVersion+"\n\n"
+	
 	# Make output directory
 	OutputDir, file_extension = os.path.splitext(inputzipfile)
+	OutputDir = OutputDir + "_TIAv"+TIAVersion
 	makedirs(OutputDir)
 
 	#Unzip content
@@ -2538,7 +2621,7 @@ def main(argv):
 				SclPath = os.path.join(OutputDir, file)
 		if SclPath <> "":
 			print "ZIP content OK..."
-			produce(OutputDir, IfaPath, SclPath)
+			produce(OutputDir, IfaPath, SclPath, TIAVersion, nodiag = nodiag, onlydiag = onlydiag)
 		else:
 			print "ERROR:"
 			print "The input zip file content is unknown! .scl file can't be located inside the archive! Exiting InterfaceFactory...\n"
