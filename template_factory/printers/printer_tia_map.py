@@ -46,20 +46,34 @@ class TIA_MAP(PRINTER):
 #COUNTER Counter1 = [PLCF# Counter1 + 10];
 #COUNTER Counter2 = [PLCF# Counter2 + 10];
 FUNCTION "_CommsEPICSDataMap" : Void
-{{ S7_Optimized_Access := 'TRUE' }}
+{{ S7_Optimized_Access := 'FALSE' }}
 VERSION : 0.1
    VAR_TEMP
-      Hash : DInt;
+       tHashDint : DInt;
+       wordTOdint AT tHashDint : Array[0..1] of Word;
+       PLC_Hash : DInt;
+       IOC_Hash : DInt;
    END_VAR
 
-BEGIN
-        //Comms data generation hash
-        #Hash := DInt##HASH;
-        "[PLCF#PLCToEPICSDataBlockName]"."Word"[1] := DINT_TO_WORD(#Hash);
-        "[PLCF#PLCToEPICSDataBlockName]"."Word"[0] := DINT_TO_WORD(SHR(IN := #Hash, N := 16));
+   BEGIN
 
-  // {inst_slot}: PLC <-> EPICS Communication Mapping
-  //------------------------------------------------------------------------
+   // PLC Hash (Generated from PLC Factory)
+   #PLC_Hash := DINT##HASH;
+
+   // Send the PLC Hash to the EPICS IOC
+   "[PLCF#PLCToEPICSDataBlockName]"."Word"[1] := DINT_TO_WORD(#PLC_Hash);
+   "[PLCF#PLCToEPICSDataBlockName]"."Word"[0] := DINT_TO_WORD(SHR(IN := #PLC_Hash, N := 16));
+
+   // Get Hash from the EPICS IOC
+   #wordTOdint[0] := "[PLCF#EPICSToPLCDataBlockName]"."Word"[0];
+   #wordTOdint[1] := "[PLCF#EPICSToPLCDataBlockName]"."Word"[1];
+   #IOC_Hash := #tHashDint;
+
+   // {inst_slot}: PLC <-> EPICS Communication Mapping
+   //------------------------------------------------------------------------
+
+   // Hashes Comparision
+   IF (#PLC_Hash = #IOC_Hash) THEN
 """.format(inst_slot = self.inst_slot()).replace("\n", "\r\n"), output)
 
 
@@ -70,14 +84,14 @@ BEGIN
         PRINTER.body(self, if_def, output)
 
         self._append("""
-        "_CommsEPICSDataMappingFB"(EPICSToPLCLength := [PLCF# {epicstoplclength}],
-                                   EPICSToPLCDataBlockOffset := [PLCF# ^(EPICSToPLCDataBlockStartOffset) + Counter1],
-                                   PLCToEPICSLength := [PLCF# {plctoepicslength}],
-                                   PLCToEPICSDataBlockOffset := [PLCF# ^(PLCToEPICSDataBlockStartOffset) + Counter2],
-                                   EPICSToPLCCommandRegisters := "{inst_slot}".CommandReg,
-                                   PLCToEPICSStatusRegisters := "{inst_slot}".StatusReg,
-                                   EPICSToPLCDataBlock := "[PLCF# ^(EPICSToPLCDataBlockName)]"."Word",
-                                   PLCToEPICSDataBlock := "[PLCF# ^(PLCToEPICSDataBlockName)]"."Word");
+      "_CommsEPICSDataMappingFB"(EPICSToPLCLength := [PLCF# {epicstoplclength}],
+                                 EPICSToPLCDataBlockOffset := [PLCF# ^(EPICSToPLCDataBlockStartOffset) + Counter1],
+                                 PLCToEPICSLength := [PLCF# {plctoepicslength}],
+                                 PLCToEPICSDataBlockOffset := [PLCF# ^(PLCToEPICSDataBlockStartOffset) + Counter2],
+                                 EPICSToPLCCommandRegisters := "{inst_slot}".CommandReg,
+                                 PLCToEPICSStatusRegisters := "{inst_slot}".StatusReg,
+                                 EPICSToPLCDataBlock := "[PLCF# ^(EPICSToPLCDataBlockName)]"."Word",
+                                 PLCToEPICSDataBlock := "[PLCF# ^(PLCToEPICSDataBlockName)]"."Word");
 #COUNTER Counter1 = [PLCF# Counter1 + {epicstoplclength}];
 #COUNTER Counter2 = [PLCF# Counter2 + {plctoepicslength}];
 """.format(inst_slot        = self.inst_slot(),
@@ -94,37 +108,23 @@ BEGIN
         PRINTER.footer(self, output)
 
         self._append("""
+
+   END_IF;
+
+//########## EPICS->PLC datablock ##########
+// DATA_BLOCK name : "[PLCF#EPICSToPLCDataBlockName]"
+// DATA_BLOCK length : Array[0..[PLCF# Counter1 - 1]] of Word;
+
+// !! Make sure that the length of "[PLCF#EPICSToPLCDataBlockName]" is consistant in the user program.
+
+//########## PLC->EPICS datablock ##########
+// DATA_BLOCK name : "[PLCF#PLCToEPICSDataBlockName]"
+// DATA_BLOCK length : Array[0..[PLCF# Counter2 - 1]] of Word;
+
+// !! Make sure that the length of "[PLCF#PLCToEPICSDataBlockName]" is consistant in the user program.
+// !! Make sure that the length of "[PLCF#PLCToEPICSDataBlockName]" in the user program is consistant with the input 'BytesToSend' of "_CommsPLC_EPICS".
+
 END_FUNCTION
-
-(*
-At this stage we are not going to dynamically set the length of DB files, will just set them at 2000 bytes
-########## EPICS->PLC datablock ##########
-DATA_BLOCK "EPICSToPLC"
-{ S7_Optimized_Access := 'FALSE' }
-VERSION : 0.1
-NON_RETAIN
-   STRUCT
-      "Word" : Array[0..[PLCF# Counter1 - 1]] of Word;
-   END_STRUCT;
-
-
-BEGIN
-END_DATA_BLOCK
-
-########## PLC->EPICS datablock ##########
-DATA_BLOCK "PLCToEPICS"
-{ S7_Optimized_Access := 'FALSE' }
-VERSION : 0.1
-NON_RETAIN
-   STRUCT
-      "Word" : Array[0..[PLCF# Counter2 - 1]] of Word;
-   END_STRUCT;
-
-
-BEGIN
-        "Word"[0] := #HASH;
-END_DATA_BLOCK
-*)
 """.replace("\n", "\r\n"), output)
 
 
