@@ -613,7 +613,7 @@ def main(argv):
                             '--plc',
                             dest    = "plc",
                             help    = 'use the default templates for PLCs and generate PLC comms and diagnostics code',
-                            metavar = 'TIA Portal version',
+                            metavar = 'TIA-Portal-version',
                             type    = str
                            )
 
@@ -762,41 +762,48 @@ def main(argv):
     else:
         glob.ccdb = CCDB()
 
-    if args.plc_no_diag and args.plc_only_diag:
-        raise PLCFArgumentError("--plc-no-diag and --plc-only-diag are mutually exclusive")
-
-    default_printers = []
-    def add_to_default_printers(new_list):
-        default_printers.extend([ p for p in new_list if p not in default_printers])
+    default_printers = set()
 
     if plc:
-        add_to_default_printers( [ "EPICS-DB", "IFA", "TIA-MAP-NG" ] )
+        default_printers.update( [ "EPICS-DB", "IFA", "TIA-MAP-NG" ] )
 
     if legacy_plc:
         tf.optimize_s7db(True)
-        add_to_default_printers( [ "EPICS-DB", "TIA-MAP" ] )
+        default_printers.update( [ "EPICS-DB", "TIA-MAP" ] )
 
     if eem:
-        add_to_default_printers( [ "EPICS-DB", "ST-CMD" ] )
+        default_printers.update( [ "EPICS-DB", "ST-CMD" ] )
 
     if default_printers:
-        if not set(default_printers) <= set(tf.available_printers()):
-            print "Your PLCFactory does not support generating the following necessary templates: ", list(set(default_printers) - set(tf.available_printers()))
+        if not default_printers <= set(tf.available_printers()):
+            print "Your PLCFactory does not support generating the following necessary templates: ", list(default_printers - set(tf.available_printers()))
             exit(1)
 
-        templateIDs = default_printers + [ t for t in args.template if t not in default_printers ]
+        templateIDs = default_printers | set(args.template)
     else:
-        templateIDs = args.template
+        templateIDs = set(args.template)
 
     # Make sure that OPTIMIZE_S7DB is turned on if TIA-MAP is requested
     if "TIA-MAP" in templateIDs:
         tf.optimize_s7db(True)
+        if args.plc_no_diag == False:
+            args.plc_only_diag =  True
+            tia_version        =  14
+            templateIDs.add("IFA")
 
         # TIA-MAP and TIA-MAP-NG are incompatible
         if "TIA-MAP-NG" in templateIDs:
             raise PLCFArgumentParser("Cannot use TIA-MAP and TIA-MAP-NG at the same time. They are incompatible.")
 
+    if args.plc_no_diag and args.plc_only_diag:
+        raise PLCFArgumentError("--plc-no-diag and --plc-only-diag are mutually exclusive")
+
+    if args.plc_only_diag and (not ("TIA-MAP-NG" in templateIDs or "TIA-MAP" in templateIDs) or not "IFA" in templateIDs):
+        raise PLCFArgumentError('--plc-only-diag requires at least the "IFA" and one of the "TIA-MAP" or "TIA-MAP-NG" templates')
+
     os.system('clear')
+
+    tia_map = "TIA-MAP-NG" if "TIA-MAP-NG" in templateIDs else "TIA-MAP"
 
     from shutil import rmtree
     def onrmtreeerror(func, path, exc_info):
@@ -820,14 +827,14 @@ def main(argv):
     OUTPUT_DIR = os.path.join(OUTPUT_DIR, CCDB.sanitizeFilename(device.lower()))
     makedirs(OUTPUT_DIR)
 
-    processDevice(device, templateIDs)
+    processDevice(device, list(templateIDs))
 
     # create a dump of CCDB
     output_files["CCDB-DUMP"] = glob.ccdb.dump("-".join([device, glob.timestamp]), OUTPUT_DIR)
 
-    if plc:
+    if plc or args.plc_only_diag:
         from InterfaceFactory import produce as ifa_produce
-        output_files.update(ifa_produce(OUTPUT_DIR, output_files["IFA"], output_files["TIA-MAP-NG"], tia_version, nodiag = args.plc_no_diag, onlydiag = args.plc_only_diag))
+        output_files.update(ifa_produce(OUTPUT_DIR, output_files["IFA"], output_files[tia_map], tia_version, nodiag = args.plc_no_diag, onlydiag = args.plc_only_diag))
 
     if eem:
         create_eem(device)
