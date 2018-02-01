@@ -550,13 +550,6 @@ def create_eem(device):
     out_mdir  = os.path.join(OUTPUT_DIR, "-".join(["m-epics", basename]))
     makedirs(out_mdir)
 
-    with open(os.path.join(out_mdir, "Makefile"), "w") as makefile:
-        eem_files.append(makefile.name)
-        future_print("""include ${EPICS_ENV_PATH}/module.Makefile
-
-USR_DEPENDENCIES = s7plc_comms
-""", file = makefile)
-
     from shutil import copy2
     def m_cp(f, d, newname):
         od = os.path.join(out_mdir, d)
@@ -565,13 +558,25 @@ USR_DEPENDENCIES = s7plc_comms
         copy2(f, of)
         eem_files.append(of)
 
+    # Copy files
     m_cp(output_files['EPICS-DB'],       "db",      basename + ".db")
     try:
         m_cp(output_files['EPICS-TEST-DB'],  "db",      basename + "-test.db")
     except KeyError:
         pass
-    m_cp(output_files['ST-CMD'],         "startup", basename + ".cmd")
+    try:
+        m_cp(output_files['AUTOSAVE-ST-CMD'],         "startup", basename + ".cmd")
+    except KeyError:
+        m_cp(output_files['ST-CMD'],         "startup", basename + ".cmd")
+    try:
+        m_cp(output_files['AUTOSAVE'],       "misc",    basename + ".req")
+        autosave = """USR_DEPENDENCIES += autosave
 
+MISCS = ${{AUTOMISCS}} misc/{autosave}""".format(autosave = basename + ".req")
+    except KeyError:
+        autosave = ""
+
+    # Copy CCDB dump
     if output_files['CCDB-DUMP'] is not None:
         import zipfile
         miscdir = os.path.join(out_mdir, "misc")
@@ -579,6 +584,15 @@ USR_DEPENDENCIES = s7plc_comms
         z.extractall(miscdir)
         eem_files.extend(map(lambda x: os.path.join(miscdir, x), z.namelist()))
         z.close()
+
+    # Generate Makefile
+    with open(os.path.join(out_mdir, "Makefile"), "w") as makefile:
+        eem_files.append(makefile.name)
+        future_print("""include ${{EPICS_ENV_PATH}}/module.Makefile
+
+USR_DEPENDENCIES += s7plc_comms""", file = makefile)
+        future_print(autosave, file = makefile)
+
 
     output_files['EEM'] = eem_files
 
@@ -772,7 +786,7 @@ def main(argv):
         default_printers.update( [ "EPICS-DB", "TIA-MAP" ] )
 
     if eem:
-        default_printers.update( [ "EPICS-DB", "ST-CMD" ] )
+        default_printers.update( [ "EPICS-DB", "AUTOSAVE-ST-CMD", "AUTOSAVE" ] )
 
     if default_printers:
         if not default_printers <= set(tf.available_printers()):
@@ -800,6 +814,9 @@ def main(argv):
 
     if args.plc_only_diag and (not ("TIA-MAP-NG" in templateIDs or "TIA-MAP" in templateIDs) or not "IFA" in templateIDs):
         raise PLCFArgumentError('--plc-only-diag requires at least the "IFA" and one of the "TIA-MAP" or "TIA-MAP-NG" templates')
+
+    if "ST-CMD" in templateIDs and "AUTOSAVE-ST-CMD" in templateIDs:
+        templateIDs.remove("ST-CMD")
 
     os.system('clear')
 
