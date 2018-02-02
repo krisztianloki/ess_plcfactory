@@ -131,11 +131,17 @@ def Pre_ProcessIFA(IfaPath):
 			if lines[pos].rstrip() == "HASH":
 				HASH = lines[pos+1].rstrip()
 			if lines[pos].rstrip() == "MAX_IO_DEVICES":
-				MAX_IO_DEVICES = lines[pos+1].rstrip()
+				MAX_IO_DEVICES = int(lines[pos+1].strip())
+				if MAX_IO_DEVICES <= 0:
+					MAX_IO_DEVICES = 1
 			if lines[pos].rstrip() == "MAX_LOCAL_MODULES":
-				MAX_LOCAL_MODULES = lines[pos+1].rstrip()
+				MAX_LOCAL_MODULES = int(lines[pos+1].strip())
+				if MAX_LOCAL_MODULES <= 0:
+					MAX_LOCAL_MODULES = 1
 			if lines[pos].rstrip() == "MAX_MODULES_IN_IO_DEVICE":
-				MAX_MODULES_IN_IO_DEVICE = lines[pos+1].rstrip()
+				MAX_MODULES_IN_IO_DEVICE = int(lines[pos+1].strip())
+				if MAX_MODULES_IN_IO_DEVICE <= 0:
+					MAX_MODULES_IN_IO_DEVICE = 1
 			if lines[pos].rstrip() == "DEVICE":
 				DeviceNum = DeviceNum + 1
 				InStatus = False
