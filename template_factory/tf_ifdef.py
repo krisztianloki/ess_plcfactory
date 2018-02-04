@@ -750,6 +750,16 @@ class IF_DEF(object):
 
 
     @ifdef_interface
+    def define_metadata(self, name, **keyword_params):
+        pass
+
+
+    @ifdef_interface
+    def add_metadata(self, *params, **keyword_params):
+        pass
+
+
+    @ifdef_interface
     def add_bit(self, name = None, **keyword_params):
         self.add_digital(name, **keyword_params)
 
