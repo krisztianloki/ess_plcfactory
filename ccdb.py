@@ -94,6 +94,10 @@ Cannot get artifact {dtyp}.{art}: error {code}""".format(dtyp = deviceType,
             exit(1)
 
 
+    def _getArtefactFromURL(self, url, filename, saveas):
+        return self.download(url, saveas)
+
+
     def download(self, url, saveas):
         return CC.download(url, saveas, verify = self._verify)
 

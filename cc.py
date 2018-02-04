@@ -286,7 +286,7 @@ class CC(object):
         if os_path.exists(saveas):
             return saveas
 
-        self.download(url, saveas)
+        self._getArtefactFromURL(url, filename, saveas)
         self._downloadedArtifacts.append(saveas)
 
         return saveas

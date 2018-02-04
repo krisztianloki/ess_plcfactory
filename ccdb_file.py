@@ -74,6 +74,20 @@ class CCDB_FILE(CC):
         return self._getArtefact(deviceType, filename, None)
 
 
+    def _getArtefactFromURLFromDir(self, url, deviceType, filename, directory = None):
+        assert isinstance(url,        basestring)
+        assert isinstance(deviceType, str)
+        assert isinstance(filename,   basestring)
+
+        saveas = self.saveas("", filename, os_path.join(self._rootpath, "templates", CC.urlToDir(url)), CreateDir = False)
+
+        # check if filename has already been downloaded
+        if os_path.exists(saveas):
+            return saveas
+
+        return self._getArtefactFromURL(url, saveas)
+
+
     # extract artefact and save as saveas
     def _getArtefactFromZip(self, deviceType, filename, saveas):
         with self._zipfile.open(self.saveas(deviceType, filename, os_path.join("ccdb", "templates"), CreateDir = False)) as r:
@@ -83,8 +97,22 @@ class CCDB_FILE(CC):
         return saveas
 
 
+    # extract artefact and save as saveas
+    def _getArtefactFromURLFromZip(self, url, filename, saveas):
+        with self._zipfile.open(self.saveas("", filename, os_path.join("ccdb", "templates", CC.urlToDir(url)), CreateDir = False)) as r:
+            with open(saveas, "w") as w:
+                w.writelines(r)
+
+        return saveas
+
+
     def _getArtefact(self, deviceType, filename, saveas):
         raise RuntimeError("Inconsistent CCDB dump: there is no template for {device} with name {filename}".format(device = deviceType, filename = filename))
+
+
+    # prevent downloading possibly new revisions of def files
+    def _getArtefactFromURL(self, url, saveas):
+        raise RuntimeError("Inconsistent CCDB dump: there is no template downloaded from URL: {}".format(url))
 
 
     # prevent downloading possibly new revisions of def files
@@ -117,6 +145,7 @@ class CCDB_FILE(CC):
 
         self._createDeviceDict(devicedict)
         self.getArtefact = self._getArtefactFromDir
+        self.getArtefactFromURL = self._getArtefactFromURLFromDir
 
 
     def _readzip(self, filename):
@@ -129,3 +158,4 @@ class CCDB_FILE(CC):
             raise RuntimeError("Required file 'device.dict' does not exist!")
 
         self._getArtefact = self._getArtefactFromZip
+        self._getArtefactFromURL = self._getArtefactFromURLFromZip
