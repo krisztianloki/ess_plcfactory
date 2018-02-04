@@ -149,7 +149,7 @@ class SOURCE(object):
 
 
 
-class METADATA(SOURCE):
+class PRINTER_METADATA(SOURCE):
     def __init__(self, source, printers, metadata):
         if isinstance(printers, str):
             printers = [ printers ]
@@ -732,7 +732,7 @@ class IF_DEF(object):
 
         # check if there is a block defined
         self._active_block()
-        var = METADATA(self._source, "IFA", "DEFINE_ARRAY\n{}\n".format(name))
+        var = PRINTER_METADATA(self._source, "IFA", "DEFINE_ARRAY\n{}\n".format(name))
         self._plc_array = name
         self._add(var)
 
@@ -744,7 +744,7 @@ class IF_DEF(object):
 
         # check if there is a block defined
         self._active_block()
-        var = METADATA(self._source, "IFA", "END_ARRAY\n{}\n".format(self._plc_array))
+        var = PRINTER_METADATA(self._source, "IFA", "END_ARRAY\n{}\n".format(self._plc_array))
         self._plc_array = None
         self._add(var)
 
