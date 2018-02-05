@@ -588,7 +588,7 @@ MISCS = ${{AUTOMISCS}} misc/{autosave}""".format(autosave = basename + ".req")
     # Generate Makefile
     with open(os.path.join(out_mdir, "Makefile"), "w") as makefile:
         eem_files.append(makefile.name)
-        future_print("""include ${{EPICS_ENV_PATH}}/module.Makefile
+        future_print("""include ${EPICS_ENV_PATH}/module.Makefile
 
 USR_DEPENDENCIES += s7plc_comms""", file = makefile)
         future_print(autosave, file = makefile)
