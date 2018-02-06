@@ -600,6 +600,18 @@ USR_DEPENDENCIES += s7plc_comms""", file = makefile)
     return out_mdir
 
 
+def banner():
+        print " _____  _      _____   ______         _                    "
+        print "|  __ \| |    / ____| |  ____|       | |                   "
+        print "| |__) | |   | |      | |__ __ _  ___| |_ ___  _ __ _   _  "
+        print "|  ___/| |   | |      |  __/ _` |/ __| __/ _ \| '__| | | | "
+        print "| |    | |___| |____  | | | (_| | (__| || (_) | |  | |_| | "
+        print "|_|    |______\_____| |_|  \__,_|\___|\__\___/|_|   \__, | "
+        print "                                                     __/ | "
+        print "European Spallation Source, Lund                    |___/ \n"
+
+
+
 class PLCFArgumentError(Exception):
     def __init__(self, status, message = None):
         self.status  = status
@@ -819,6 +831,8 @@ def main(argv):
         templateIDs.remove("ST-CMD")
 
     os.system('clear')
+
+    banner()
 
     tia_map = "TIA-MAP-NG" if "TIA-MAP-NG" in templateIDs else "TIA-MAP"
 
