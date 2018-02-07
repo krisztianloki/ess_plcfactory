@@ -193,6 +193,7 @@ record(ai, "{inst_slot}:HeartbeatFromPLCR") {{
 
 """)
 
+        self._params = []
         for src in if_def.interfaces():
             if isinstance(src, BLOCK):
                 self._body_block(src, output)
@@ -205,6 +206,7 @@ record(ai, "{inst_slot}:HeartbeatFromPLCR") {{
             else:
                 self._append(src.toEPICS(self._test))
 
+        self._body_end_param(if_def, output)
         self._append("\n\n")
         self._body_end_cmd(if_def, output)
         self._body_end_status(if_def, output)
@@ -229,10 +231,46 @@ record(ai, "{inst_slot}:HeartbeatFromPLCR") {{
 
     def _body_var(self, var, output):
         self._append(var.toEPICS(self._test))
+        if not var.is_parameter():
+            return
+
+        self._params.extend([ var ])
 
 
     def _body_source(self, var, output):
         self._append(var)
+
+
+    def _body_end_param(self, if_def, output):
+        if len(self._params) == 0:
+            return
+
+        fo_name = '_UploadParamFO{foc}S'
+        foc = 0
+        lnk = 1
+        for param in self._params:
+            if lnk == 6:
+                foc += 1
+                self._append("""	field(LNK{lnk},  "{inst_slot}:{upload}")
+}}
+""".format(lnk       = str(lnk),
+           inst_slot = self.inst_slot(),
+           upload    = fo_name.format(foc = str(foc))), output)
+                lnk = 1
+
+            if lnk == 1:
+                self._append("""record(fanout, "{inst_slot}:{upload}") {{
+""".format(inst_slot = self.inst_slot(),
+           upload    = 'UploadParametersS' if foc == 0 else fo_name.format(foc = str(foc))), output)
+
+            self._append("""	field(LNK{lnk},  "{inst_slot}:{param}")
+""".format(lnk       = str(lnk),
+           inst_slot = self.inst_slot(),
+           param     = param.pv_name()), output)
+
+            lnk += 1
+
+        self._append("}", output)
 
 
     def _body_end_cmd(self, if_def, output):
