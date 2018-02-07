@@ -547,7 +547,7 @@ def create_zipfile(zipit):
 def create_eem(device):
     eem_files = []
     basename  = CCDB.sanitizeFilename(device.lower())
-    out_mdir  = os.path.join(OUTPUT_DIR, "-".join(["m-epics", basename]))
+    out_mdir  = os.path.join(OUTPUT_DIR, "modules", "-".join(["m-epics", basename]))
     makedirs(out_mdir)
 
     from shutil import copy2
