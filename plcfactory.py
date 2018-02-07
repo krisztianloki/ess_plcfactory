@@ -558,25 +558,45 @@ def create_eem(device):
         copy2(f, of)
         eem_files.append(of)
 
+    #
     # Copy files
+    #
     m_cp(output_files['EPICS-DB'],       "db",      basename + ".db")
+
     try:
         m_cp(output_files['EPICS-TEST-DB'],  "db",      basename + "-test.db")
     except KeyError:
         pass
+
     try:
         m_cp(output_files['AUTOSAVE-ST-CMD'],         "startup", basename + ".cmd")
     except KeyError:
-        m_cp(output_files['ST-CMD'],         "startup", basename + ".cmd")
+        m_cp(output_files['ST-CMD'],                  "startup", basename + ".cmd")
+
+    try:
+        m_cp(output_files['AUTOSAVE-ST-TEST-CMD'],    "startup", basename + "-test.cmd")
+    except KeyError:
+        try:
+            m_cp(output_files['ST-TEST-CMD'],         "startup", basename + "-test.cmd")
+        except KeyError:
+            pass
+
+    req_files    = []
     try:
         m_cp(output_files['AUTOSAVE'],       "misc",    basename + ".req")
-        autosave = """USR_DEPENDENCIES += autosave
-
-MISCS = ${{AUTOMISCS}} misc/{autosave}""".format(autosave = basename + ".req")
+        req_files.append(basename + ".req")
     except KeyError:
-        autosave = ""
+        pass
 
+    try:
+        m_cp(output_files['AUTOSAVE-TEST'],       "misc",    basename + "-test.req")
+        req_files.append(basename + "-test.req")
+    except KeyError:
+        pass
+
+    #
     # Copy CCDB dump
+    #
     if output_files['CCDB-DUMP'] is not None:
         import zipfile
         miscdir = os.path.join(out_mdir, "misc")
@@ -585,13 +605,17 @@ MISCS = ${{AUTOMISCS}} misc/{autosave}""".format(autosave = basename + ".req")
         eem_files.extend(map(lambda x: os.path.join(miscdir, x), z.namelist()))
         z.close()
 
+    #
     # Generate Makefile
+    #
     with open(os.path.join(out_mdir, "Makefile"), "w") as makefile:
         eem_files.append(makefile.name)
         future_print("""include ${EPICS_ENV_PATH}/module.Makefile
 
 USR_DEPENDENCIES += s7plc_comms""", file = makefile)
-        future_print(autosave, file = makefile)
+        if len(req_files):
+            future_print("USR_DEPENDENCIES += autosave", file = makefile)
+            future_print("MISCS = ${{AUTOMISCS}} $(addprefix misc/, {req_files})".format(req_files = " ".join(req_files)), file = makefile)
 
 
     output_files['EEM'] = eem_files
@@ -827,8 +851,20 @@ def main(argv):
     if args.plc_only_diag and (not ("TIA-MAP-NG" in templateIDs or "TIA-MAP" in templateIDs) or not "IFA" in templateIDs):
         raise PLCFArgumentError('--plc-only-diag requires at least the "IFA" and one of the "TIA-MAP" or "TIA-MAP-NG" templates')
 
+    if eem and "EPICS-TEST-DB" in templateIDs:
+        templateIDs.add("ST-TEST-CMD")
+
+    if eem and "AUTOSAVE" in templateIDs:
+        templateIDs.add("AUTOSAVE-ST-CMD")
+
+    if eem and "AUTOSAVE-TEST" in templateIDs:
+        templateIDs.add("AUTOSAVE-ST-TEST-CMD")
+
     if "ST-CMD" in templateIDs and "AUTOSAVE-ST-CMD" in templateIDs:
         templateIDs.remove("ST-CMD")
+
+    if "ST-TEST-CMD" in templateIDs and "AUTOSAVE-ST-TEST-CMD" in templateIDs:
+        templateIDs.remove("ST-TEST-CMD")
 
     os.system('clear')
 
