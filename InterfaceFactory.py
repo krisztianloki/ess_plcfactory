@@ -42,11 +42,13 @@ DeviceTypeList = []
 
 DevTypeHeader = []
 DevTypeVAR_INPUT = []
+DevTypeVAR_INOUT = []
 DevTypeVAR_OUTPUT = []
 DevTypeDB_SPEC = []
 DevTypeVAR_TEMP = []
 DevTypeBODY_HEADER = []
 DevTypeBODY_CODE = []
+DevTypeBODY_CODE_ARRAY = []
 DevTypeBODY_END = []
 
 EPICS_PLC_TesterDB = []
@@ -215,10 +217,12 @@ def WriteDevType():
 	global DevTypeHeader 
 	global DevTypeVAR_INPUT 
 	global DevTypeVAR_OUTPUT 
+	global DevTypeVAR_INOUT 
 	global DevTypeDB_SPEC 
 	global DevTypeVAR_TEMP 
 	global DevTypeBODY_HEADER
 	global DevTypeBODY_CODE
+	global DevTypeBODY_CODE_ARRAY
 	global DevTypeBODY_END
 	global ExternalSourceFile
 	
@@ -232,12 +236,18 @@ def WriteDevType():
 	for line in DevTypeVAR_INPUT:
 		ExternalSourceFile.append(line)
 	ExternalSourceFile.append("   END_VAR")	
-		
+
 	ExternalSourceFile.append("   VAR_OUTPUT")	
 	for line in DevTypeVAR_OUTPUT:
 		ExternalSourceFile.append(line)
 	ExternalSourceFile.append("      DEVICE_PARAM_OK { S7_HMI_Accessible := 'False'; S7_HMI_Visible := 'False'} : Bool;")
 	ExternalSourceFile.append("   END_VAR")	
+
+	ExternalSourceFile.append("   VAR_IN_OUT")	
+	for line in DevTypeVAR_INOUT:
+		ExternalSourceFile.append(line)
+	ExternalSourceFile.append("   END_VAR")	
+
 		
 	ExternalSourceFile.append("   VAR")	
 	ExternalSourceFile.append("      StatusReg { S7_HMI_Accessible := 'False'; S7_HMI_Visible := 'False'} : Array[0.."+ str(MaxStatusReg) +"] of Word;")
@@ -253,6 +263,13 @@ def WriteDevType():
 	for line in DevTypeBODY_HEADER:
 		ExternalSourceFile.append(line)
 		
+	if DevTypeBODY_CODE_ARRAY != []:
+		ExternalSourceFile.append("        IF \"Utilities\".TestInProgress = FALSE THEN");
+	for line in DevTypeBODY_CODE_ARRAY:
+		ExternalSourceFile.append(line)
+	if DevTypeBODY_CODE_ARRAY != []:
+		ExternalSourceFile.append("        END_IF;");
+
 	for line in DevTypeBODY_CODE:
 		ExternalSourceFile.append(line)
 		
@@ -261,11 +278,13 @@ def WriteDevType():
 
 	DevTypeHeader = []
 	DevTypeVAR_INPUT = [] 
+	DevTypeVAR_INOUT = [] 
 	DevTypeVAR_OUTPUT = [] 
 	DevTypeDB_SPEC = [] 
 	DevTypeVAR_TEMP = [] 
 	DevTypeBODY_HEADER = []
 	DevTypeBODY_CODE = []
+	DevTypeBODY_CODE_ARRAY = []
 	DevTypeBODY_END = []
 
 def WriteEPICS_PLC_TesterDB():
@@ -1957,11 +1976,13 @@ def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 	
 	global DevTypeHeader 
 	global DevTypeVAR_INPUT 
+	global DevTypeVAR_INOUT 
 	global DevTypeVAR_OUTPUT 
 	global DevTypeDB_SPEC 
 	global DevTypeVAR_TEMP 
 	global DevTypeBODY_HEADER
 	global DevTypeBODY_CODE
+	global DevTypeBODY_CODE_ARRAY
 	global DevTypeBODY_END
 
 	global EPICS_PLC_TesterDB
@@ -2002,6 +2023,10 @@ def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 	global MaxCommandReg;
 	MaxStatusReg = 0;
 	MaxCommandReg = 0;
+	
+	InArray = False 
+	InArrayName = "" 
+	InArrayNum = 0 
 		
 	pos = 0
 	while pos < len(OrderedLines)-1:
@@ -2150,7 +2175,17 @@ def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 				DevTypeBODY_END.append("END_FUNCTION_BLOCK")
 			else:
 				NewDeviceType = False
-			
+
+
+		if OrderedLines[pos].rstrip() == "DEFINE_ARRAY":
+			InArray = True
+			InArrayName = OrderedLines[pos+1].rstrip()
+			InArrayNum = 0
+		if OrderedLines[pos].rstrip() == "END_ARRAY":
+			InArray = False
+			DevTypeVAR_INPUT.append("      \"" + InArrayName + "\" "+"{ S7_HMI_Accessible := 'False'; S7_HMI_Visible := 'False'} : Array[1.."+ str(InArrayNum) +"] of "+ ActVariableType+";   //EPICS Status variables defined in an array")
+			InArrayName = ""
+				
 		if OrderedLines[pos].rstrip() == "STATUS":
 			CloseLastVariable()
 			DevTypeBODY_CODE.append("")
@@ -2206,13 +2241,22 @@ def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 				CloseLastVariable()
 			
 			if InStatus:
-				DevTypeVAR_INPUT.append("      \"" + ActVariablePLCName + "\" "+"{ S7_HMI_Accessible := 'False'; S7_HMI_Visible := 'False'} : "+ ActVariableType+";   //EPICS Status variable: "+ActVariableEPICSName)
-				EPICS_PLC_TesterDB.append("      \"" + ActualDeviceName+"_" + ActVariablePLCName + "\" "+"{ S7_HMI_Accessible := 'False'; S7_HMI_Visible := 'False'} : "+ ActVariableType+";   //EPICS Status variable: "+ActVariableEPICSName)
-				if (TIAVersion == "13"):
-					EPICS_device_calls_test_body.append("                                 "+ActVariablePLCName+" := \"EPICS_PLC_Tester\".#\""+ ActualDeviceName+"_" + ActVariablePLCName + "\",")
-				if (TIAVersion == "14"):
-					EPICS_device_calls_test_body.append("                                 "+"\""+ActVariablePLCName+"\""+" := \"EPICS_PLC_Tester\".#\""+ ActualDeviceName+"_" + ActVariablePLCName + "\",")
-					
+				if InArray:
+					DevTypeVAR_INOUT.append("      \"" + ActVariablePLCName + "\" "+"{ S7_HMI_Accessible := 'False'; S7_HMI_Visible := 'False'} : "+ ActVariableType+";   //EPICS Status variable in an array: "+ActVariableEPICSName)
+					EPICS_PLC_TesterDB.append("      \"" + ActualDeviceName+"_" + ActVariablePLCName + "\" "+"{ S7_HMI_Accessible := 'False'; S7_HMI_Visible := 'False'} : "+ ActVariableType+";   //EPICS Status variable: "+ActVariableEPICSName)
+					if (TIAVersion == "13"):
+						EPICS_device_calls_test_body.append("                                 "+ActVariablePLCName+" := \"EPICS_PLC_Tester\".#\""+ ActualDeviceName+"_" + ActVariablePLCName + "\",")
+					if (TIAVersion == "14"):
+						EPICS_device_calls_test_body.append("                                 "+"\""+ActVariablePLCName+"\""+" := \"EPICS_PLC_Tester\".#\""+ ActualDeviceName+"_" + ActVariablePLCName + "\",")
+				else:
+					DevTypeVAR_INPUT.append("      \"" + ActVariablePLCName + "\" "+"{ S7_HMI_Accessible := 'False'; S7_HMI_Visible := 'False'} : "+ ActVariableType+";   //EPICS Status variable: "+ActVariableEPICSName)
+					EPICS_PLC_TesterDB.append("      \"" + ActualDeviceName+"_" + ActVariablePLCName + "\" "+"{ S7_HMI_Accessible := 'False'; S7_HMI_Visible := 'False'} : "+ ActVariableType+";   //EPICS Status variable: "+ActVariableEPICSName)
+					if (TIAVersion == "13"):
+						EPICS_device_calls_test_body.append("                                 "+ActVariablePLCName+" := \"EPICS_PLC_Tester\".#\""+ ActualDeviceName+"_" + ActVariablePLCName + "\",")
+					if (TIAVersion == "14"):
+						EPICS_device_calls_test_body.append("                                 "+"\""+ActVariablePLCName+"\""+" := \"EPICS_PLC_Tester\".#\""+ ActualDeviceName+"_" + ActVariablePLCName + "\",")
+				
+				
 			if InCommand:
 				DevTypeVAR_OUTPUT.append("      \"" + ActVariablePLCName + "\" "+"{ S7_HMI_Accessible := 'False'; S7_HMI_Visible := 'False'} : "+ ActVariableType+";   //EPICS Command variable: "+ActVariableEPICSName)
 				EPICS_PLC_TesterDB.append("      \"" + ActualDeviceName+"_" + ActVariablePLCName + "\" "+"{ S7_HMI_Accessible := 'False'; S7_HMI_Visible := 'False'} : "+ ActVariableType+";   //EPICS Command variable: "+ActVariableEPICSName)
@@ -2234,6 +2278,9 @@ def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 			#====== BOOL TYPE ========	
 			if ActVariableType == "BOOL":
 				if InStatus:
+					if InArray:
+						InArrayNum = InArrayNum + 1 
+						DevTypeBODY_CODE_ARRAY.append("              #\""+ ActVariablePLCName +"\" := "+InArrayName+"["+str(InArrayNum)+"];")
 					if StartingRegister <> ActVariableArrayIndex:
 						CloseLastVariable()
 						StartingRegister = ActVariableArrayIndex
@@ -2265,6 +2312,9 @@ def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 			#====== BYTE TYPE ========	
 			if ActVariableType == "BYTE":
 				if InStatus:
+					if InArray:
+						InArrayNum = InArrayNum + 1 
+						DevTypeBODY_CODE_ARRAY.append("              #\""+ ActVariablePLCName +"\" := "+InArrayName+"["+str(InArrayNum)+"];")
 					if StartingRegister <> ActVariableArrayIndex:
 						CloseLastVariable()
 						StartingRegister = ActVariableArrayIndex
@@ -2296,6 +2346,9 @@ def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 			#====== INT TYPE ========	
 			if ActVariableType == "INT":
 				if InStatus:
+					if InArray:
+						InArrayNum = InArrayNum + 1 
+						DevTypeBODY_CODE_ARRAY.append("              #\""+ ActVariablePLCName +"\" := "+InArrayName+"["+str(InArrayNum)+"];")
 					if StartingRegister <> ActVariableArrayIndex:
 						CloseLastVariable()
 						StartingRegister = ActVariableArrayIndex
@@ -2317,6 +2370,9 @@ def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 			#====== WORD TYPE ========	
 			if ActVariableType == "WORD":
 				if InStatus:
+					if InArray:
+						InArrayNum = InArrayNum + 1 
+						DevTypeBODY_CODE_ARRAY.append("              #\""+ ActVariablePLCName +"\" := "+InArrayName+"["+str(InArrayNum)+"];")
 					if StartingRegister <> ActVariableArrayIndex:
 						CloseLastVariable()
 						StartingRegister = ActVariableArrayIndex
@@ -2337,6 +2393,9 @@ def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 			#====== DINT TYPE ========	
 			if ActVariableType == "DINT":
 				if InStatus:
+					if InArray:
+						InArrayNum = InArrayNum + 1 
+						DevTypeBODY_CODE_ARRAY.append("              #\""+ ActVariablePLCName +"\" := "+InArrayName+"["+str(InArrayNum)+"];")
 					if StartingRegister <> ActVariableArrayIndex:
 						CloseLastVariable()
 						StartingRegister = ActVariableArrayIndex
@@ -2361,6 +2420,9 @@ def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 			#====== DWORD TYPE ========	
 			if ActVariableType == "DWORD":
 				if InStatus:
+					if InArray:
+						InArrayNum = InArrayNum + 1 
+						DevTypeBODY_CODE_ARRAY.append("              #\""+ ActVariablePLCName +"\" := "+InArrayName+"["+str(InArrayNum)+"];")
 					if StartingRegister <> ActVariableArrayIndex:
 						CloseLastVariable()
 						StartingRegister = ActVariableArrayIndex
@@ -2376,6 +2438,9 @@ def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 			#====== REAL TYPE ========	
 			if ActVariableType == "REAL":
 				if InStatus:
+					if InArray:
+						InArrayNum = InArrayNum + 1 
+						DevTypeBODY_CODE_ARRAY.append("              #\""+ ActVariablePLCName +"\" := "+InArrayName+"["+str(InArrayNum)+"];")
 					if StartingRegister <> ActVariableArrayIndex:
 						CloseLastVariable()
 						StartingRegister = ActVariableArrayIndex
@@ -2400,6 +2465,9 @@ def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 			#====== TIME TYPE ========	
 			if ActVariableType == "TIME":
 				if InStatus:
+					if InArray:
+						InArrayNum = InArrayNum + 1 
+						DevTypeBODY_CODE_ARRAY.append("              #\""+ ActVariablePLCName +"\" := "+InArrayName+"["+str(InArrayNum)+"];")
 					if StartingRegister <> ActVariableArrayIndex:
 						CloseLastVariable()
 						StartingRegister = ActVariableArrayIndex
