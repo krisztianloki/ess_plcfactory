@@ -579,6 +579,8 @@ class IF_DEF(object):
 
 
     def _end_block(self, block):
+        self._end_plc_array()
+
         if block is not None:
             block.end()
             self._properties[block.length_keyword()] = block.length() // 2
@@ -587,6 +589,9 @@ class IF_DEF(object):
 
     def _add(self, var):
         assert isinstance(var, SOURCE), func_param_msg("var", "SOURCE")
+
+        if isinstance(var, BASE_TYPE):
+            self._check_plc_array(var.plc_type())
 
         self._ifaces.append(var)
 
@@ -615,6 +620,24 @@ class IF_DEF(object):
     def _exception_if_active(self):
         if self._active:
             raise IfDefSyntaxError("The interface definition is still active!")
+
+
+    def _end_plc_array(self):
+        if self._plc_array is not None:
+            self.end_plc_array()
+
+
+    def _check_plc_array(self, atype):
+        if self._plc_array is None:
+            return
+
+        if self._plc_array[1] is None:
+            self._plc_array = (self._plc_array[0], atype)
+            return
+        elif self._plc_array[1] == atype:
+            return
+
+        raise IfDefSyntaxError("Array is already using {type}, cannot use {atype}".format(type = self._plc_array[1], atype = atype))
 
 
     def interfaces(self):
@@ -733,7 +756,7 @@ class IF_DEF(object):
         # check if there is a block defined
         self._active_block()
         var = PRINTER_METADATA(self._source, "IFA", "DEFINE_ARRAY\n{}\n".format(name))
-        self._plc_array = name
+        self._plc_array = (name, None)
         self._add(var)
 
 
@@ -744,7 +767,7 @@ class IF_DEF(object):
 
         # check if there is a block defined
         self._active_block()
-        var = PRINTER_METADATA(self._source, "IFA", "END_ARRAY\n{}\n".format(self._plc_array))
+        var = PRINTER_METADATA(self._source, "IFA", "END_ARRAY\n{}\n".format(self._plc_array[0]))
         self._plc_array = None
         self._add(var)
 
