@@ -550,18 +550,25 @@ def create_eem(device):
     out_mdir  = os.path.join(OUTPUT_DIR, "modules", "-".join(["m-epics", basename]))
     makedirs(out_mdir)
 
-    from shutil import copy2
-    def m_cp(f, d, newname):
+    def makedir(d):
         od = os.path.join(out_mdir, d)
         makedirs(od)
-        of = os.path.join(od, newname)
+        return od
+
+    from shutil import copy2, copyfileobj
+    def m_cp(f, d, newname):
+        of = os.path.join(makedir(d), newname)
         copy2(f, of)
         eem_files.append(of)
 
     #
     # Copy files
     #
-    m_cp(output_files['EPICS-DB'],       "db",      basename + ".db")
+    with open(os.path.join(makedir("db"), basename + ".db"), "w") as dbfile:
+        for parts in [ output_files['EPICS-DB'], output_files['UPLOAD-PARAMS'] ]:
+            with open(parts) as partfile:
+                copyfileobj(partfile, dbfile)
+#    m_cp(output_files['EPICS-DB'],       "db",      basename + ".db")
 
     try:
         m_cp(output_files['EPICS-TEST-DB'],  "db",      basename + "-test.db")
@@ -850,6 +857,9 @@ def main(argv):
 
     if args.plc_only_diag and (not ("TIA-MAP-NG" in templateIDs or "TIA-MAP" in templateIDs) or not "IFA" in templateIDs):
         raise PLCFArgumentError('--plc-only-diag requires at least the "IFA" and one of the "TIA-MAP" or "TIA-MAP-NG" templates')
+
+    if "EPICS-DB" in templateIDs:
+        templateIDs.add("UPLOAD-PARAMS")
 
     if eem and "EPICS-TEST-DB" in templateIDs:
         templateIDs.add("ST-TEST-CMD")
