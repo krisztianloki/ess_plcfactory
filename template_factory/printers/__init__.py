@@ -53,6 +53,9 @@ class PRINTER(object):
         return self.plcf("INSTALLATION_SLOT")
 
 
+    def root_inst_slot(self):
+        return self.plcf("ROOT_INSTALLATION_SLOT")
+
     def template(self):
         return self.plcf("TEMPLATE")
 

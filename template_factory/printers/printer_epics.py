@@ -16,7 +16,7 @@ from tf_ifdef import IfDefInternalError, SOURCE, VERBATIM, BLOCK, CMD_BLOCK, STA
 
 
 def printer():
-    return [(EPICS.name(), EPICS), (EPICS_TEST.name(), EPICS_TEST)]
+    return [(EPICS.name(), EPICS), (EPICS_TEST.name(), EPICS_TEST), (UPLOAD_PARAMS.name(), UPLOAD_PARAMS)]
 
 
 
@@ -245,13 +245,13 @@ record(ai, "{inst_slot}:HeartbeatFromPLCR") {{
         if len(self._params) == 0:
             return
 
-        fo_name = '_UploadParamFO{foc}S'
+        fo_name = '_UploadParamS{foc}-FO'
         foc = 0
         lnk = 1
         for param in self._params:
             if lnk == 6:
                 foc += 1
-                self._append("""	field(LNK{lnk},  "{inst_slot}:{upload}")
+                self._append("""	field(LNK{lnk}, "{inst_slot}:{upload}")
 }}
 """.format(lnk       = str(lnk),
            inst_slot = self.inst_slot(),
@@ -263,7 +263,7 @@ record(ai, "{inst_slot}:HeartbeatFromPLCR") {{
 """.format(inst_slot = self.inst_slot(),
            upload    = 'UploadParametersS' if foc == 0 else fo_name.format(foc = str(foc))), output)
 
-            self._append("""	field(LNK{lnk},  "{inst_slot}:{param}")
+            self._append("""	field(LNK{lnk}, "{inst_slot}:{param}")
 """.format(lnk       = str(lnk),
            inst_slot = self.inst_slot(),
            param     = param.pv_name()), output)
@@ -427,3 +427,74 @@ record(ai, "{inst_slot}:HeartbeatFromPLCR") {{
 
         self._append(epics_db_header, output)
         return self
+
+
+class UPLOAD_PARAMS(PRINTER):
+    def __init__(self):
+        PRINTER.__init__(self)
+
+        self._fo_name = '_UploadParamS{foc}-FO'
+        self._foc = 0
+        self._lnk = 1
+
+
+    @staticmethod
+    def name():
+        return "UPLOAD-PARAMS"
+
+
+    #
+    # HEADER
+    #
+    def header(self, output):
+        PRINTER.header(self, output)
+        epics_db_header = """#FILENAME {inst_slot}-[PLCF#TEMPLATE]-[PLCF#TIMESTAMP].db
+
+record(fanout, "{inst_slot}:UploadParametersS") {{
+""".format(inst_slot = self.inst_slot())
+
+        self._append(epics_db_header, output)
+        return self
+
+
+    #
+    # BODY
+    #
+    def body(self, if_def, output):
+        PRINTER.body(self, if_def, output)
+        self._output = output
+
+        self._params = []
+        for src in if_def.interfaces():
+            if isinstance(src, BLOCK) and src.is_param_block():
+                self._LNKx(output)
+
+
+    def _LNKx(self, output):
+        if self._lnk == 6:
+            self._foc += 1
+            self._append("""	field(LNK{lnk}, "{root_inst_slot}:{upload}")
+}}
+""".format(lnk       = str(self._lnk),
+           root_inst_slot = self.root_inst_slot(),
+           upload    = self._fo_name.format(foc = str(self._foc))), output)
+            self._lnk = 1
+
+        if self._lnk == 1 and self._foc:
+            self._append("""record(fanout, "{root_inst_slot}:{upload}") {{
+""".format(root_inst_slot = self.root_inst_slot(),
+           upload    = 'UploadParametersS' if self._foc == 0 else self._fo_name.format(foc = str(self._foc))), output)
+
+        self._append("""	field(LNK{lnk}, "{inst_slot}:UploadParametersS")
+""".format(lnk       = str(self._lnk),
+           inst_slot = self.inst_slot()), output)
+
+        self._lnk += 1
+
+
+    #
+    # FOOTER
+    #
+    def footer(self, output):
+        PRINTER.footer(self, output)
+        self._append("}", output)
