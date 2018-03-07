@@ -110,9 +110,8 @@ Cannot get artifact {dtyp}.{art}: error {code}""".format(dtyp = deviceType,
 
         url = self._url + "slotNames/"
 
-        # False because SSH connection is unsigned:
         result  = self._get(url)
-        tmpList = json.loads(result.text)["names"]
+        tmpList = filter(lambda x: x["slotType"] == "SLOT", json.loads(result.text)["names"])
 
         # get all devices in CCDB
         allDevices = map(lambda x: x["name"], tmpList)
