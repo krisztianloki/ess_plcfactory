@@ -16,12 +16,12 @@ from tf_ifdef import CMD_BLOCK
 
 
 def printer():
-    return [(TIA_MAP.name(), TIA_MAP), (TIA_MAP_NG.name(), TIA_MAP_NG)]
+    return [(TIA_MAP_DIRECT.name(), TIA_MAP_DIRECT), (TIA_MAP_INTERFACE.name(), TIA_MAP_INTERFACE)]
 
 
 
 
-class TIA_MAP(PRINTER):
+class TIA_MAP_DIRECT(PRINTER):
     def __init__(self):
         PRINTER.__init__(self, comments = False, preserve_empty_lines = False, show_origin = False)
 
@@ -30,9 +30,13 @@ class TIA_MAP(PRINTER):
         return "//"
 
 
+    def _xReg(self):
+        return '"{inst_slot}"'.format(inst_slot = self.inst_slot())
+
+
     @staticmethod
     def name():
-        return "TIA-MAP"
+        return "TIA-MAP-DIRECT"
 
 
     #
@@ -41,7 +45,7 @@ class TIA_MAP(PRINTER):
     def header(self, output):
         PRINTER.header(self, output)
 
-        self._append("""#FILENAME {inst_slot}-[PLCF#TEMPLATE]-[PLCF#TIMESTAMP].scl
+        self._append("""#FILENAME {inst_slot}-TIA-MAP-{timestamp}.scl
 #EOL "\\r\\n"
 #COUNTER Counter1 = [PLCF# Counter1 + 10];
 #COUNTER Counter2 = [PLCF# Counter2 + 10];
@@ -61,12 +65,12 @@ VERSION : 0.1
    #PLC_Hash := DINT##HASH;
 
    // Send the PLC Hash to the EPICS IOC
-   "[PLCF#PLCToEPICSDataBlockName]"."Word"[1] := DINT_TO_WORD(#PLC_Hash);
-   "[PLCF#PLCToEPICSDataBlockName]"."Word"[0] := DINT_TO_WORD(SHR(IN := #PLC_Hash, N := 16));
+   "PLCToEPICS"."Word"[1] := DINT_TO_WORD(#PLC_Hash);
+   "PLCToEPICS"."Word"[0] := DINT_TO_WORD(SHR(IN := #PLC_Hash, N := 16));
 
    // Get Hash from the EPICS IOC
-   #wordTOdint[0] := "[PLCF#EPICSToPLCDataBlockName]"."Word"[0];
-   #wordTOdint[1] := "[PLCF#EPICSToPLCDataBlockName]"."Word"[1];
+   #wordTOdint[0] := "EPICSToPLC"."Word"[0];
+   #wordTOdint[1] := "EPICSToPLC"."Word"[1];
    #IOC_Hash := #tHashDint;
 
    // {inst_slot}: PLC <-> EPICS Communication Mapping
@@ -74,7 +78,9 @@ VERSION : 0.1
 
    // Hashes Comparision
    IF (#PLC_Hash = #IOC_Hash) THEN
-""".format(inst_slot = self.inst_slot()).replace("\n", "\r\n"), output)
+""".format(inst_slot = self.inst_slot(),
+           timestamp = self.timestamp()).replace("\n", "\r\n"), output)
+
 
 
     #
@@ -84,19 +90,22 @@ VERSION : 0.1
         PRINTER.body(self, if_def, output)
 
         self._append("""
-      "_CommsEPICSDataMappingFB"(EPICSToPLCLength := [PLCF# {epicstoplclength}],
-                                 EPICSToPLCDataBlockOffset := [PLCF# ^(EPICSToPLCDataBlockStartOffset) + Counter1],
-                                 PLCToEPICSLength := [PLCF# {plctoepicslength}],
-                                 PLCToEPICSDataBlockOffset := [PLCF# ^(PLCToEPICSDataBlockStartOffset) + Counter2],
-                                 EPICSToPLCCommandRegisters := "{inst_slot}".CommandReg,
-                                 PLCToEPICSStatusRegisters := "{inst_slot}".StatusReg,
-                                 EPICSToPLCDataBlock := "[PLCF# ^(EPICSToPLCDataBlockName)]"."Word",
-                                 PLCToEPICSDataBlock := "[PLCF# ^(PLCToEPICSDataBlockName)]"."Word");
+      "_CommsEPICSDataMappingFBFactory"(EPICSToPLCLength           := {epicstoplclength},
+                                        EPICSToPLCDataBlockOffset  := [PLCF# ^(EPICSToPLCDataBlockStartOffset) + Counter1],
+                                        EPICSToPLCParametersStart  := {commandwordslength},
+                                        PLCToEPICSLength           := {plctoepicslength},
+                                        PLCToEPICSDataBlockOffset  := [PLCF# ^(PLCToEPICSDataBlockStartOffset) + Counter2],
+                                        EPICSToPLCCommandRegisters := {reg}.CommandReg,
+                                        PLCToEPICSStatusRegisters  := {reg}.StatusReg,
+                                        EPICSToPLCDataBlock        := "EPICSToPLC"."Word",
+                                        PLCToEPICSDataBlock        := "PLCToEPICS"."Word");
 #COUNTER Counter1 = [PLCF# Counter1 + {epicstoplclength}];
 #COUNTER Counter2 = [PLCF# Counter2 + {plctoepicslength}];
-""".format(inst_slot        = self.inst_slot(),
-           epicstoplclength = if_def.to_plc_words_length(),
-           plctoepicslength = if_def.from_plc_words_length()
+""".format(inst_slot          = self.inst_slot(),
+           epicstoplclength   = if_def.to_plc_words_length(),
+           plctoepicslength   = if_def.from_plc_words_length(),
+           commandwordslength = str(if_def.properties()[CMD_BLOCK.length_keyword()]),
+           reg                = self._xReg()
           ).replace("\n", "\r\n"), output)
 
 
@@ -111,98 +120,6 @@ VERSION : 0.1
 
    END_IF;
 
-//########## EPICS->PLC datablock ##########
-// DATA_BLOCK name : "[PLCF#EPICSToPLCDataBlockName]"
-// DATA_BLOCK length : Array[0..[PLCF# Counter1 - 1]] of Word;
-
-// !! Make sure that the length of "[PLCF#EPICSToPLCDataBlockName]" is consistant in the user program.
-
-//########## PLC->EPICS datablock ##########
-// DATA_BLOCK name : "[PLCF#PLCToEPICSDataBlockName]"
-// DATA_BLOCK length : Array[0..[PLCF# Counter2 - 1]] of Word;
-
-// !! Make sure that the length of "[PLCF#PLCToEPICSDataBlockName]" is consistant in the user program.
-// !! Make sure that the length of "[PLCF#PLCToEPICSDataBlockName]" in the user program is consistant with the input 'BytesToSend' of "_CommsPLC_EPICS".
-
-END_FUNCTION
-""".replace("\n", "\r\n"), output)
-
-
-
-
-class TIA_MAP_NG(TIA_MAP):
-    def __init__(self):
-        TIA_MAP.__init__(self)
-
-
-    @staticmethod
-    def name():
-        return "TIA-MAP-NG"
-
-
-    #
-    # HEADER
-    #
-    def header(self, output):
-        PRINTER.header(self, output)
-
-        self._append("""#FILENAME {inst_slot}-{template}-{timestamp}.scl
-#EOL "\\r\\n"
-#COUNTER Counter1 = [PLCF# Counter1 + 10];
-#COUNTER Counter2 = [PLCF# Counter2 + 10];
-FUNCTION "_CommsEPICSDataMap" : Void
-{{ S7_Optimized_Access := 'TRUE' }}
-VERSION : 0.1
-   VAR_TEMP
-      Hash : DInt;
-   END_VAR
-
-BEGIN
-        //Comms data generation hash
-        #Hash := DInt##HASH;
-        "PLCToEPICS"."Word"[1] := DINT_TO_WORD(#Hash);
-        "PLCToEPICS"."Word"[0] := DINT_TO_WORD(SHR(IN := #Hash, N := 16));
-
-  // {inst_slot}: PLC <-> EPICS Communication Mapping
-  //------------------------------------------------------------------------
-""".format(inst_slot = self.inst_slot(),
-           template  = self.template(),
-           timestamp = self.timestamp()).replace("\n", "\r\n"), output)
-
-
-    #
-    # BODY
-    #
-    def body(self, if_def, output):
-        PRINTER.body(self, if_def, output)
-
-        self._append("""
-        "_CommsEPICSDataMappingFBFactory"(EPICSToPLCLength := {epicstoplclength},
-                                          EPICSToPLCDataBlockOffset := [PLCF# ^(EPICSToPLCDataBlockStartOffset) + Counter1],
-                                          EPICSToPLCParametersStart := {commandwordslength},
-                                          PLCToEPICSLength := {plctoepicslength},
-                                          PLCToEPICSDataBlockOffset := [PLCF# ^(PLCToEPICSDataBlockStartOffset) + Counter2],
-                                          EPICSToPLCCommandRegisters := "DEV_{inst_slot}_iDB".CommandReg,
-                                          PLCToEPICSStatusRegisters := "DEV_{inst_slot}_iDB".StatusReg,
-                                          EPICSToPLCDataBlock := "EPICSToPLC"."Word",
-                                          PLCToEPICSDataBlock := "PLCToEPICS"."Word");
-#COUNTER Counter1 = [PLCF# Counter1 + {epicstoplclength}];
-#COUNTER Counter2 = [PLCF# Counter2 + {plctoepicslength}];
-""".format(inst_slot          = self.inst_slot(),
-           epicstoplclength   = if_def.to_plc_words_length(),
-           plctoepicslength   = if_def.from_plc_words_length(),
-           commandwordslength = str(if_def.properties()[CMD_BLOCK.length_keyword()])
-          ).replace("\n", "\r\n"), output)
-
-
-
-    #
-    # FOOTER
-    #
-    def footer(self, output):
-        PRINTER.footer(self, output)
-
-        self._append("""
 END_FUNCTION
 
 //########## EPICS->PLC datablock ##########
@@ -245,16 +162,16 @@ BEGIN
 	END_IF;
 
 	// Call the comms block to provide PLC<->EPICS comms
-	"_CommsPLC_EPICS_DB"(Enable:="Utilities".AlwaysOn,
-	                    SendTrigger:="Utilities".Pulse_200ms,
-	                    BytesToSend:={bytestosend},
-	                    InterfaceID:={interfaceid},
-	                    S7ConnectionID:={s7connectionid},
-	                    MBConnectionID:={mbconnectionid},
-	                    S7Port:={s7port},
-	                    MBPort:={mbport},
-	                    PLCToEPICSData:="PLCToEPICS"."Word",
-	                    EPICSToPLCData:="EPICSToPLC"."Word");
+	"_CommsPLC_EPICS_DB"(Enable         := "Utilities".AlwaysOn,
+	                     SendTrigger    := "Utilities".Pulse_200ms,
+	                     BytesToSend    := {bytestosend},
+	                     InterfaceID    := {interfaceid},
+	                     S7ConnectionID := {s7connectionid},
+	                     MBConnectionID := {mbconnectionid},
+	                     S7Port         := {s7port},
+	                     MBPort         := {mbport},
+	                     PLCToEPICSData := "PLCToEPICS"."Word",
+	                     EPICSToPLCData := "EPICSToPLC"."Word");
 	
 	//Map all devices command and status registers to EPICS->PLC and PLC->EPICS data exchange blocks
 	"_CommsEPICSDataMap"();
@@ -267,3 +184,19 @@ END_FUNCTION
            mbconnectionid = self.plcf("PLC-EPICS-COMMS: MBConnectionID"),
            s7port         = self.plcf("PLC-EPICS-COMMS: S7Port"),
            mbport         = self.plcf("PLC-EPICS-COMMS: MBPort")).replace("\n", "\r\n"), output)
+
+
+
+
+class TIA_MAP_INTERFACE(TIA_MAP_DIRECT):
+    def __init__(self):
+        TIA_MAP_DIRECT.__init__(self)
+
+
+    def _xReg(self):
+        return '"DEV_{inst_slot}_iDB"'.format(inst_slot = self.inst_slot())
+
+
+    @staticmethod
+    def name():
+        return "TIA-MAP-INTERFACE"

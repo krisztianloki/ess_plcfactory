@@ -689,18 +689,23 @@ def main(argv):
         # -d/--device cannot be added to the common args, because it is not a required option in the first pass but a required one in the second pass
         #
         parser.add_argument(
-                            '--plc',
-                            dest    = "plc",
-                            help    = 'use the default templates for PLCs and generate PLC comms and diagnostics code',
+                            '--plc-interface',
+                            dest    = "plc_interface",
+                            help    = 'use the default templates for PLCs and generate interface PLC comms and diagnostics code',
                             metavar = 'TIA-Portal-version',
+                            nargs   = "?",
+                            const   = 'TIAv14',
                             type    = str
                            )
 
         parser.add_argument(
-                            '--legacy-plc',
-                            dest    = "legacy_plc",
-                            help    = 'use the default legacy templates for PLCs',
-                            action  = "store_true"
+                            '--plc-direct',
+                            dest    = "plc_direct",
+                            help    = 'use the default templates for PLCs and generate direct PLC comms and diagnostics code',
+                            metavar = 'TIA-Portal-version',
+                            nargs   = "?",
+                            const   = 'TIAv14',
+                            type    = str
                            )
 
         parser.add_argument(
@@ -738,21 +743,26 @@ def main(argv):
         print tf.available_printers()
         exit(0)
 
-    if args.plc is not None:
-        plc = True
+    if args.plc_direct is not None:
+        tia_version = args.plc_direct.lower()
+        tia_map     = "TIA-MAP-DIRECT"
+    elif args.plc_interface is not None:
+        tia_version = args.plc_interface.lower()
+        tia_map     = "TIA-MAP-INTERFACE"
+    else:
+        tia_version = None
+
+    if tia_version is not None:
         tia13 = set({"13", "v13", "tia13", "tiav13"})
         tia14 = set({"14", "v14", "tia14", "tiav14"})
 
-        if args.plc.lower() in tia13:
+        if tia_version in tia13:
             tia_version = 13
-        elif args.plc.lower() in tia14:
+        elif tia_version in tia14:
             tia_version = 14
         else:
-            raise PLCFArgumentError(1, "Invalid TIA version: " + args.plc)
-    else:
-        plc = False
+            raise PLCFArgumentError(1, "Invalid TIA version: " + tia_version)
 
-    legacy_plc = args.legacy_plc
     eem        = args.eem
     device     = args.device
     glob.root_installation_slot = device
@@ -805,14 +815,14 @@ def main(argv):
     parser.add_argument(
                         '--plc-no-diag',
                         dest     = "plc_no_diag",
-                        help     = 'do not generate PLC diagnostics code (if used with --plc)',
+                        help     = 'do not generate PLC diagnostics code (if used with --plc-x)',
                         action   = 'store_true',
                         required = False)
 
     parser.add_argument(
                         '--plc-only-diag',
                         dest     = "plc_only_diag",
-                        help     = 'generate PLC diagnostics code only (if used with --plc)',
+                        help     = 'generate PLC diagnostics code only (if used with --plc-x)',
                         action   = 'store_true',
                         required = False)
 
@@ -823,7 +833,7 @@ def main(argv):
                         nargs    = '*',
                         type     = str,
                         default  = [],
-                        required = not (plc or eem or legacy_plc))
+                        required = not (tia_version or eem))
 
     # retrieve parameters
     args       = parser.parse_args(argv)
@@ -843,12 +853,12 @@ def main(argv):
 
     default_printers = set()
 
-    if plc:
-        default_printers.update( [ "EPICS-DB", "IFA", "TIA-MAP-NG" ] )
+    if args.plc_interface:
+        default_printers.update( [ "EPICS-DB", "IFA", tia_map ] )
 
-    if legacy_plc:
+    if args.plc_direct:
         tf.optimize_s7db(True)
-        default_printers.update( [ "EPICS-DB", "TIA-MAP" ] )
+        default_printers.update( [ "EPICS-DB", tia_map ] )
 
     if eem:
         default_printers.update( [ "EPICS-DB", "AUTOSAVE-ST-CMD", "AUTOSAVE" ] )
@@ -862,23 +872,24 @@ def main(argv):
     else:
         templateIDs = set(args.template)
 
-    # Make sure that OPTIMIZE_S7DB is turned on if TIA-MAP is requested
-    if "TIA-MAP" in templateIDs:
+    # Make sure that OPTIMIZE_S7DB is turned on if TIA-MAP-DIRECT is requested
+    if "TIA-MAP-DIRECT" in templateIDs:
+        tia_map = "TIA-MAP-DIRECT"
         tf.optimize_s7db(True)
         if args.plc_no_diag == False:
             args.plc_only_diag =  True
             tia_version        =  14
             templateIDs.add("IFA")
 
-        # TIA-MAP and TIA-MAP-NG are incompatible
-        if "TIA-MAP-NG" in templateIDs:
-            raise PLCFArgumentParser("Cannot use TIA-MAP and TIA-MAP-NG at the same time. They are incompatible.")
+        # TIA-MAP-DIRECT and TIA-MAP-INTERFACE are incompatible
+        if "TIA-MAP-INTERFACE" in templateIDs:
+            raise PLCFArgumentParser("Cannot use TIA-MAP-DIRECT and TIA-MAP-INTERFACE at the same time. They are incompatible.")
 
     if args.plc_no_diag and args.plc_only_diag:
         raise PLCFArgumentError("--plc-no-diag and --plc-only-diag are mutually exclusive")
 
-    if args.plc_only_diag and (not ("TIA-MAP-NG" in templateIDs or "TIA-MAP" in templateIDs) or not "IFA" in templateIDs):
-        raise PLCFArgumentError('--plc-only-diag requires at least the "IFA" and one of the "TIA-MAP" or "TIA-MAP-NG" templates')
+    if args.plc_only_diag and tia_version is None:
+        raise PLCFArgumentError('--plc-only-diag requires --plc-direct or --plc-interface')
 
     if "EPICS-DB" in templateIDs:
         templateIDs.add("UPLOAD-PARAMS")
@@ -902,8 +913,6 @@ def main(argv):
 
     banner()
 
-    tia_map = "TIA-MAP-NG" if "TIA-MAP-NG" in templateIDs else "TIA-MAP"
-
     # remove templates downloaded in a previous run
     rmdirs(TEMPLATE_DIR)
 
@@ -918,7 +927,7 @@ def main(argv):
     # create a dump of CCDB
     output_files["CCDB-DUMP"] = glob.ccdb.dump("-".join([device, glob.timestamp]), OUTPUT_DIR)
 
-    if plc or args.plc_only_diag:
+    if tia_version or args.plc_only_diag:
         from InterfaceFactory import produce as ifa_produce
         output_files.update(ifa_produce(OUTPUT_DIR, output_files["IFA"], output_files[tia_map], tia_version, nodiag = args.plc_no_diag, onlydiag = args.plc_only_diag))
 
