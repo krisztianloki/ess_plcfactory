@@ -521,7 +521,7 @@ def rmdirs(path):
         if not (func is os.listdir or func is os.rmdir):
             raise
 
-        if not exc_info[0] is OSError:
+        if not (exc_info[0] is OSError or exc_info[0] is WindowsError):
             raise
 
         if exc_info[1].errno != 2:
