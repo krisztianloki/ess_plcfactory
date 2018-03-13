@@ -1121,7 +1121,7 @@ class BASE_TYPE(SOURCE):
                        }
 
         try:
-            if self._keyword_params[BASE_TYPE.PV_ALIAS] == "":
+            if self._keyword_params[BASE_TYPE.PV_ALIAS] == "" or self._keyword_params[BASE_TYPE.PV_ALIAS] == []:
                 raise IfDefSyntaxError("Empty PV_ALIAS")
         except KeyError:
             pass
@@ -1165,9 +1165,9 @@ class BASE_TYPE(SOURCE):
 
 
     def _build_pv_alias(self):
-        alias = "\n\talias(\"[PLCF#INSTALLATION_SLOT]:{alias}\")\n"
+        fmt = "\talias(\"[PLCF#INSTALLATION_SLOT]:{alias}\")"
         if BASE_TYPE.PV_ALIAS in self._keyword_params:
-            return alias.format(alias = self._keyword_params[BASE_TYPE.PV_ALIAS])
+            return "\n".join([''] + map(lambda alias : fmt.format(alias = alias), self._keyword_params[BASE_TYPE.PV_ALIAS]) + [''])
 
         return ""
 
