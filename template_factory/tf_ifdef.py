@@ -45,13 +45,6 @@ test_outpv_template = """record({{recordtype}}, "[PLCF#INSTALLATION_SLOT]:{{name
 
 
 
-PV_PREFIX     = "PV_"
-PV_ALIAS      = PV_PREFIX + "ALIAS"
-PV_NAME       = PV_PREFIX + "NAME"
-STATUS        = "STATUS"
-CMD           = "COMMAND"
-PARAM         = "PARAMETER"
-ASYN_TIMEOUT  = "100"
 
 
 # Data types for S7 PLCs
@@ -188,6 +181,10 @@ class VERBATIM(SOURCE):
 # Blocks
 #
 class BLOCK(SOURCE):
+    STATUS = "STATUS"
+    CMD    = "COMMAND"
+    PARAM  = "PARAMETER"
+
     def __init__(self, source, block_type, optimize):
         SOURCE.__init__(self, source)
 
@@ -268,7 +265,7 @@ class BLOCK(SOURCE):
         assert isinstance(keyword_params, dict), func_param_msg("keyword_params", "dict")
 
         for key, value in keyword_params.iteritems():
-            if key.startswith(PV_PREFIX) or not key in PLC_types:
+            if key.startswith(BASE_TYPE.PV_PREFIX) or not key in PLC_types:
                 continue
 
             if not value in self.valid_var_types():
@@ -295,9 +292,9 @@ class BLOCK(SOURCE):
 
     def pv_template(self, test = False, asyntype = None, asynio = None):
         if test:
-            pv_templates = { CMD : test_outpv_template,   PARAM : test_outpv_template,   STATUS : test_inpv_template }
+            pv_templates = { BLOCK.CMD : test_outpv_template,   BLOCK.PARAM : test_outpv_template,   BLOCK.STATUS : test_inpv_template }
         else:
-            pv_templates = { CMD : outpv_template,   PARAM : outpv_template,   STATUS : inpv_template }
+            pv_templates = { BLOCK.CMD : outpv_template,   BLOCK.PARAM : outpv_template,   BLOCK.STATUS : inpv_template }
         pv_temp = pv_templates[self.type()]
 
         if not self.is_status_block():
@@ -348,7 +345,7 @@ class STATUS_BLOCK(BLOCK):
 
 
     def __init__(self, source, optimize):
-        BLOCK.__init__(self, source, STATUS, optimize)
+        BLOCK.__init__(self, source, BLOCK.STATUS, optimize)
 
 
     def link_offset(self, var):
@@ -402,7 +399,7 @@ class CMD_BLOCK(MODBUS, BLOCK):
 
 
     def __init__(self, source, optimize):
-        BLOCK.__init__(self, source, CMD, optimize)
+        BLOCK.__init__(self, source, BLOCK.CMD, optimize)
 
 
 
@@ -413,7 +410,7 @@ class PARAM_BLOCK(MODBUS, BLOCK):
 
 
     def __init__(self, source, optimize):
-        BLOCK.__init__(self, source, PARAM, optimize)
+        BLOCK.__init__(self, source, BLOCK.PARAM, optimize)
 
 
 
@@ -877,7 +874,7 @@ class IF_DEF(object):
         if not isinstance(name, str):
             raise IfDefSyntaxError("Name must be a string!")
 
-        keyword_params[PV_PREFIX + "EGU"] = "ms"
+        keyword_params[BASE_TYPE.PV_PREFIX + "EGU"] = "ms"
         self.add_analog(name, "TIME", **keyword_params)
 
 
@@ -951,8 +948,12 @@ class IF_DEF(object):
 # Types
 #
 class BASE_TYPE(SOURCE):
-    templates = dict()
-    pv_names  = set()
+    PV_PREFIX     = "PV_"
+    PV_ALIAS      = PV_PREFIX + "ALIAS"
+    PV_NAME       = PV_PREFIX + "NAME"
+    ASYN_TIMEOUT  = "100"
+    templates     = dict()
+    pv_names      = set()
 
 
     @staticmethod
@@ -1004,11 +1005,11 @@ class BASE_TYPE(SOURCE):
 
         self.compute_offset()
 
-        if PV_NAME not in self._keyword_params:
-            self._keyword_params[PV_NAME] = self._name
+        if BASE_TYPE.PV_NAME not in self._keyword_params:
+            self._keyword_params[BASE_TYPE.PV_NAME] = self._name
 
         self._check_pv_extra()
-        self._pvname = self._keyword_params[PV_NAME]
+        self._pvname = self._keyword_params[BASE_TYPE.PV_NAME]
 
         if self._pvname == "":
             raise IfDefSyntaxError("Empty PV_NAME")
@@ -1111,22 +1112,22 @@ class BASE_TYPE(SOURCE):
 
 
     def _check_pv_extra(self):
-        field_length = { PV_NAME            : 20,
-                         PV_ALIAS           : 20,
-                         PV_PREFIX + 'DESC' : 40,
-                         PV_PREFIX + 'EGU'  : 16,
-                         PV_PREFIX + 'ONAM' : 26,
-                         PV_PREFIX + 'ZNAM' : 26
+        field_length = { BASE_TYPE.PV_NAME            : 20,
+                         BASE_TYPE.PV_ALIAS           : 20,
+                         BASE_TYPE.PV_PREFIX + 'DESC' : 40,
+                         BASE_TYPE.PV_PREFIX + 'EGU'  : 16,
+                         BASE_TYPE.PV_PREFIX + 'ONAM' : 26,
+                         BASE_TYPE.PV_PREFIX + 'ZNAM' : 26
                        }
 
         try:
-            if self._keyword_params[PV_ALIAS] == "":
+            if self._keyword_params[BASE_TYPE.PV_ALIAS] == "":
                 raise IfDefSyntaxError("Empty PV_ALIAS")
         except KeyError:
             pass
 
         for key, value in self._keyword_params.iteritems():
-            if not key.startswith(PV_PREFIX):
+            if not key.startswith(BASE_TYPE.PV_PREFIX):
                 continue
             try:
                 if len(value) > field_length[key]:
@@ -1146,7 +1147,7 @@ class BASE_TYPE(SOURCE):
 
         pv_extra_fields = "\n"
         for key in sorted(self._keyword_params.keys()):
-            if key.startswith(PV_PREFIX) and key != PV_ALIAS and key != PV_NAME:
+            if key.startswith(BASE_TYPE.PV_PREFIX) and key != BASE_TYPE.PV_ALIAS and key != BASE_TYPE.PV_NAME:
                 if len(key) == 6:
                     pv_field_formatter = pv_field3
                 else:
@@ -1165,8 +1166,8 @@ class BASE_TYPE(SOURCE):
 
     def _build_pv_alias(self):
         alias = "\n\talias(\"[PLCF#INSTALLATION_SLOT]:{alias}\")\n"
-        if PV_ALIAS in self._keyword_params:
-            return alias.format(alias = self._keyword_params[PV_ALIAS])
+        if BASE_TYPE.PV_ALIAS in self._keyword_params:
+            return alias.format(alias = self._keyword_params[BASE_TYPE.PV_ALIAS])
 
         return ""
 
@@ -1203,7 +1204,7 @@ class BASE_TYPE(SOURCE):
 
 
     def link_extra(self):
-        link_extra_templates = { CMD : ASYN_TIMEOUT,   PARAM : ASYN_TIMEOUT,   STATUS : "" }
+        link_extra_templates = { BLOCK.CMD : BASE_TYPE.ASYN_TIMEOUT,   BLOCK.PARAM : BASE_TYPE.ASYN_TIMEOUT,   BLOCK.STATUS : "" }
         return link_extra_templates[self.block_type()]
 
 
@@ -1276,7 +1277,7 @@ class BITS(object):
         if self._block.is_status_block():
             return " B={bit_num}".format(bit_num = bit.bit_number())
         elif self._block.is_cmd_block() or self._block.is_param_block():
-            template = "{mask}, " + ASYN_TIMEOUT
+            template = "{mask}, " + BASE_TYPE.ASYN_TIMEOUT
             return template.format(mask = self.calc_mask(bit))
         else:
             raise IfDefInternalError("Unknown db type: " + self._block.type())
@@ -1304,8 +1305,8 @@ class BITS(object):
 
 
 class BIT(BASE_TYPE):
-    pv_types    = { CMD : "bo",   PARAM : "bo",   STATUS : "bi" }
-    var_types   = { CMD : "",     PARAM : "",     STATUS : "WORD" }
+    pv_types    = { BLOCK.CMD : "bo",   BLOCK.PARAM : "bo",   BLOCK.STATUS : "bi" }
+    var_types   = { BLOCK.CMD : "",     BLOCK.PARAM : "",     BLOCK.STATUS : "WORD" }
 
     @staticmethod
     def skip(bit_def, num):
@@ -1365,7 +1366,7 @@ class BIT(BASE_TYPE):
 
 
 class ANALOG(BASE_TYPE):
-    pv_types = { CMD : "ao",   PARAM : "ao",   STATUS : "ai" }
+    pv_types = { BLOCK.CMD : "ao",   BLOCK.PARAM : "ao",   BLOCK.STATUS : "ai" }
 
     def __init__(self, source, block, name, plc_var_type, keyword_params):
         BASE_TYPE.__init__(self, source, block, name, plc_var_type, keyword_params)
@@ -1383,7 +1384,7 @@ class ANALOG(BASE_TYPE):
 
 
 class ENUM(BASE_TYPE):
-    pv_types = { CMD : "mbbo",   PARAM : "mbbo",   STATUS : "mbbi" }
+    pv_types = { BLOCK.CMD : "mbbo",   BLOCK.PARAM : "mbbo",   BLOCK.STATUS : "mbbi" }
 
     def __init__(self, source, block, name, plc_var_type, nobt, shift, keyword_params):
         _test_and_set_pv(keyword_params, "NOBT", nobt)
@@ -1397,7 +1398,7 @@ class ENUM(BASE_TYPE):
 
 
 class BITMASK(BASE_TYPE):
-    pv_types = { CMD : "mbboDirect",   PARAM : "mbboDirect",   STATUS : "mbbiDirect" }
+    pv_types = { BLOCK.CMD : "mbboDirect",   BLOCK.PARAM : "mbboDirect",   BLOCK.STATUS : "mbbiDirect" }
 
     def __init__(self, source, block, name, plc_var_type, nobt, shift, keyword_params):
         _test_and_set_pv(keyword_params, "NOBT", nobt)
@@ -1417,7 +1418,7 @@ class BITMASK(BASE_TYPE):
         if self.is_status():
             return ""
         elif self.is_command() or self.is_parameter():
-            return "0xFFFF, " + ASYN_TIMEOUT
+            return "0xFFFF, " + BASE_TYPE.ASYN_TIMEOUT
         else:
             raise IfDefInternalError("Unknown db type: " + self.block_type())
 
@@ -1441,7 +1442,7 @@ def _test_and_set(keyword_params, key, value):
 
 
 def _test_and_set_pv(keyword_params, key, value):
-    _test_and_set(keyword_params, PV_PREFIX + key, value)
+    _test_and_set(keyword_params, BASE_TYPE.PV_PREFIX + key, value)
 
 
 def _bits_in_type(var_type):
