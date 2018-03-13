@@ -976,6 +976,15 @@ class BASE_TYPE(SOURCE):
         self._keyword_params = keyword_params
         self._expand_templates()
 
+        if block.is_status_block():
+            reserved_params = ["DTYP", "INP", "SCAN"]
+        else:
+            reserved_params = ["DTYP", "OUT"]
+
+        for param in map(lambda x: BASE_TYPE.PV_PREFIX + x, reserved_params):
+            if param in self._keyword_params:
+                raise IfDefSyntaxError(param + " is reserved!")
+
         """
            Check for PLC_TYPE="S7PLCTYPE|MODBUSTYPE"
         """
