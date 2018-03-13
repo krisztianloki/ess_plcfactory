@@ -512,6 +512,24 @@ def makedirs(path):
             raise
 
 
+def rmdirs(path):
+    from shutil import rmtree
+    def onrmtreeerror(func, e_path, exc_info):
+        if e_path != path:
+            raise
+
+        if not (func is os.listdir or func is os.rmdir):
+            raise
+
+        if not exc_info[0] is OSError:
+            raise
+
+        if exc_info[1].errno != 2:
+            raise
+
+    rmtree(path, onerror = onrmtreeerror)
+
+
 def create_zipfile(zipit):
     import zipfile
 
@@ -605,12 +623,16 @@ def create_eem(device):
     # Copy CCDB dump
     #
     if output_files['CCDB-DUMP'] is not None:
-        import zipfile
         miscdir = os.path.join(out_mdir, "misc")
-        z = zipfile.ZipFile(output_files['CCDB-DUMP'], "r")
-        z.extractall(miscdir)
-        eem_files.extend(map(lambda x: os.path.join(miscdir, x), z.namelist()))
-        z.close()
+        try:
+            import zipfile
+            with zipfile.ZipFile(output_files['CCDB-DUMP'], "r") as z:
+                z.extractall(miscdir)
+                eem_files.extend(map(lambda x: os.path.join(miscdir, x), z.namelist()))
+                z.close()
+        except:
+            rmdirs(os.path.join(miscdir, "ccdb"))
+            print "Cannot copy CCDB dump to EEE module"
 
     #
     # Generate Makefile
@@ -882,24 +904,11 @@ def main(argv):
 
     tia_map = "TIA-MAP-NG" if "TIA-MAP-NG" in templateIDs else "TIA-MAP"
 
-    from shutil import rmtree
-    def onrmtreeerror(func, path, exc_info):
-        if path != TEMPLATE_DIR:
-            raise
-
-        if not (func is os.listdir or func is os.rmdir):
-            raise
-
-        if not exc_info[0] is OSError:
-            raise
-
-        if exc_info[1].errno != 2:
-            raise
-
     # remove templates downloaded in a previous run
-    rmtree(TEMPLATE_DIR, onerror = onrmtreeerror)
+    rmdirs(TEMPLATE_DIR)
 
     makedirs(TEMPLATE_DIR)
+
     global OUTPUT_DIR
     OUTPUT_DIR = os.path.join(OUTPUT_DIR, CCDB.sanitizeFilename(device.lower()))
     makedirs(OUTPUT_DIR)
