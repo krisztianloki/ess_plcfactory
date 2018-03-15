@@ -6,12 +6,10 @@ __copyright__  = "Copyright 2017, European Spallation Source, Lund"
 __license__    = "GPLv3"
 
 
-#FIXME:
-# Use the counter_keyword() of the corresponding BLOCK instead of hardcoding Counter1 and Counter2
 
 
 from . import PRINTER
-from tf_ifdef import CMD_BLOCK
+from tf_ifdef import CMD_BLOCK, STATUS_BLOCK
 
 
 
@@ -47,8 +45,8 @@ class TIA_MAP_DIRECT(PRINTER):
 
         self._append("""#FILENAME {inst_slot}-TIA-MAP-{timestamp}.scl
 #EOL "\\r\\n"
-#COUNTER Counter1 = [PLCF# Counter1 + 10];
-#COUNTER Counter2 = [PLCF# Counter2 + 10];
+#COUNTER {cmd_cnt} = [PLCF# {cmd_cnt} + 10];
+#COUNTER {status_cnt} = [PLCF# {status_cnt} + 10];
 FUNCTION "_CommsEPICSDataMap" : Void
 {{ S7_Optimized_Access := 'FALSE' }}
 VERSION : 0.1
@@ -73,13 +71,15 @@ VERSION : 0.1
    #wordTOdint[1] := "EPICSToPLC"."Word"[1];
    #IOC_Hash := #tHashDint;
 
-   // {inst_slot}: PLC <-> EPICS Communication Mapping
-   //------------------------------------------------------------------------
-
-   // Hashes Comparision
+   // Hashes Comparison
    IF (#PLC_Hash = #IOC_Hash) THEN
-""".format(inst_slot = self.inst_slot(),
-           timestamp = self.timestamp()).replace("\n", "\r\n"), output)
+
+      // {inst_slot}: PLC <-> EPICS Communication Mapping
+      //------------------------------------------------------------------------
+""".format(inst_slot  = self.inst_slot(),
+           timestamp  = self.timestamp(),
+           cmd_cnt    = CMD_BLOCK.counter_keyword(),
+           status_cnt = STATUS_BLOCK.counter_keyword()).replace("\n", "\r\n"), output)
 
 
 
@@ -91,19 +91,21 @@ VERSION : 0.1
 
         self._append("""
       "_CommsEPICSDataMappingFBFactory"(EPICSToPLCLength           := {epicstoplclength},
-                                        EPICSToPLCDataBlockOffset  := [PLCF# ^(EPICSToPLCDataBlockStartOffset) + Counter1],
+                                        EPICSToPLCDataBlockOffset  := [PLCF# ^(EPICSToPLCDataBlockStartOffset) + {cmd_cnt}],
                                         EPICSToPLCParametersStart  := {commandwordslength},
                                         PLCToEPICSLength           := {plctoepicslength},
-                                        PLCToEPICSDataBlockOffset  := [PLCF# ^(PLCToEPICSDataBlockStartOffset) + Counter2],
+                                        PLCToEPICSDataBlockOffset  := [PLCF# ^(PLCToEPICSDataBlockStartOffset) + {status_cnt}],
                                         EPICSToPLCCommandRegisters := {reg}.CommandReg,
                                         PLCToEPICSStatusRegisters  := {reg}.StatusReg,
                                         EPICSToPLCDataBlock        := "EPICSToPLC"."Word",
                                         PLCToEPICSDataBlock        := "PLCToEPICS"."Word");
-#COUNTER Counter1 = [PLCF# Counter1 + {epicstoplclength}];
-#COUNTER Counter2 = [PLCF# Counter2 + {plctoepicslength}];
+#COUNTER {cmd_cnt} = [PLCF# {cmd_cnt} + {epicstoplclength}];
+#COUNTER {status_cnt} = [PLCF# {status_cnt} + {plctoepicslength}];
 """.format(inst_slot          = self.inst_slot(),
            epicstoplclength   = if_def.to_plc_words_length(),
+           cmd_cnt            = CMD_BLOCK.counter_keyword(),
            plctoepicslength   = if_def.from_plc_words_length(),
+           status_cnt         = STATUS_BLOCK.counter_keyword(),
            commandwordslength = str(if_def.properties()[CMD_BLOCK.length_keyword()]),
            reg                = self._xReg()
           ).replace("\n", "\r\n"), output)
@@ -128,7 +130,7 @@ DATA_BLOCK "EPICSToPLC"
 VERSION : 0.1
 NON_RETAIN
    STRUCT
-      "Word" : Array[0..[PLCF# Counter1 - 1]] of Word;
+      "Word" : Array[0..[PLCF# {cmd_cnt} - 1]] of Word;
    END_STRUCT;
 
 
@@ -141,7 +143,7 @@ DATA_BLOCK "PLCToEPICS"
 VERSION : 0.1
 NON_RETAIN
    STRUCT
-      "Word" : Array[0..[PLCF# Counter2 - 1]] of Word;
+      "Word" : Array[0..[PLCF# {status_cnt} - 1]] of Word;
    END_STRUCT;
 
 
@@ -172,13 +174,15 @@ BEGIN
 	                     MBPort         := {mbport},
 	                     PLCToEPICSData := "PLCToEPICS"."Word",
 	                     EPICSToPLCData := "EPICSToPLC"."Word");
-	
+
 	//Map all devices command and status registers to EPICS->PLC and PLC->EPICS data exchange blocks
 	"_CommsEPICSDataMap"();
 
 END_FUNCTION
 
-""".format(bytestosend    = self.plcf("2 * Counter2"),
+""".format(bytestosend    = self.plcf("2 * {status_cnt}".format(status_cnt = STATUS_BLOCK.counter_keyword())),
+           cmd_cnt        = CMD_BLOCK.counter_keyword(),
+           status_cnt     = STATUS_BLOCK.counter_keyword(),
            interfaceid    = self.plcf("PLC-EPICS-COMMS: InterfaceID"),
            s7connectionid = self.plcf("PLC-EPICS-COMMS: S7ConnectionID"),
            mbconnectionid = self.plcf("PLC-EPICS-COMMS: MBConnectionID"),
