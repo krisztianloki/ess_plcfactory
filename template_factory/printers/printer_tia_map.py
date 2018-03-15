@@ -79,7 +79,7 @@ VERSION : 0.1
 """.format(inst_slot  = self.inst_slot(),
            timestamp  = self.timestamp(),
            cmd_cnt    = CMD_BLOCK.counter_keyword(),
-           status_cnt = STATUS_BLOCK.counter_keyword()).replace("\n", "\r\n"), output)
+           status_cnt = STATUS_BLOCK.counter_keyword()), output)
 
 
 
@@ -108,7 +108,7 @@ VERSION : 0.1
            status_cnt         = STATUS_BLOCK.counter_keyword(),
            commandwordslength = str(if_def.properties()[CMD_BLOCK.length_keyword()]),
            reg                = self._xReg()
-          ).replace("\n", "\r\n"), output)
+          ), output)
 
 
 
@@ -187,7 +187,7 @@ END_FUNCTION
            s7connectionid = self.plcf("PLC-EPICS-COMMS: S7ConnectionID"),
            mbconnectionid = self.plcf("PLC-EPICS-COMMS: MBConnectionID"),
            s7port         = self.plcf("PLC-EPICS-COMMS: S7Port"),
-           mbport         = self.plcf("PLC-EPICS-COMMS: MBPort")).replace("\n", "\r\n"), output)
+           mbport         = self.plcf("PLC-EPICS-COMMS: MBPort")), output)
 
 
 
