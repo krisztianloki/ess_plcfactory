@@ -165,9 +165,11 @@ record(ai, "{inst_slot}:HeartbeatFromPLCR") {{
 	field(FLNK,	"{inst_slot}:iGotHeartbeat")
 }}
 
-#COUNTER Counter1 = [PLCF#Counter1 + 10];
-#COUNTER Counter2 = [PLCF#Counter2 + 10];
-""".format(inst_slot = self.inst_slot())
+#COUNTER {cmd_cnt} = [PLCF#{cmd_cnt} + 10];
+#COUNTER {status_cnt} = [PLCF#{status_cnt} + 10];
+""".format(inst_slot  = self.inst_slot(),
+           cmd_cnt    = CMD_BLOCK.counter_keyword(),
+           status_cnt = STATUS_BLOCK.counter_keyword())
 
         self._append(epics_db_header, output)
         return self
@@ -182,9 +184,9 @@ record(ai, "{inst_slot}:HeartbeatFromPLCR") {{
 
         self._append("""
 ##########
-########## [PLCF#INSTALLATION_SLOT] ##########
+########## {inst_slot} ##########
 ##########
-""")
+""".format(inst_slot = self.inst_slot()))
         self._body_verboseheader(if_def._cmd_block(), output)
         self._body_verboseheader(if_def._param_block(), output)
         self._body_verboseheader(if_def._status_block(), output)
@@ -224,9 +226,10 @@ record(ai, "{inst_slot}:HeartbeatFromPLCR") {{
 
         self._append((block.source(), """
 ##########
-########## [PLCF#INSTALLATION_SLOT] {dir} ##########
+########## {inst_slot} {dir} ##########
 ##########
-""".format(dir = comment)))
+""".format(inst_slot = self.inst_slot(),
+           dir = comment)))
 
 
     def _body_var(self, var, output):

@@ -8,6 +8,7 @@ __license__    = "GPLv3"
 
 
 from . import PRINTER
+from tf_ifdef import STATUS_BLOCK
 
 
 
@@ -34,7 +35,7 @@ class ST_CMD(PRINTER):
     def header(self, output):
         PRINTER.header(self, output)
 
-        st_cmd_header = """#FILENAME {startup}{test}.cmd
+        st_cmd_header = """#FILENAME {startup}{test}-[PLCF#TIMESTAMP].cmd
 # @field PLCNAME
 # @type STRING
 # asyn port name for the PLC
@@ -46,10 +47,11 @@ class ST_CMD(PRINTER):
 # @field RECVTIMEOUT
 # @type INTEGER
 # PLC->EPICS receive timeout (ms), should be longer than frequency of PLC SND block trigger (REQ input)
-#COUNTER Counter2 = [PLCF#Counter2 + 10 * 2]
+#COUNTER {status_cnt} = [PLCF#{status_cnt} + 10 * 2]
 
-""".format(startup = self.plcf("ext.to_filename('INSTALLATION_SLOT'.lower())"),
-           test    = "" if not self._test else "-test")
+""".format(startup    = self.plcf("ext.to_filename('INSTALLATION_SLOT'.lower())"),
+           test       = "" if not self._test else "-test",
+           status_cnt = STATUS_BLOCK.counter_keyword())
 
         self._append(st_cmd_header, output)
 
@@ -62,7 +64,8 @@ class ST_CMD(PRINTER):
 
         status = if_def._status_block()
         if status is not None:
-            self._append("#COUNTER Counter2 = [PLCF# Counter2 + {db_length}]".format(db_length = status.length()), output)
+            self._append("#COUNTER {status_cnt} = [PLCF# {status_cnt} + {db_length}]".format(status_cnt = STATUS_BLOCK.counter_keyword(),
+                                                                                             db_length = status.length()), output)
 
 
     #
@@ -80,7 +83,7 @@ requireSnippet(s7plc-comms.cmd, "PLCNAME=$(PLCNAME), IPADDR=$(IPADDR), S7DRVPORT
 dbLoadRecords("{modulename}.db", "PLCNAME=$(PLCNAME)")
 """.format(s7drvport     = self.plcf("PLC-EPICS-COMMS: S7Port"),
            modbusdrvport = self.plcf("PLC-EPICS-COMMS: MBPort"),
-           insize        = self.plcf("Counter2"),
+           insize        = self.plcf(STATUS_BLOCK.counter_keyword()),
            bigendian     = self.plcf("1 if 'PLC-EPICS-COMMS:Endianness' == 'BigEndian' else 0"),
            modulename    = self.plcf("ext.to_filename('INSTALLATION_SLOT'.lower())")
           )

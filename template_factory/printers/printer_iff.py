@@ -11,7 +11,7 @@ __license__    = "GPLv3"
 
 
 from . import PRINTER
-from tf_ifdef import SOURCE, BLOCK, CMD_BLOCK, BASE_TYPE, BIT
+from tf_ifdef import SOURCE, BLOCK, CMD_BLOCK, STATUS_BLOCK, BASE_TYPE, BIT
 
 
 def printer():
@@ -89,15 +89,17 @@ EPICSTOPLCPARAMETERSSTART
 {epicstoplcparametersstart}
 PLCTOEPICSDATABLOCKOFFSET
 {plctoepicsdatablockoffset}
-#COUNTER Counter1 = [PLCF# Counter1 + {epicstoplclength}];
-#COUNTER Counter2 = [PLCF# Counter2 + {plctoepicslength}];
+#COUNTER {cmd_cnt} = [PLCF# {cmd_cnt} + {epicstoplclength}];
+#COUNTER {status_cnt} = [PLCF# {status_cnt} + {plctoepicslength}];
 """.format(inst_slot                 = self.inst_slot(),
            type                      = self.plcf("DEVICE_TYPE"),
-           epicstoplcdatablockoffset = self.plcf("^(EPICSToPLCDataBlockStartOffset) + Counter1"),
-           plctoepicsdatablockoffset = self.plcf("^(PLCToEPICSDataBlockStartOffset) + Counter2"),
+           epicstoplcdatablockoffset = self.plcf("^(EPICSToPLCDataBlockStartOffset) + {cmd_cnt}".format(cmd_cnt = CMD_BLOCK.counter_keyword())),
+           plctoepicsdatablockoffset = self.plcf("^(PLCToEPICSDataBlockStartOffset) + {status_cnt}".format(status_cnt = STATUS_BLOCK.counter_keyword())),
            epicstoplcparametersstart = self.plcf(str(if_def.properties()[CMD_BLOCK.length_keyword()])),
            epicstoplclength          = if_def.to_plc_words_length(),
-           plctoepicslength          = if_def.from_plc_words_length()), output)
+           plctoepicslength          = if_def.from_plc_words_length(),
+           cmd_cnt                   = CMD_BLOCK.counter_keyword(),
+           status_cnt                = STATUS_BLOCK.counter_keyword()), output)
 
         for src in if_def.interfaces():
             if isinstance(src, BLOCK):
