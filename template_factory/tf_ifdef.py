@@ -1124,9 +1124,9 @@ class BASE_TYPE(SOURCE):
         field_length = { BASE_TYPE.PV_NAME            : 20,
                          BASE_TYPE.PV_ALIAS           : 20,
                          BASE_TYPE.PV_PREFIX + 'DESC' : 40,
-                         BASE_TYPE.PV_PREFIX + 'EGU'  : 16,
-                         BASE_TYPE.PV_PREFIX + 'ONAM' : 26,
-                         BASE_TYPE.PV_PREFIX + 'ZNAM' : 26
+                         BASE_TYPE.PV_PREFIX + 'EGU'  : 15,
+                         BASE_TYPE.PV_PREFIX + 'ONAM' : 25,
+                         BASE_TYPE.PV_PREFIX + 'ZNAM' : 25
                        }
 
         try:
