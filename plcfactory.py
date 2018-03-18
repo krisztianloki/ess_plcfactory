@@ -744,11 +744,15 @@ def main(argv):
         exit(0)
 
     if args.plc_direct is not None:
-        tia_version = args.plc_direct.lower()
-        tia_map     = "TIA-MAP-DIRECT"
+        tia_version        = args.plc_direct.lower()
+        tia_map            = "TIA-MAP-DIRECT"
+        args.plc_direct    = True
+        args.plc_interface = False
     elif args.plc_interface is not None:
-        tia_version = args.plc_interface.lower()
-        tia_map     = "TIA-MAP-INTERFACE"
+        tia_version        = args.plc_interface.lower()
+        tia_map            = "TIA-MAP-INTERFACE"
+        args.plc_interface = True
+        args.plc_direct    = False
     else:
         tia_version = None
 
@@ -858,7 +862,7 @@ def main(argv):
 
     if args.plc_direct:
         tf.optimize_s7db(True)
-        default_printers.update( [ "EPICS-DB", tia_map ] )
+        default_printers.update( [ "EPICS-DB", "IFA", tia_map ] )
 
     if eem:
         default_printers.update( [ "EPICS-DB", "AUTOSAVE-ST-CMD", "AUTOSAVE" ] )
@@ -876,10 +880,10 @@ def main(argv):
     if "TIA-MAP-DIRECT" in templateIDs:
         tia_map = "TIA-MAP-DIRECT"
         tf.optimize_s7db(True)
-        if args.plc_no_diag == False:
+        templateIDs.add("IFA")
+        if args.plc_no_diag == False and not args.plc_direct:
             args.plc_only_diag =  True
             tia_version        =  14
-            templateIDs.add("IFA")
 
         # TIA-MAP-DIRECT and TIA-MAP-INTERFACE are incompatible
         if "TIA-MAP-INTERFACE" in templateIDs:
@@ -929,7 +933,7 @@ def main(argv):
 
     if tia_version or args.plc_only_diag:
         from InterfaceFactory import produce as ifa_produce
-        output_files.update(ifa_produce(OUTPUT_DIR, output_files["IFA"], output_files[tia_map], tia_version, nodiag = args.plc_no_diag, onlydiag = args.plc_only_diag))
+        output_files.update(ifa_produce(OUTPUT_DIR, output_files["IFA"], output_files[tia_map], tia_version, nodiag = args.plc_no_diag, onlydiag = args.plc_only_diag, direct = args.plc_direct))
 
     if eem:
         create_eem(device)
