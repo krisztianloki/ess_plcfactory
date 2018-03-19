@@ -63,6 +63,7 @@ record(bi, "{inst_slot}:ModbusConnectedR") {{
 	field(INP,	"{inst_slot}:iAsyn.CNCT CP")
 	field(ONAM,	"Connected")
 	field(ZNAM,	"Disconnected")
+	field(ZSV,      "MAJOR")
 	field(FLNK,	"{inst_slot}:CommsHashToPLCS")
 }}
 record(bi, "{inst_slot}:S7ConnectedR") {{
@@ -72,6 +73,7 @@ record(bi, "{inst_slot}:S7ConnectedR") {{
 	field(INP,	"@$(PLCNAME)")
 	field(ONAM,	"Connected")
 	field(ZNAM,	"Disconnected")
+	field(ZSV,      "MAJOR")
 }}
 record(calcout, "{inst_slot}:iCalcConn") {{
 	field(INPA,	"{inst_slot}:S7ConnectedR CP")
@@ -83,16 +85,19 @@ record(bi, "{inst_slot}:ConnectedR") {{
 	field(DESC,	"Shows if the PLC is connected")
 	field(ONAM,	"Connected")
 	field(ZNAM,	"Disconnected")
+	field(ZSV,      "MAJOR")
 }}
 record(bi, "{inst_slot}:PLCHashCorrectR") {{
 	field(DESC,	"Shows if the comms hash is correct")
 	field(ONAM,	"Correct")
 	field(ZNAM,	"Incorrect")
+	field(ZSV,      "MAJOR")
 }}
 record(bi, "{inst_slot}:AliveR") {{
 	field(DESC,	"Shows if the PLC is sending heartbeats")
 	field(ONAM,	"Alive")
 	field(ZNAM,	"Not responding")
+	field(ZSV,      "MAJOR")
 }}
 record(calcout, "{inst_slot}:iCheckHash") {{
 	field(INPA,	"{inst_slot}:iCommsHashToPLC")
@@ -331,6 +336,7 @@ record(bi, "{inst_slot}:ModbusConnectedR") {{
 	field(DESC,	"Shows if the MODBUS channel connected")
 	field(ONAM,	"Connected")
 	field(ZNAM,	"Disconnected")
+	field(ZSV,      "MAJOR")
 	field(VAL,	"1")
 	field(PINI,	"YES")
 	field(FLNK,	"{inst_slot}:CommsHashToPLCS")
@@ -339,6 +345,7 @@ record(bi, "{inst_slot}:S7ConnectedR") {{
 	field(DESC,	"Shows if the S7 channel is connected")
 	field(ONAM,	"Connected")
 	field(ZNAM,	"Disconnected")
+	field(ZSV,      "MAJOR")
 	field(VAL,	"1")
 	field(PINI,	"YES")
 }}
@@ -352,16 +359,19 @@ record(bi, "{inst_slot}:ConnectedR") {{
 	field(DESC,	"Shows if the PLC is connected")
 	field(ONAM,	"Connected")
 	field(ZNAM,	"Disconnected")
+	field(ZSV,      "MAJOR")
 }}
 record(bi, "{inst_slot}:PLCHashCorrectR") {{
 	field(DESC,	"Shows if the comms hash is correct")
 	field(ONAM,	"Correct")
 	field(ZNAM,	"Incorrect")
+	field(ZSV,      "MAJOR")
 }}
 record(bi, "{inst_slot}:AliveR") {{
 	field(DESC,	"Shows if the PLC is sending heartbeats")
 	field(ONAM,	"Alive")
 	field(ZNAM,	"Not responding")
+	field(ZSV,      "MAJOR")
 }}
 record(calcout, "{inst_slot}:iCheckHash") {{
 	field(INPA,	"{inst_slot}:iCommsHashToPLC")
