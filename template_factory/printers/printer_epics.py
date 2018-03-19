@@ -45,6 +45,12 @@ class EPICS(PRINTER):
     def header(self, output):
         PRINTER.header(self, output)
         epics_db_header = """#FILENAME {inst_slot}-[PLCF#TEMPLATE]-[PLCF#TIMESTAMP].db
+record(stringin, "{inst_slot}:ModVersionR") {{
+	field(DISP, "1")
+	field(VAL,  "$(MODVERSION=N/A)")
+	field(PINI, "YES")
+}}
+
 #########################################################
 ########## EPICS <-> PLC connection management ##########
 #########################################################

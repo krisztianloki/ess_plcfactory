@@ -50,10 +50,14 @@ class ST_CMD(PRINTER):
 # @field RECVTIMEOUT
 # @type INTEGER
 # PLC->EPICS receive timeout (ms), should be longer than frequency of PLC SND block trigger (REQ input)
+
+# @field REQUIRE_{modulename}_VERSION
+# @runtime YES
 #COUNTER {status_cnt} = [PLCF#{status_cnt} + 10 * 2]
 
 """.format(startup    = self._modulename(),
            test       = "" if not self._test else "-test",
+           modulename = self._modulename(),
            status_cnt = STATUS_BLOCK.counter_keyword())
 
         self._append(st_cmd_header, output)
@@ -83,7 +87,7 @@ class ST_CMD(PRINTER):
 requireSnippet(s7plc-comms.cmd, "PLCNAME=$(PLCNAME), IPADDR=$(IPADDR), S7DRVPORT={s7drvport}, MODBUSDRVPORT={modbusdrvport}, INSIZE={insize}, OUTSIZE=0, BIGENDIAN={bigendian}, RECVTIMEOUT=$(RECVTIMEOUT)")
 
 # Load plc interface database
-dbLoadRecords("{modulename}.db", "PLCNAME=$(PLCNAME)")
+dbLoadRecords("{modulename}.db", "PLCNAME=$(PLCNAME), MODVERSION=$(REQUIRE_{modulename}_VERSION)")
 """.format(s7drvport     = self.plcf("PLC-EPICS-COMMS: S7Port"),
            modbusdrvport = self.plcf("PLC-EPICS-COMMS: MBPort"),
            insize        = self.plcf(STATUS_BLOCK.counter_keyword()),
