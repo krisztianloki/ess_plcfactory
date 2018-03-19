@@ -16,7 +16,10 @@ inpv_template  = """record({recordtype}, "[PLCF#INSTALLATION_SLOT]:{name}")
 {{{alias}
 	field(SCAN, "I/O Intr")
 	field(DTYP, "S7plc")
-	field(INP,  "@$(PLCNAME)/{offset} T={var_type}{link_extra}"){pv_extra}
+	field(INP,  "@$(PLCNAME)/{offset} T={var_type}{link_extra}")
+	field(DISS, "INVALID")
+	field(DISV, "0")
+	field(SDIS, "[PLCF#ROOT_INSTALLATION_SLOT]:PLCHashCorrectR"){pv_extra}
 }}
 
 """
@@ -31,7 +34,10 @@ test_inpv_template  = """record({recordtype}, "[PLCF#INSTALLATION_SLOT]:{name}")
 outpv_template = """record({{recordtype}}, "[PLCF#INSTALLATION_SLOT]:{{name}}")
 {{{{{{alias}}
 	field(DTYP, "{asyntype}")
-	field(OUT,  "@{asynio}($(PLCNAME)write, {{offset}}, {{link_extra}}){{var_type}}"){{pv_extra}}
+	field(OUT,  "@{asynio}($(PLCNAME)write, {{offset}}, {{link_extra}}){{var_type}}")
+	field(DISS, "INVALID")
+	field(DISV, "0")
+	field(SDIS, "[PLCF#ROOT_INSTALLATION_SLOT]:PLCHashCorrectR"){{pv_extra}}
 }}}}
 
 """
