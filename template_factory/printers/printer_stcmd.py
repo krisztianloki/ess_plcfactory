@@ -129,7 +129,10 @@ class AUTOSAVE_ST_CMD(ST_CMD):
         st_cmd_header = """# @field SAVEFILE_PATH
 # @type  STRING
 # The path where autosave should save files
-"""
+
+# @field REQUIRE_{modulename}_PATH
+# @runtime YES
+""".format(modulename    = self.plcf("ext.to_filename('INSTALLATION_SLOT'.lower())"))
 
         self._append(st_cmd_header, output)
 
