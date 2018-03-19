@@ -29,6 +29,9 @@ class ST_CMD(PRINTER):
         return "ST-CMD"
 
 
+    def _modulename(self):
+        return self.plcf("ext.to_filename('ROOT_INSTALLATION_SLOT'.lower())")
+
     #
     # HEADER
     #
@@ -49,7 +52,7 @@ class ST_CMD(PRINTER):
 # PLC->EPICS receive timeout (ms), should be longer than frequency of PLC SND block trigger (REQ input)
 #COUNTER {status_cnt} = [PLCF#{status_cnt} + 10 * 2]
 
-""".format(startup    = self.plcf("ext.to_filename('INSTALLATION_SLOT'.lower())"),
+""".format(startup    = self._modulename(),
            test       = "" if not self._test else "-test",
            status_cnt = STATUS_BLOCK.counter_keyword())
 
@@ -85,13 +88,13 @@ dbLoadRecords("{modulename}.db", "PLCNAME=$(PLCNAME)")
            modbusdrvport = self.plcf("PLC-EPICS-COMMS: MBPort"),
            insize        = self.plcf(STATUS_BLOCK.counter_keyword()),
            bigendian     = self.plcf("1 if 'PLC-EPICS-COMMS:Endianness' == 'BigEndian' else 0"),
-           modulename    = self.plcf("ext.to_filename('INSTALLATION_SLOT'.lower())")
+           modulename    = self._modulename()
           )
         else:
             st_cmd_footer = """
 # Load plc interface database
 dbLoadRecords("{modulename}-test.db", "PLCNAME=$(PLCNAME)")
-""".format(modulename    = self.plcf("ext.to_filename('INSTALLATION_SLOT'.lower())"))
+""".format(modulename    = self._modulename())
 
         self._append(st_cmd_footer, output)
 
@@ -132,7 +135,7 @@ class AUTOSAVE_ST_CMD(ST_CMD):
 
 # @field REQUIRE_{modulename}_PATH
 # @runtime YES
-""".format(modulename    = self.plcf("ext.to_filename('INSTALLATION_SLOT'.lower())"))
+""".format(modulename    = self._modulename())
 
         self._append(st_cmd_header, output)
 
@@ -159,7 +162,7 @@ set_pass0_restoreFile("{modulename}{test}.sav")
 
 # Create monitor set
 create_monitor_set("{modulename}{test}.req", 1, "")
-""".format(modulename    = self.plcf("ext.to_filename('INSTALLATION_SLOT'.lower())"),
+""".format(modulename    = self._modulename(),
            test          = "" if not self._test else "-test")
 
         self._append(st_cmd_footer, output)
