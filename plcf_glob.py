@@ -12,3 +12,6 @@ ccdb                   = None
 
 # the root installation slot
 root_installation_slot = None
+
+# the name of the EEE module
+modulename             = ""

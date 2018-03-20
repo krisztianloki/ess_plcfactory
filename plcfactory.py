@@ -562,9 +562,8 @@ def create_zipfile(zipit):
     return zipit
 
 
-def create_eem(device):
+def create_eem(basename):
     eem_files = []
-    basename  = CCDB.sanitizeFilename(device.lower())
     out_mdir  = os.path.join(OUTPUT_DIR, "modules", "-".join(["m-epics", basename]))
     makedirs(out_mdir)
 
@@ -709,14 +708,6 @@ def main(argv):
                            )
 
         parser.add_argument(
-                            '--eee',
-                            '--eem',
-                            dest    = "eem",
-                            help    = "create a minimal EEE module with EPICS-DB and startup snippet",
-                            action  = "store_true"
-                           )
-
-        parser.add_argument(
                             '--list-templates',
                             dest    = "list_templates",
                             help    = "give a list of the possible templates that can be generated on-the-fly from an interface definition",
@@ -726,7 +717,25 @@ def main(argv):
         return parser
 
 
-    parser         = argparse.ArgumentParser(add_help = False)
+    def add_eee_arg(parser, device):
+        if device:
+            device = CCDB.sanitizeFilename(device.lower())
+        parser.add_argument(
+                            '--eee',
+                            '--eem',
+                            dest    = "eem",
+                            help    = "create a minimal EEE module with EPICS-DB and startup snippet",
+                            metavar = "modulename",
+                            nargs   = "?",
+                            type    = str,
+                            const   = device
+                           )
+
+        return parser
+
+
+
+    parser = argparse.ArgumentParser(add_help = False)
 
     add_common_parser_args(parser)
 
@@ -737,7 +746,10 @@ def main(argv):
                         const    = None
                         )
 
-    args = parser.parse_known_args(argv)[0]
+    # First pass
+    #  get the device
+    args   = parser.parse_known_args(argv)[0]
+    device = args.device
 
     if args.list_templates:
         print tf.available_printers()
@@ -767,13 +779,25 @@ def main(argv):
         else:
             raise PLCFArgumentError(1, "Invalid TIA version: " + tia_version)
 
-    eem        = args.eem
-    device     = args.device
+    # Second pass
+    #  get EEE module name
+    add_eee_arg(parser, device)
+
+    args = parser.parse_known_args(argv)[0]
+
+    if args.eem and args.eem.startswith('m-epics-'):
+        eem = args.eem[len('m-epics-'):]
+    else:
+        eem = args.eem
+
     glob.root_installation_slot = device
 
+    # Third pass
+    #  get all options
     parser         = PLCFArgumentParser()
 
     add_common_parser_args(parser)
+    add_eee_arg(parser, device)
 
     parser.add_argument(
                         '-d',
@@ -834,7 +858,7 @@ def main(argv):
                         '-t',
                         '--template',
                         help     = 'template name',
-                        nargs    = '*',
+                        nargs    = '+',
                         type     = str,
                         default  = [],
                         required = not (tia_version or eem))
@@ -926,6 +950,7 @@ def main(argv):
     OUTPUT_DIR = os.path.join(OUTPUT_DIR, CCDB.sanitizeFilename(device.lower()))
     makedirs(OUTPUT_DIR)
 
+    glob.modulename = eem
     processDevice(device, list(templateIDs))
 
     # create a dump of CCDB
@@ -936,7 +961,7 @@ def main(argv):
         output_files.update(ifa_produce(OUTPUT_DIR, output_files["IFA"], output_files[tia_map], tia_version, nodiag = args.plc_no_diag, onlydiag = args.plc_only_diag, direct = args.plc_direct))
 
     if eem:
-        create_eem(device)
+        create_eem(glob.modulename)
 
     if args.zipit is not None:
         create_zipfile(args.zipit)

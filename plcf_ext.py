@@ -7,6 +7,7 @@ __license__    = "GPLv3"
 
 # user-defined extensions for PLCF#
 from ccdb import CCDB
+import plcf_glob
 
 # simple example:
 def foo(x):
@@ -20,3 +21,6 @@ def to_filename(x):
     assert isinstance(x, str)
 
     return CCDB.sanitizeFilename(x)
+
+def eee_modulename():
+    return plcf_glob.modulename

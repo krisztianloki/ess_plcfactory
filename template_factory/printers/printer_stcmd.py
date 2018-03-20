@@ -30,7 +30,7 @@ class ST_CMD(PRINTER):
 
 
     def _modulename(self):
-        return self.plcf("ext.to_filename('ROOT_INSTALLATION_SLOT'.lower())")
+        return self.plcf("ext.eee_modulename()")
 
     #
     # HEADER
