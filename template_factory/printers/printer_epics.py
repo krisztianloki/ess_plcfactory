@@ -137,7 +137,7 @@ record(ao, "{inst_slot}:CommsHashToPLCS") {{
 	field(OMSL,	"closed_loop")
 	field(DOL,	"{inst_slot}:iCommsHashToPLC")
 	field(DISV,	"0")
-	field(SDIS,	"{inst_slot}:ConnectedR")
+	field(SDIS,	"{inst_slot}:ModbusConnectedR")
 }}
 record(calc, "{inst_slot}:iHeartbeatToPLC") {{
 	field(SCAN,	"1 second")
@@ -145,7 +145,7 @@ record(calc, "{inst_slot}:iHeartbeatToPLC") {{
 	field(CALC,	"(A >= 32000)? 0 : A + 1")
 	field(FLNK,	"{inst_slot}:HeartbeatToPLCS")
 	field(DISV,	"0")
-	field(SDIS,	"{inst_slot}:ConnectedR")
+	field(SDIS,	"{inst_slot}:ModbusConnectedR")
 }}
 record(ao, "{inst_slot}:HeartbeatToPLCS") {{
 	field(DESC,	"Sends heartbeat to PLC")
@@ -156,6 +156,8 @@ record(ao, "{inst_slot}:HeartbeatToPLCS") {{
 	field(OIF,	"Full")
 	field(DRVL,	"0")
 	field(DRVH,	"32000")
+	field(DISV,	"0")
+	field(SDIS,	"{inst_slot}:ModbusConnectedR")
 }}
 
 ########################################################
