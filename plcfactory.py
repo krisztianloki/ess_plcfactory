@@ -950,7 +950,7 @@ def main(argv):
     OUTPUT_DIR = os.path.join(OUTPUT_DIR, CCDB.sanitizeFilename(device.lower()))
     makedirs(OUTPUT_DIR)
 
-    glob.modulename = eem
+    glob.modulename = eem.lower()
     processDevice(device, list(templateIDs))
 
     # create a dump of CCDB
