@@ -785,10 +785,12 @@ def main(argv):
 
     args = parser.parse_known_args(argv)[0]
 
-    if args.eem and args.eem.startswith('m-epics-'):
-        eem = args.eem[len('m-epics-'):]
+    if args.eem:
+        eem = args.eem.lower()
+        if eem.startswith('m-epics-'):
+            eem = eem[len('m-epics-'):]
     else:
-        eem = args.eem
+        eem = None
 
     glob.root_installation_slot = device
 
@@ -950,7 +952,7 @@ def main(argv):
     OUTPUT_DIR = os.path.join(OUTPUT_DIR, CCDB.sanitizeFilename(device.lower()))
     makedirs(OUTPUT_DIR)
 
-    glob.modulename = eem.lower()
+    glob.modulename = eem
     processDevice(device, list(templateIDs))
 
     # create a dump of CCDB
