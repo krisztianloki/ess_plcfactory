@@ -133,9 +133,9 @@ class AUTOSAVE_ST_CMD(ST_CMD):
     def header(self, output):
         ST_CMD.header(self, output)
 
-        st_cmd_header = """# @field SAVEFILE_PATH
+        st_cmd_header = """# @field SAVEFILE_DIR
 # @type  STRING
-# The path where autosave should save files
+# The directory where autosave should save files
 
 # @field REQUIRE_{modulename}_PATH
 # @runtime YES
@@ -159,7 +159,7 @@ save_restoreSet_NumSeqFiles(1)
 set_requestfile_path("$(REQUIRE_{modulename}_PATH)", "misc")
 
 # Specify where the save files should be
-set_savefile_path("$(SAVEFILE_PATH)", "")
+set_savefile_path("$(SAVEFILE_DIR)", "")
 
 # Specify what save files should be restored
 set_pass0_restoreFile("{modulename}{test}.sav")
