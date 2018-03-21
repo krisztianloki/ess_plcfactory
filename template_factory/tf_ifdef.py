@@ -127,6 +127,7 @@ class SOURCE(object):
         self._source    = source.lstrip()
         self._sourcenum = sourcenum
         self._comment   = comment
+        self._warnings  = None
 
 
     def is_comment(self):
@@ -139,6 +140,19 @@ class SOURCE(object):
 
     def sourcenum(self):
         return self._sourcenum
+
+
+    def warnings(self):
+        return self._warnings
+
+
+    def _add_warning(self, warn):
+        if self._warnings is None:
+            self._warnings = [ "At line number {lnum}:".format(lnum = self.sourcenum()), warn ]
+        else:
+            self._warnings.append(warn)
+
+        return warn
 
 
 
@@ -643,6 +657,15 @@ class IF_DEF(object):
         return self._ifaces
 
 
+    def warnings(self):
+        warns = []
+        for iface in self.interfaces():
+            if iface.warnings() is not None:
+                warns.extend(iface.warnings())
+
+        return warns
+
+
     def properties(self):
         self._exception_if_active()
 
@@ -1129,6 +1152,8 @@ class BASE_TYPE(SOURCE):
                          BASE_TYPE.PV_PREFIX + 'ZNAM' : 25
                        }
 
+        msg_hdr_fmt = "The {field} field of the pv is too long: "
+
         try:
             if self._keyword_params[BASE_TYPE.PV_ALIAS] == "" or self._keyword_params[BASE_TYPE.PV_ALIAS] == []:
                 raise IfDefSyntaxError("Empty PV_ALIAS")
@@ -1140,12 +1165,13 @@ class BASE_TYPE(SOURCE):
                 continue
             try:
                 if len(value) > field_length[key]:
+                    msg_hdr = msg_hdr_fmt.format(field = key)
                     if self.sourcenum() != -1:
                         print "At line number {lnum}:".format(lnum = self.sourcenum())
-                    print "The field {field} of the pv is too long: {value} (length: {len} / {max_len})".format(field   = key,
-                                                                                                                value   = value,
-                                                                                                                len     = len(value),
-                                                                                                                max_len = field_length[key])
+                    print self._add_warning((msg_hdr + "{value} (length: {len} / {max_len})").format(value   = value,
+                                                                                                     len     = len(value),
+                                                                                                     max_len = field_length[key]))
+                    print self._add_warning(" " * (len(msg_hdr) + field_length[key]) + "^")
             except KeyError:
                 pass
 

@@ -968,6 +968,14 @@ def main(argv):
     if args.zipit is not None:
         create_zipfile(args.zipit)
 
+    has_warns = False
+    for ifdef in ifdefs.itervalues():
+        for warn in ifdef.warnings():
+            if not has_warns:
+                has_warns = True
+                future_print("\nThe following warnings were detected:\n", file = sys.stderr)
+            future_print(warn, file = sys.stderr)
+
     print("--- %.1f seconds ---\n" % (time.time() - start_time))
 
 
