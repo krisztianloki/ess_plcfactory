@@ -506,7 +506,7 @@ def ifdef_interface(func):
 
 
 class IF_DEF(object):
-    def __init__(self, OPTIMIZE = False, HASH = None):
+    def __init__(self, OPTIMIZE = False, HASH = None, **keyword_params):
         assert isinstance(OPTIMIZE, bool)
 
         if HASH is None:
@@ -530,6 +530,7 @@ class IF_DEF(object):
         self._hash                  = HASH
         self._optimize              = OPTIMIZE
         self._plc_array             = None
+        self._filename              = keyword_params.get('FILENAME')
 
         self._properties[CMD_BLOCK.length_keyword()]    = 0
         self._properties[PARAM_BLOCK.length_keyword()]  = 0
@@ -658,12 +659,17 @@ class IF_DEF(object):
 
 
     def warnings(self):
-        warns = []
+        if self._filename:
+            in_file = "In file {filename}".format(filename = self._filename)
+            warns = ['', in_file, '=' * len(in_file)]
+        else:
+            warns = []
+
         for iface in self.interfaces():
             if iface.warnings() is not None:
                 warns.extend(iface.warnings())
 
-        return warns
+        return warns if len(warns) > 3 else []
 
 
     def properties(self):

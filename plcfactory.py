@@ -279,7 +279,11 @@ def getIfDef(device):
         print "More than one Interface Definiton files were found for {device}: {defs}".format(device = device, defs = template)
         exit(1)
 
+    #
+    # FIXME: remove redundant checks and unneeded assignments
+    #
     if len(template) == 0:
+        # No 'file' artefact found, let's see if there is a URL
         filename = getIfDefFromURL(device, deviceType)
         if filename is None:
             return None
@@ -298,7 +302,7 @@ def getIfDef(device):
         exit(1)
 
     with open(filename) as f:
-        ifdef = tf.processLines(f, HASH = hashobj)
+        ifdef = tf.processLines(f, HASH = hashobj, FILENAME = filename)
 
     if ifdef is not None:
         print "Device type: " + deviceType

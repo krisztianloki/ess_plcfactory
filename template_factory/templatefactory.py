@@ -32,7 +32,7 @@ def processDefinitionFile(definition, printers):
     print "Processing {definition}...".format(definition = definition)
 
     with open(definition) as m:
-        if_def = tf.processLines(m)
+        if_def = tf.processLines(m, FILENAME = definition)
 
 
     if if_def is None:
