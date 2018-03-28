@@ -84,6 +84,7 @@ class ST_CMD(PRINTER):
         if not self._test:
             st_cmd_footer = """
 # Call the EEE module responsible for configuring IOC to PLC comms configuration
+epicsEnvSet("$(PLCNAME)_CONFIGURE_MODBUS_READ", "#")
 requireSnippet(s7plc-comms.cmd, "PLCNAME=$(PLCNAME), IPADDR=$(IPADDR), S7DRVPORT={s7drvport}, MODBUSDRVPORT={modbusdrvport}, INSIZE={insize}, OUTSIZE=0, BIGENDIAN={bigendian}, RECVTIMEOUT=$(RECVTIMEOUT)")
 
 # Load plc interface database
