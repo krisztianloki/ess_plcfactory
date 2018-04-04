@@ -12,7 +12,7 @@ import hashlib
 
 
 
-inpv_template  = """record({recordtype}, "[PLCF#INSTALLATION_SLOT]:{name}")
+inpv_template  = """record({recordtype}, "{inst_slot}:{name}")
 {{{alias}
 	field(SCAN, "I/O Intr")
 	field(DTYP, "S7plc")
@@ -23,7 +23,7 @@ inpv_template  = """record({recordtype}, "[PLCF#INSTALLATION_SLOT]:{name}")
 }}
 
 """
-test_inpv_template  = """record({recordtype}, "[PLCF#INSTALLATION_SLOT]:{name}")
+test_inpv_template  = """record({recordtype}, "{inst_slot}:{name}")
 {{{alias}
 	{pv_extra}
 }}
@@ -31,7 +31,7 @@ test_inpv_template  = """record({recordtype}, "[PLCF#INSTALLATION_SLOT]:{name}")
 """
 
 
-outpv_template = """record({{recordtype}}, "[PLCF#INSTALLATION_SLOT]:{{name}}")
+outpv_template = """record({{recordtype}}, "{{inst_slot}}:{{name}}")
 {{{{{{alias}}
 	field(DTYP, "{asyntype}")
 	field(OUT,  "@{asynio}($(PLCNAME)write, {{offset}}, {{link_extra}}){{var_type}}")
@@ -41,7 +41,7 @@ outpv_template = """record({{recordtype}}, "[PLCF#INSTALLATION_SLOT]:{{name}}")
 }}}}
 
 """
-test_outpv_template = """record({{recordtype}}, "[PLCF#INSTALLATION_SLOT]:{{name}}")
+test_outpv_template = """record({{recordtype}}, "{{inst_slot}}:{{name}}")
 {{{{{{alias}}
 	{{pv_extra}}
 }}}}
@@ -537,6 +537,7 @@ class IF_DEF(object):
         self._optimize              = OPTIMIZE
         self._plc_array             = None
         self._filename              = keyword_params.get('FILENAME')
+        self._inst_slot             = "[PLCF#INSTALLATION_SLOT]"
 
         self._properties[CMD_BLOCK.length_keyword()]    = 0
         self._properties[PARAM_BLOCK.length_keyword()]  = 0
@@ -696,6 +697,10 @@ class IF_DEF(object):
         return self._from_plc_words_length
 
 
+    def inst_slot(self):
+        return self._inst_slot
+
+
     def add(self, source, linenum = -1):
         if not isinstance(source, str):
             raise IfDefSyntaxError("Interface definition lines must be strings!")
@@ -721,6 +726,12 @@ class IF_DEF(object):
         self._hash.update(source)
 
         self._eval(source, stripped_source, linenum)
+
+
+    @ifdef_interface
+    def define_installation_slot(self, name):
+        self._inst_slot = name
+        self._add_source()
 
 
     @ifdef_interface
@@ -1212,21 +1223,22 @@ class BASE_TYPE(SOURCE):
 
 
     def _build_pv_alias(self):
-        fmt = "\talias(\"[PLCF#INSTALLATION_SLOT]:{alias}\")"
+        fmt = "\talias(\"{{inst_slot}}:{alias}\")"
         if BASE_TYPE.PV_ALIAS in self._keyword_params:
             return "\n".join([''] + map(lambda alias : fmt.format(alias = alias), self._keyword_params[BASE_TYPE.PV_ALIAS]) + [''])
 
         return ""
 
-    def toEPICS(self, test = False):
+    def toEPICS(self, inst_slot = "[PLCF#INSTALLATION_SLOT]", test = False):
         return (self.source(),
-                 self.pv_template(test = test).format(recordtype = self.pv_type(),
-                                                      name       = self.pv_name(),
-                                                      alias      = self._build_pv_alias(),
-                                                      offset     = self.link_offset(),
-                                                      var_type   = self.var_type(),
-                                                      link_extra = self.link_extra() + self._get_user_link_extra(),
-                                                      pv_extra   = self._build_pv_extra()))
+                self.pv_template(test = test).format(recordtype = self.pv_type(),
+                                                     inst_slot  = inst_slot,
+                                                     name       = self.pv_name(),
+                                                     alias      = self._build_pv_alias(),
+                                                     offset     = self.link_offset(),
+                                                     var_type   = self.var_type(),
+                                                     link_extra = self.link_extra() + self._get_user_link_extra(),
+                                                     pv_extra   = self._build_pv_extra()))
 
 
     def bit_number(self):

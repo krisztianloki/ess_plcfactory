@@ -27,7 +27,8 @@ def printer():
 class EPICS(PRINTER):
     def __init__(self, test = False):
         PRINTER.__init__(self, comments = True, show_origin = True, preserve_empty_lines = True)
-        self._test = test
+        self._test   = test
+        self._if_def = None
 
 
     def comment(self):
@@ -193,6 +194,7 @@ record(ai, "{inst_slot}:HeartbeatFromPLCR") {{
     #
     def body(self, if_def, output):
         PRINTER.body(self, if_def, output)
+        self._if_def = if_def
         self._output = output
 
         self._append("""
@@ -219,7 +221,7 @@ record(ai, "{inst_slot}:HeartbeatFromPLCR") {{
             elif isinstance(src, SOURCE):
                 self._body_source(src, output)
             else:
-                self._append(src.toEPICS(self._test))
+                self._append(src.toEPICS(inst_slot = if_def.inst_slot(), test = self._test))
 
         self._body_end_param(if_def, output)
         self._append("\n\n")
@@ -246,7 +248,7 @@ record(ai, "{inst_slot}:HeartbeatFromPLCR") {{
 
 
     def _body_var(self, var, output):
-        self._append(var.toEPICS(self._test))
+        self._append(var.toEPICS(inst_slot = self._if_def.inst_slot(), test = self._test))
         if not var.is_parameter():
             return
 
