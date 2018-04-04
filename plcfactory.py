@@ -861,6 +861,14 @@ def main(argv):
                         required = False)
 
     parser.add_argument(
+                        '--cached',
+                        dest     = "clear_templates",
+                        help     = 'do not clear "templates" folder; use the templates downloaded by a previous run',
+                        # be aware of the inverse logic between the meaning of the option and the meaning of the variable
+                        default  = True,
+                        action   = 'store_false')
+
+    parser.add_argument(
                         '-t',
                         '--template',
                         help     = 'template name',
@@ -947,8 +955,11 @@ def main(argv):
 
     banner()
 
-    # remove templates downloaded in a previous run
-    rmdirs(TEMPLATE_DIR)
+    if args.clear_templates:
+        # remove templates downloaded in a previous run
+        rmdirs(TEMPLATE_DIR)
+    else:
+        print "Reusing templates of any previous run"
 
     makedirs(TEMPLATE_DIR)
 
@@ -979,6 +990,9 @@ def main(argv):
                 has_warns = True
                 future_print("\nThe following warnings were detected:\n", file = sys.stderr)
             future_print(warn, file = sys.stderr)
+
+    if not args.clear_templates:
+        print "\nTemplates were reused\n"
 
     print("--- %.1f seconds ---\n" % (time.time() - start_time))
 
