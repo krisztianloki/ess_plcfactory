@@ -495,15 +495,23 @@ class OVERLAP(BLOCK):
 
 
 class IF_DEF_INTERFACE_FUNC(object):
-    def __init__(self):
-        pass
+    def __init__(self, hashed):
+        self._hashed = hashed
+
+
+def hashed_interface(func):
+    def hashed_interface_func(*args, **kwargs):
+        return ifdef_interface(func)(*args, _hashed_interface = True, **kwargs)
+
+    return hashed_interface_func
 
 
 def ifdef_interface(func):
     def ifdef_interface_func(*args, **kwargs):
         if args is not None and isinstance(args, tuple) and len(args) > 0 and isinstance(args[0], IF_DEF):
+            _hashed_interface = kwargs.pop("_hashed_interface", False)
             func(*args, **kwargs)
-            return IF_DEF_INTERFACE_FUNC()
+            return IF_DEF_INTERFACE_FUNC(_hashed_interface)
         else:
             raise IfDefException("Trying to call non-interface function {f}".format(f = func.__name__))
 
@@ -550,7 +558,7 @@ class IF_DEF(object):
             if not hasattr(val, '__call__') or f.startswith('_'):
                 continue
 
-            if val.func_name == "ifdef_interface_func":
+            if val.func_name in ["ifdef_interface_func", "hashed_interface_func"]:
                 self._evalEnv[f] = val
 
 
@@ -561,14 +569,18 @@ class IF_DEF(object):
         self._source    = (source, linenum)
         try:
             result = eval(stripped_source, self._evalEnv)
+
+            if not isinstance(result, IF_DEF_INTERFACE_FUNC):
+               raise IfDefSyntaxError("Missing parentheses?")
+
+            if result._hashed:
+                self._hash.update(stripped_source)
         except AssertionError, e:
             raise IfDefInternalError(e)
         except SyntaxError, e:
             raise IfDefSyntaxError(e)
         except NameError, e:
             raise IfDefSyntaxError(e)
-        if not isinstance(result, IF_DEF_INTERFACE_FUNC):
-            raise IfDefSyntaxError("Missing parentheses?")
 
 
     def _status_block(self):
@@ -723,8 +735,6 @@ class IF_DEF(object):
             self._add_comment(source)
             return
 
-        self._hash.update(source)
-
         self._eval(source, stripped_source, linenum)
 
 
@@ -743,7 +753,7 @@ class IF_DEF(object):
         self._add_source()
 
 
-    @ifdef_interface
+    @hashed_interface
     def define_status_block(self):
         if self._STATUS is not None:
             raise IfDefSyntaxError("Block redefinition is not possible!")
@@ -752,7 +762,7 @@ class IF_DEF(object):
         self._add(self._STATUS)
 
 
-    @ifdef_interface
+    @hashed_interface
     def define_command_block(self):
         if self._CMD is not None:
             raise IfDefSyntaxError("Block redefinition is not possible!")
@@ -761,7 +771,7 @@ class IF_DEF(object):
         self._add(self._CMD)
 
 
-    @ifdef_interface
+    @hashed_interface
     def define_parameter_block(self):
         if self._PARAM is not None:
             raise IfDefSyntaxError("Block redefinition is not possible!")
@@ -770,7 +780,7 @@ class IF_DEF(object):
         self._add(self._PARAM)
 
 
-    @ifdef_interface
+    @hashed_interface
     def define_overlap(self):
         if self._active_BLOCK is None:
             raise IfDefSyntaxError("Define block first")
@@ -781,7 +791,7 @@ class IF_DEF(object):
         self._add_source()
 
 
-    @ifdef_interface
+    @hashed_interface
     def end_overlap(self):
         if self._overlap is None:
             raise IfDefSyntaxError("No overlap found")
@@ -791,7 +801,7 @@ class IF_DEF(object):
         self._add_source()
 
 
-    @ifdef_interface
+    @hashed_interface
     def define_plc_array(self, name):
         if self._plc_array is not None:
             raise IfDefSyntaxError("Nesting of arrays is not possible")
@@ -803,7 +813,7 @@ class IF_DEF(object):
         self._add(var)
 
 
-    @ifdef_interface
+    @hashed_interface
     def end_plc_array(self):
         if self._plc_array is None:
             raise IfDefSyntaxError("No array is defined yet")
@@ -825,12 +835,12 @@ class IF_DEF(object):
         pass
 
 
-    @ifdef_interface
+    @hashed_interface
     def add_bit(self, name = None, **keyword_params):
         self.add_digital(name, **keyword_params)
 
 
-    @ifdef_interface
+    @hashed_interface
     def add_digital(self, name = None, **keyword_params):
         bit_def = self._active_bit_def()
 
@@ -862,32 +872,32 @@ class IF_DEF(object):
 
     # Accept None as alarm_message, so that we could display a meaningful
     #  error message in _add_alarm() if it is not provided
-    @ifdef_interface
+    @hashed_interface
     def add_minor_alarm(self, name, alarm_message = None, **keyword_params):
         self._add_alarm(name, "MINOR", alarm_message, **keyword_params)
 
 
-    @ifdef_interface
+    @hashed_interface
     def add_major_alarm(self, name, alarm_message = None, **keyword_params):
         self._add_alarm(name, "MAJOR", alarm_message, **keyword_params)
 
 
-    @ifdef_interface
+    @hashed_interface
     def skip_bit(self):
         self.skip_digital()
 
 
-    @ifdef_interface
+    @hashed_interface
     def skip_digital(self):
         self.skip_digitals(1)
 
 
-    @ifdef_interface
+    @hashed_interface
     def skip_bits(self, num):
         self.skip_digitals(num)
 
 
-    @ifdef_interface
+    @hashed_interface
     def skip_digitals(self, num):
         if isinstance(num, str):
             num = int(num)
@@ -898,12 +908,12 @@ class IF_DEF(object):
         self.add_digital(SKIP_BITS = num)
 
 
-    @ifdef_interface
+    @hashed_interface
     def add_float(self, name, plc_var_type, **keyword_params):
         self.add_analog(name, plc_var_type, **keyword_params)
 
 
-    @ifdef_interface
+    @hashed_interface
     def add_analog(self, name, plc_var_type, **keyword_params):
         if not isinstance(name, str):
             raise IfDefSyntaxError("Name must be a string!")
@@ -915,7 +925,7 @@ class IF_DEF(object):
         self._add(var)
 
 
-    @ifdef_interface
+    @hashed_interface
     def add_time(self, name, **keyword_params):
         if not isinstance(name, str):
             raise IfDefSyntaxError("Name must be a string!")
@@ -924,7 +934,7 @@ class IF_DEF(object):
         self.add_analog(name, "TIME", **keyword_params)
 
 
-    @ifdef_interface
+    @hashed_interface
     def add_enum(self, name, plc_var_type = "INT", nobt = 16, shift = 0, **keyword_params):
         if not isinstance(name, str):
             raise IfDefSyntaxError("Name must be a string!")
@@ -934,7 +944,7 @@ class IF_DEF(object):
         self._add(var)
 
 
-    @ifdef_interface
+    @hashed_interface
     def add_bitmask(self, name, plc_var_type = "INT", nobt = 16, shift = 0, **keyword_params):
         if not isinstance(name, str):
             raise IfDefSyntaxError("Name must be a string!")
@@ -953,12 +963,12 @@ class IF_DEF(object):
         self._add(var)
 
 
-    @ifdef_interface
+    @hashed_interface
     def end_bits(self):
         self.end_digitals()
 
 
-    @ifdef_interface
+    @hashed_interface
     def end_digitals(self):
         self._add_source()
         BITS.end()
