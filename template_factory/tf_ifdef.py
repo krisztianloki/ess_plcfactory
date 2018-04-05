@@ -227,6 +227,10 @@ class BLOCK(SOURCE):
             return (self.is_cmd_block() or self.is_param_block() or width > 1) and (self._block_offset % 2) == 1
 
 
+    def endian_correct_epics_type(self, epics_type):
+        return epics_type
+
+
     def optimize(self):
         return self._optimize_s7db
 
@@ -378,6 +382,27 @@ class STATUS_BLOCK(BLOCK):
 # Special class to handle the similarities between CMD_BLOCK and PARAM_BLOCK
 #
 class MODBUS(object):
+    _endian_dependent_type_pairs = dict(
+# DWORD and UDINT are unsigned types, but MODBUS does not support writing (or reading) unsigned 32bit integers
+# so make it an error to use them
+#                    DWORD = [ "INT32_BE",   "INT32_LE" ],
+#                    UDINT = [ "INT32_BE",   "INT32_LE" ],
+                    DINT  = [ "INT32_BE",   "INT32_LE" ],
+                    REAL  = [ "FLOAT32_BE", "FLOAT32_LE" ],
+                    TIME  = [ "INT32_BE",   "INT32_LE" ])
+
+
+    _valid_type_pairs = dict(_endian_dependent_type_pairs,
+                    BYTE  = [ "UINT16" ],
+                    USINT = [ "UINT16" ],
+                    SINT  = [ "INT16" ],
+                    WORD  = [ "UINT16",     "BCD_UNSIGNED" ],
+                    UINT  = [ "UINT16",     "BCD_UNSIGNED" ],
+                    INT   = [ "INT16",      "BCD_SIGNED",  "INT16SM" ])
+
+
+    _endian_specific_epics_types = [item for sublist in _endian_dependent_type_pairs.values() for item in sublist]
+
     @staticmethod
     def counter_keyword():
         return "Counter1"
@@ -389,20 +414,20 @@ class MODBUS(object):
 
 
     @staticmethod
+    def endian_dependent_type_pairs():
+        return MODBUS._endian_dependent_type_pairs
+
+
+    @staticmethod
     def valid_type_pairs():
-        return dict(BYTE  = [ "UINT16" ],
-                    USINT = [ "UINT16" ],
-                    SINT  = [ "INT16" ],
-                    WORD  = [ "UINT16",     "BCD_UNSIGNED" ],
-                    UINT  = [ "UINT16",     "BCD_UNSIGNED" ],
-                    INT   = [ "INT16",      "BCD_SIGNED",  "INT16SM" ],
-# DWORD and UDINT are unsigned types, but MODBUS does not support writing (or reading) unsigned 32bit integers
-# so make it an error to use them
-#                    DWORD = [ "INT32_BE",   "INT32_LE" ],
-#                    UDINT = [ "INT32_BE",   "INT32_LE" ],
-                    DINT  = [ "INT32_BE",   "INT32_LE" ],
-                    REAL  = [ "FLOAT32_BE", "FLOAT32_LE" ],
-                    TIME  = [ "INT32_BE",   "INT32_LE" ])
+        return MODBUS._valid_type_pairs
+
+
+    def endian_correct_epics_type(self, epics_type):
+        if epics_type not in self._endian_specific_epics_types:
+            return super(MODBUS, self).endian_correct_epics_type(epics_type)
+
+        return epics_type[0:-2] + "[PLCF#'BE' if '^(PLC-EPICS-COMMS:Endianness)' == 'BigEndian' else 'LE']"
 
 
     def link_offset(self, var):
@@ -1130,6 +1155,10 @@ class BASE_TYPE(SOURCE):
         return self._var_type
 
 
+    def endian_correct_var_type(self):
+        return self._block.endian_correct_epics_type(self.var_type())
+
+
     def plc_type(self):
         """
            The type that is used on the PLC side. One of:
@@ -1246,7 +1275,7 @@ class BASE_TYPE(SOURCE):
                                                      name       = self.pv_name(),
                                                      alias      = self._build_pv_alias(),
                                                      offset     = self.link_offset(),
-                                                     var_type   = self.var_type(),
+                                                     var_type   = self.endian_correct_var_type(),
                                                      link_extra = self.link_extra() + self._get_user_link_extra(),
                                                      pv_extra   = self._build_pv_extra()))
 

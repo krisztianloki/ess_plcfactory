@@ -134,7 +134,7 @@ record(ao, "{inst_slot}:CommsHashToPLCS") {{
 	field(DESC,	"Sends comms hash to PLC")
 	field(SCAN,	"1 second")
 	field(DTYP,	"asynInt32")
-	field(OUT,	"@asyn($(PLCNAME)write, [PLCF#EPICSToPLCDataBlockStartOffset], 100)INT32_BE")
+	field(OUT,	"@asyn($(PLCNAME)write, [PLCF#EPICSToPLCDataBlockStartOffset], 100)INT32_[PLCF#'BE' if 'PLC-EPICS-COMMS:Endianness' == 'BigEndian' else 'LE']")
 	field(OMSL,	"closed_loop")
 	field(DOL,	"{inst_slot}:iCommsHashToPLC")
 	field(DISV,	"0")
