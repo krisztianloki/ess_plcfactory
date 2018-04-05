@@ -261,13 +261,6 @@ class BLOCK(SOURCE):
         return self._block_type
 
 
-    def valid_var_types(self):
-        types = []
-        for k,v in self.valid_type_pairs().iteritems():
-            types += v
-        return types
-
-
     def plc_type_to_epics_type(self, plc_type):
         try:
             return self.valid_type_pairs()[plc_type][0]
@@ -284,11 +277,18 @@ class BLOCK(SOURCE):
 
         assert isinstance(keyword_params, dict), func_param_msg("keyword_params", "dict")
 
+        def _valid_var_types(self):
+            types = []
+            for k,v in self.valid_type_pairs().iteritems():
+                types += v
+            return types
+
+
         for key, value in keyword_params.iteritems():
             if key.startswith(BASE_TYPE.PV_PREFIX) or not key in PLC_types:
                 continue
 
-            if not value in self.valid_var_types():
+            if not value in _valid_var_types(self):
                 raise IfDefSyntaxError("Unsupported type: " + value)
 
             plcbits   = _bits_in_type(key)
@@ -1042,7 +1042,7 @@ class BASE_TYPE(SOURCE):
                 raise IfDefSyntaxError(param + " is reserved!")
 
         """
-           Check for PLC_TYPE="S7PLCTYPE|MODBUSTYPE"
+           Check for PLC_TYPE="{S7PLCTYPE|MODBUSTYPE}"
         """
         (p, e) = block.pair_types(self._keyword_params)
         if p is not None:
