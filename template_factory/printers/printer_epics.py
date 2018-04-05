@@ -134,7 +134,7 @@ record(ao, "{inst_slot}:CommsHashToPLCS") {{
 	field(DESC,	"Sends comms hash to PLC")
 	field(SCAN,	"1 second")
 	field(DTYP,	"asynInt32")
-	field(OUT,	"@asyn($(PLCNAME)write, 0, 100)INT32_BE")
+	field(OUT,	"@asyn($(PLCNAME)write, [PLCF#EPICSToPLCDataBlockStartOffset], 100)INT32_BE")
 	field(OMSL,	"closed_loop")
 	field(DOL,	"{inst_slot}:iCommsHashToPLC")
 	field(DISV,	"0")
@@ -151,7 +151,7 @@ record(calc, "{inst_slot}:iHeartbeatToPLC") {{
 record(ao, "{inst_slot}:HeartbeatToPLCS") {{
 	field(DESC,	"Sends heartbeat to PLC")
 	field(DTYP,	"asynInt32")
-	field(OUT,	"@asyn($(PLCNAME)write, 2, 100)")
+	field(OUT,	"@asyn($(PLCNAME)write, [PLCF#EPICSToPLCDataBlockStartOffset + 2], 100)")
 	field(OMSL,	"closed_loop")
 	field(DOL,	"{inst_slot}:iHeartbeatToPLC.VAL")
 	field(OIF,	"Full")
