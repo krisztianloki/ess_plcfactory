@@ -2137,6 +2137,9 @@ def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 			#Check if DeviceType is already generated
 			if ActualDeviceType not in DeviceTypeList:
 				if not Direct:
+					MaxStatusReg = 0;
+					MaxCommandReg = 0;
+
 					NewDeviceType = True
 					DeviceTypeList.append(ActualDeviceType)
 					print "    ->  New device type found. ["+ ActualDeviceType+"] Creating source code..."
@@ -2528,6 +2531,7 @@ def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 					else:
 						MaxCommandReg = ActVariableArrayIndex
 
+	CloseLastVariable()
 	#Constuct the output source file 					
 	if EndDeviceString <> "":
 		EPICS_device_calls_test_body.append("                                 DEVICE_PARAM_OK=>#\""+EndDeviceString+"\");")					
