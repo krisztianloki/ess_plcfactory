@@ -796,8 +796,6 @@ def main(argv):
     else:
         eem = None
 
-    glob.root_installation_slot = device
-
     # Third pass
     #  get all options
     parser         = PLCFArgumentParser()
@@ -820,6 +818,14 @@ def main(argv):
                         nargs   = "?",
                         type    = str,
                         const   = device
+                       )
+
+    parser.add_argument(
+                        '--root',
+                        dest    = "root",
+                        help    = 'use this prefix instead of the device / installation slot',
+                        metavar = "root-installation-slot",
+                        type    = str
                        )
 
     parser.add_argument(
@@ -883,6 +889,11 @@ def main(argv):
     start_time     = time.time()
 
     glob.timestamp = '{:%Y%m%d%H%M%S}'.format(datetime.datetime.now())
+    if args.root is not None:
+        glob.root_installation_slot = args.root
+    else:
+        glob.root_installation_slot = device
+
 
     if args.ccdb:
         from ccdb_file import CCDB_FILE

@@ -29,9 +29,6 @@ class ST_CMD(PRINTER):
         return "ST-CMD"
 
 
-    def _modulename(self):
-        return self.plcf("ext.eee_modulename()")
-
     #
     # HEADER
     #
@@ -55,9 +52,9 @@ class ST_CMD(PRINTER):
 # @runtime YES
 #COUNTER {status_cnt} = [PLCF#{status_cnt} + 10 * 2]
 
-""".format(startup    = self._modulename(),
+""".format(startup    = self.modulename(),
            test       = "" if not self._test else "-test",
-           modulename = self._modulename(),
+           modulename = self.modulename(),
            status_cnt = STATUS_BLOCK.counter_keyword())
 
         self._append(st_cmd_header, output)
@@ -93,13 +90,13 @@ dbLoadRecords("{modulename}.db", "PLCNAME=$(PLCNAME), MODVERSION=$(REQUIRE_{modu
            modbusdrvport = self.plcf("PLC-EPICS-COMMS: MBPort"),
            insize        = self.plcf(STATUS_BLOCK.counter_keyword()),
            bigendian     = self.plcf("1 if 'PLC-EPICS-COMMS:Endianness' == 'BigEndian' else 0"),
-           modulename    = self._modulename()
+           modulename    = self.modulename()
           )
         else:
             st_cmd_footer = """
 # Load plc interface database
 dbLoadRecords("{modulename}-test.db")
-""".format(modulename    = self._modulename())
+""".format(modulename    = self.modulename())
 
         self._append(st_cmd_footer, output)
 
@@ -140,7 +137,7 @@ class AUTOSAVE_ST_CMD(ST_CMD):
 
 # @field REQUIRE_{modulename}_PATH
 # @runtime YES
-""".format(modulename    = self._modulename())
+""".format(modulename    = self.modulename())
 
         self._append(st_cmd_header, output)
 
@@ -167,7 +164,7 @@ set_pass0_restoreFile("{modulename}{test}.sav")
 
 # Create monitor set
 create_monitor_set("{modulename}{test}.req", 1, "")
-""".format(modulename    = self._modulename(),
+""".format(modulename    = self.modulename(),
            test          = "" if not self._test else "-test")
 
         self._append(st_cmd_footer, output)

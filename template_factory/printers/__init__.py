@@ -64,6 +64,10 @@ class PRINTER(object):
         return self.plcf("TIMESTAMP")
 
 
+    def modulename(self):
+        return self.plcf("ext.eee_modulename()")
+
+
     def comment(self):
         return ""
 

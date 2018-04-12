@@ -46,7 +46,7 @@ class EPICS(PRINTER):
     def header(self, output):
         PRINTER.header(self, output)
         epics_db_header = """#FILENAME {inst_slot}-[PLCF#TEMPLATE]-[PLCF#TIMESTAMP].db
-record(stringin, "{inst_slot}:ModVersionR") {{
+record(stringin, "{root_inst_slot}:ModVersionR") {{
 	field(DISP, "1")
 	field(VAL,  "$(MODVERSION=N/A)")
 	field(PINI, "YES")
@@ -55,19 +55,19 @@ record(stringin, "{inst_slot}:ModVersionR") {{
 #########################################################
 ########## EPICS <-> PLC connection management ##########
 #########################################################
-record(asyn, "{inst_slot}:iAsyn") {{
+record(asyn, "{root_inst_slot}:iAsyn") {{
 	field(DTYP,	"asynRecordDevice")
 	field(PORT,	"$(PLCNAME)")
 }}
-record(bi, "{inst_slot}:ModbusConnectedR") {{
+record(bi, "{root_inst_slot}:ModbusConnectedR") {{
 	field(DESC,	"Shows if the MODBUS channel connected")
-	field(INP,	"{inst_slot}:iAsyn.CNCT CP")
+	field(INP,	"{root_inst_slot}:iAsyn.CNCT CP")
 	field(ONAM,	"Connected")
 	field(ZNAM,	"Disconnected")
 	field(ZSV,      "MAJOR")
-	field(FLNK,	"{inst_slot}:CommsHashToPLCS")
+	field(FLNK,	"{root_inst_slot}:CommsHashToPLCS")
 }}
-record(bi, "{inst_slot}:S7ConnectedR") {{
+record(bi, "{root_inst_slot}:S7ConnectedR") {{
 	field(DESC,	"Shows if the S7 channel is connected")
 	field(SCAN,	"I/O Intr")
 	field(DTYP,	"S7plc stat")
@@ -76,114 +76,115 @@ record(bi, "{inst_slot}:S7ConnectedR") {{
 	field(ZNAM,	"Disconnected")
 	field(ZSV,      "MAJOR")
 }}
-record(calcout, "{inst_slot}:iCalcConn") {{
-	field(INPA,	"{inst_slot}:S7ConnectedR CP")
-	field(INPB,	"{inst_slot}:ModbusConnectedR CP")
+record(calcout, "{root_inst_slot}:iCalcConn") {{
+	field(INPA,	"{root_inst_slot}:S7ConnectedR CP")
+	field(INPB,	"{root_inst_slot}:ModbusConnectedR CP")
 	field(CALC,	"A && B")
-	field(OUT,	"{inst_slot}:ConnectedR PP")
+	field(OUT,	"{root_inst_slot}:ConnectedR PP")
 }}
-record(bi, "{inst_slot}:ConnectedR") {{
+record(bi, "{root_inst_slot}:ConnectedR") {{
 	field(DESC,	"Shows if the PLC is connected")
 	field(ONAM,	"Connected")
 	field(ZNAM,	"Disconnected")
 	field(ZSV,      "MAJOR")
 }}
-record(bi, "{inst_slot}:PLCHashCorrectR") {{
+record(bi, "{root_inst_slot}:PLCHashCorrectR") {{
 	field(DESC,	"Shows if the comms hash is correct")
 	field(ONAM,	"Correct")
 	field(ZNAM,	"Incorrect")
 	field(ZSV,      "MAJOR")
 }}
-record(bi, "{inst_slot}:AliveR") {{
+record(bi, "{root_inst_slot}:AliveR") {{
 	field(DESC,	"Shows if the PLC is sending heartbeats")
 	field(ONAM,	"Alive")
 	field(ZNAM,	"Not responding")
 	field(ZSV,      "MAJOR")
 }}
-record(calcout, "{inst_slot}:iCheckHash") {{
-	field(INPA,	"{inst_slot}:iCommsHashToPLC")
-	field(INPB,	"{inst_slot}:CommsHashFromPLCR")
+record(calcout, "{root_inst_slot}:iCheckHash") {{
+	field(INPA,	"{root_inst_slot}:iCommsHashToPLC")
+	field(INPB,	"{root_inst_slot}:CommsHashFromPLCR")
 	field(CALC,	"A = B")
 	field(OOPT,	"On Change")
-	field(OUT,	"{inst_slot}:PLCHashCorrectR PP")
+	field(OUT,	"{root_inst_slot}:PLCHashCorrectR PP")
 }}
-record(bi, "{inst_slot}:iOne") {{
+record(bi, "{root_inst_slot}:iOne") {{
 	field(DISP,	"1")
 	field(PINI,	"YES")
 	field(VAL,	"1")
 }}
-record(bo, "{inst_slot}:iGotHeartbeat") {{
-	field(DOL,	"{inst_slot}:iOne")
+record(bo, "{root_inst_slot}:iGotHeartbeat") {{
+	field(DOL,	"{root_inst_slot}:iOne")
 	field(OMSL,	"closed_loop")
-	field(OUT,	"{inst_slot}:iKickAlive PP")
+	field(OUT,	"{root_inst_slot}:iKickAlive PP")
 }}
-record(bo, "{inst_slot}:iKickAlive") {{
+record(bo, "{root_inst_slot}:iKickAlive") {{
 	field(HIGH,	"5")
-	field(OUT,	"{inst_slot}:AliveR PP")
+	field(OUT,	"{root_inst_slot}:AliveR PP")
 }}
 
 ########################################################
 ########## EPICS -> PLC comms management data ##########
 ########################################################
-record(ao, "{inst_slot}:iCommsHashToPLC") {{
+record(ao, "{root_inst_slot}:iCommsHashToPLC") {{
 	field(DISP,	"1")
 	field(PINI,	"YES")
 	field(VAL,	"#HASH")
 }}
-record(ao, "{inst_slot}:CommsHashToPLCS") {{
+record(ao, "{root_inst_slot}:CommsHashToPLCS") {{
 	field(DESC,	"Sends comms hash to PLC")
 	field(SCAN,	"1 second")
 	field(DTYP,	"asynInt32")
 	field(OUT,	"@asyn($(PLCNAME)write, [PLCF#EPICSToPLCDataBlockStartOffset], 100)INT32_[PLCF#'BE' if 'PLC-EPICS-COMMS:Endianness' == 'BigEndian' else 'LE']")
 	field(OMSL,	"closed_loop")
-	field(DOL,	"{inst_slot}:iCommsHashToPLC")
+	field(DOL,	"{root_inst_slot}:iCommsHashToPLC")
 	field(DISV,	"0")
-	field(SDIS,	"{inst_slot}:ModbusConnectedR")
+	field(SDIS,	"{root_inst_slot}:ModbusConnectedR")
 }}
-record(calc, "{inst_slot}:iHeartbeatToPLC") {{
+record(calc, "{root_inst_slot}:iHeartbeatToPLC") {{
 	field(SCAN,	"1 second")
-	field(INPA,	"{inst_slot}:iHeartbeatToPLC.VAL")
+	field(INPA,	"{root_inst_slot}:iHeartbeatToPLC.VAL")
 	field(CALC,	"(A >= 32000)? 0 : A + 1")
-	field(FLNK,	"{inst_slot}:HeartbeatToPLCS")
+	field(FLNK,	"{root_inst_slot}:HeartbeatToPLCS")
 	field(DISV,	"0")
-	field(SDIS,	"{inst_slot}:ModbusConnectedR")
+	field(SDIS,	"{root_inst_slot}:ModbusConnectedR")
 }}
-record(ao, "{inst_slot}:HeartbeatToPLCS") {{
+record(ao, "{root_inst_slot}:HeartbeatToPLCS") {{
 	field(DESC,	"Sends heartbeat to PLC")
 	field(DTYP,	"asynInt32")
 	field(OUT,	"@asyn($(PLCNAME)write, [PLCF#EPICSToPLCDataBlockStartOffset + 2], 100)")
 	field(OMSL,	"closed_loop")
-	field(DOL,	"{inst_slot}:iHeartbeatToPLC.VAL")
+	field(DOL,	"{root_inst_slot}:iHeartbeatToPLC.VAL")
 	field(OIF,	"Full")
 	field(DRVL,	"0")
 	field(DRVH,	"32000")
 	field(DISV,	"0")
-	field(SDIS,	"{inst_slot}:ModbusConnectedR")
+	field(SDIS,	"{root_inst_slot}:ModbusConnectedR")
 }}
 
 ########################################################
 ########## PLC -> EPICS comms management data ##########
 ########################################################
-record(ai, "{inst_slot}:CommsHashFromPLCR") {{
+record(ai, "{root_inst_slot}:CommsHashFromPLCR") {{
 	field(DESC,	"Comms hash from PLC")
 	field(SCAN,	"I/O Intr")
 	field(DTYP,	"S7plc")
 	field(INP,	"@$(PLCNAME)/[PLCF#PLCToEPICSDataBlockStartOffset] T=INT32")
-	field(FLNK,	"{inst_slot}:iCheckHash")
+	field(FLNK,	"{root_inst_slot}:iCheckHash")
 }}
-record(ai, "{inst_slot}:HeartbeatFromPLCR") {{
+record(ai, "{root_inst_slot}:HeartbeatFromPLCR") {{
 	field(DESC,	"Heartbeat from PLC")
 	field(SCAN,	"I/O Intr")
 	field(DTYP,	"S7plc")
 	field(INP,	"@$(PLCNAME)/[PLCF#(PLCToEPICSDataBlockStartOffset + 4)] T=INT16")
-	field(FLNK,	"{inst_slot}:iGotHeartbeat")
+	field(FLNK,	"{root_inst_slot}:iGotHeartbeat")
 }}
 
 #COUNTER {cmd_cnt} = [PLCF#{cmd_cnt} + 10];
 #COUNTER {status_cnt} = [PLCF#{status_cnt} + 10];
-""".format(inst_slot  = self.inst_slot(),
-           cmd_cnt    = CMD_BLOCK.counter_keyword(),
-           status_cnt = STATUS_BLOCK.counter_keyword())
+""".format(inst_slot       = self.inst_slot(),
+           root_inst_slot  = self.root_inst_slot(),
+           cmd_cnt         = CMD_BLOCK.counter_keyword(),
+           status_cnt      = STATUS_BLOCK.counter_keyword())
 
         self._append(epics_db_header, output)
         return self
@@ -336,16 +337,16 @@ class EPICS_TEST(EPICS):
 #########################################################
 ########## EPICS <-> PLC connection management ##########
 #########################################################
-record(bi, "{inst_slot}:ModbusConnectedR") {{
+record(bi, "{root_inst_slot}:ModbusConnectedR") {{
 	field(DESC,	"Shows if the MODBUS channel connected")
 	field(ONAM,	"Connected")
 	field(ZNAM,	"Disconnected")
 	field(ZSV,      "MAJOR")
 	field(VAL,	"1")
 	field(PINI,	"YES")
-	field(FLNK,	"{inst_slot}:CommsHashToPLCS")
+	field(FLNK,	"{root_inst_slot}:CommsHashToPLCS")
 }}
-record(bi, "{inst_slot}:S7ConnectedR") {{
+record(bi, "{root_inst_slot}:S7ConnectedR") {{
 	field(DESC,	"Shows if the S7 channel is connected")
 	field(ONAM,	"Connected")
 	field(ZNAM,	"Disconnected")
@@ -353,79 +354,79 @@ record(bi, "{inst_slot}:S7ConnectedR") {{
 	field(VAL,	"1")
 	field(PINI,	"YES")
 }}
-record(calcout, "{inst_slot}:iCalcConn") {{
-	field(INPA,	"{inst_slot}:S7ConnectedR CP")
-	field(INPB,	"{inst_slot}:ModbusConnectedR CP")
+record(calcout, "{root_inst_slot}:iCalcConn") {{
+	field(INPA,	"{root_inst_slot}:S7ConnectedR CP")
+	field(INPB,	"{root_inst_slot}:ModbusConnectedR CP")
 	field(CALC,	"A && B")
-	field(OUT,	"{inst_slot}:ConnectedR PP")
+	field(OUT,	"{root_inst_slot}:ConnectedR PP")
 }}
-record(bi, "{inst_slot}:ConnectedR") {{
+record(bi, "{root_inst_slot}:ConnectedR") {{
 	field(DESC,	"Shows if the PLC is connected")
 	field(ONAM,	"Connected")
 	field(ZNAM,	"Disconnected")
 	field(ZSV,      "MAJOR")
 }}
-record(bi, "{inst_slot}:PLCHashCorrectR") {{
+record(bi, "{root_inst_slot}:PLCHashCorrectR") {{
 	field(DESC,	"Shows if the comms hash is correct")
 	field(ONAM,	"Correct")
 	field(ZNAM,	"Incorrect")
 	field(ZSV,      "MAJOR")
 }}
-record(bi, "{inst_slot}:AliveR") {{
+record(bi, "{root_inst_slot}:AliveR") {{
 	field(DESC,	"Shows if the PLC is sending heartbeats")
 	field(ONAM,	"Alive")
 	field(ZNAM,	"Not responding")
 	field(ZSV,      "MAJOR")
 }}
-record(calcout, "{inst_slot}:iCheckHash") {{
-	field(INPA,	"{inst_slot}:iCommsHashToPLC")
-	field(INPB,	"{inst_slot}:CommsHashFromPLCR")
+record(calcout, "{root_inst_slot}:iCheckHash") {{
+	field(INPA,	"{root_inst_slot}:iCommsHashToPLC")
+	field(INPB,	"{root_inst_slot}:CommsHashFromPLCR")
 	field(CALC,	"A = B")
 	field(OOPT,	"On Change")
-	field(OUT,	"{inst_slot}:PLCHashCorrectR PP")
+	field(OUT,	"{root_inst_slot}:PLCHashCorrectR PP")
 }}
-record(bi, "{inst_slot}:iOne") {{
+record(bi, "{root_inst_slot}:iOne") {{
 	field(DISP,	"1")
 	field(PINI,	"YES")
 	field(VAL,	"1")
 }}
-record(bo, "{inst_slot}:iGotHeartbeat") {{
-	field(DOL,	"{inst_slot}:iOne")
+record(bo, "{root_inst_slot}:iGotHeartbeat") {{
+	field(DOL,	"{root_inst_slot}:iOne")
 	field(OMSL,	"closed_loop")
-	field(OUT,	"{inst_slot}:iKickAlive PP")
+	field(OUT,	"{root_inst_slot}:iKickAlive PP")
 }}
-record(bo, "{inst_slot}:iKickAlive") {{
+record(bo, "{root_inst_slot}:iKickAlive") {{
 	field(HIGH,	"5")
-	field(OUT,	"{inst_slot}:AliveR PP")
+	field(OUT,	"{root_inst_slot}:AliveR PP")
 }}
 
 ########################################################
 ########## EPICS -> PLC comms management data ##########
 ########################################################
-record(ao, "{inst_slot}:iCommsHashToPLC") {{
+record(ao, "{root_inst_slot}:iCommsHashToPLC") {{
 	field(DISP,	"1")
 	field(PINI,	"YES")
 	field(VAL,	"#HASH")
 }}
-record(ao, "{inst_slot}:CommsHashToPLCS") {{
+record(ao, "{root_inst_slot}:CommsHashToPLCS") {{
 	field(DESC,	"Sends comms hash to PLC")
 	field(OMSL,	"closed_loop")
-	field(DOL,	"{inst_slot}:iCommsHashToPLC")
+	field(DOL,	"{root_inst_slot}:iCommsHashToPLC")
 	field(DISV,	"0")
-	field(SDIS,	"{inst_slot}:ConnectedR")
+	field(SDIS,	"{root_inst_slot}:ConnectedR")
 }}
-record(calc, "{inst_slot}:iHeartbeatToPLC") {{
+record(calc, "{root_inst_slot}:iHeartbeatToPLC") {{
 	field(SCAN,	"1 second")
-	field(INPA,	"{inst_slot}:iHeartbeatToPLC.VAL")
+	field(INPA,	"{root_inst_slot}:iHeartbeatToPLC.VAL")
 	field(CALC,	"(A >= 32000)? 0 : A + 1")
-	field(FLNK,	"{inst_slot}:HeartbeatToPLCS")
+	field(FLNK,	"{root_inst_slot}:HeartbeatToPLCS")
 	field(DISV,	"0")
-	field(SDIS,	"{inst_slot}:ConnectedR")
+	field(SDIS,	"{root_inst_slot}:ConnectedR")
 }}
-record(ao, "{inst_slot}:HeartbeatToPLCS") {{
+record(ao, "{root_inst_slot}:HeartbeatToPLCS") {{
 	field(DESC,	"Sends heartbeat to PLC")
 	field(OMSL,	"closed_loop")
-	field(DOL,	"{inst_slot}:iHeartbeatToPLC.VAL")
+	field(DOL,	"{root_inst_slot}:iHeartbeatToPLC.VAL")
 	field(OIF,	"Full")
 	field(DRVL,	"0")
 	field(DRVH,	"32000")
@@ -434,19 +435,20 @@ record(ao, "{inst_slot}:HeartbeatToPLCS") {{
 ########################################################
 ########## PLC -> EPICS comms management data ##########
 ########################################################
-record(ai, "{inst_slot}:CommsHashFromPLCR") {{
+record(ai, "{root_inst_slot}:CommsHashFromPLCR") {{
 	field(DESC,	"Comms hash from PLC")
 	field(SCAN,	"1 second")
-	field(INP,	"{inst_slot}:iCommsHashToPLC")
-	field(FLNK,	"{inst_slot}:iCheckHash")
+	field(INP,	"{root_inst_slot}:iCommsHashToPLC")
+	field(FLNK,	"{root_inst_slot}:iCheckHash")
 }}
-record(ai, "{inst_slot}:HeartbeatFromPLCR") {{
+record(ai, "{root_inst_slot}:HeartbeatFromPLCR") {{
 	field(DESC,	"Heartbeat from PLC")
-	field(INP,	"{inst_slot}:iHeartbeatToPLC.VAL CP")
-	field(FLNK,	"{inst_slot}:iGotHeartbeat")
+	field(INP,	"{root_inst_slot}:iHeartbeatToPLC.VAL CP")
+	field(FLNK,	"{root_inst_slot}:iGotHeartbeat")
 }}
 
-""".format(inst_slot = self.inst_slot())
+""".format(inst_slot      = self.inst_slot(),
+           root_inst_slot = self.root_inst_slot())
 
         self._append(epics_db_header, output)
         return self
@@ -473,8 +475,9 @@ class UPLOAD_PARAMS(PRINTER):
         PRINTER.header(self, output)
         epics_db_header = """#FILENAME {inst_slot}-[PLCF#TEMPLATE]-[PLCF#TIMESTAMP].db
 
-record(fanout, "{inst_slot}:UploadParametersS") {{
-""".format(inst_slot = self.inst_slot())
+record(fanout, "{root_inst_slot}:UploadParametersS") {{
+""".format(inst_slot      = self.inst_slot(),
+           root_inst_slot = self.root_inst_slot())
 
         self._append(epics_db_header, output)
         return self
