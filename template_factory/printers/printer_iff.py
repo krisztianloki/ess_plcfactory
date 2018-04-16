@@ -55,6 +55,9 @@ class IFF(PRINTER):
         return self.plcf("'PLC-DIAG:{plc_diag}' if not 'PLC-DIAG:{plc_diag}'.startswith('PLC-DIAG') else 0".format(plc_diag = plc_diag))
 
 
+    #
+    # HEADER
+    #
     def header(self, output):
         #
         # No need to initialize counters to 10, IFA does not need it
@@ -74,6 +77,9 @@ MAX_MODULES_IN_IO_DEVICE
            max_modules_in_io_device = self.plcdiag_orzero("Max-Modules-In-IO-Device")), output)
 
 
+    #
+    # BODY
+    #
     def body(self, if_def, output):
         PRINTER.body(self, if_def, output)
 
@@ -139,3 +145,17 @@ PLCTOEPICSDATABLOCKOFFSET
                                     type        = var.plc_type(),
                                     array_index = str(var.offset() // 2),
                                     bit_number  = bit_number)
+
+
+    #
+    # FOOTER
+    #
+    def footer(self, output):
+        PRINTER.footer(self, output)
+
+        self._append("""TOTALEPICSTOPLCLENGTH
+{totalepicstoplclength}
+TOTALPLCTOEPICSLENGTH
+{totalplctoepicslength}
+""".format(totalepicstoplclength = self.plcf(CMD_BLOCK.counter_keyword() + " + 10"),
+           totalplctoepicslength = self.plcf(STATUS_BLOCK.counter_keyword() + " + 10")), output)
