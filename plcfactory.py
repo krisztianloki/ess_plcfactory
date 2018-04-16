@@ -712,6 +712,16 @@ def main(argv):
                            )
 
         parser.add_argument(
+                            '--beckhoff',
+                            dest    = "beckhoff",
+                            help    = 'use the default templates for Beckhoff PLCs and generate interface Beckhoff PLC comms',
+                            metavar = 'Beckhoff-version',
+                            nargs   = "?",
+                            const   = 'not-used',
+                            type    = str
+                           )
+
+        parser.add_argument(
                             '--list-templates',
                             dest    = "list_templates",
                             help    = "give a list of the possible templates that can be generated on-the-fly from an interface definition",
@@ -771,6 +781,8 @@ def main(argv):
         args.plc_direct    = False
     else:
         tia_version = None
+
+    beckhoff = args.beckhoff
 
     if tia_version is not None:
         tia13 = set({"13", "v13", "tia13", "tiav13"})
@@ -881,7 +893,7 @@ def main(argv):
                         nargs    = '+',
                         type     = str,
                         default  = [],
-                        required = not (tia_version or eem))
+                        required = not (tia_version or eem or beckhoff))
 
     # retrieve parameters
     args       = parser.parse_args(argv)
@@ -913,6 +925,9 @@ def main(argv):
         tf.optimize_s7db(True)
         default_printers.update( [ "EPICS-DB", "IFA", tia_map ] )
 
+    if beckhoff:
+        default_printers.update( [ "EPICS-DB", "IFA" ] )
+
     if eem:
         default_printers.update( [ "EPICS-DB", "AUTOSAVE-ST-CMD", "AUTOSAVE" ] )
 
@@ -936,13 +951,19 @@ def main(argv):
 
         # TIA-MAP-DIRECT and TIA-MAP-INTERFACE are incompatible
         if "TIA-MAP-INTERFACE" in templateIDs:
-            raise PLCFArgumentParser("Cannot use TIA-MAP-DIRECT and TIA-MAP-INTERFACE at the same time. They are incompatible.")
+            raise PLCFArgumentError("Cannot use TIA-MAP-DIRECT and TIA-MAP-INTERFACE at the same time. They are incompatible.")
 
     if args.plc_no_diag and args.plc_only_diag:
         raise PLCFArgumentError("--plc-no-diag and --plc-only-diag are mutually exclusive")
 
     if args.plc_only_diag and tia_version is None:
         raise PLCFArgumentError('--plc-only-diag requires --plc-direct or --plc-interface')
+
+    if args.plc_only_diag and beckhoff:
+        raise PLCFArgumentError('PLCFactory cannot (yet?) generate diagnostics code for Beckhoff PLCs')
+
+    if beckhoff and ( "TIA-MAP-DIRECT" in templateIDs or "TIA-MAP-INTERFACE" in templateIDs ):
+        raise PLCFArgumentError("Cannot use --beckhoff with TIA-MAPs")
 
     if "EPICS-DB" in templateIDs:
         templateIDs.add("UPLOAD-PARAMS")
@@ -985,8 +1006,23 @@ def main(argv):
     output_files["CCDB-DUMP"] = glob.ccdb.dump("-".join([device, glob.timestamp]), OUTPUT_DIR)
 
     if tia_version or args.plc_only_diag:
-        from InterfaceFactory import produce as ifa_produce
+        try:
+            from InterfaceFactorySiemens import produce as ifa_produce
+        except ImportError:
+            from InterfaceFactory import produce as ifa_produce
         output_files.update(ifa_produce(OUTPUT_DIR, output_files["IFA"], output_files[tia_map], tia_version, nodiag = args.plc_no_diag, onlydiag = args.plc_only_diag, direct = args.plc_direct))
+
+    if beckhoff:
+        try:
+            from InterfaceFactoryBeckhoff import produce as ifa_produce
+        except ImportError:
+            print """
+ERROR
+=====
+Beckhoff support is not found
+"""
+            exit(1)
+        output_files.update(ifa_produce(OUTPUT_DIR, output_files["IFA"], "", beckhoff))
 
     if eem:
         create_eem(glob.modulename)
