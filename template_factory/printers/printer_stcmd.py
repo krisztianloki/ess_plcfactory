@@ -32,8 +32,8 @@ class ST_CMD(PRINTER):
     #
     # HEADER
     #
-    def header(self, output):
-        PRINTER.header(self, output)
+    def header(self, output, **keyword_parameters):
+        PRINTER.header(self, output, **keyword_parameters)
 
         st_cmd_header = """#FILENAME {startup}{test}-[PLCF#TIMESTAMP].cmd
 # @field PLCNAME
@@ -128,8 +128,8 @@ class AUTOSAVE_ST_CMD(ST_CMD):
     #
     # HEADER
     #
-    def header(self, output):
-        ST_CMD.header(self, output)
+    def header(self, output, **keyword_parameters):
+        ST_CMD.header(self, output, **keyword_parameters)
 
         st_cmd_header = """# @field SAVEFILE_DIR
 # @type  STRING

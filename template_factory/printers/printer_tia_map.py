@@ -40,8 +40,8 @@ class TIA_MAP_DIRECT(PRINTER):
     #
     # HEADER
     #
-    def header(self, output):
-        PRINTER.header(self, output)
+    def header(self, output, **keyword_params):
+        PRINTER.header(self, output, **keyword_params)
 
         self._append("""#FILENAME {inst_slot}-TIA-MAP-{timestamp}.scl
 #EOL "\\r\\n"

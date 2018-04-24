@@ -95,7 +95,7 @@ class PRINTER(object):
                     f.write(line)
 
 
-    def header(self, output):
+    def header(self, output, **keyword_params):
         self._check_if_list(output)
 
         return self

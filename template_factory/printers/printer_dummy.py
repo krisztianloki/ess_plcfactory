@@ -31,8 +31,8 @@ class DUMMY(PRINTER):
     #
     # HEADER
     #
-    def header(self, output):
-        PRINTER.header(self, output)
+    def header(self, output, **keyword_params):
+        PRINTER.header(self, output, **keyword_params)
 
 
     #

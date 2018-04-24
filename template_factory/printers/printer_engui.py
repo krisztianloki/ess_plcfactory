@@ -33,8 +33,8 @@ class ENGUI(PRINTER):
     #
     # HEADER
     #
-    def header(self, output):
-        PRINTER.header(self, output)
+    def header(self, output, **keyword_params):
+        PRINTER.header(self, output, **keyword_params)
 
         self._append("""#FILENAME [PLCF#INSTALLATION_SLOT]-[PLCF#TEMPLATE]-[PLCF#TIMESTAMP].scl
 #!/bin/bash

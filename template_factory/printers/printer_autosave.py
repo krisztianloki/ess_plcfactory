@@ -30,8 +30,8 @@ class AUTOSAVE(PRINTER):
     #
     # HEADER
     #
-    def header(self, output):
-        PRINTER.header(self, output)
+    def header(self, output, **keyword_params):
+        PRINTER.header(self, output, **keyword_params)
         self._append("""#FILENAME {inst_slot}-[PLCF#TEMPLATE]-[PLCF#TIMESTAMP].req
 """.format(inst_slot = self.inst_slot()), output)
 
@@ -66,8 +66,8 @@ class AUTOSAVE_TEST(AUTOSAVE):
     #
     # HEADER
     #
-    def header(self, output):
-        PRINTER.header(self, output)
+    def header(self, output, **keyword_params):
+        PRINTER.header(self, output, **keyword_params)
         self._append("""#FILENAME {inst_slot}-[PLCF#TEMPLATE]-[PLCF#TIMESTAMP]-test.req
 """.format(inst_slot = self.inst_slot()), output)
 

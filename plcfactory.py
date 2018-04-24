@@ -66,6 +66,7 @@ IFDEF_TAG    = ".def"
 hashobj      = hashlib.sha256()
 ifdefs       = dict()
 output_files = dict()
+plc_type     = "SIEMENS"
 
 
 def getArtefact(deviceType, filename):
@@ -336,7 +337,7 @@ def getHeaderFooter(templateID, deviceType, artefacts):
     templatePrinter = tf.get_printer(templateID)
     if templatePrinter is not None:
         header = []
-        templatePrinter.header(header)
+        templatePrinter.header(header, PLC_TYPE = plc_type)
         footer = []
         templatePrinter.footer(footer)
     else:
@@ -927,6 +928,8 @@ def main(argv):
 
     if beckhoff:
         default_printers.update( [ "EPICS-DB", "IFA" ] )
+        global plc_type
+        plc_type = "BECKHOFF"
 
     if eem:
         default_printers.update( [ "EPICS-DB", "AUTOSAVE-ST-CMD", "AUTOSAVE" ] )

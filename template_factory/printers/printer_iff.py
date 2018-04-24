@@ -58,13 +58,15 @@ class IFF(PRINTER):
     #
     # HEADER
     #
-    def header(self, output):
+    def header(self, output, **keyword_params):
         #
         # No need to initialize counters to 10, IFA does not need it
         #
-        PRINTER.header(self, output)._append("""#FILENAME {inst_slot}-[PLCF#TEMPLATE]-[PLCF#TIMESTAMP].ifa
+        PRINTER.header(self, output, **keyword_params)._append("""#FILENAME {inst_slot}-[PLCF#TEMPLATE]-[PLCF#TIMESTAMP].ifa
 HASH
 #HASH
+PLC_TYPE
+{plc_type}
 MAX_IO_DEVICES
 {max_io_devices}
 MAX_LOCAL_MODULES
@@ -72,6 +74,7 @@ MAX_LOCAL_MODULES
 MAX_MODULES_IN_IO_DEVICE
 {max_modules_in_io_device}
 """.format(inst_slot                = self.inst_slot(),
+           plc_type                 = keyword_params.get("PLC_TYPE", "SIEMENS"),
            max_io_devices           = self.plcdiag_orzero("Max-IO-Devices"),
            max_local_modules        = self.plcdiag_orzero("Max-Local-Modules"),
            max_modules_in_io_device = self.plcdiag_orzero("Max-Modules-In-IO-Device")), output)
