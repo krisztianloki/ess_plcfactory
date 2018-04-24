@@ -48,7 +48,7 @@ class AUTOSAVE(PRINTER):
 
         for src in if_def.interfaces():
             if isinstance(src, BASE_TYPE) and src.is_parameter():
-                self._append("{inst_slot}:{pv_name}.VAL".format(inst_slot = self.inst_slot(),
+                self._append("{inst_slot}:{pv_name}.VAL".format(inst_slot = self.inst_slot(if_def),
                                                                 pv_name   = src.pv_name()))
 
 
@@ -84,5 +84,5 @@ class AUTOSAVE_TEST(AUTOSAVE):
 
         for src in if_def.interfaces():
             if isinstance(src, BASE_TYPE) and src.is_status():
-                self._append("{inst_slot}:{pv_name}.VAL".format(inst_slot = self.inst_slot(),
+                self._append("{inst_slot}:{pv_name}.VAL".format(inst_slot = self.inst_slot(if_def),
                                                                 pv_name   = src.pv_name()))

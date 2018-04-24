@@ -49,7 +49,10 @@ class PRINTER(object):
         return "[PLCF#{plcf}]".format(plcf = plcf_expr)
 
 
-    def inst_slot(self):
+    def inst_slot(self, if_def = None):
+        if if_def is not None:
+            return if_def.inst_slot()
+
         return self.plcf("INSTALLATION_SLOT")
 
 
