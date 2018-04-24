@@ -238,9 +238,10 @@ def Write_EPICS_GVL():
 	global TotalStatusReg
 	global TotalCommandReg
 	
-	EPICS_GVL.append("	aDataS7				:ARRAY [0.."+str(TotalStatusReg-1)+"] OF UINT; 			//Array of data sent to EPICS");
+	EPICS_GVL.append("	aDataS7				: ARRAY [0.."+str(TotalStatusReg-1)+"] OF UINT; 			//Array of data sent to EPICS");
 	EPICS_GVL.append("	aDataModbus			AT %MW0 :ARRAY [0.."+str(TotalCommandReg-1)+"] OF UINT;		//Array of data from EPICS. Corresponds to Modbus address 12289 1-based addressing. (122988 0-based)");
-	EPICS_GVL.append("	FB_EPICS_S7_Comm 	:FB_EPICS_S7_Comm;					//EPICS TCP/IP communication function block");
+	EPICS_GVL.append("	FB_EPICS_S7_Comm 	: FB_EPICS_S7_Comm;					//EPICS TCP/IP communication function block");
+	EPICS_GVL.append("	EasyTester			: DINT;								//Test variable for EasyTester");
 	EPICS_GVL.append("END_VAR");
 	EPICS_GVL.append("]]>");
 	EPICS_GVL.append("</Declaration>");
@@ -386,7 +387,7 @@ def Write_FB_EPICS_S7_Comm():
 	FB_EPICS_S7_Comm.append("	bConnect	:BOOL;					//Open or closes TCP/IP connection");
 	FB_EPICS_S7_Comm.append("	nS7Port		:UDINT :=2000;			//Server port. Leave empty for default 2000");
 	FB_EPICS_S7_Comm.append("	nPLC_Hash	:DINT;					//Hash written during XML generation at PLC factory");
-	FB_EPICS_S7_Comm.append("	tSendTrig	:TIME:= T#1S;			//Frequency of pushed data");
+	FB_EPICS_S7_Comm.append("	tSendTrig	:TIME:= T#200MS;			//Frequency of pushed data");
 	FB_EPICS_S7_Comm.append("	");
 	FB_EPICS_S7_Comm.append("END_VAR");
 	FB_EPICS_S7_Comm.append("VAR_OUTPUT");
@@ -929,10 +930,16 @@ def ProcessIFADevTypes(OutputDir, IfaPath):
 				FC_EPICS_DEVICE_CALLS_HEADER.append("    bConnect:=TRUE ,")
 				FC_EPICS_DEVICE_CALLS_HEADER.append("    nS7Port:=2000 ,") 
 				FC_EPICS_DEVICE_CALLS_HEADER.append("    nPLC_Hash:="+HASH+" ,") 
-				FC_EPICS_DEVICE_CALLS_HEADER.append("    tSendTrig:=T#500MS ,")
+				FC_EPICS_DEVICE_CALLS_HEADER.append("    tSendTrig:=T#200MS ,")
 				FC_EPICS_DEVICE_CALLS_HEADER.append("    nCase=> ,") 
 				FC_EPICS_DEVICE_CALLS_HEADER.append("    bConnected=> ,") 
 				FC_EPICS_DEVICE_CALLS_HEADER.append("    bError=> );")
+
+				FC_EPICS_DEVICE_CALLS_FOOTER.append("]]>");
+				FC_EPICS_DEVICE_CALLS_FOOTER.append("</ST>");
+				FC_EPICS_DEVICE_CALLS_FOOTER.append("</Implementation>");
+				FC_EPICS_DEVICE_CALLS_FOOTER.append("</POU>");
+				FC_EPICS_DEVICE_CALLS_FOOTER.append("</TcPlcObject>");
 			
 			FirstDevice = False
 			if (OrderedLines[pos + 2].rstrip() <> "DEVICE_TYPE") or (OrderedLines[pos + 4].rstrip() <> "EPICSTOPLCLENGTH") or (OrderedLines[pos + 6].rstrip() <> "EPICSTOPLCDATABLOCKOFFSET") or (OrderedLines[pos + 8].rstrip() <> "EPICSTOPLCPARAMETERSSTART") or (OrderedLines[pos + 10].rstrip() <> "PLCTOEPICSDATABLOCKOFFSET"):	
@@ -1037,11 +1044,6 @@ def ProcessIFADevTypes(OutputDir, IfaPath):
 				DevTypeBODY_HEADER.append("**********************************************************************************************************")
 				DevTypeBODY_HEADER.append("*)")
 
-				FC_EPICS_DEVICE_CALLS_FOOTER.append("]]>");
-				FC_EPICS_DEVICE_CALLS_FOOTER.append("</ST>");
-				FC_EPICS_DEVICE_CALLS_FOOTER.append("</Implementation>");
-				FC_EPICS_DEVICE_CALLS_FOOTER.append("</POU>");
-				FC_EPICS_DEVICE_CALLS_FOOTER.append("</TcPlcObject>");
 
 				DevTypeBODY_FOOTER.append("")
 				DevTypeBODY_FOOTER.append("]]>")
@@ -1149,7 +1151,7 @@ def ProcessIFADevTypes(OutputDir, IfaPath):
 						DevTypeBODY_CODE.append("")
 						DevTypeBODY_CODE.append("       nTempUINT			:= EPICS_GVL.aDataModbus[nOffsetCmd + "+str(ActVariableArrayIndex)+"];")
 					DevTypeBODY_CODE.append("       "+ActVariablePLCName+"             :=     nTempUINT." + str(ActVariableBitNumber)+ ";       //EPICSName: "+ActVariableEPICSName)
-					EndString = "EPICS_GVL.aDataModbus[nOffsetCmd + " + str(ActVariableArrayIndex)+ "]:=0;"
+					EndString = "if (EPICS_GVL.EasyTester <> 2) THEN EPICS_GVL.aDataModbus[nOffsetCmd + " + str(ActVariableArrayIndex)+ "]:=0; END_IF"
 					IsDouble = False
 			#==========================		
 			#====== BYTE TYPE ========	
