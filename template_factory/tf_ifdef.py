@@ -1264,6 +1264,8 @@ class BASE_TYPE(SOURCE):
     def _build_pv_alias(self):
         fmt = "\talias(\"{{inst_slot}}:{alias}\")"
         if BASE_TYPE.PV_ALIAS in self._keyword_params:
+            if isinstance(self._keyword_params[BASE_TYPE.PV_ALIAS], str):
+                return fmt.format(alias = self._keyword_params[BASE_TYPE.PV_ALIAS])
             return "\n".join([''] + map(lambda alias : fmt.format(alias = alias), self._keyword_params[BASE_TYPE.PV_ALIAS]) + [''])
 
         return ""
