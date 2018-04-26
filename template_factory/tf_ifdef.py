@@ -1275,7 +1275,7 @@ class BASE_TYPE(SOURCE):
                 self.pv_template(test = test).format(recordtype = self.pv_type(),
                                                      inst_slot  = inst_slot,
                                                      name       = self.pv_name(),
-                                                     alias      = self._build_pv_alias(),
+                                                     alias      = self._build_pv_alias().format(inst_slot = inst_slot),
                                                      offset     = self.link_offset(),
                                                      var_type   = self.endian_correct_var_type(),
                                                      link_extra = self.link_extra() + self._get_user_link_extra(),
