@@ -554,6 +554,7 @@ def WriteDiagnostics(TIAVersion):
 	ExternalSourceFile.append("      ERR_DEV_STAT_PN : USInt := 1;   // Value for output instruction error, DeviceStates PN devices");
 	ExternalSourceFile.append("      ERR_MOD_STAT_PN : USInt := 4;   // Value for output instruction error, ModuleStates PN devices");
 	ExternalSourceFile.append("      MAX_SLAVES_DP : Int := 127;");
+	ExternalSourceFile.append("      MAX_SLAVES_PN : Int := 127;");
 	ExternalSourceFile.append("   END_VAR");
 	ExternalSourceFile.append("");
 	ExternalSourceFile.append("");
@@ -658,7 +659,7 @@ def WriteDiagnostics(TIAVersion):
 	ExternalSourceFile.append("	    AND (#statGeoAddr.IOSYSTEM <= 115))");
 	ExternalSourceFile.append("	THEN");
 	ExternalSourceFile.append("	    #statGeoAddr.AREA := #IO_SYSTEM_AREA;   // Area ID 1: PROFINET IO");
-	ExternalSourceFile.append("	    #statMaxDevices := "+str(MAX_IO_DEVICES)+";");
+	ExternalSourceFile.append("	    #statMaxDevices := #MAX_SLAVES_PN;");
 	ExternalSourceFile.append("	ELSIF ((#statGeoAddr.IOSYSTEM >= 1)");
 	ExternalSourceFile.append("	    AND (#statGeoAddr.IOSYSTEM <= 32))");
 	ExternalSourceFile.append("	THEN");
