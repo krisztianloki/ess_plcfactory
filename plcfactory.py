@@ -590,6 +590,8 @@ def create_eem(basename):
         for parts in [ output_files['EPICS-DB'], output_files['UPLOAD-PARAMS'] ]:
             with open(parts) as partfile:
                 copyfileobj(partfile, dbfile)
+        output_files['EEE-DB'] = dbfile.name
+
 #    m_cp(output_files['EPICS-DB'],       "db",      basename + ".db")
 
     try:
