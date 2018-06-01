@@ -713,7 +713,7 @@ def main(argv):
                            )
 
         parser.add_argument(
-                            '--beckhoff',
+                            '--plc-beckhoff',
                             dest    = "beckhoff",
                             help    = 'use the default templates for Beckhoff PLCs and generate interface Beckhoff PLC comms',
                             metavar = 'Beckhoff-version',
@@ -966,7 +966,7 @@ def main(argv):
         raise PLCFArgumentError('PLCFactory cannot (yet?) generate diagnostics code for Beckhoff PLCs')
 
     if beckhoff and ( "TIA-MAP-DIRECT" in templateIDs or "TIA-MAP-INTERFACE" in templateIDs ):
-        raise PLCFArgumentError("Cannot use --beckhoff with TIA-MAPs")
+        raise PLCFArgumentError("Cannot use --plc-beckhoff with TIA-MAPs")
 
     if "EPICS-DB" in templateIDs:
         templateIDs.add("UPLOAD-PARAMS")
