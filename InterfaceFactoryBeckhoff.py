@@ -1393,7 +1393,7 @@ def produce(OutputDir, IfaPath, SclPath, TIAVersion, **kwargs):
 		#Generate EPICS_GVL.TcGVL
 		Write_EPICS_GVL()
 				
-		shutil.make_archive(os.path.join(OutputDirectory,"PLCFactory_external_source_Beckhoff.zip"), 'zip', os.path.join(OutputDirectory,"BECKHOFF"))
+		generated_files['BECKHOFF'] = shutil.make_archive(os.path.join(OutputDirectory,"PLCFactory_external_source_Beckhoff"), 'zip', os.path.join(OutputDirectory,"BECKHOFF"))
 		
 		return generated_files
 
