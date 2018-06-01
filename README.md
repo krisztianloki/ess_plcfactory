@@ -114,3 +114,5 @@ PLC Factory is capable of integrating (and generating code for) the following PL
     *   `--root='$(ROOT_PREFIX)'`
 
 One of `--plc-direct`, `--plc-interface`, or `--plc-beckhoff` is required for EPICS-PLC integration. These options implicitly adds _EPICS-DB_, _IFA_, and the proper _TIA-MAP_ to the list of templates (which means you don't have to add any templates explicitly).
+
+The information on what is exchanged between EPICS and a PLC is defined in so-called **Interface Definition** files. For further information, please see [template_factory](template_factory/)
