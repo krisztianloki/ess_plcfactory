@@ -1031,12 +1031,25 @@ class IF_DEF(object):
 # Types
 #
 class BASE_TYPE(SOURCE):
-    PV_PREFIX     = "PV_"
-    PV_ALIAS      = PV_PREFIX + "ALIAS"
-    PV_NAME       = PV_PREFIX + "NAME"
-    ASYN_TIMEOUT  = "100"
-    templates     = dict()
-    pv_names      = set()
+    PV_PREFIX      = "PV_"
+    PV_ALIAS       = PV_PREFIX + "ALIAS"
+    PV_NAME        = PV_PREFIX + "NAME"
+    PV_DESC        = PV_PREFIX + "DESC"
+    PV_EGU         = PV_PREFIX + "EGU"
+    PV_ONAM        = PV_PREFIX + "ONAM"
+    PV_ZNAM        = PV_PREFIX + "ZNAM"
+    ASYN_TIMEOUT   = "100"
+    templates      = dict()
+    pv_names       = set()
+
+    # (len, strict) if strict is True, the text will be truncated
+    field_lengths  = { PV_NAME  : (20, False),
+                       PV_ALIAS : (20, False),
+                       PV_DESC  : (40, True),
+                       PV_EGU   : (15, True),
+                       PV_ONAM  : (25, True),
+                       PV_ZNAM  : (25, True)
+                    }
 
 
     @staticmethod
@@ -1208,14 +1221,6 @@ class BASE_TYPE(SOURCE):
 
 
     def _check_pv_extra(self):
-        field_length = { BASE_TYPE.PV_NAME            : 20,
-                         BASE_TYPE.PV_ALIAS           : 20,
-                         BASE_TYPE.PV_PREFIX + 'DESC' : 40,
-                         BASE_TYPE.PV_PREFIX + 'EGU'  : 15,
-                         BASE_TYPE.PV_PREFIX + 'ONAM' : 25,
-                         BASE_TYPE.PV_PREFIX + 'ZNAM' : 25
-                       }
-
         msg_hdr_fmt = "The {field} field of the pv is too long: "
 
         try:
@@ -1228,14 +1233,17 @@ class BASE_TYPE(SOURCE):
             if not key.startswith(BASE_TYPE.PV_PREFIX):
                 continue
             try:
-                if len(value) > field_length[key]:
+                (length, strict) = BASE_TYPE.field_lengths[key]
+                if len(value) > length:
                     msg_hdr = msg_hdr_fmt.format(field = key)
                     if self.sourcenum() != -1:
                         print "At line number {lnum}:".format(lnum = self.sourcenum())
                     print self._add_warning((msg_hdr + "{value} (length: {len} / {max_len})").format(value   = value,
                                                                                                      len     = len(value),
-                                                                                                     max_len = field_length[key]))
-                    print self._add_warning(" " * (len(msg_hdr) + field_length[key]) + "^")
+                                                                                                     max_len = length))
+                    print self._add_warning(" " * (len(msg_hdr) + length) + "^")
+                    if strict:
+                        self._keyword_params[key] = self._keyword_params[key][:length]
             except KeyError:
                 pass
 
