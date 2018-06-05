@@ -11,7 +11,7 @@ __license__    = "GPLv3"
 
 
 from . import PRINTER
-from tf_ifdef import SOURCE, BLOCK, CMD_BLOCK, STATUS_BLOCK, BASE_TYPE, BIT
+from tf_ifdef import SOURCE, BLOCK, CMD_BLOCK, STATUS_BLOCK, BASE_TYPE, BIT, ALARM
 
 
 def printer():
@@ -28,9 +28,11 @@ TYPE
 ARRAY_INDEX
 {array_index}
 BIT_NUMBER
-{bit_number}
-"""
+{bit_number}"""
 
+_iff_beast_template = """{base}
+BEAST
+{alarm_message}"""
 
 
 
@@ -143,11 +145,17 @@ PLCTOEPICSDATABLOCKOFFSET
         else:
             bit_number = var.bit_number()
 
-        return _iff_template.format(name        = var.name(),
-                                    epics       = var.pv_name(),
-                                    type        = var.plc_type(),
-                                    array_index = str(var.offset() // 2),
-                                    bit_number  = bit_number)
+        ifa = _iff_template.format(name        = var.name(),
+                                   epics       = var.pv_name(),
+                                   type        = var.plc_type(),
+                                   array_index = str(var.offset() // 2),
+                                   bit_number  = bit_number)
+
+        if not isinstance(var, ALARM):
+            return ifa
+
+        return _iff_beast_template.format(base          = ifa,
+                                          alarm_message = var.message())
 
 
     #

@@ -890,9 +890,11 @@ class IF_DEF(object):
             raise IfDefSyntaxError("Alarm message is missing: {func}(\"{name}\", \"Short alarm message\")".format(name = name, func = "add_minor_alarm" if sevr == "MINOR" else "add_major_alarm"))
 
         keyword_params.update(PV_OSV  = sevr)
-        keyword_params.update(PV_ONAM = alarm_message)
+        if "PV_ONAM" not in keyword_params:
+            keyword_params.update(PV_ONAM = alarm_message)
 
-        self.add_digital(name, **keyword_params)
+        var = ALARM(self._source, self._active_bit_def(), name, sevr, alarm_message, keyword_params)
+        self._add(var)
 
 
     # Accept None as alarm_message, so that we could display a meaningful
@@ -1462,6 +1464,19 @@ class BIT(BASE_TYPE):
         if self.is_command() or self.is_parameter():
             return ""
         return self._bit_def.var_type()
+
+
+
+class ALARM(BIT):
+    def __init__(self, source, bit_def, name, severity, message, keyword_params):
+        BIT.__init__(self, source, bit_def, name, keyword_params)
+
+        self._severity = severity
+        self._message  = message
+
+
+    def message(self):
+        return self._message
 
 
 
