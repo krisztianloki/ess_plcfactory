@@ -1481,6 +1481,11 @@ class ALARM(BIT):
 
         self._severity = severity
         self._message  = message
+        self._archive  = keyword_params.get("ARCHIVE", False)
+
+
+    def archive(self):
+        return self._archive
 
 
     def message(self):

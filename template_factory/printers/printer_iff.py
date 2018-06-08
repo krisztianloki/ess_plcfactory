@@ -32,7 +32,9 @@ BIT_NUMBER
 
 _iff_beast_template = """{base}
 BEAST
-{alarm_message}"""
+{alarm_message}
+ARCHIVE
+{should_archive}"""
 
 
 
@@ -154,8 +156,9 @@ PLCTOEPICSDATABLOCKOFFSET
         if not isinstance(var, ALARM):
             return ifa
 
-        return _iff_beast_template.format(base          = ifa,
-                                          alarm_message = var.message())
+        return _iff_beast_template.format(base           = ifa,
+                                          alarm_message  = var.message(),
+                                          should_archive = "TRUE" if var.archive() else "FALSE")
 
 
     #
