@@ -95,6 +95,7 @@ record(bi, "{root_inst_slot}:PLCHashCorrectR") {{
 	field(ZSV,      "MAJOR")
 }}
 record(bi, "{root_inst_slot}:AliveR") {{
+	alias("{root_inst_slot}:CommsOK")
 	field(DESC,	"Shows if the PLC is sending heartbeats")
 	field(ONAM,	"Alive")
 	field(ZNAM,	"Not responding")
@@ -177,6 +178,9 @@ record(ai, "{root_inst_slot}:HeartbeatFromPLCR") {{
 	field(DTYP,	"S7plc")
 	field(INP,	"@$(PLCNAME)/[PLCF#(PLCToEPICSDataBlockStartOffset + 4)] T=INT16")
 	field(FLNK,	"{root_inst_slot}:iGotHeartbeat")
+	field(DISS,	"INVALID")
+	field(DISV,	"0")
+	field(SDIS,	"{root_inst_slot}:PLCHashCorrectR")
 }}
 
 #COUNTER {cmd_cnt} = [PLCF#{cmd_cnt} + 10];
