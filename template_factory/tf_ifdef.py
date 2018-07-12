@@ -142,7 +142,12 @@ class SOURCE(object):
         self._source    = source.lstrip()
         self._sourcenum = sourcenum
         self._comment   = comment
+        self._hashed    = False
         self._warnings  = None
+
+
+    def hash_message(self):
+        return self._source.rstrip() if self._hashed else ""
 
 
     def is_comment(self):
@@ -548,8 +553,9 @@ class OVERLAP(BLOCK):
 
 
 class IF_DEF_INTERFACE_FUNC(object):
-    def __init__(self, hashed):
-        self._hashed = hashed
+    def __init__(self, is_hashed, var):
+        self._var    = var
+        var._hashed  = is_hashed
 
 
 def hashed_interface(func):
@@ -563,10 +569,17 @@ def ifdef_interface(func):
     def ifdef_interface_func(*args, **kwargs):
         if args is not None and isinstance(args, tuple) and len(args) > 0 and isinstance(args[0], IF_DEF):
             _hashed_interface = kwargs.pop("_hashed_interface", False)
-            func(*args, **kwargs)
-            return IF_DEF_INTERFACE_FUNC(_hashed_interface)
+            var = func(*args, **kwargs)
+
+            # If the function is an alias, get the real one
+            while isinstance(var, IF_DEF_INTERFACE_FUNC):
+                var = var._var
+
+            if not isinstance(var, SOURCE):
+                raise IfDefInternalError("Function '{f}' not returning variable, please file a bug report".format(f = func.__name__))
+            return IF_DEF_INTERFACE_FUNC(_hashed_interface, var)
         else:
-            raise IfDefException("Trying to call non-interface function {f}".format(f = func.__name__))
+            raise IfDefException("Trying to call non-interface function '{f}'".format(f = func.__name__))
 
     return ifdef_interface_func
 
@@ -627,9 +640,6 @@ class IF_DEF(object):
 
             if not isinstance(result, IF_DEF_INTERFACE_FUNC):
                raise IfDefSyntaxError("Missing parentheses?")
-
-            if result._hashed:
-                self._hash.update(stripped_source.encode())
         except AssertionError as e:
             raise IfDefInternalError(e)
         except SyntaxError as e:
@@ -680,17 +690,18 @@ class IF_DEF(object):
             self._check_plc_array(var.plc_type())
 
         self._ifaces.append(var)
+        return var
 
 
     def _add_comment(self, line):
         assert isinstance(line, str), func_param_msg("line", "string")
 
         var   = SOURCE(line, comment = True)
-        self._add(var)
+        return self._add(var)
 
 
     def _add_source(self):
-        self._add(SOURCE(self._source))
+        return self._add(SOURCE(self._source))
 
 
     # returns the length of 'block' in (16 bit) words
@@ -796,7 +807,7 @@ class IF_DEF(object):
     @ifdef_interface
     def define_installation_slot(self, name):
         self._inst_slot = name
-        self._add_source()
+        return self._add_source()
 
 
     @ifdef_interface
@@ -805,7 +816,7 @@ class IF_DEF(object):
             raise IfDefSyntaxError("Template name must be a string!")
 
         BASE_TYPE.add_template(name, keyword_params)
-        self._add_source()
+        return self._add_source()
 
 
     @hashed_interface
@@ -814,7 +825,7 @@ class IF_DEF(object):
             raise IfDefSyntaxError("Block redefinition is not possible!")
 
         self._active_BLOCK = self._STATUS = STATUS_BLOCK(self._source, self._optimize)
-        self._add(self._STATUS)
+        return self._add(self._STATUS)
 
 
     @hashed_interface
@@ -823,7 +834,7 @@ class IF_DEF(object):
             raise IfDefSyntaxError("Block redefinition is not possible!")
 
         self._active_BLOCK = self._CMD = CMD_BLOCK(self._source, self._optimize)
-        self._add(self._CMD)
+        return self._add(self._CMD)
 
 
     @hashed_interface
@@ -832,7 +843,7 @@ class IF_DEF(object):
             raise IfDefSyntaxError("Block redefinition is not possible!")
 
         self._active_BLOCK = self._PARAM = PARAM_BLOCK(self._source, self._optimize)
-        self._add(self._PARAM)
+        return self._add(self._PARAM)
 
 
     @hashed_interface
@@ -843,7 +854,7 @@ class IF_DEF(object):
             raise IfDefSyntaxError("End current overlap first")
 
         self._overlap = self._active_BLOCK.get_overlap()
-        self._add_source()
+        return self._add_source()
 
 
     @hashed_interface
@@ -853,7 +864,7 @@ class IF_DEF(object):
 
         self._overlap.end()
         self._overlap = None
-        self._add_source()
+        return self._add_source()
 
 
     @hashed_interface
@@ -865,7 +876,7 @@ class IF_DEF(object):
         self._active_block()
         var = PRINTER_METADATA(self._source, "IFA", "DEFINE_ARRAY\n{}\n".format(name))
         self._plc_array = (name, None)
-        self._add(var)
+        return self._add(var)
 
 
     @hashed_interface
@@ -877,22 +888,22 @@ class IF_DEF(object):
         self._active_block()
         var = PRINTER_METADATA(self._source, "IFA", "END_ARRAY\n{}\n".format(self._plc_array[0]))
         self._plc_array = None
-        self._add(var)
+        return self._add(var)
 
 
     @ifdef_interface
     def define_metadata(self, name, **keyword_params):
-        pass
+        return SOURCE(self._source)
 
 
     @ifdef_interface
     def add_metadata(self, *params, **keyword_params):
-        pass
+        return SOURCE(self._source)
 
 
     @hashed_interface
     def add_bit(self, name = None, **keyword_params):
-        self.add_digital(name, **keyword_params)
+        return self.add_digital(name, **keyword_params)
 
 
     @hashed_interface
@@ -907,10 +918,10 @@ class IF_DEF(object):
                 raise IfDefSyntaxError("Skipped digitals cannot have parameters")
 
             BIT.skip(bit_def, keyword_params["SKIP_BITS"])
-            self._add_source()
+            return self._add_source()
         else:
             var = BIT(self._source, bit_def, name, keyword_params)
-            self._add(var)
+            return self._add(var)
 
 
     def _add_alarm(self, name, sevr, alarm_message, **keyword_params):
@@ -923,34 +934,34 @@ class IF_DEF(object):
         _test_and_set_pv(keyword_params, "ONAM", alarm_message)
 
         var = ALARM(self._source, self._active_bit_def(), name, sevr, alarm_message, keyword_params)
-        self._add(var)
+        return self._add(var)
 
 
     # Accept None as alarm_message, so that we could display a meaningful
     #  error message in _add_alarm() if it is not provided
     @hashed_interface
     def add_minor_alarm(self, name, alarm_message = None, **keyword_params):
-        self._add_alarm(name, "MINOR", alarm_message, **keyword_params)
+        return self._add_alarm(name, "MINOR", alarm_message, **keyword_params)
 
 
     @hashed_interface
     def add_major_alarm(self, name, alarm_message = None, **keyword_params):
-        self._add_alarm(name, "MAJOR", alarm_message, **keyword_params)
+        return self._add_alarm(name, "MAJOR", alarm_message, **keyword_params)
 
 
     @hashed_interface
     def skip_bit(self):
-        self.skip_digital()
+        return self.skip_digital()
 
 
     @hashed_interface
     def skip_digital(self):
-        self.skip_digitals(1)
+        return self.skip_digitals(1)
 
 
     @hashed_interface
     def skip_bits(self, num):
-        self.skip_digitals(num)
+        return self.skip_digitals(num)
 
 
     @hashed_interface
@@ -961,12 +972,12 @@ class IF_DEF(object):
         if not isinstance(num, int):
             raise IfDefSyntaxError("Parameter must be a number!")
 
-        self.add_digital(SKIP_BITS = num)
+        return self.add_digital(SKIP_BITS = num)
 
 
     @hashed_interface
     def add_float(self, name, plc_var_type, **keyword_params):
-        self.add_analog(name, plc_var_type, **keyword_params)
+        return self.add_analog(name, plc_var_type, **keyword_params)
 
 
     @hashed_interface
@@ -978,7 +989,7 @@ class IF_DEF(object):
 
         block = self._active_block()
         var = ANALOG(self._source, block, name, plc_var_type, keyword_params)
-        self._add(var)
+        return self._add(var)
 
 
     @hashed_interface
@@ -987,7 +998,7 @@ class IF_DEF(object):
             raise IfDefSyntaxError("Name must be a string!")
 
         keyword_params[BASE_TYPE.PV_PREFIX + "EGU"] = "ms"
-        self.add_analog(name, "TIME", **keyword_params)
+        return self.add_analog(name, "TIME", **keyword_params)
 
 
     @hashed_interface
@@ -1002,7 +1013,7 @@ class IF_DEF(object):
 
         block = self._active_block()
         var = ENUM(self._source, block, name, plc_var_type, keyword_params)
-        self._add(var)
+        return self._add(var)
 
 
     @hashed_interface
@@ -1017,7 +1028,7 @@ class IF_DEF(object):
 
         block = self._active_block()
         var = BITMASK(self._source, block, name, plc_var_type, keyword_params)
-        self._add(var)
+        return self._add(var)
 
 
     @ifdef_interface
@@ -1026,18 +1037,19 @@ class IF_DEF(object):
             raise IfDefSyntaxError("Only strings can be copied verbatim!")
 
         var = VERBATIM(("add_verbatim()\n", self._source[1]), verbatim)
-        self._add(var)
+        return self._add(var)
 
 
     @hashed_interface
     def end_bits(self):
-        self.end_digitals()
+        return self.end_digitals()
 
 
     @hashed_interface
     def end_digitals(self):
-        self._add_source()
+        var = self._add_source()
         BITS.end()
+        return var
 
 
     def end(self):
@@ -1050,6 +1062,9 @@ class IF_DEF(object):
 
         self._to_plc_words_length   = str(self._words_length_of(self._cmd_block()) + self._words_length_of(self._param_block()))
         self._from_plc_words_length = str(self._words_length_of(self._status_block()))
+
+        for var in self._ifaces:
+            self._hash.update(var.hash_message())
 
         #
         # Move parameters after commands
