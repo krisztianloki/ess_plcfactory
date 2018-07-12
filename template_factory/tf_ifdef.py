@@ -913,25 +913,23 @@ class IF_DEF(object):
         return SOURCE(self._source)
 
 
-    @hashed_interface
+    @ifdef_interface
     def add_bit(self, name = None, **keyword_params):
         return self.add_digital(name, **keyword_params)
 
 
-    @hashed_interface
+    @ifdef_interface
     def add_digital(self, name = None, **keyword_params):
-        bit_def = self._active_bit_def()
-
         if name is None:
-            if "SKIP_BITS" not in keyword_params:
-                keyword_params.update(SKIP_BITS = 1)
+            _test_and_set(keyword_params, "SKIP_BITS", 1)
 
             if len(keyword_params) != 1:
                 raise IfDefSyntaxError("Skipped digitals cannot have parameters")
 
-            BIT.skip(bit_def, keyword_params["SKIP_BITS"])
-            return self._add_source()
+            return self.skip_digitals(keyword_params["SKIP_BITS"])
         else:
+            bit_def = self._active_bit_def()
+
             var = BIT(self._source, bit_def, name, keyword_params)
             return self._add(var)
 
@@ -978,13 +976,14 @@ class IF_DEF(object):
 
     @ifdef_interface
     def skip_digitals(self, num):
-        if isinstance(num, str):
+        try:
             num = int(num)
-
-        if not isinstance(num, int):
+        except (TypeError, ValueError):
             raise IfDefSyntaxError("Parameter must be a number!")
 
-        return self.add_digital(SKIP_BITS = num)
+        bit_def = self._active_bit_def()
+        BIT.skip(bit_def, num)
+        return self._add_source()
 
 
     @hashed_interface
