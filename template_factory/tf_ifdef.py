@@ -177,15 +177,23 @@ class SOURCE(object):
 
 
 class PRINTER_METADATA(SOURCE):
-    def __init__(self, source, printers, metadata):
+    def __init__(self, source, printers, metadata, hash_message = None):
         if isinstance(printers, str):
             printers = [ printers ]
         assert isinstance(printers, list), func_param_msg("printers", "list")
 
         SOURCE.__init__(self, source)
 
-        self._printers = printers
-        self._metadata = metadata
+        self._printers     = printers
+        self._metadata     = metadata
+        self._hash_message = hash_message
+
+
+    def hash_message(self):
+        if self._hash_message is None:
+            return super(PRINTER_METADATA, self).hash_message()
+
+        return self._hash_message
 
 
     def get(self, printer):
@@ -873,8 +881,10 @@ class IF_DEF(object):
             raise IfDefSyntaxError("Nesting of arrays is not possible")
 
         # check if there is a block defined
-        self._active_block()
-        var = PRINTER_METADATA(self._source, "IFA", "DEFINE_ARRAY\n{}\n".format(name))
+        # redundant with hash_message _active_block() call
+        # not removing: if hash_message ever changes uncomment the following line
+#        self._active_block()
+        var = PRINTER_METADATA(self._source, "IFA", "DEFINE_ARRAY\n{}\n".format(name), hash_message = "{}, DEFINE_PLC_ARRAY, {}".format(self._active_block().type(), name))
         self._plc_array = (name, None)
         return self._add(var)
 
@@ -885,8 +895,10 @@ class IF_DEF(object):
             raise IfDefSyntaxError("No array is defined yet")
 
         # check if there is a block defined
-        self._active_block()
-        var = PRINTER_METADATA(self._source, "IFA", "END_ARRAY\n{}\n".format(self._plc_array[0]))
+        # redundant with hash_message _active_block() call
+        # not removing: if hash_message ever changes uncomment the following line
+#        self._active_block()
+        var = PRINTER_METADATA(self._source, "IFA", "END_ARRAY\n{}\n".format(self._plc_array[0]), hash_message = "{}, END_PLC_ARRAY".format(self._active_block().type()))
         self._plc_array = None
         return self._add(var)
 
@@ -949,22 +961,22 @@ class IF_DEF(object):
         return self._add_alarm(name, "MAJOR", alarm_message, **keyword_params)
 
 
-    @hashed_interface
+    @ifdef_interface
     def skip_bit(self):
         return self.skip_digital()
 
 
-    @hashed_interface
+    @ifdef_interface
     def skip_digital(self):
         return self.skip_digitals(1)
 
 
-    @hashed_interface
+    @ifdef_interface
     def skip_bits(self, num):
         return self.skip_digitals(num)
 
 
-    @hashed_interface
+    @ifdef_interface
     def skip_digitals(self, num):
         if isinstance(num, str):
             num = int(num)
@@ -1040,12 +1052,12 @@ class IF_DEF(object):
         return self._add(var)
 
 
-    @hashed_interface
+    @ifdef_interface
     def end_bits(self):
         return self.end_digitals()
 
 
-    @hashed_interface
+    @ifdef_interface
     def end_digitals(self):
         var = self._add_source()
         BITS.end()
@@ -1063,9 +1075,6 @@ class IF_DEF(object):
         self._to_plc_words_length   = str(self._words_length_of(self._cmd_block()) + self._words_length_of(self._param_block()))
         self._from_plc_words_length = str(self._words_length_of(self._status_block()))
 
-        for var in self._ifaces:
-            self._hash.update(var.hash_message())
-
         #
         # Move parameters after commands
         #
@@ -1074,6 +1083,9 @@ class IF_DEF(object):
             for src in self._ifaces:
                 if isinstance(src, BASE_TYPE):
                     src.adjust_parameter(cmd_length)
+
+        for var in self._ifaces:
+            self._hash.update(var.hash_message().encode())
 
         self._hash.update(str(self._properties).encode())
 
@@ -1207,6 +1219,14 @@ class BASE_TYPE(SOURCE):
 
     def _end_bits(self):
         BITS.end(self._width)
+
+
+    def hash_message(self):
+        return "{block}, {name}, {plc_type}, {offset}.{bit_number}".format(block      = self.block_type(),
+                                                                           name       = self.name(),
+                                                                           plc_type   = self.plc_type(),
+                                                                           offset     = self.offset(),
+                                                                           bit_number = self.bit_number())
 
 
     def name(self):
