@@ -462,7 +462,8 @@ class CC(object):
 
     def getHash(self, hashobj = None):
         if self._hashSum is not None:
-            return self._hashSum
+            if self._hashSum[0] == hashobj:
+                return self._hashSum[1]
 
         class Hasher(object):
             class CRC32(object):
@@ -533,9 +534,9 @@ class CC(object):
                 hasher.update(k)
                 hasher.update(tmp)
 
-        self._hashSum = hasher.get()
+        self._hashSum = (hashobj, hasher.get())
 
-        return self._hashSum
+        return self._hashSum[1]
 
 
     # recursively process input in order to create an "ordered"

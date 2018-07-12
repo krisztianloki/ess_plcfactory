@@ -13,7 +13,6 @@ __license__    = "GPLv3"
 import copy
 from collections import OrderedDict
 #import inspect
-import hashlib
 
 
 
@@ -594,13 +593,8 @@ def ifdef_interface(func):
 
 
 class IF_DEF(object):
-    def __init__(self, OPTIMIZE = False, HASH = None, **keyword_params):
+    def __init__(self, OPTIMIZE = False, **keyword_params):
         assert isinstance(OPTIMIZE, bool)
-
-        if HASH is None:
-            HASH = DummyHash()
-        elif "update" not in dir(HASH) or not callable(HASH.update):
-            raise IfDefException("Expected a hash object from the hashlib module!")
 
         BASE_TYPE.init()
 
@@ -615,7 +609,6 @@ class IF_DEF(object):
         self._properties            = OrderedDict()
         self._to_plc_words_length   = 0
         self._from_plc_words_length = 0
-        self._hash                  = HASH
         self._optimize              = OPTIMIZE
         self._plc_array             = None
         self._filename              = keyword_params.get('FILENAME')
@@ -743,6 +736,20 @@ class IF_DEF(object):
             return
 
         raise IfDefSyntaxError("Array is already using {type}, cannot use {atype}".format(type = self._plc_array[1], atype = atype))
+
+
+    def calculate_hash(self, hashobj):
+        self._exception_if_active()
+
+        if hashobj is None or "update" not in dir(hashobj) or not callable(hashobj.update):
+            raise IfDefException("Expected a hash object from the hashlib module!")
+
+        for var in self._ifaces:
+            hashobj.update(var.hash_message().encode())
+
+        hashobj.update(str(self._properties).encode())
+
+        return hashobj
 
 
     def interfaces(self):
@@ -1082,11 +1089,6 @@ class IF_DEF(object):
             for src in self._ifaces:
                 if isinstance(src, BASE_TYPE):
                     src.adjust_parameter(cmd_length)
-
-        for var in self._ifaces:
-            self._hash.update(var.hash_message().encode())
-
-        self._hash.update(str(self._properties).encode())
 
         self._active = False
 

@@ -72,7 +72,7 @@ TEMPLATE_TAG   = "TEMPLATE"
 HEADER_TAG     = "HEADER"
 FOOTER_TAG     = "FOOTER"
 IFDEF_TAG      = ".def"
-hashobj        = hashlib.sha256()
+hashobj        = None
 ifdefs         = dict()
 ifdef_params   = dict(PLC_TYPE = "SIEMENS")
 output_files   = dict()
@@ -108,6 +108,10 @@ The following exception occured during the processing of template '{template}' o
                        exc      = type(self.exception).__name__,
                        msg      = self.exception)
 
+
+
+def initializeHash():
+    return hashlib.sha256()
 
 
 def openTemplate(device, tag, templateID):
@@ -317,7 +321,7 @@ def getIfDef(device):
             return None
 
     with open(filename) as f:
-        ifdef = tf.processLines(f, HASH = hashobj, FILENAME = filename)
+        ifdef = tf.processLines(f, FILENAME = filename)
 
     if ifdef is not None:
         ifdefs[deviceType] = ifdef
@@ -455,6 +459,7 @@ def processTemplateID(templateID, devices):
             ifdef = getIfDef(device)
             if ifdef is not None:
                 print("Generating template from Definition File...")
+                ifdef.calculate_hash(hashobj)
                 template = []
                 templatePrinter.body(ifdef, template)
 
@@ -568,6 +573,9 @@ def processDevice(deviceName, templateIDs):
     devices.extend(buildControlsList(device))
 
     for templateID in templateIDs:
+        global hashobj
+        hashobj = initializeHash()
+
         processTemplateID(templateID, devices)
 
     global hashes
