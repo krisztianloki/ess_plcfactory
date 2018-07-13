@@ -233,8 +233,9 @@ class BLOCK(SOURCE):
 
         assert isinstance(block_type,    str)
         assert isinstance(optimize,      bool)
-        self._block_type    = block_type
 
+        self._block_type    = block_type
+        self._ifaces        = []
         self._block_offset  = 0
         self._length        = 0
         self._optimize_s7db = optimize
@@ -264,6 +265,20 @@ class BLOCK(SOURCE):
         if self._is_alignment_needed(width):
             self._block_offset += 1
         return self._block_offset
+
+
+    def add_iface(self, var):
+        if not isinstance(var, SOURCE):
+            raise IfDefInternalError("Cannot add non-SOURCE({}) to BLOCK!".format(type(var)))
+
+        if isinstance(var, BLOCK):
+            return
+
+        self._ifaces.append(var)
+
+
+    def interfaces(self):
+        return self._ifaces
 
 
     def get_overlap(self):
@@ -530,6 +545,17 @@ class OVERLAP(BLOCK):
         return self._overlap_width == 0
 
 
+    def add_iface(self, var):
+        #
+        # Overlaps have nothing to do with the PLC
+        #
+        pass
+
+
+    def interfaces(self):
+        return None
+
+
     def offset_for(self, width):
         #
         # Check for alignment errors
@@ -689,6 +715,11 @@ class IF_DEF(object):
 
         if isinstance(var, BASE_TYPE):
             self._check_plc_array(var.plc_type())
+
+        if self._active_BLOCK is not None:
+            if self._overlap is None:
+                self._active_BLOCK.add_iface(var)
+
 
         self._ifaces.append(var)
         return var
@@ -1190,7 +1221,6 @@ class BASE_TYPE(SOURCE):
             raise IfDefSyntaxError("PV Names must be unique")
 
         BASE_TYPE.pv_names.add(self._pvname)
-
 
 
     @staticmethod
