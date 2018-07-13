@@ -221,6 +221,31 @@ class VERBATIM(SOURCE):
 #
 # Blocks
 #
+class fakeBLOCK(SOURCE):
+    def __init__(self):
+        SOURCE.__init__(self, "")
+
+        self._ifaces = []
+
+
+    def add_iface(self, var):
+        if not isinstance(var, SOURCE):
+            raise IfDefInternalError("Cannot add non-SOURCE({}) to preBLOCK!".format(type(var)))
+
+        if isinstance(var, BLOCK):
+            raise IfDefInternalError("Cannot add block ({}) to preBLOCK".format(var.type()))
+
+        if isinstance(var, fakeBLOCK):
+            return
+
+        self._ifaces.append(var)
+
+
+    def interfaces(self):
+        return self._ifaces
+
+
+
 class BLOCK(SOURCE):
     STATUS = "STATUS"
     CMD    = "COMMAND"
@@ -625,6 +650,7 @@ class IF_DEF(object):
         BASE_TYPE.init()
 
         self._ifaces                = []
+        self._preBLOCK              = fakeBLOCK()
         self._STATUS                = None
         self._CMD                   = None
         self._PARAM                 = None
@@ -719,7 +745,8 @@ class IF_DEF(object):
         if self._active_BLOCK is not None:
             if self._overlap is None:
                 self._active_BLOCK.add_iface(var)
-
+        else:
+            self._preBLOCK.add_iface(var)
 
         self._ifaces.append(var)
         return var
@@ -769,14 +796,25 @@ class IF_DEF(object):
         raise IfDefSyntaxError("Array is already using {type}, cannot use {atype}".format(type = self._plc_array[1], atype = atype))
 
 
+    def _calc_block_hash(self, hashobj, block):
+        if block is None:
+            return
+
+        hashobj.update(block.hash_message().encode())
+        for var in block.interfaces():
+            hashobj.update(var.hash_message().encode())
+
+
     def calculate_hash(self, hashobj):
         self._exception_if_active()
 
         if hashobj is None or "update" not in dir(hashobj) or not callable(hashobj.update):
             raise IfDefException("Expected a hash object from the hashlib module!")
 
-        for var in self._ifaces:
-            hashobj.update(var.hash_message().encode())
+        self._calc_block_hash(hashobj, self._preBLOCK)
+        self._calc_block_hash(hashobj, self._cmd_block())
+        self._calc_block_hash(hashobj, self._param_block())
+        self._calc_block_hash(hashobj, self._status_block())
 
         hashobj.update(str(self._properties).encode())
 
