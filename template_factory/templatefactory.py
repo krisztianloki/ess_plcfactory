@@ -9,6 +9,7 @@ __license__   = "GPLv3"
 
 
 import argparse
+import hashlib
 import tf as tf
 
 
@@ -34,12 +35,21 @@ def processDefinitionFile(definition, printers):
 
     print("Processing {definition}...".format(definition = definition))
 
+    if printers == []:
+        hashobj = hashlib.sha256()
+    else:
+        hashobj = None
+
     with open(definition) as m:
         if_def = tf.processLines(m, FILENAME = definition)
 
 
     if if_def is None:
         exit(1)
+
+    if hashobj is not None:
+        if_def.calculate_hash(hashobj)
+        print("HASH: ", hashobj.hexdigest())
 
     for printer in printers:
         createTemplate(definition, if_def, printer)
