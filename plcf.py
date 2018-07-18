@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 """ PLC Factory: PLCF# Language """
 
 __author__     = "Gregor Ulm"
@@ -306,10 +308,10 @@ def findMatchingSquareParenthesis(line):
                 return i
             d.append([ci, i])
         except IndexError:
-            print 'Too many closing parentheses'
+            print('Too many closing parentheses')
             return -1
   if istart:  # check if stack is empty afterwards
-    print 'Too many opening parentheses'
+    print('Too many opening parentheses')
     return -1
   d.sort()
   return d[0][1]

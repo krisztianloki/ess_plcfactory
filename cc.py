@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 """ PLC Factory: Controls & Configuration abstraction """
 
 __author__     = "Krisztian Loki"
@@ -235,7 +237,7 @@ class CC(object):
             # clear templates downloaded in a previous run
             helpers.rmdirs(CC.TEMPLATE_DIR)
         else:
-            print "Reusing templates of any previous run"
+            print("Reusing templates of any previous run")
 
         helpers.makedirs(CC.TEMPLATE_DIR)
 
@@ -378,7 +380,7 @@ class CC(object):
     @staticmethod
     def load(filename):
         from ccdb_dump import CCDB_Dump
-        print "Trying to load CC dump from", filename
+        print("Trying to load CC dump from", filename)
         return CCDB_Dump.load(filename)
 
 
@@ -407,7 +409,7 @@ class CC(object):
                 raise CC.Exception("Something went wrong; too many iterations in backtracking while searching for property " + prop)
 
             if len(leftToProcess) == 0:
-                print "error in  backtracking after {} iterations; probably invalid input while searching for property {}".format(count, prop)
+                print("error in  backtracking after {} iterations; probably invalid input while searching for property {}".format(count, prop))
                 return " ==== BACKTRACKING ERROR ==== "
 
             elem = leftToProcess.pop()

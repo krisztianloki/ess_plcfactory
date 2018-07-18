@@ -1,3 +1,4 @@
+from __future__ import print_function
 
 """ InterfaceFactory : Entry point """
 
@@ -84,24 +85,23 @@ Direct = False
 
 
 def Pre_ProcessIFA(IfaPath):
-	print ""
-	print ""
-	print "*******************************************"
-	print "*                                         *"
-	print "*   Generating Siemens PLC source code    *"
-	print "*                                         *"
-	print "*******************************************"
-	print ""
-	print "PLCFactory file location: "+IfaPath
-    
-	#Pre process IFA to have Status, Command, Parameter order	
-	print "Pre-processing .ifa file..."
-	
-	global DeviceNum 
+	print("""
+
+*******************************************
+*                                         *
+*   Generating Siemens PLC source code    *
+*                                         *
+*******************************************
+
+PLCFactory file location: {}
+Pre-processing .ifa file...""".format(IfaPath))
+	#Pre process IFA to have Status, Command, Parameter order
+
+	global DeviceNum
 	DeviceNum = 0
 	global OrderedLines
 	OrderedLines = []
-	global HASH 
+	global HASH
 	HASH = ""
 	global MAX_IO_DEVICES
 	MAX_IO_DEVICES = 0
@@ -110,18 +110,18 @@ def Pre_ProcessIFA(IfaPath):
 	global MAX_MODULES_IN_IO_DEVICE
 	MAX_MODULES_IN_IO_DEVICE = 0
 
-	
+
 	StatusArea = []
 	CommandArea = []
 	ParameterArea = []
 	Comments = []
-	
+
 	InStatus = False
 	InCommand = False
 	InParameter = False
 
 	FirstDevice = True
-		
+
 	with open(IfaPath) as f:
 		lines = f.readlines()
 		pos = 0
@@ -156,7 +156,7 @@ def Pre_ProcessIFA(IfaPath):
 				CommandArea = []
 				ParameterArea = []
 				FirstDevice = False
-			if pos+1 <> len(lines):		
+			if pos+1 <> len(lines):
 				if lines[pos].rstrip() == "STATUS":
 					InStatus = True
 					InCommand = False
@@ -175,10 +175,10 @@ def Pre_ProcessIFA(IfaPath):
 				CommandArea.append(lines[pos])
 			if InParameter:
 				ParameterArea.append(lines[pos])
-				
+
 			if not InStatus and not InCommand and not InParameter:
 				OrderedLines.append(lines[pos])
-			pos = pos + 1				
+			pos = pos + 1
 
 	for line in StatusArea:
 		OrderedLines.append(line)
@@ -186,16 +186,16 @@ def Pre_ProcessIFA(IfaPath):
 		OrderedLines.append(line)
 	for line in ParameterArea:
 		OrderedLines.append(line)
-	
-	
-	print "Total ("+ str(DeviceNum) + ") device(s) pre-processed.\n"
+
+
+	print("Total", str(DeviceNum), "device(s) pre-processed.\n")
 
 def CloseLastVariable():
 	global DevTypeBODY_CODE
-	global EndString 
-	global EndString2 
+	global EndString
+	global EndString2
 	global IsDouble
-	
+
 	if IsDouble:
 		if EndString <> "":
 			DevTypeBODY_CODE.append("       " + EndString)
@@ -203,62 +203,62 @@ def CloseLastVariable():
 		if EndString2 <> "":
 			DevTypeBODY_CODE.append("       " + EndString2)
 			EndString2 = ""
-	else:	
+	else:
 		if EndString <> "":
 			DevTypeBODY_CODE.append("       " + EndString)
 			EndString = ""
-	
+
 def WriteDevType():
-	
-	global DevTypeHeader 
-	global DevTypeVAR_INPUT 
-	global DevTypeVAR_OUTPUT 
-	global DevTypeVAR_INOUT 
-	global DevTypeDB_SPEC 
-	global DevTypeVAR_TEMP 
+
+	global DevTypeHeader
+	global DevTypeVAR_INPUT
+	global DevTypeVAR_OUTPUT
+	global DevTypeVAR_INOUT
+	global DevTypeDB_SPEC
+	global DevTypeVAR_TEMP
 	global DevTypeBODY_HEADER
 	global DevTypeBODY_CODE
 	global DevTypeBODY_CODE_ARRAY
 	global DevTypeBODY_END
 	global ExternalSourceFile
-	
+
 	global MaxStatusReg
 	global MaxCommandReg
-	
+
 	for line in DevTypeHeader:
 		ExternalSourceFile.append(line)
-		
-	ExternalSourceFile.append("   VAR_INPUT")	
+
+	ExternalSourceFile.append("   VAR_INPUT")
 	for line in DevTypeVAR_INPUT:
 		ExternalSourceFile.append(line)
-	ExternalSourceFile.append("   END_VAR")	
+	ExternalSourceFile.append("   END_VAR")
 
-	ExternalSourceFile.append("   VAR_OUTPUT")	
+	ExternalSourceFile.append("   VAR_OUTPUT")
 	for line in DevTypeVAR_OUTPUT:
 		ExternalSourceFile.append(line)
 	ExternalSourceFile.append("      DEVICE_PARAM_OK { S7_HMI_Accessible := 'False'; S7_HMI_Visible := 'False'} : Bool;")
-	ExternalSourceFile.append("   END_VAR")	
+	ExternalSourceFile.append("   END_VAR")
 
-	ExternalSourceFile.append("   VAR_IN_OUT")	
+	ExternalSourceFile.append("   VAR_IN_OUT")
 	for line in DevTypeVAR_INOUT:
 		ExternalSourceFile.append(line)
-	ExternalSourceFile.append("   END_VAR")	
+	ExternalSourceFile.append("   END_VAR")
 
-		
-	ExternalSourceFile.append("   VAR")	
+
+	ExternalSourceFile.append("   VAR")
 	ExternalSourceFile.append("      StatusReg { S7_HMI_Accessible := 'False'; S7_HMI_Visible := 'False'} : Array[0.."+ str(MaxStatusReg) +"] of Word;")
 	ExternalSourceFile.append("      CommandReg { S7_HMI_Accessible := 'False'; S7_HMI_Visible := 'False'} : Array[0.."+ str(MaxCommandReg) +"] of Word;")
-	ExternalSourceFile.append("   END_VAR")	
-		
+	ExternalSourceFile.append("   END_VAR")
+
 	for line in DevTypeDB_SPEC:
 		ExternalSourceFile.append(line)
-		
+
 	for line in DevTypeVAR_TEMP:
 		ExternalSourceFile.append(line)
-		
+
 	for line in DevTypeBODY_HEADER:
 		ExternalSourceFile.append(line)
-		
+
 	if DevTypeBODY_CODE_ARRAY != []:
 		ExternalSourceFile.append("        IF \"Utilities\".TestInProgress = FALSE THEN");
 	for line in DevTypeBODY_CODE_ARRAY:
@@ -268,24 +268,24 @@ def WriteDevType():
 
 	for line in DevTypeBODY_CODE:
 		ExternalSourceFile.append(line)
-		
+
 	for line in DevTypeBODY_END:
 		ExternalSourceFile.append(line)
 
 	DevTypeHeader = []
-	DevTypeVAR_INPUT = [] 
-	DevTypeVAR_INOUT = [] 
-	DevTypeVAR_OUTPUT = [] 
-	DevTypeDB_SPEC = [] 
-	DevTypeVAR_TEMP = [] 
+	DevTypeVAR_INPUT = []
+	DevTypeVAR_INOUT = []
+	DevTypeVAR_OUTPUT = []
+	DevTypeDB_SPEC = []
+	DevTypeVAR_TEMP = []
 	DevTypeBODY_HEADER = []
 	DevTypeBODY_CODE = []
 	DevTypeBODY_CODE_ARRAY = []
 	DevTypeBODY_END = []
 
 def WriteEPICS_PLC_TesterDB():
-	
-	global EPICS_PLC_TesterDB 
+
+	global EPICS_PLC_TesterDB
 	global ExternalSourceFile
 
 	ExternalSourceFile.append("DATA_BLOCK \"EPICS_PLC_Tester\"")
@@ -294,40 +294,40 @@ def WriteEPICS_PLC_TesterDB():
 	ExternalSourceFile.append("NON_RETAIN")
 	ExternalSourceFile.append("   STRUCT")
 	ExternalSourceFile.append("      HeartBeat { S7_HMI_Accessible := 'False'; S7_HMI_Visible := 'False'} : Bool;")
-	
+
 	for line in EPICS_PLC_TesterDB:
 		ExternalSourceFile.append(line)
-		
+
 	ExternalSourceFile.append("   END_STRUCT;")
 	ExternalSourceFile.append("BEGIN")
 	ExternalSourceFile.append("END_DATA_BLOCK")
-	
+
 	EPICS_PLC_TesterDB = []
-	
+
 def WriteDeviceInstances():
-	
-	global DeviceInstance 
+
+	global DeviceInstance
 	global ExternalSourceFile
 	global Direct
-	
+
 	for line in DeviceInstance:
 		ExternalSourceFile.append(line)
-			
+
 	DeviceInstance = []
 
 def WriteEPICS_device_calls():
-	
+
 	global ExternalSourceFile
-	global EPICS_device_calls_body 
-	global EPICS_device_calls_header 
-	global HASH 
+	global EPICS_device_calls_body
+	global EPICS_device_calls_header
+	global HASH
 
 	ExternalSourceFile.append("FUNCTION \"EPICS_device_calls\" : Void");
 	ExternalSourceFile.append("{ S7_Optimized_Access := 'TRUE' }");
 	ExternalSourceFile.append("VERSION : 1.0");
 	ExternalSourceFile.append("");
-	ExternalSourceFile.append("   VAR_TEMP");	
-	
+	ExternalSourceFile.append("   VAR_TEMP");
+
 	for line in EPICS_device_calls_header:
 		ExternalSourceFile.append(line)
 
@@ -345,25 +345,25 @@ def WriteEPICS_device_calls():
 
 	for line in EPICS_device_calls_body:
 		ExternalSourceFile.append(line)
-		
+
 	ExternalSourceFile.append("END_FUNCTION");
-	
+
 	EPICS_device_calls_body = []
 	EPICS_device_calls_header = []
 
 def WriteEPICS_device_calls_test():
-	
+
 	global ExternalSourceFile
-	global EPICS_device_calls_test_body 
-	global EPICS_device_calls_test_header 
-	global HASH 
+	global EPICS_device_calls_test_body
+	global EPICS_device_calls_test_header
+	global HASH
 
 	ExternalSourceFile.append("FUNCTION \"EPICS_device_calls_test\" : Void");
 	ExternalSourceFile.append("{ S7_Optimized_Access := 'TRUE' }");
 	ExternalSourceFile.append("VERSION : 1.0");
 	ExternalSourceFile.append("");
-	ExternalSourceFile.append("   VAR_TEMP");	
-	
+	ExternalSourceFile.append("   VAR_TEMP");
+
 	for line in EPICS_device_calls_test_header:
 		ExternalSourceFile.append(line)
 
@@ -381,14 +381,14 @@ def WriteEPICS_device_calls_test():
 
 	for line in EPICS_device_calls_test_body:
 		ExternalSourceFile.append(line)
-		
+
 	ExternalSourceFile.append("END_FUNCTION");
-	
+
 	EPICS_device_calls_test_body = []
 	EPICS_device_calls_test_header = []
 
 def WriteDiagnostics(TIAVersion):
-	
+
 	global ExternalSourceFile
 	global MAX_IO_SYSTEM
 	global MAX_IO_DEVICES
@@ -399,9 +399,9 @@ def WriteDiagnostics(TIAVersion):
 	global DEV_STATE_LOST_CON
 	global DEV_STATE_DISABLED
 	global DEV_STATE_WAS_FAULT
-	global DEV_STATE_WAS_LOST 
-	global DEV_STATE_WAS_DISABLED 
-	global LAST_DEVICE 
+	global DEV_STATE_WAS_LOST
+	global DEV_STATE_WAS_DISABLED
+	global LAST_DEVICE
 
 	#DiagnosticsData global DB
 	ExternalSourceFile.append("TYPE \"typeModul\"");
@@ -475,8 +475,8 @@ def WriteDiagnostics(TIAVersion):
 	ExternalSourceFile.append("");
 
 
-	
-	
+
+
 	#DiagStartupIoSystem FB
 	ExternalSourceFile.append("FUNCTION_BLOCK \"DiagStartupIoSystem\"");
 	ExternalSourceFile.append("{ S7_Optimized_Access := 'TRUE' }");
@@ -873,7 +873,7 @@ def WriteDiagnostics(TIAVersion):
 	ExternalSourceFile.append("	");
 	ExternalSourceFile.append("END_FUNCTION_BLOCK");
 	ExternalSourceFile.append("");
-	
+
 	#DiagStartupIoSystem_iDB instance DB
 	ExternalSourceFile.append("DATA_BLOCK \"DiagStartupIoSystem_iDB\"");
 	ExternalSourceFile.append("{ S7_Optimized_Access := 'TRUE' }");
@@ -885,7 +885,7 @@ def WriteDiagnostics(TIAVersion):
 	ExternalSourceFile.append("");
 	ExternalSourceFile.append("END_DATA_BLOCK");
 	ExternalSourceFile.append("");
-	
+
 	#DiagStartupPlc FB
 	ExternalSourceFile.append("FUNCTION_BLOCK \"DiagStartupPlc\"");
 	ExternalSourceFile.append("{ S7_Optimized_Access := 'TRUE' }");
@@ -1036,8 +1036,8 @@ def WriteDiagnostics(TIAVersion):
 	ExternalSourceFile.append("END_FUNCTION_BLOCK");
 	ExternalSourceFile.append("");
 	ExternalSourceFile.append("");
-	
-	
+
+
 	#DiagStartupPlc_IDB instance DB
 	ExternalSourceFile.append("DATA_BLOCK \"DiagStartupPlc_iDB\"");
 	ExternalSourceFile.append("{ S7_Optimized_Access := 'TRUE' }");
@@ -1049,7 +1049,7 @@ def WriteDiagnostics(TIAVersion):
 	ExternalSourceFile.append("");
 	ExternalSourceFile.append("END_DATA_BLOCK");
 	ExternalSourceFile.append("");
-	
+
 	#DiagnosticError FB
 	ExternalSourceFile.append("FUNCTION \"DiagnosticError\" : Void");
 	ExternalSourceFile.append("{ S7_Optimized_Access := 'TRUE' }");
@@ -1179,7 +1179,7 @@ def WriteDiagnostics(TIAVersion):
 	ExternalSourceFile.append("	");
 	ExternalSourceFile.append("END_FUNCTION");
 	ExternalSourceFile.append("");
-	
+
 	#PullOrPlugModules FB
 	ExternalSourceFile.append("FUNCTION \"PullOrPlugModules\" : Void");
 	ExternalSourceFile.append("{ S7_Optimized_Access := 'TRUE' }");
@@ -1330,7 +1330,7 @@ def WriteDiagnostics(TIAVersion):
 	ExternalSourceFile.append("END_FUNCTION");
 	ExternalSourceFile.append("");
 
-	
+
 	#RackOrStationFaliure FB
 	ExternalSourceFile.append("FUNCTION \"RackOrStationFaliure\" : Void");
 	ExternalSourceFile.append("{ S7_Optimized_Access := 'TRUE' }");
@@ -1526,8 +1526,8 @@ def WriteDiagnostics(TIAVersion):
 	ExternalSourceFile.append("END_FUNCTION");
 	ExternalSourceFile.append("");
 
-		
-		
+
+
 	#Diagnostics FB
 	ExternalSourceFile.append("FUNCTION_BLOCK \"Diagnostics\"");
 	ExternalSourceFile.append("{ S7_Optimized_Access := 'TRUE' }");
@@ -1649,8 +1649,8 @@ def WriteDiagnostics(TIAVersion):
 	ExternalSourceFile.append("END_ORGANIZATION_BLOCK");
 	ExternalSourceFile.append("");
 	ExternalSourceFile.append("");
-	
-	
+
+
 	#Diagnostic error interrupt OB
 	ExternalSourceFile.append("ORGANIZATION_BLOCK \"Diagnostic error interrupt\"");
 	ExternalSourceFile.append("{ S7_Optimized_Access := 'TRUE' }");
@@ -1687,8 +1687,8 @@ def WriteDiagnostics(TIAVersion):
 	ExternalSourceFile.append("END_ORGANIZATION_BLOCK");
 	ExternalSourceFile.append("");
 
-	
-	
+
+
 	#Pull or plug of modules OB
 	ExternalSourceFile.append("ORGANIZATION_BLOCK \"Pull or plug of modules\"");
 	ExternalSourceFile.append("{ S7_Optimized_Access := 'TRUE' }");
@@ -1723,8 +1723,8 @@ def WriteDiagnostics(TIAVersion):
 	ExternalSourceFile.append("END_ORGANIZATION_BLOCK");
 	ExternalSourceFile.append("");
 
-	
-	
+
+
 	#Rack or station failure OB
 	ExternalSourceFile.append("ORGANIZATION_BLOCK \"Rack or station failure\"");
 	ExternalSourceFile.append("{ S7_Optimized_Access := 'TRUE' }");
@@ -1759,7 +1759,7 @@ def WriteDiagnostics(TIAVersion):
 	ExternalSourceFile.append("END_ORGANIZATION_BLOCK");
 	ExternalSourceFile.append("");
 
-	
+
 	#Startup Complete Restart OB
 	ExternalSourceFile.append("ORGANIZATION_BLOCK \"Startup\"");
 	ExternalSourceFile.append("TITLE = \"Complete Restart\"");
@@ -1801,7 +1801,7 @@ def WriteDiagnostics(TIAVersion):
 	ExternalSourceFile.append("");
 
 def WriteStandardPLCCode(TIAVersion):
-	
+
 	global ExternalSourceFile
 
 
@@ -2256,33 +2256,33 @@ def WriteStandardPLCCode(TIAVersion):
 	ExternalSourceFile.append("	\"_CommsEPICS\"();")
 	ExternalSourceFile.append("	")
 	ExternalSourceFile.append("END_FUNCTION")
-	
+
 def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 
-	#Process IFA devices	
-	print "Processing .ifa file..."
-	
+	#Process IFA devices
+	print("Processing .ifa file...")
+
 	ProcessedDeviceNum = 0
-	
+
 	global OrderedLines
 	global ExternalSourceFile
-	global HASH 
-	global ActualDeviceName 
-	global ActualDeviceNameWhite 
-	global ActualDeviceType 
-	global EPICSTOPLCLENGTH 
-	global EPICSTOPLCDATABLOCKOFFSET 
-	global EPICSTOPLCPARAMETERSSTART 
-	global PLCTOEPICSDATABLOCKOFFSET 
+	global HASH
+	global ActualDeviceName
+	global ActualDeviceNameWhite
+	global ActualDeviceType
+	global EPICSTOPLCLENGTH
+	global EPICSTOPLCDATABLOCKOFFSET
+	global EPICSTOPLCPARAMETERSSTART
+	global PLCTOEPICSDATABLOCKOFFSET
 	global DeviceTypeList
 	DeviceTypeList = []
-	
-	global DevTypeHeader 
-	global DevTypeVAR_INPUT 
-	global DevTypeVAR_INOUT 
-	global DevTypeVAR_OUTPUT 
-	global DevTypeDB_SPEC 
-	global DevTypeVAR_TEMP 
+
+	global DevTypeHeader
+	global DevTypeVAR_INPUT
+	global DevTypeVAR_INOUT
+	global DevTypeVAR_OUTPUT
+	global DevTypeDB_SPEC
+	global DevTypeVAR_TEMP
 	global DevTypeBODY_HEADER
 	global DevTypeBODY_CODE
 	global DevTypeBODY_CODE_ARRAY
@@ -2290,14 +2290,14 @@ def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 
 	global EPICS_PLC_TesterDB
 	global DeviceInstance
-	global EPICS_device_calls_body 
-	global EPICS_device_calls_header 
+	global EPICS_device_calls_body
+	global EPICS_device_calls_header
 
-	
+
 	global EndString
 	global EndString2
 	global IsDouble
-	
+
 	global MAX_IO_DEVICES
 	global MAX_LOCAL_MODULES
 	global MAX_MODULES_IN_IO_DEVICE
@@ -2308,8 +2308,8 @@ def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 	InParameter = False
 	FirstDevice = True
 	StartingRegister = -1
-	
-	
+
+
 	ActVariablePLCName = ""
 	ActVariableEPICSName = ""
 	ActVariableType = ""
@@ -2321,20 +2321,20 @@ def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 	EndDeviceString = ""
 	IsDouble = False
 	NewDeviceType = False
-	
+
 	global MaxStatusReg;
 	global MaxCommandReg;
 	MaxStatusReg = 0;
 	MaxCommandReg = 0;
-	
-	InArray = False 
-	InArrayName = "" 
-	InArrayNum = 0 
+
+	InArray = False
+	InArrayName = ""
+	InArrayNum = 0
 
 	if Direct:
-		print ""
-		print "***Note***: PLCFactory runs in direct mode. PLC type blocks will not be generated!"
-		print ""
+		print()
+		print("***Note***: PLCFactory runs in direct mode. PLC type blocks will not be generated!")
+		print()
 
 
 	pos = 0
@@ -2347,19 +2347,19 @@ def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 			if FirstDevice == False:
 				CloseLastVariable()
 				if EndDeviceString <> "":
-					EPICS_device_calls_test_body.append("                                 DEVICE_PARAM_OK=>#\""+EndDeviceString+"\");")					
+					EPICS_device_calls_test_body.append("                                 DEVICE_PARAM_OK=>#\""+EndDeviceString+"\");")
 					EndDeviceString = ""
 				if NewDeviceType == True:
 					if not Direct:
 						WriteDevType()
 
-				else:	
+				else:
 					DevTypeHeader = []
-					DevTypeVAR_INPUT = [] 
+					DevTypeVAR_INPUT = []
 					DevTypeVAR_INOUT = []
-					DevTypeVAR_OUTPUT = [] 
-					DevTypeDB_SPEC = [] 
-					DevTypeVAR_TEMP = [] 
+					DevTypeVAR_OUTPUT = []
+					DevTypeDB_SPEC = []
+					DevTypeVAR_TEMP = []
 					DevTypeBODY_HEADER = []
 					DevTypeBODY_CODE = []
 					DevTypeBODY_CODE_ARRAY = []
@@ -2373,22 +2373,22 @@ def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 					DeviceInstance.append("END_DATA_BLOCK")
 
 			FirstDevice = False
-			if (OrderedLines[pos + 2].rstrip() <> "DEVICE_TYPE") or (OrderedLines[pos + 4].rstrip() <> "EPICSTOPLCLENGTH") or	(OrderedLines[pos + 6].rstrip() <> "EPICSTOPLCDATABLOCKOFFSET") or (OrderedLines[pos + 8].rstrip() <> "EPICSTOPLCPARAMETERSSTART") or (OrderedLines[pos + 10].rstrip() <> "PLCTOEPICSDATABLOCKOFFSET"):	
-				print "ERROR:"
-				print "The .ifa file has a bad DEVICE format! Exiting PLCFactory...\n"
+			if (OrderedLines[pos + 2].rstrip() <> "DEVICE_TYPE") or (OrderedLines[pos + 4].rstrip() <> "EPICSTOPLCLENGTH") or (OrderedLines[pos + 6].rstrip() <> "EPICSTOPLCDATABLOCKOFFSET") or (OrderedLines[pos + 8].rstrip() <> "EPICSTOPLCPARAMETERSSTART") or (OrderedLines[pos + 10].rstrip() <> "PLCTOEPICSDATABLOCKOFFSET"):
+				print("ERROR:")
+				print("The .ifa file has a bad DEVICE format! Exiting PLCFactory...\n")
 				print("--- %.1f seconds ---\n" % (time.time() - start_time))
-				sys.exit()		
+				sys.exit()
 			ActualDeviceName = OrderedLines[pos+1].rstrip()
-			ActualDeviceType = OrderedLines[pos+3].rstrip()  
+			ActualDeviceType = OrderedLines[pos+3].rstrip()
 			EPICSTOPLCLENGTH = OrderedLines[pos+5].rstrip()
 			EPICSTOPLCDATABLOCKOFFSET = OrderedLines[pos+7].rstrip()
 			EPICSTOPLCPARAMETERSSTART = OrderedLines[pos+9].rstrip()
 			PLCTOEPICSDATABLOCKOFFSET = OrderedLines[pos+11].rstrip()
 			ActualDeviceNameWhite = ActualDeviceName
 			Text = "Device: "+ ActualDeviceName + " Type: "+ ActualDeviceType
-			print "    " + "-" * len(Text)
-			print "    " + Text
-			print "    " + "-" * len(Text)
+			print("    ", "-" * len(Text), sep='')
+			print("    ", Text, sep='')
+			print("    ", "-" * len(Text), sep='')
 			ActualDeviceNameWhite = ActualDeviceNameWhite.replace(":","")
 			ActualDeviceNameWhite = ActualDeviceNameWhite.replace("/","")
 			ActualDeviceNameWhite = ActualDeviceNameWhite.replace("\\","")
@@ -2397,7 +2397,7 @@ def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 			ActualDeviceNameWhite = ActualDeviceNameWhite.replace("[","")
 			ActualDeviceNameWhite = ActualDeviceNameWhite.replace("]","")
 			ActualDeviceNameWhite = ActualDeviceNameWhite.replace(".","")
-			
+
 			#Device Instance
 			if not Direct:
 				DeviceInstance.append("")
@@ -2418,34 +2418,34 @@ def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 
 			EPICS_device_calls_header.append("      \""+ActualDeviceName+"\" : Bool;   // HASH codes are OK")
 			EPICS_device_calls_test_header.append("      \""+ActualDeviceName+"\" : Bool;   // HASH codes are OK")
-			
-			EPICS_device_calls_body.append("");    
-			EPICS_device_calls_body.append("        //********************************************");
-			EPICS_device_calls_body.append("        // Device name: "+ActualDeviceName);
-			EPICS_device_calls_body.append("        // Device type: "+ActualDeviceType);
-			EPICS_device_calls_body.append("        //********************************************");
-			EPICS_device_calls_body.append("");
+
+			EPICS_device_calls_body.append("")
+			EPICS_device_calls_body.append("        //********************************************")
+			EPICS_device_calls_body.append("        // Device name: "+ActualDeviceName)
+			EPICS_device_calls_body.append("        // Device type: "+ActualDeviceType)
+			EPICS_device_calls_body.append("        //********************************************")
+			EPICS_device_calls_body.append("")
 			EPICS_device_calls_body.append("      \"DEV_"+ActualDeviceName+"_iDB\" ();")
-			
+
 			EndDeviceString = ActualDeviceName
-			EPICS_device_calls_test_body.append("");    
-			EPICS_device_calls_test_body.append("      //********************************************");
-			EPICS_device_calls_test_body.append("      // Device name: "+ActualDeviceName);
-			EPICS_device_calls_test_body.append("      // Device type: "+ActualDeviceType);
-			EPICS_device_calls_test_body.append("      //********************************************");
-			EPICS_device_calls_test_body.append("");
+			EPICS_device_calls_test_body.append("")
+			EPICS_device_calls_test_body.append("      //********************************************")
+			EPICS_device_calls_test_body.append("      // Device name: "+ActualDeviceName)
+			EPICS_device_calls_test_body.append("      // Device type: "+ActualDeviceType)
+			EPICS_device_calls_test_body.append("      //********************************************")
+			EPICS_device_calls_test_body.append("")
 			EPICS_device_calls_test_body.append("      \"DEV_"+ActualDeviceName+"_iDB\" (")
-			
-			
+
+
 			#Check if DeviceType is already generated
 			if ActualDeviceType not in DeviceTypeList:
 				if not Direct:
 					MaxStatusReg = 0;
 					MaxCommandReg = 0;
-				
+
 					NewDeviceType = True
 					DeviceTypeList.append(ActualDeviceType)
-					print "    ->  New device type found. ["+ ActualDeviceType+"] Creating source code..."
+					print("    ->  New device type found. [", ActualDeviceType, "] Creating source code...", sep='')
 					DevTypeHeader.append("FUNCTION_BLOCK \"" + "DEVTYPE_" + ActualDeviceType+ "\"")
 					DevTypeHeader.append("{ S7_Optimized_Access := 'TRUE' }")
 					DevTypeHeader.append("VERSION : 1.0")
@@ -2516,13 +2516,13 @@ def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 			InArray = False
 			DevTypeVAR_INPUT.append("      \"" + InArrayName + "\" "+"{ S7_HMI_Accessible := 'False'; S7_HMI_Visible := 'False'} : Array[1.."+ str(InArrayNum) +"] of "+ ActVariableType+";   //EPICS Status variables defined in an array")
 			InArrayName = ""
-				
+
 		if OrderedLines[pos].rstrip() == "STATUS":
 			CloseLastVariable()
 			DevTypeBODY_CODE.append("")
 			DevTypeBODY_CODE.append("    //********************************************")
 			DevTypeBODY_CODE.append("    //*************STATUS VARIABLES***************")
-			DevTypeBODY_CODE.append("    //********************************************")	
+			DevTypeBODY_CODE.append("    //********************************************")
 			DevTypeBODY_CODE.append("")
 			InStatus = True
 			InCommand = False
@@ -2533,7 +2533,7 @@ def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 			DevTypeBODY_CODE.append("")
 			DevTypeBODY_CODE.append("    //********************************************")
 			DevTypeBODY_CODE.append("    //*************COMMAND VARIABLES**************")
-			DevTypeBODY_CODE.append("    //********************************************")	
+			DevTypeBODY_CODE.append("    //********************************************")
 			DevTypeBODY_CODE.append("")
 			InStatus = False
 			InCommand = True
@@ -2544,7 +2544,7 @@ def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 			DevTypeBODY_CODE.append("")
 			DevTypeBODY_CODE.append("    //********************************************")
 			DevTypeBODY_CODE.append("    //************PARAMETER VARIABLES*************")
-			DevTypeBODY_CODE.append("    //********************************************")	
+			DevTypeBODY_CODE.append("    //********************************************")
 			DevTypeBODY_CODE.append("")
 			InStatus = False
 			InCommand = False
@@ -2554,23 +2554,23 @@ def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 		if OrderedLines[pos].rstrip().startswith("//"):
 			DevTypeBODY_CODE.append("       "+OrderedLines[pos].rstrip())
 		if OrderedLines[pos].rstrip() == "VARIABLE":
-			if (OrderedLines[pos + 2].rstrip() <> "EPICS") or (OrderedLines[pos + 4].rstrip() <> "TYPE") or	(OrderedLines[pos + 6].rstrip() <> "ARRAY_INDEX") or (OrderedLines[pos + 8].rstrip() <> "BIT_NUMBER"):	
-				print "ERROR:"
-				print "The .ifa file has a bad VARIABLE format! Exiting PLCFactory...\n"
+			if (OrderedLines[pos + 2].rstrip() <> "EPICS") or (OrderedLines[pos + 4].rstrip() <> "TYPE") or	(OrderedLines[pos + 6].rstrip() <> "ARRAY_INDEX") or (OrderedLines[pos + 8].rstrip() <> "BIT_NUMBER"):
+				print("ERROR:")
+				print("The .ifa file has a bad VARIABLE format! Exiting PLCFactory...\n")
 				print("--- %.1f seconds ---\n" % (time.time() - start_time))
-				sys.exit()		
-			
+				sys.exit()
+
 			ActVariablePLCName = OrderedLines[pos + 1].rstrip()
 			ActVariableEPICSName = OrderedLines[pos + 3].rstrip()
 			ActVariableType = OrderedLines[pos + 5].rstrip()
 			ActVariableArrayIndex = int(OrderedLines[pos + 7].rstrip())
 			ActVariableBitNumber = int(OrderedLines[pos + 9].rstrip())
-			
+
 			#Close the last variable if there is a new variable
 			if 	LastVariableType <> ActVariableType:
 				LastVariableType = ActVariableType
 				CloseLastVariable()
-			
+
 			if InStatus:
 				if InArray:
 					DevTypeVAR_INOUT.append("      \"" + ActVariablePLCName + "\" "+"{ S7_HMI_Accessible := 'False'; S7_HMI_Visible := 'False'} : "+ ActVariableType+";   //EPICS Status variable in an array: "+ActVariableEPICSName)
@@ -2586,8 +2586,8 @@ def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 						EPICS_device_calls_test_body.append("                                 "+ActVariablePLCName+" := \"EPICS_PLC_Tester\".#\""+ ActualDeviceName+"_" + ActVariablePLCName + "\",")
 					if (TIAVersion == "14"):
 						EPICS_device_calls_test_body.append("                                 "+"\""+ActVariablePLCName+"\""+" := \"EPICS_PLC_Tester\".#\""+ ActualDeviceName+"_" + ActVariablePLCName + "\",")
-				
-				
+
+
 			if InCommand:
 				DevTypeVAR_OUTPUT.append("      \"" + ActVariablePLCName + "\" "+"{ S7_HMI_Accessible := 'False'; S7_HMI_Visible := 'False'} : "+ ActVariableType+";   //EPICS Command variable: "+ActVariableEPICSName)
 				EPICS_PLC_TesterDB.append("      \"" + ActualDeviceName+"_" + ActVariablePLCName + "\" "+"{ S7_HMI_Accessible := 'False'; S7_HMI_Visible := 'False'} : "+ ActVariableType+";   //EPICS Command variable: "+ActVariableEPICSName)
@@ -2605,12 +2605,12 @@ def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 
 			#SUPPORTED TYPES
 			#PLC_types = {'BOOL', 'BYTE', 'WORD', 'DWORD', 'INT', 'DINT', 'REAL', 'TIME' }
-			
-			#====== BOOL TYPE ========	
+
+			#====== BOOL TYPE ========
 			if ActVariableType == "BOOL":
 				if InStatus:
 					if InArray:
-						InArrayNum = InArrayNum + 1 
+						InArrayNum = InArrayNum + 1
 						DevTypeBODY_CODE_ARRAY.append("              #\""+ ActVariablePLCName +"\" := "+InArrayName+"["+str(InArrayNum)+"];")
 					if StartingRegister <> ActVariableArrayIndex:
 						CloseLastVariable()
@@ -2621,7 +2621,7 @@ def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 						DevTypeBODY_CODE.append("       #MyBoolsinWord[" + str((int(ActVariableBitNumber)+8)) + "] := #\""+ ActVariablePLCName +"\";    //EPICSName: "+ActVariableEPICSName)
 						IsDouble = False
 						EndString = "#StatusReg["+str(ActVariableArrayIndex) +"] := #MyWord;"
-					else:	
+					else:
 						DevTypeBODY_CODE.append("       #MyBoolsinWord[" + str((int(ActVariableBitNumber)-8)) + "] := #\""+ ActVariablePLCName +"\";    //EPICSName: "+ActVariableEPICSName)
 						IsDouble = False
 						EndString = "#StatusReg["+str(ActVariableArrayIndex) +"] := #MyWord;"
@@ -2635,16 +2635,16 @@ def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 						DevTypeBODY_CODE.append("       #\""+ ActVariablePLCName +"\" := #MyBoolsinWord[" + str((int(ActVariableBitNumber)+8)) + "];    //EPICSName: "+ActVariableEPICSName)
 						IsDouble = False
 						EndString = ""
-					else:	
+					else:
 						DevTypeBODY_CODE.append("       #\""+ ActVariablePLCName +"\" := #MyBoolsinWord[" + str((int(ActVariableBitNumber)-8)) + "];    //EPICSName: "+ActVariableEPICSName)
 						IsDouble = False
 						EndString = ""
-			#==========================		
-			#====== BYTE TYPE ========	
+			#==========================
+			#====== BYTE TYPE ========
 			if ActVariableType == "BYTE":
 				if InStatus:
 					if InArray:
-						InArrayNum = InArrayNum + 1 
+						InArrayNum = InArrayNum + 1
 						DevTypeBODY_CODE_ARRAY.append("              #\""+ ActVariablePLCName +"\" := "+InArrayName+"["+str(InArrayNum)+"];")
 					if StartingRegister <> ActVariableArrayIndex:
 						CloseLastVariable()
@@ -2655,7 +2655,7 @@ def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 						DevTypeBODY_CODE.append("       #MyBytesinWord[0] := #\""+ ActVariablePLCName +"\";    //EPICSName: "+ActVariableEPICSName)
 						IsDouble = False
 						EndString = "#StatusReg["+str(ActVariableArrayIndex) +"] := #MyWord;"
-					else:	
+					else:
 						DevTypeBODY_CODE.append("       #MyBytesinWord[1] := #\""+ ActVariablePLCName +"\";    //EPICSName: "+ActVariableEPICSName)
 						IsDouble = False
 						EndString = "#StatusReg["+str(ActVariableArrayIndex) +"] := #MyWord;"
@@ -2669,16 +2669,16 @@ def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 						DevTypeBODY_CODE.append("       #\""+ ActVariablePLCName +"\" := #MyBytesinWord[1];    //EPICSName: "+ActVariableEPICSName)
 						IsDouble = False
 						EndString = ""
-					else:	
+					else:
 						DevTypeBODY_CODE.append("       #\""+ ActVariablePLCName +"\" := #MyBytesinWord[0];    //EPICSName: "+ActVariableEPICSName)
 						IsDouble = False
 						EndString = ""
-			#==========================		
-			#====== INT TYPE ========	
+			#==========================
+			#====== INT TYPE ========
 			if ActVariableType == "INT":
 				if InStatus:
 					if InArray:
-						InArrayNum = InArrayNum + 1 
+						InArrayNum = InArrayNum + 1
 						DevTypeBODY_CODE_ARRAY.append("              #\""+ ActVariablePLCName +"\" := "+InArrayName+"["+str(InArrayNum)+"];")
 					if StartingRegister <> ActVariableArrayIndex:
 						CloseLastVariable()
@@ -2697,12 +2697,12 @@ def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 						DevTypeBODY_CODE.append("       #\""+ ActVariablePLCName +"\" := #MyInt;    //EPICSName: "+ActVariableEPICSName)
 						IsDouble = False
 						EndString = ""
-			#==========================		
-			#====== WORD TYPE ========	
+			#==========================
+			#====== WORD TYPE ========
 			if ActVariableType == "WORD":
 				if InStatus:
 					if InArray:
-						InArrayNum = InArrayNum + 1 
+						InArrayNum = InArrayNum + 1
 						DevTypeBODY_CODE_ARRAY.append("              #\""+ ActVariablePLCName +"\" := "+InArrayName+"["+str(InArrayNum)+"];")
 					if StartingRegister <> ActVariableArrayIndex:
 						CloseLastVariable()
@@ -2720,12 +2720,12 @@ def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 						DevTypeBODY_CODE.append("       #\""+ ActVariablePLCName +"\" := #CommandReg["+str(ActVariableArrayIndex) +"];    //EPICSName: "+ActVariableEPICSName)
 						IsDouble = False
 						EndString = ""
-			#==========================		
-			#====== DINT TYPE ========	
+			#==========================
+			#====== DINT TYPE ========
 			if ActVariableType == "DINT":
 				if InStatus:
 					if InArray:
-						InArrayNum = InArrayNum + 1 
+						InArrayNum = InArrayNum + 1
 						DevTypeBODY_CODE_ARRAY.append("              #\""+ ActVariablePLCName +"\" := "+InArrayName+"["+str(InArrayNum)+"];")
 					if StartingRegister <> ActVariableArrayIndex:
 						CloseLastVariable()
@@ -2747,12 +2747,12 @@ def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 						DevTypeBODY_CODE.append("       #\""+ ActVariablePLCName +"\" := #MyDInt;    //EPICSName: "+ActVariableEPICSName)
 						IsDouble = True
 						EndString = ""
-			#==========================		
-			#====== DWORD TYPE ========	
+			#==========================
+			#====== DWORD TYPE ========
 			if ActVariableType == "DWORD":
 				if InStatus:
 					if InArray:
-						InArrayNum = InArrayNum + 1 
+						InArrayNum = InArrayNum + 1
 						DevTypeBODY_CODE_ARRAY.append("              #\""+ ActVariablePLCName +"\" := "+InArrayName+"["+str(InArrayNum)+"];")
 					if StartingRegister <> ActVariableArrayIndex:
 						CloseLastVariable()
@@ -2764,13 +2764,13 @@ def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 						EndString  = "#StatusReg["+str(ActVariableArrayIndex) +"] := #MyWordsinDWord[0];"
 						EndString2 = "#StatusReg["+str(ActVariableArrayIndex+1) +"] := #MyWordsinDWord[1];"
 				if InParameter or InCommand:
-					print "DWORD is not supported for ModbusTCP" 
-			#==========================		
-			#====== REAL TYPE ========	
+					print("DWORD is not supported for ModbusTCP")
+			#==========================
+			#====== REAL TYPE ========
 			if ActVariableType == "REAL":
 				if InStatus:
 					if InArray:
-						InArrayNum = InArrayNum + 1 
+						InArrayNum = InArrayNum + 1
 						DevTypeBODY_CODE_ARRAY.append("              #\""+ ActVariablePLCName +"\" := "+InArrayName+"["+str(InArrayNum)+"];")
 					if StartingRegister <> ActVariableArrayIndex:
 						CloseLastVariable()
@@ -2792,12 +2792,12 @@ def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 						DevTypeBODY_CODE.append("       #\""+ ActVariablePLCName +"\" := #MyReal;    //EPICSName: "+ActVariableEPICSName)
 						IsDouble = True
 						EndString = ""
-			#==========================		
-			#====== TIME TYPE ========	
+			#==========================
+			#====== TIME TYPE ========
 			if ActVariableType == "TIME":
 				if InStatus:
 					if InArray:
-						InArrayNum = InArrayNum + 1 
+						InArrayNum = InArrayNum + 1
 						DevTypeBODY_CODE_ARRAY.append("              #\""+ ActVariablePLCName +"\" := "+InArrayName+"["+str(InArrayNum)+"];")
 					if StartingRegister <> ActVariableArrayIndex:
 						CloseLastVariable()
@@ -2819,14 +2819,14 @@ def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 						DevTypeBODY_CODE.append("       #\""+ ActVariablePLCName +"\" := #MyDInt;    //EPICSName: "+ActVariableEPICSName)
 						IsDouble = True
 						EndString = ""
-			#==========================		
+			#==========================
 			if InStatus:
 				if ActVariableArrayIndex >= MaxStatusReg:
 					if IsDouble:
 						MaxStatusReg = ActVariableArrayIndex + 1
 					else:
 						MaxStatusReg = ActVariableArrayIndex
-					
+
 			if InParameter or InCommand:
 				if ActVariableArrayIndex >= MaxCommandReg:
 					if IsDouble:
@@ -2835,20 +2835,20 @@ def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 						MaxCommandReg = ActVariableArrayIndex
 
 	CloseLastVariable()
-	#Constuct the output source file 					
+	#Constuct the output source file
 	if EndDeviceString <> "":
-		EPICS_device_calls_test_body.append("                                 DEVICE_PARAM_OK=>#\""+EndDeviceString+"\");")					
+		EPICS_device_calls_test_body.append("                                 DEVICE_PARAM_OK=>#\""+EndDeviceString+"\");")
 		EndDeviceString = ""
 	if NewDeviceType == True:
 		if not Direct:
 			WriteDevType()
-	else:	
+	else:
 		DevTypeHeader = []
-		DevTypeVAR_INPUT = [] 
+		DevTypeVAR_INPUT = []
 		DevTypeVAR_INOUT = []
-		DevTypeVAR_OUTPUT = [] 
-		DevTypeDB_SPEC = [] 
-		DevTypeVAR_TEMP = [] 
+		DevTypeVAR_OUTPUT = []
+		DevTypeDB_SPEC = []
+		DevTypeVAR_TEMP = []
 		DevTypeBODY_HEADER = []
 		DevTypeBODY_CODE = []
 		DevTypeBODY_CODE_ARRAY = []
@@ -2866,11 +2866,12 @@ def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 		WriteEPICS_device_calls()
 		WriteEPICS_device_calls_test()
 
-	print "\nTotal ("+ str(ProcessedDeviceNum) + ") device(s) processed."
+	print("\nTotal", str(ProcessedDeviceNum), "device(s) processed.")
 	if not Direct:
-		print "Total ("+ str(len(DeviceTypeList)) + ") device type(s) generated.\n"
+		print("Total", str(len(DeviceTypeList)), "device type(s) generated.\n")
 	else:
-		print "Device types are not being generated. (Direct mode)\n"
+		print("Device types are not being generated. (Direct mode)\n")
+
 
 def produce(OutputDir, IfaPath, SclPath, TIAVersion, **kwargs):
 	global Direct
@@ -2917,7 +2918,7 @@ def produce(OutputDir, IfaPath, SclPath, TIAVersion, **kwargs):
 			#WriteDiagnostics
 			WriteDiagnostics(TIAVersion)
 		else:
-			print "NOTE:\nSkipping diagnostics"
+			print("NOTE:\nSkipping diagnostics")
 
 		#Write the output fo file
 		externalPath = os.path.join(OutputDir, "PLCFactory_external_source_TIAv{tiaversion}.scl".format(tiaversion = TIAVersion))
@@ -2931,7 +2932,7 @@ def produce(OutputDir, IfaPath, SclPath, TIAVersion, **kwargs):
 					for line in tiamap:
 						externalScl.write(line)
 			else:
-				print "NOTE:\nOnly diagnostics code is generated"
+				print("NOTE:\nOnly diagnostics code is generated")
 
 		generated_files["EXTERNAL_SCL"] = externalPath
 
@@ -2939,33 +2940,34 @@ def produce(OutputDir, IfaPath, SclPath, TIAVersion, **kwargs):
 
 	else:
 		if HASH == "":
-			print "ERROR:"
-			print "After pre-processing the .IFA file there was no HASH code inside!\n"
+			print("ERROR:")
+			print("After pre-processing the .IFA file there was no HASH code inside!\n")
 			return generated_files
 		if DeviceNum == 0:
-			print "ERROR:"
-			print "After pre-processing the .IFA file there were no DEVICES inside!\n"
+			print("ERROR:")
+			print("After pre-processing the .IFA file there were no DEVICES inside!\n")
 			return generated_files
+
 
 def main(argv):
 	os.system('clear')
 
-	print "  _____       _             __                 ______         _                   "
-	print " |_   _|     | |           / _|               |  ____|       | |                  "
-	print "   | |  _ __ | |_ ___ _ __| |_ __ _  ___ ___  | |__ __ _  ___| |_ ___  _ __ _   _ "
-	print "   | | | '_ \| __/ _ \ '__|  _/ _` |/ __/ _ \ |  __/ _` |/ __| __/ _ \| '__| | | |"
-	print "  _| |_| | | | ||  __/ |  | || (_| | (_|  __/ | | | (_| | (__| || (_) | |  | |_| |"
-	print " |_____|_| |_|\__\___|_|  |_| \__,_|\___\___| |_|  \__,_|\___|\__\___/|_|   \__, |"
-	print "                                                                             __/ |"
-	print " Copyright 2017-2018, European Spallation Source, Lund                      |___/ \n"
+	print("  _____       _             __                 ______         _                   ")
+	print(" |_   _|     | |           / _|               |  ____|       | |                  ")
+	print("   | |  _ __ | |_ ___ _ __| |_ __ _  ___ ___  | |__ __ _  ___| |_ ___  _ __ _   _ ")
+	print("   | | | '_ \| __/ _ \ '__|  _/ _` |/ __/ _ \ |  __/ _` |/ __| __/ _ \| '__| | | |")
+	print("  _| |_| | | | ||  __/ |  | || (_| | (_|  __/ | | | (_| | (__| || (_) | |  | |_| |")
+	print(" |_____|_| |_|\__\___|_|  |_| \__,_|\___\___| |_|  \__,_|\___|\__\___/|_|   \__, |")
+	print("                                                                             __/ |")
+	print(" Copyright 2017-2018, European Spallation Source, Lund                      |___/ \n")
 
-	
+
 
 	start_time     = time.time()
 
-	print "InterfaceFactory can't be run in standalone mode! Use PLCFactory instead."     
-	print ""     
-	print ""     
+	print("InterfaceFactory can't be run in standalone mode! Use PLCFactory instead.")
+	print()
+	print()
 
 if __name__ == "__main__":
 	main(sys.argv[1:])

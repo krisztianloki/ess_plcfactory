@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 """ PLC Factory: CCDB Interactions """
 
 __author__     = "Krisztian Loki, Gregor Ulm"
@@ -239,22 +241,22 @@ class CCDB(CC):
             result = self._get(url)
 
             if result.status_code == 204:
-                print "ERROR:"
-                print "Device " + deviceName + " not found.\n"
-                print "Please check the list of devices in CCDB, and keep"
-                print "in mind that device names are case-sensitive.\n"
-                print "Maybe you meant one of the following devices: "
-                print "(Accesing CCDB, may take a few seconds.)\n"
-                print "Most similar device names in CCDB in chosen slot (max. 10):"
+                print("""ERROR:
+Device {} not found.
+Please check the list of devices in CCDB, and keep
+in mind that device names are case-sensitive.
+Maybe you meant one of the following devices:
+(Accesing CCDB, may take a few seconds.)
+Most similar device names in CCDB in chosen slot (max. 10):""".format(deviceName))
                 top10 = self.getSimilarDevices(deviceName)[:10]
 
                 if top10 == []:
-                    print "No devices found."
+                    print("No devices found.")
                 else:
                     for (score, dev) in top10:
-                        print dev
+                        print(dev)
 
-                print "\nExiting.\n"
+                print("\nExiting.\n")
                 exit(1)
             elif result.status_code != 200:
                 raise CC.DownloadException(url = url, code = result.status_code)

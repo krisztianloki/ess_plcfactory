@@ -1,3 +1,4 @@
+from __future__ import print_function
 """ Template Factory: Interface Definition Classes """
 
 
@@ -643,7 +644,7 @@ class IF_DEF(object):
         if block is not None:
             block.end()
             self._properties[block.length_keyword()] = block.length() // 2
-            print "{var}: {length}".format(var = block.length_keyword(), length = str(block.length() // 2))
+            print("{var}: {length}".format(var = block.length_keyword(), length = str(block.length() // 2)))
 
 
     def _add(self, var):
@@ -1247,11 +1248,11 @@ class BASE_TYPE(SOURCE):
                 if len(value) > length:
                     msg_hdr = msg_hdr_fmt.format(field = key)
                     if self.sourcenum() != -1:
-                        print "At line number {lnum}:".format(lnum = self.sourcenum())
-                    print self._add_warning((msg_hdr + "{value} (length: {len} / {max_len})").format(value   = value,
+                        print("At line number {lnum}:".format(lnum = self.sourcenum()))
+                    print(self._add_warning((msg_hdr + "{value} (length: {len} / {max_len})").format(value   = value,
                                                                                                      len     = len(value),
-                                                                                                     max_len = length))
-                    print self._add_warning(" " * (len(msg_hdr) + length) + "^")
+                                                                                                     max_len = length)))
+                    print(self._add_warning(" " * (len(msg_hdr) + length) + "^"))
                     if strict:
                         self._keyword_params[key] = self._keyword_params[key][:length]
             except KeyError:

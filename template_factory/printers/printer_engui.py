@@ -1,3 +1,4 @@
+from __future__ import print_function
 """ Template Factory: engui printer """
 
 
@@ -85,7 +86,7 @@ engui opi_end
         if isinstance(var, BIT) or isinstance(var, ANALOG) or isinstance(var, ENUM):
             self._iformat("add_textupdate", var, output)
         else:
-            print "Skipping {pvname} of type {pvtype}\n".format(pvname = var.name(), pvtype = var.pv_type())
+            print("Skipping {pvname} of type {pvtype}\n".format(pvname = var.name(), pvtype = var.pv_type()))
 
 
     def _body_command(self, var, output):
@@ -96,4 +97,4 @@ engui opi_end
         elif isinstance(var, BIT):
             self._oformat("add_button", var, output)
         else:
-            print "Skipping {pvname} of type {pvtype}\n".format(pvname = var.name(), pvtype = var.pv_type())
+            print("Skipping {pvname} of type {pvtype}\n".format(pvname = var.name(), pvtype = var.pv_type()))
