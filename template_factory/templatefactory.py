@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 from __future__ import print_function
+from __future__ import absolute_import
 
 __author__    = "Krisztian Loki"
 __copyright__ = "Copyright 2017, European Spallation Source, Lund"

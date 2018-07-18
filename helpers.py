@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+
 """ PLC Factory: helper functions """
 
 __author__     = "Krisztian Loki"

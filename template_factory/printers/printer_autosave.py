@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+
 """ Template Factory: Autosave req file printer """
 
 

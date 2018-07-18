@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+
 """ PLC Factory: CCDB dump parser """
 
 __author__     = "Krisztian Loki"
