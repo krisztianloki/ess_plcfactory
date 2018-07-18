@@ -35,7 +35,7 @@ del tf_dir
 
 try:
     import tf
-except AttributeError, e:
+except AttributeError as e:
     if e.args[0] == "'module' object has no attribute 'iglob'":
         # glob.py has been renamed to plcf_glob.py but the .pyc can still be
         # there. Remove the .pyc and reload glob and try to import tf again
@@ -1185,6 +1185,6 @@ Beckhoff support is not found
 if __name__ == "__main__":
     try:
         main(sys.argv[1:])
-    except PLCFArgumentError, e:
+    except PLCFArgumentError as e:
         print(e.message, file = sys.stderr)
         exit(e.status)

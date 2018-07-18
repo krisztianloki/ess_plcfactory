@@ -34,17 +34,17 @@ def _processLine(if_def, line, num):
     except SyntaxError:
         print(errormsg.format(error = "Syntax error", num = num, line = line.strip()))
         exit(1)
-    except IfDefException, e :
+    except IfDefException as e :
         print(errormsg.format(error = e.type(), num = num, line = line.strip()))
         if e.args:
             print(e.args[0])
         exit(1)
-    except AssertionError, e :
+    except AssertionError as e :
         print(errormsg.format(error = "Internal error", num = num, line = line.strip()))
         if e.args:
             print(e.args[0])
         exit(1)
-    except Exception, e:
+    except Exception as e:
         print(errormsg.format(error = "Exception", num = num, line = line))
         if e.args:
             print(e.args[0])

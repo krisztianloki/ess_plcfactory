@@ -128,7 +128,7 @@ class CC(object):
 
             try:
                 self._download(save_as, url = url)
-            except CC.DownloadException, e:
+            except CC.DownloadException as e:
                 raise CC.ArtifactException(e, deviceName = self._device.name(), filename = filename)
 
             self.downloadedArtifacts.append(save_as)
@@ -299,7 +299,7 @@ class CC(object):
 
         try:
             return string.encode("unicode-escape").decode("string-escape").decode("utf-8").encode("utf-8")
-        except UnicodeDecodeError, e:
+        except UnicodeDecodeError as e:
             return string.encode("utf-8")
 
 

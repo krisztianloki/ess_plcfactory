@@ -604,11 +604,11 @@ class IF_DEF(object):
 
             if result._hashed:
                 self._hash.update(stripped_source)
-        except AssertionError, e:
+        except AssertionError as e:
             raise IfDefInternalError(e)
-        except SyntaxError, e:
+        except SyntaxError as e:
             raise IfDefSyntaxError(e)
-        except NameError, e:
+        except NameError as e:
             raise IfDefSyntaxError(e)
 
 
