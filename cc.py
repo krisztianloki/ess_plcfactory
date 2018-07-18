@@ -10,7 +10,10 @@ __license__    = "GPLv3"
 # Python libraries
 from   os import path     as os_path
 import zlib
-from   urlparse import urlsplit
+try:
+    from   urlparse import urlsplit
+except ImportError:
+    from urllib.parse import urlsplit
 
 try:
     import requests

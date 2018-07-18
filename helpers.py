@@ -8,7 +8,10 @@ __license__    = "GPLv3"
 # Python libraries
 import os
 import unicodedata
-from   urlparse import urlsplit
+try:
+    from   urlparse import urlsplit
+except ImportError:
+    from urllib.parse import urlsplit
 
 
 def rmdirs(path):
