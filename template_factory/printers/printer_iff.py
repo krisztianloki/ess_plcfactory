@@ -1,3 +1,4 @@
+from __future__ import division
 """ Template Factory: IFF printer class """
 
 
