@@ -156,7 +156,7 @@ Pre-processing .ifa file...""".format(IfaPath))
 				CommandArea = []
 				ParameterArea = []
 				FirstDevice = False
-			if pos+1 <> len(lines):
+			if pos+1 != len(lines):
 				if lines[pos].rstrip() == "STATUS":
 					InStatus = True
 					InCommand = False
@@ -765,14 +765,14 @@ def CloseLastVariable():
 	global IsDouble
 
 	if IsDouble:
-		if EndString <> "":
+		if EndString != "":
 			DevTypeBODY_CODE.append("       " + EndString)
 			EndString = ""
-		if EndString2 <> "":
+		if EndString2 != "":
 			DevTypeBODY_CODE.append("       " + EndString2)
 			EndString2 = ""
 	else:
-		if EndString <> "":
+		if EndString != "":
 			DevTypeBODY_CODE.append("       " + EndString)
 			EndString = ""
 
@@ -934,7 +934,7 @@ def ProcessIFADevTypes(OutputDir, IfaPath):
 				FC_EPICS_DEVICE_CALLS_FOOTER.append("</TcPlcObject>");
 
 			FirstDevice = False
-			if (OrderedLines[pos + 2].rstrip() <> "DEVICE_TYPE") or (OrderedLines[pos + 4].rstrip() <> "EPICSTOPLCLENGTH") or (OrderedLines[pos + 6].rstrip() <> "EPICSTOPLCDATABLOCKOFFSET") or (OrderedLines[pos + 8].rstrip() <> "EPICSTOPLCPARAMETERSSTART") or (OrderedLines[pos + 10].rstrip() <> "PLCTOEPICSDATABLOCKOFFSET"):
+			if (OrderedLines[pos + 2].rstrip() != "DEVICE_TYPE") or (OrderedLines[pos + 4].rstrip() != "EPICSTOPLCLENGTH") or (OrderedLines[pos + 6].rstrip() != "EPICSTOPLCDATABLOCKOFFSET") or (OrderedLines[pos + 8].rstrip() != "EPICSTOPLCPARAMETERSSTART") or (OrderedLines[pos + 10].rstrip() != "PLCTOEPICSDATABLOCKOFFSET"):
 				print("ERROR:")
 				print("The .ifa file has a bad DEVICE format! Exiting PLCFactory...\n")
 				print("--- %.1f seconds ---\n" % (time.time() - start_time))
@@ -1092,7 +1092,7 @@ def ProcessIFADevTypes(OutputDir, IfaPath):
 		# if OrderedLines[pos].rstrip().startswith("//"):
 			# DevTypeBODY_CODE.append("       "+OrderedLines[pos].rstrip())
 		if OrderedLines[pos].rstrip() == "VARIABLE":
-			if (OrderedLines[pos + 2].rstrip() <> "EPICS") or (OrderedLines[pos + 4].rstrip() <> "TYPE") or	(OrderedLines[pos + 6].rstrip() <> "ARRAY_INDEX") or (OrderedLines[pos + 8].rstrip() <> "BIT_NUMBER"):
+			if (OrderedLines[pos + 2].rstrip() != "EPICS") or (OrderedLines[pos + 4].rstrip() != "TYPE") or	(OrderedLines[pos + 6].rstrip() != "ARRAY_INDEX") or (OrderedLines[pos + 8].rstrip() != "BIT_NUMBER"):
 				print("ERROR:")
 				print("The .ifa file has a bad VARIABLE format! Exiting PLCFactory...\n")
 				print("--- %.1f seconds ---\n" % (time.time() - start_time))
@@ -1105,7 +1105,7 @@ def ProcessIFADevTypes(OutputDir, IfaPath):
 			ActVariableBitNumber = int(OrderedLines[pos + 9].rstrip())
 
 			#Close the last variable if there is a new variable
-			if 	LastVariableType <> ActVariableType:
+			if 	LastVariableType != ActVariableType:
 				LastVariableType = ActVariableType
 				CloseLastVariable()
 
@@ -1125,7 +1125,7 @@ def ProcessIFADevTypes(OutputDir, IfaPath):
 			#====== BOOL TYPE ========
 			if ActVariableType == "BOOL":
 				if InStatus:
-					if StartingRegister <> ActVariableArrayIndex:
+					if StartingRegister != ActVariableArrayIndex:
 						CloseLastVariable()
 						StartingRegister = ActVariableArrayIndex
 						DevTypeBODY_CODE.append("")
@@ -1137,7 +1137,7 @@ def ProcessIFADevTypes(OutputDir, IfaPath):
 					IsDouble = False
 					EndString = "EPICS_GVL.aDataS7[nOffsetStatus + "+str(ActVariableArrayIndex) +"]    := nTempUINT;"
 				if InParameter or InCommand:
-					if StartingRegister <> ActVariableArrayIndex:
+					if StartingRegister != ActVariableArrayIndex:
 						CloseLastVariable()
 						StartingRegister = ActVariableArrayIndex
 						DevTypeBODY_CODE.append("")
@@ -1149,7 +1149,7 @@ def ProcessIFADevTypes(OutputDir, IfaPath):
 			#====== BYTE TYPE ========
 			if ActVariableType == "BYTE":
 				if InStatus:
-					if StartingRegister <> ActVariableArrayIndex:
+					if StartingRegister != ActVariableArrayIndex:
 						CloseLastVariable()
 						StartingRegister = ActVariableArrayIndex
 						DevTypeBODY_CODE.append("")
@@ -1161,7 +1161,7 @@ def ProcessIFADevTypes(OutputDir, IfaPath):
 					IsDouble = False
 					EndString = ""
 				if InParameter or InCommand:
-					if StartingRegister <> ActVariableArrayIndex:
+					if StartingRegister != ActVariableArrayIndex:
 						CloseLastVariable()
 						StartingRegister = ActVariableArrayIndex
 						DevTypeBODY_CODE.append("")
@@ -1172,7 +1172,7 @@ def ProcessIFADevTypes(OutputDir, IfaPath):
 			#====== INT TYPE ========
 			if ActVariableType == "INT":
 				if InStatus:
-					if StartingRegister <> ActVariableArrayIndex:
+					if StartingRegister != ActVariableArrayIndex:
 						CloseLastVariable()
 						StartingRegister = ActVariableArrayIndex
 						DevTypeBODY_CODE.append("")
@@ -1184,7 +1184,7 @@ def ProcessIFADevTypes(OutputDir, IfaPath):
 					IsDouble = False
 					EndString = ""
 				if InParameter or InCommand:
-					if StartingRegister <> ActVariableArrayIndex:
+					if StartingRegister != ActVariableArrayIndex:
 						CloseLastVariable()
 						StartingRegister = ActVariableArrayIndex
 						DevTypeBODY_CODE.append("")
@@ -1195,7 +1195,7 @@ def ProcessIFADevTypes(OutputDir, IfaPath):
 			#====== WORD TYPE ========
 			if ActVariableType == "WORD":
 				if InStatus:
-					if StartingRegister <> ActVariableArrayIndex:
+					if StartingRegister != ActVariableArrayIndex:
 						CloseLastVariable()
 						StartingRegister = ActVariableArrayIndex
 						DevTypeBODY_CODE.append("")
@@ -1207,7 +1207,7 @@ def ProcessIFADevTypes(OutputDir, IfaPath):
 					IsDouble = False
 					EndString = ""
 				if InParameter or InCommand:
-					if StartingRegister <> ActVariableArrayIndex:
+					if StartingRegister != ActVariableArrayIndex:
 						CloseLastVariable()
 						StartingRegister = ActVariableArrayIndex
 						DevTypeBODY_CODE.append("")
@@ -1220,7 +1220,7 @@ def ProcessIFADevTypes(OutputDir, IfaPath):
 				if InStatus:
 					if InArray:
 						InArrayNum = InArrayNum + 1
-					if StartingRegister <> ActVariableArrayIndex:
+					if StartingRegister != ActVariableArrayIndex:
 						CloseLastVariable()
 						StartingRegister = ActVariableArrayIndex
 						DevTypeBODY_CODE.append("")
@@ -1229,7 +1229,7 @@ def ProcessIFADevTypes(OutputDir, IfaPath):
 					IsDouble = False
 					EndString = ""
 				if InParameter or InCommand:
-					if StartingRegister <> ActVariableArrayIndex:
+					if StartingRegister != ActVariableArrayIndex:
 						CloseLastVariable()
 						StartingRegister = ActVariableArrayIndex
 						DevTypeBODY_CODE.append("")
@@ -1242,7 +1242,7 @@ def ProcessIFADevTypes(OutputDir, IfaPath):
 				if InStatus:
 					if InArray:
 						InArrayNum = InArrayNum + 1
-					if StartingRegister <> ActVariableArrayIndex:
+					if StartingRegister != ActVariableArrayIndex:
 						CloseLastVariable()
 						StartingRegister = ActVariableArrayIndex
 						DevTypeBODY_CODE.append("")
@@ -1252,7 +1252,7 @@ def ProcessIFADevTypes(OutputDir, IfaPath):
 					IsDouble = False
 					EndString = ""
 				if InParameter or InCommand:
-					if StartingRegister <> ActVariableArrayIndex:
+					if StartingRegister != ActVariableArrayIndex:
 						CloseLastVariable()
 						StartingRegister = ActVariableArrayIndex
 						DevTypeBODY_CODE.append("")
@@ -1266,7 +1266,7 @@ def ProcessIFADevTypes(OutputDir, IfaPath):
 				if InStatus:
 					if InArray:
 						InArrayNum = InArrayNum + 1
-					if StartingRegister <> ActVariableArrayIndex:
+					if StartingRegister != ActVariableArrayIndex:
 						CloseLastVariable()
 						StartingRegister = ActVariableArrayIndex
 						DevTypeBODY_CODE.append("")
@@ -1276,7 +1276,7 @@ def ProcessIFADevTypes(OutputDir, IfaPath):
 					IsDouble = False
 					EndString = ""
 				if InParameter or InCommand:
-					if StartingRegister <> ActVariableArrayIndex:
+					if StartingRegister != ActVariableArrayIndex:
 						CloseLastVariable()
 						StartingRegister = ActVariableArrayIndex
 						DevTypeBODY_CODE.append("")
@@ -1290,7 +1290,7 @@ def ProcessIFADevTypes(OutputDir, IfaPath):
 				if InStatus:
 					if InArray:
 						InArrayNum = InArrayNum + 1
-					if StartingRegister <> ActVariableArrayIndex:
+					if StartingRegister != ActVariableArrayIndex:
 						CloseLastVariable()
 						StartingRegister = ActVariableArrayIndex
 						DevTypeBODY_CODE.append("")
@@ -1300,7 +1300,7 @@ def ProcessIFADevTypes(OutputDir, IfaPath):
 					IsDouble = False
 					EndString = ""
 				if InParameter or InCommand:
-					if StartingRegister <> ActVariableArrayIndex:
+					if StartingRegister != ActVariableArrayIndex:
 						CloseLastVariable()
 						StartingRegister = ActVariableArrayIndex
 						DevTypeBODY_CODE.append("")
@@ -1359,7 +1359,7 @@ def produce(OutputDir, IfaPath, SclPath, TIAVersion, **kwargs):
 	#Pre-processing of the IFA file
 	Pre_ProcessIFA(IfaPath)
 
-	if HASH <> "" and DeviceNum <> 0:
+	if HASH != "" and DeviceNum != 0:
 
 		helpers.makedirs(os.path.join(OutputDirectory,"BECKHOFF","EPICS","EPICS types"))
 		helpers.makedirs(os.path.join(OutputDirectory,"BECKHOFF","EPICS","EPICS calls"))
