@@ -124,8 +124,9 @@ class PRINTER(object):
 
     def _append_source(self, source, output):
         if isinstance(source, PRINTER_METADATA) and source.get(self.name()) is not None:
-            self._append_origin(source, output)
+            self._append_origin(source.source(), output)
             self._append(str(source.get(self.name())), output)
+            return
 
         if source.is_comment():
             if self._comments:
