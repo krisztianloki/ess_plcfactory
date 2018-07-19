@@ -28,13 +28,14 @@ TYPE
 ARRAY_INDEX
 {array_index}
 BIT_NUMBER
-{bit_number}"""
+{bit_number}
+"""
 
-_iff_beast_template = """{base}
-BEAST
+_iff_beast_template = """{base}BEAST
 {alarm_message}
 ARCHIVE
-{should_archive}"""
+{should_archive}
+"""
 
 
 
