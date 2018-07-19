@@ -578,6 +578,8 @@ class IF_DEF(object):
 
         self._evalEnv = dict()
         self._evalEnv['__builtins__'] = None
+        self._evalEnv['True'] = True
+        self._evalEnv['False'] = False
         for f in dir(self):
             val = getattr(self, f)
             if not hasattr(val, '__call__') or f.startswith('_'):
