@@ -117,11 +117,12 @@ class PRINTER(object):
         return self
 
 
-    def _append_origin(self, origin, output = None):
+    def _append_origin(self, origin, output):
         if self._show_origin and origin.strip() != "":
             output.append(self.comment() + self.origin() + origin)
 
-    def _append_source(self, source, output = None):
+
+    def _append_source(self, source, output):
         if isinstance(source, PRINTER_METADATA) and source.get(self.name()) is not None:
             self._append_origin(source, output)
             self._append(str(source.get(self.name())), output)
