@@ -1222,6 +1222,13 @@ class BASE_TYPE(SOURCE):
         return self._overlapped
 
 
+    def get_parameter(self, param_name, *val_if_not_found):
+        if len(val_if_not_found):
+            return self._keyword_params.get(param_name, val_if_not_found[0])
+
+        return self._keyword_params[param_name]
+
+
     def _check_pv_extra(self):
         msg_hdr_fmt = "The {field} field of the pv is too long: "
 
