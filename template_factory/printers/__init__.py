@@ -59,6 +59,7 @@ class PRINTER(object):
     def root_inst_slot(self):
         return self.plcf("ROOT_INSTALLATION_SLOT")
 
+
     def template(self):
         return self.plcf("TEMPLATE")
 
@@ -92,7 +93,7 @@ class PRINTER(object):
         self._check_if_list(output)
 
         gen_fname = "{basename}_TEMPLATE_{printer}.txt"
-        with open(gen_fname.format(basename = os.path.splitext(fname)[0], printer = self.name()), "w") as f:
+        with open(gen_fname.format(basename = os.path.splitext(os.path.basename(fname))[0], printer = self.name()), "w") as f:
             for line in output:
                 if line is not None:
                     f.write(line)
