@@ -30,7 +30,7 @@ These are control values sent to the PLC program. Their values are preserved bet
 The following types can be used to add a variable to an interface definition:
 
 *   **digital**; a simple 1-bit information. Maps to the **_binary input/output_** record in EPICS and to the **_BOOL_** type in the PLC
-*   **analog**; an integer of floating point value. Maps to the **_analog input/output_** record in EPICS and the **_user specified_** PLC type in the PLC
+*   **analog**; an integer or floating point value. Maps to the **_analog input/output_** record in EPICS and the **_user specified_** PLC type in the PLC
 *   **time**; an interval (NOT a timestamp) in milliseconds. Maps to the **_analog input/output_** record in EPICS and to the **_TIME_** type in the PLC
 *   **alarm**; a simple 1-bit information that generates an EPICS alarm if its value is 1\. Maps to the **_binary input_** record in EPICS and to the **_BOOL_** type in the PLC.
 *   ~~**enum**; an enumeration. Maps to the **_multi-bit binary input/output_** record in EPICS and the **_user specified_** PLC type in the PLC~~
@@ -50,7 +50,7 @@ The following PLC types can be used to "back" the variables defined in the inter
 *   **DWORD**; 32-bit unsigned integer
 *   **DINT**; 32-bit signed integer
 *   **UDINT**; 32-bit unsigned integer
-*   **REAL**; 64-bit floating point number
+*   **REAL**; 32-bit floating point number
 *   **TIME**; it is implicitly specified with the **time** type
 
 ## Data Layout
