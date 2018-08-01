@@ -63,9 +63,7 @@ class ST_CMD(PRINTER):
     #
     # BODY
     #
-    def body(self, if_def, output):
-        PRINTER.body(self, if_def, output)
-
+    def _ifdef_body(self, if_def, output):
         status = if_def._status_block()
         if status is not None:
             self._append("#COUNTER {status_cnt} = [PLCF# {status_cnt} + {db_length}]".format(status_cnt = STATUS_BLOCK.counter_keyword(),

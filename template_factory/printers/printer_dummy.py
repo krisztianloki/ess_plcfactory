@@ -38,8 +38,12 @@ class DUMMY(PRINTER):
     #
     # BODY
     #
-    def body(self, if_def, output):
-        PRINTER.body(self, if_def, output)
+    def _ifdef_body(self, if_def, output):
+        pass
+
+
+    def _any_body(self, output):
+        pass
 
 
     #

@@ -86,9 +86,7 @@ VERSION : 0.1
     #
     # BODY
     #
-    def body(self, if_def, output):
-        PRINTER.body(self, if_def, output)
-
+    def _ifdef_body(self, if_def, output):
         self._append("""
       "_CommsEPICSDataMappingFBFactory"(EPICSToPLCLength           := {epicstoplclength},
                                         EPICSToPLCDataBlockOffset  := [PLCF# ^(EPICSToPLCDataBlockStartOffset) + {cmd_cnt}],

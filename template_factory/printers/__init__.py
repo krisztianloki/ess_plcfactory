@@ -113,10 +113,20 @@ class PRINTER(object):
 
 
     def body(self, if_def, output):
-        assert isinstance(if_def, IF_DEF),  func_param_msg("if_def", "IF_DEF")
         self._check_if_list(output)
 
-        return self
+        if isinstance(if_def, IF_DEF):
+            self._ifdef_body(if_def, output)
+        else:
+            self._any_body(output)
+
+
+    def _ifdef_body(self, if_def, output):
+        pass
+
+
+    def _any_body(self, output):
+        pass
 
 
     def footer(self, output):

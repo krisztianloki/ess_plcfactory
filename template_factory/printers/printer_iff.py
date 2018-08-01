@@ -88,9 +88,7 @@ MAX_MODULES_IN_IO_DEVICE
     #
     # BODY
     #
-    def body(self, if_def, output):
-        PRINTER.body(self, if_def, output)
-
+    def _ifdef_body(self, if_def, output):
         self._append("""DEVICE
 {inst_slot}
 DEVICE_TYPE

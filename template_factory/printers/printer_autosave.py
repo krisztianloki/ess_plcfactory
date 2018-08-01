@@ -39,9 +39,7 @@ class AUTOSAVE(PRINTER):
     #
     # BODY
     #
-    def body(self, if_def, output):
-        PRINTER.body(self, if_def, output)
-
+    def _ifdef_body(self, if_def, output):
         self._output = output
 
         for src in if_def.interfaces():
@@ -75,9 +73,7 @@ class AUTOSAVE_TEST(AUTOSAVE):
     #
     # BODY
     #
-    def body(self, if_def, output):
-        PRINTER.body(self, if_def, output)
-
+    def _ifdef_body(self, if_def, output):
         self._output = output
 
         for src in if_def.interfaces():

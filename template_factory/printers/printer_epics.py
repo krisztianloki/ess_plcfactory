@@ -197,8 +197,7 @@ record(ai, "{root_inst_slot}:HeartbeatFromPLCR") {{
     #
     # BODY
     #
-    def body(self, if_def, output):
-        PRINTER.body(self, if_def, output)
+    def _ifdef_body(self, if_def, output):
         self._if_def = if_def
         self._output = output
 
@@ -489,8 +488,7 @@ record(fanout, "{root_inst_slot}:UploadParametersS") {{
     #
     # BODY
     #
-    def body(self, if_def, output):
-        PRINTER.body(self, if_def, output)
+    def _ifdef_body(self, if_def, output):
         self._output = output
 
         self._params = []

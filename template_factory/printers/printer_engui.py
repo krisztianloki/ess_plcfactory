@@ -51,9 +51,7 @@ engui opi_begin || return 1 2>/dev/null || exit 1
     #
     # BODY
     #
-    def body(self, if_def, output):
-        PRINTER.body(self, if_def, output)
-
+    def _ifdef_body(self, if_def, output):
         for src in if_def.interfaces():
             if isinstance(src, BASE_TYPE):
                 if src.is_status():

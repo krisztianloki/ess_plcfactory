@@ -45,9 +45,7 @@ class ARCHIVE(PRINTER):
     #
     # BODY
     #
-    def body(self, if_def, output):
-        PRINTER.body(self, if_def, output)
-
+    def _ifdef_body(self, if_def, output):
         inst_slot = self.inst_slot()
         for var in if_def.interfaces():
             if isinstance(var, BASE_TYPE) and var.get_parameter("ARCHIVE", False):
