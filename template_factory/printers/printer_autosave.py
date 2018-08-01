@@ -31,9 +31,7 @@ class AUTOSAVE(PRINTER):
     # HEADER
     #
     def header(self, output, **keyword_params):
-        PRINTER.header(self, output, **keyword_params)
-        self._append("""#FILENAME {inst_slot}-[PLCF#TEMPLATE]-[PLCF#TIMESTAMP].req
-""".format(inst_slot = self.inst_slot()), output)
+        PRINTER.header(self, output, **keyword_params).add_filename_header(output, "req")
 
         return self
 

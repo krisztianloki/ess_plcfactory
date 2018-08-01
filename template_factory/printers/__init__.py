@@ -68,6 +68,13 @@ class PRINTER(object):
         return self.plcf("TIMESTAMP")
 
 
+    def add_filename_header(self, output, extension = 'txt'):
+        self._append("#FILENAME {inst_slot}-{template}-{timestamp}.{ext}".format(inst_slot = self.root_inst_slot(),
+                                                                                 template  = self.template(),
+                                                                                 timestamp = self.timestamp(),
+                                                                                 ext       = extension), output)
+
+
     def modulename(self):
         return self.plcf("ext.eee_modulename()")
 

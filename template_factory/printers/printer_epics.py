@@ -44,8 +44,8 @@ class EPICS(PRINTER):
     # HEADER
     #
     def header(self, output, **keyword_params):
-        PRINTER.header(self, output, **keyword_params)
-        epics_db_header = """#FILENAME {inst_slot}-[PLCF#TEMPLATE]-[PLCF#TIMESTAMP].db
+        PRINTER.header(self, output, **keyword_params).add_filename_header(output, "db")
+        epics_db_header = """
 record(stringin, "{root_inst_slot}:ModVersionR") {{
 	field(DISP, "1")
 	field(VAL,  "$(MODVERSION=N/A)")
@@ -336,8 +336,8 @@ class EPICS_TEST(EPICS):
     # HEADER
     #
     def header(self, output, **keyword_params):
-        PRINTER.header(self, output, **keyword_params)
-        epics_db_header = """#FILENAME {inst_slot}-[PLCF#TEMPLATE]-[PLCF#TIMESTAMP].db
+        PRINTER.header(self, output, **keyword_params).add_filename_header(output, "db")
+        epics_db_header = """
 #########################################################
 ########## EPICS <-> PLC connection management ##########
 #########################################################
@@ -476,9 +476,8 @@ class UPLOAD_PARAMS(PRINTER):
     # HEADER
     #
     def header(self, output, **keyword_params):
-        PRINTER.header(self, output, **keyword_params)
-        epics_db_header = """#FILENAME {inst_slot}-[PLCF#TEMPLATE]-[PLCF#TIMESTAMP].db
-
+        PRINTER.header(self, output, **keyword_params).add_filename_header(output, "db")
+        epics_db_header = """
 record(fanout, "{root_inst_slot}:UploadParametersS") {{
 """.format(inst_slot      = self.inst_slot(),
            root_inst_slot = self.root_inst_slot())

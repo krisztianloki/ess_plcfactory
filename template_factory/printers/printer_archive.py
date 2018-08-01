@@ -39,9 +39,7 @@ class ARCHIVE(PRINTER):
         #
         # No need to initialize anything
         #
-        PRINTER.header(self, output, **keyword_params)._append("#FILENAME {inst_slot}-{template}-{timestamp}.txt".format(inst_slot = self.root_inst_slot(),
-                                                                                                                         template  = self.template(),
-                                                                                                                         timestamp = self.timestamp()), output)
+        PRINTER.header(self, output, **keyword_params).add_filename_header(output)
 
 
     #
