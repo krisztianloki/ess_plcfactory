@@ -402,17 +402,25 @@ def processTemplateID(templateID, rootDevice, rootDeviceType, rootArtefacts, con
 
         # get template
         template = None
+
+        # Try to process Interface Definition first
         if templatePrinter is not None:
             ifdef = getIfDef(elem)
             if ifdef is not None:
                 template = []
                 templatePrinter.body(ifdef, template)
 
+        # Try to download template from artifact
         if template is None:
             (deviceType, artefacts) = getArtefactNames(elem)
             print "Device type: " + deviceType
 
             template = getTemplateName(deviceType, artefacts, templateID)
+
+        # Try to check if we have a default template printer implementation
+        if template is None and templatePrinter is not None:
+            template = []
+            templatePrinter.body(None, template)
 
         if template is not None:
             # process template and add result to output
