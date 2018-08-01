@@ -927,7 +927,7 @@ def main(argv):
     else:
         glob.ccdb = CCDB()
 
-    default_printers = set()
+    default_printers = set(["DEVICE-LIST"])
 
     if args.plc_interface:
         default_printers.update( [ "EPICS-DB", "IFA", tia_map ] )
