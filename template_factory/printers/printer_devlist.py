@@ -32,7 +32,7 @@ class DEVLIST(PRINTER):
     #
     def header(self, output, **keyword_params):
         PRINTER.header(self, output, **keyword_params)
-        self.add_filename_header(output, "list")
+        self.add_filename_header(output)
         self._append(self.root_inst_slot(), output)
 
 
