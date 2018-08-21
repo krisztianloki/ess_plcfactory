@@ -125,4 +125,23 @@ Adding more than one spare bit:
 
 ~~**`add_bitmask("<name>")`**~~
 
+## Specifying archiving requirements
+
+If a variable has to be archived the **`ARCHIVE=<spec>`** construction can be used. <spec> can be one of the following:
+
+*   **`True`**; the variable will be archived with the default _sampling rate_ and _sampling method_ of Archiver Appliance
+*   **`<sampling rate>`**; the variable will be archived with the specified sampling rate and the default _sampling method_ of Archiver Appliance
+*   **`(<sampling_rate>, "<sampling_method>")`**; the variable will be archived with the specified sampling rate and sampling method. Sampling method can be **"SCAN"** or **"MONITOR"**
+
+The specifications will be collected in a file ending with _.archive_. This file has to be uploaded to the relevant archiver configuration repository.
+
 ## Examples
+
+### Archiving examples
+
+*   `add_digital("Error",`             **`ARCHIVE=True`**`)`
+    *   Archive with the default sampling rate and method
+*   `add_analog("ErrorCodeR", "INT",`  **`ARCHIVE=.1`**`)`
+    *   Archive with a sampling rate of 0.1 seconds and the default sampling method
+*   `add_analog("ErrorCodeR", "INT",`  **`ARCHIVE=(5, "SCAN")`**`)`
+    *   Archive with a sampling rate of 5 seconds and the **SCAN** sampling method. Note the **parentheses** and the **quotation marks** around _SCAN_
