@@ -1491,6 +1491,8 @@ class ALARM(BIT):
         self._severity = severity
         self._message  = message
         self._archive  = keyword_params.get("ARCHIVE", False)
+        if not isinstance(self._archive, bool):
+            self._archive = True
 
 
     def archive(self):
