@@ -385,9 +385,8 @@ def processTemplateID(templateID, rootDevice, rootDeviceType, rootArtefacts, con
     # for each device, find corresponding template and process it
     output     = []
 
-    # starting with devices controlled by the root device
-#    toProcess  = controls[::-1]  # reverse the list (_NOT_ in-place) so that pop will actually give elements in the right order
-    toProcess  = list(controls)
+    # process the root device too
+    toProcess  = [ rootDevice ]
     processed  = set()
     outputFile = os.path.join(OUTPUT_DIR, createFilename(header, rootDevice, templateID, rootDeviceType))
 
