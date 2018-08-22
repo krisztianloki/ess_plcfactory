@@ -88,9 +88,10 @@ class CCDB(CC):
             return self.download(url, saveas)
         except RuntimeError, e:
             print """ERROR:
-Cannot get artifact {dtyp}.{art}: error {code}""".format(dtyp = deviceType,
-                                                         art  = filename,
-                                                         code = e)
+Cannot get artifact {dtyp}.{art}: error {code} ({url})""".format(dtyp = deviceType,
+                                                                 art  = filename,
+                                                                 code = e,
+                                                                 url  = url)
             exit(1)
 
 
