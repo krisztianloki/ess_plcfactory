@@ -62,6 +62,8 @@ from   future_print import future_print
 TEMPLATE_DIR = "templates"
 OUTPUT_DIR   = "output"
 TEMPLATE_TAG = "TEMPLATE"
+HEADER_TAG   = "HEADER"
+FOOTER_TAG   = "FOOTER"
 IFDEF_TAG    = ".def"
 hashobj      = hashlib.sha256()
 ifdefs       = dict()
@@ -82,7 +84,7 @@ def openArtefact(deviceType, filenames, tag, templateID):
     lines = []
 
     for filename in filenames:
-        if matchingArtefact(filename, tag, templateID):
+        if matchingArtefact(filename, (tag, TEMPLATE_TAG), templateID):
             filename = getArtefact(deviceType, filename)
 
             if filename is None:
@@ -104,7 +106,6 @@ def getTemplateName(deviceType, filenames, templateID):
     result = None
 
     for filename in filenames:
-
         if matchingArtefact(filename, TEMPLATE_TAG, templateID):
 
             # download template and save in template directory
@@ -117,23 +118,27 @@ def getTemplateName(deviceType, filenames, templateID):
 
 def matchingArtefact(filename, tag, templateID):
     assert isinstance(filename,   str)
-    assert isinstance(tag,        str)
-    assert isinstance(templateID, str)
-
-    # attached artefacts may be of different file types, e.g. PDF
-    if not filename.endswith('.txt') or tag not in filename:
-        return False
 
     # exactly one '.' in filename
-    assert filename.count('.') == 1, filename
+    if filename.count('.') != 1:
+        return False
 
-    filename = filename.split('.')[0] # removing '.txt.
-    tmp      = filename.split("_")    # separating fields in filename
+    assert isinstance(templateID, str)
+    if isinstance(tag, tuple):
+        assert len(tag) == 2
+        assert isinstance(tag[0], str)
+        assert isinstance(tag[1], str)
 
-    # extract template ID
-    name     = tmp[-1]
+        match  = "{}.txt".format("_".join([tag[0], tag[1], templateID]))
+    else:
+        assert isinstance(tag, str)
 
-    return name == templateID
+        # do not match HEADERs and FOOTERs if not in HEADER/FOOTER mode
+        if HEADER_TAG in filename or FOOTER_TAG in filename:
+            return False
+        match  = "{}.txt".format("_".join([tag, templateID]))
+
+    return filename.endswith(match)
 
 
 def createFilename(header, device, templateID, deviceType):
@@ -336,13 +341,14 @@ def getHeaderFooter(templateID, deviceType, artefacts):
 
     templatePrinter = tf.get_printer(templateID)
     if templatePrinter is not None:
+        print "Using built-in template header/footer"
         header = []
         templatePrinter.header(header, PLC_TYPE = plc_type)
         footer = []
         templatePrinter.footer(footer)
     else:
-        header = openArtefact(deviceType, artefacts, "HEADER", templateID)
-        footer = openArtefact(deviceType, artefacts, "FOOTER", templateID)
+        header = openArtefact(deviceType, artefacts, HEADER_TAG, templateID)
+        footer = openArtefact(deviceType, artefacts, FOOTER_TAG, templateID)
 
     if len(header) == 0:
         print "No header found.\n"
@@ -407,6 +413,7 @@ def processTemplateID(templateID, rootDevice, rootDeviceType, rootArtefacts, con
         if templatePrinter is not None:
             ifdef = getIfDef(elem)
             if ifdef is not None:
+                print "Generating template from Definition File..."
                 template = []
                 templatePrinter.body(ifdef, template)
 
@@ -419,6 +426,7 @@ def processTemplateID(templateID, rootDevice, rootDeviceType, rootArtefacts, con
 
         # Try to check if we have a default template printer implementation
         if template is None and templatePrinter is not None:
+            print "Using default built-in template..."
             template = []
             templatePrinter.body(None, template)
 
