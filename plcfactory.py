@@ -150,14 +150,12 @@ def createFilename(header, device, templateID):
 
     # default filename is chosen when no custom filename is specified
     if len(header) == 0 or tagPos == -1:
-
         outputFile = device.name() + "_" + device.deviceType() + "_template-" + templateID \
                    + "_" + glob.timestamp + ".scl"
 
         return CCDB.sanitizeFilename(outputFile)
 
     else:
-
         filename = header[tagPos]
 
         # remove tag and strip surrounding whitespace
@@ -371,12 +369,14 @@ def getHeaderFooter(templateID, deviceType, artifacts):
     return (header, footer, templatePrinter)
 
 
-def processTemplateID(templateID, rootDevice, rootArtifacts, controls):
+def processTemplateID(templateID, devices, rootArtifacts):
     assert isinstance(templateID,      str)
+    assert isinstance(devices,         list)
     assert isinstance(rootArtifacts,   list)
-    assert isinstance(controls,        list)
 
     start_time = time.time()
+
+    rootDevice = devices[0]
 
     print "#" * 60
     print "Template ID " + templateID
@@ -387,24 +387,20 @@ def processTemplateID(templateID, rootDevice, rootArtifacts, controls):
 
     # process header/footer
     (header, footer, templatePrinter) = getHeaderFooter(templateID, rootDevice.deviceType(), rootArtifacts)
-
-    print "Processing entire tree of controls-relationships:\n"
-
-    # for each device, find corresponding template and process it
-    output     = []
-
-    # process the root device too
-    toProcess  = [ rootDevice ]
-    toProcess.extend(controls)
+    # has to acquire filename _before_ processing the header
+    # there are some special tags that are only valid in the header
     outputFile = os.path.join(OUTPUT_DIR, createFilename(header, rootDevice, templateID))
-
     if len(header):
         header = pt.process(rootDevice, header)
 
     if len(footer):
         footer = pt.process(rootDevice, footer)
 
-    for device in toProcess:
+    print "Processing entire tree of controls-relationships:\n"
+
+    # for each device, find corresponding template and process it
+    output     = []
+    for device in devices:
         deviceType = device.deviceType()
 
         print device.name()
@@ -509,13 +505,14 @@ def processDevice(deviceName, templateIDs):
 
     device = glob.ccdb.device(deviceName)
 
-    # find devices this device controls
-    controls = buildControlsList(device)
+    # create a stable list of controlled devices
+    devices = [ device ]
+    devices.extend(buildControlsList(device))
 
     # get artifact names of files attached to the root device
     rootArtifacts = device.artifactNames()
 
-    map(lambda x: processTemplateID(x, device, rootArtifacts, controls), templateIDs)
+    map(lambda x: processTemplateID(x, devices, rootArtifacts), templateIDs)
 
 
 def makedirs(path):
