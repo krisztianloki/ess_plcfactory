@@ -259,8 +259,6 @@ def getIfDef(device):
     deviceType = device.deviceType()
 
     if deviceType in ifdefs:
-        print "Device type: " + deviceType
-
         return ifdefs[deviceType]
 
     artifacts = device.artifactNames()
@@ -297,8 +295,6 @@ def getIfDef(device):
         ifdef = tf.processLines(f, HASH = hashobj, FILENAME = filename)
 
     if ifdef is not None:
-        print "Device type: " + deviceType
-
         ifdefs[deviceType] = ifdef
 
     return ifdef
@@ -306,16 +302,44 @@ def getIfDef(device):
 
 def buildControlsList(device):
     # find devices this device _directly_ controls
-    controls = device.controls()
+    pool = device.controls()
 
-    print str(device) + " controls: "
+    # find all devices that are directly or indirectly controlled by 'device'
+    controlled_devices = set(pool)
+    while pool:
+        dev = pool.pop()
 
-    for controlledDevice in controls:
-        print "\t- " + str(controlledDevice)
+        cdevs = dev.controls()
+        for cdev in cdevs:
+            if cdev not in controlled_devices:
+                controlled_devices.add(cdev)
+                pool.append(cdev)
+
+    # group them by device type
+    pool = list(controlled_devices)
+    controlled_devices = dict()
+    for dev in pool:
+        device_type = dev.deviceType()
+        try:
+            controlled_devices[device_type].append(dev)
+        except KeyError:
+            controlled_devices[device_type] = [ dev ]
+
+    print device.name() + " controls: "
+    # sort items into a list
+    def sortkey(device):
+        return device.name()
+    pool = list()
+    for device_type in sorted(controlled_devices):
+        print "\t- " + device_type
+
+        for dev in sorted(controlled_devices[device_type], key=sortkey):
+            pool.append(dev)
+            print "\t\t-- " + dev.name()
 
     print "\n"
 
-    return controls
+    return pool
 
 
 def getHeaderFooter(templateID, deviceType, artifacts):
@@ -352,6 +376,8 @@ def processTemplateID(templateID, rootDevice, rootArtifacts, controls):
     assert isinstance(rootArtifacts,   list)
     assert isinstance(controls,        list)
 
+    start_time = time.time()
+
     print "#" * 60
     print "Template ID " + templateID
     print "Device at root: " + str(rootDevice) + "\n"
@@ -369,7 +395,7 @@ def processTemplateID(templateID, rootDevice, rootArtifacts, controls):
 
     # process the root device too
     toProcess  = [ rootDevice ]
-    processed  = set()
+    toProcess.extend(controls)
     outputFile = os.path.join(OUTPUT_DIR, createFilename(header, rootDevice, templateID))
 
     if len(header):
@@ -378,14 +404,13 @@ def processTemplateID(templateID, rootDevice, rootArtifacts, controls):
     if len(footer):
         footer = pt.process(rootDevice, footer)
 
-    while toProcess != []:
+    for device in toProcess:
+        deviceType = device.deviceType()
 
-        device = toProcess.pop()
+        print device.name()
+        print "Device type: " + deviceType
 
-        if device in processed:  # this should be redundant
-            continue
-
-        print device
+        hashobj.update(device.name())
 
         # get template
         template = None
@@ -400,9 +425,7 @@ def processTemplateID(templateID, rootDevice, rootArtifacts, controls):
 
         # Try to download template from artifact
         if template is None:
-            deviceType = device.deviceType()
             artifacts  = device.artifactNames()
-            print "Device type: " + deviceType
 
             template = getTemplateName(deviceType, artifacts, templateID)
 
@@ -420,22 +443,7 @@ def processTemplateID(templateID, rootDevice, rootArtifacts, controls):
         else:
             print "No template found."
 
-        controls = device.controls()
-
-        print "This device controls: "
-
-        if controls != None and len(controls) > 0:
-
-            for c in controls:
-                print "\t- " + str(c) #, c in processed
-                if c not in processed:
-                    toProcess.append(c)
-
-        else:
-            print "N/A"
-
         print "=" * 40
-        processed.add(device)
 
     print "\n"
 
@@ -489,6 +497,7 @@ def processTemplateID(templateID, rootDevice, rootArtifacts, controls):
 
     print "Output file written: " + outputFile + "\n",
     print "Hash sum: " + glob.ccdb.getHash(hashobj)
+    print("--- %s %.1f seconds ---\n" % (templateID, time.time() - start_time))
 
 
 def processDevice(deviceName, templateIDs):
@@ -664,7 +673,7 @@ def banner():
         print "|  __ \| |    / ____| |  ____|       | |                   "
         print "| |__) | |   | |      | |__ __ _  ___| |_ ___  _ __ _   _  "
         print "|  ___/| |   | |      |  __/ _` |/ __| __/ _ \| '__| | | | "
-        print "| |    | |___| |____  | | | (_| | (__| || (_) | |  | |_| | "
+        print "| |    | |___| |____  | | ( (_| | (__| |( (_) | |  | |_| | "
         print "|_|    |______\_____| |_|  \__,_|\___|\__\___/|_|   \__, | "
         print "                                                     __/ | "
         print "European Spallation Source, Lund                    |___/ \n"
