@@ -11,11 +11,14 @@ from   os import path as os_path
 
 # PLC Factory modules
 from   cc import CC
+from ccdb import CCDB
 
 
 class CCDB_FILE(CC):
     def __init__(self, filename):
         CC.__init__(self)
+        CCDB.Device.ccdb = self
+
 
         if os_path.isdir(filename):
             self._readdir(filename)
@@ -29,36 +32,8 @@ class CCDB_FILE(CC):
         return None
 
 
-    def _inconsistent(self, device, field):
-        raise KeyError("Inconsistent CCDB dump: {device} has no field {field}".format(device = device, field = field))
-
-
-    def _controls(self, device):
-        return self._inconsistent(device, 'controls')
-
-
-    def _controlledBy(self, device):
-        return self._inconsistent(device, 'controlledBy')
-
-
-    def _properties(self, device):
-        return self._inconsistent(device, 'properties')
-
-
-    def _propertiesDict(self, device, prefixToIgnore):
-        return self._inconsistent(device, None)
-
-
-    def _getDeviceType(self, device):
-        return self._inconsistent(device, "deviceType")
-
-
-    def _getDescription(self, device):
-        return self._inconsistent(device, "description")
-
-
-    def _artefacts(self, device):
-        return self._inconsistent(device, "artifacts")
+    def _device(self, deviceName):
+        raise KeyError("No such device: {}".format(deviceName))
 
 
     def _getArtefactFromDir(self, deviceType, filename, directory = None):
@@ -124,8 +99,10 @@ class CCDB_FILE(CC):
         return []
 
 
-    def _createDeviceDict(self, devicedict):
-        self._deviceDict = ast.literal_eval(devicedict)
+    def _createDevices(self, devicedict):
+        deviceDict = ast.literal_eval(devicedict)
+        for (key, value) in deviceDict.iteritems():
+            self._devices[key] = CCDB.Device(value)
 
 
     def _readdir(self, directory):
@@ -143,7 +120,7 @@ class CCDB_FILE(CC):
             else:
                 raise
 
-        self._createDeviceDict(devicedict)
+        self._createDevices(devicedict)
         self.getArtefact = self._getArtefactFromDir
         self.getArtefactFromURL = self._getArtefactFromURLFromDir
 
@@ -153,7 +130,7 @@ class CCDB_FILE(CC):
         self._zipfile = zipfile.ZipFile(filename, "r")
 
         try:
-            self._createDeviceDict(self._zipfile.read(os_path.join("ccdb", "device.dict")))
+            self._createDevices(self._zipfile.read(os_path.join("ccdb", "device.dict")))
         except KeyError:
             raise RuntimeError("Required file 'device.dict' does not exist!")
 

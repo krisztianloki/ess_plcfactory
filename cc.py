@@ -34,12 +34,73 @@ class CC(object):
     paths_cached = dict()
 
 
-    def __init__(self):
-        self._hashSum              = None
+    class Device(object):
+        def __init__(self):
+            pass
 
-        # all devices and their properties
-        # key: device, value: dict of all properties/values
-        self._deviceDict           = dict()
+
+        @staticmethod
+        def _ensure(var, default):
+            #
+            # Do not return None
+            #
+            if var is not None:
+                return var
+
+            return default
+
+
+        # Returns: {}
+        def keys(self):
+            raise NotImplementedError
+
+
+        # Returns: ""
+        def name(self):
+            raise NotImplementedError
+
+
+        # Returns: []
+        def controls(self):
+            return self._ensure(self._controls(), [])
+
+
+        # Returns: []
+        def controlledBy(self):
+            return self._ensure(self._controlledBy(), [])
+
+
+        # Returns: []
+        def properties(self):
+            return self._ensure(self._properties(), [])
+
+
+        # Returns: ""
+        def deviceType(self):
+            return self._ensure(self._deviceType(), "")
+
+
+        # Returns: ""
+        def description(self):
+            return self._ensure(self._description(), "")
+
+
+        # Returns: []
+        def artifacts(self):
+            return self._ensure(self._artifacts(), [])
+
+
+        # Returns: []
+        def artifactNames(self):
+            return self._ensure(self._artifactNames(), [])
+
+
+
+    def __init__(self):
+        # all devices; key, Device pairs
+        self._devices              = dict()
+
+        self._hashSum              = None
 
         # cache for device, property dictionary
         self._propDict             = dict()
@@ -122,17 +183,6 @@ class CC(object):
 
 
     @staticmethod
-    def _ensure(var, default):
-        #
-        # Do not return None
-        #
-        if var is not None:
-            return var
-
-        return default
-
-
-    @staticmethod
     def download(url, saveas, verify = True):
         result = requests.get(url, verify = verify)
 
@@ -146,114 +196,81 @@ class CC(object):
         return saveas
 
 
-    def _getCached(self, device, field):
-        return self._deviceDict[device].get(field, [])
+    # Returns: CC.Device
+    def device(self, deviceName):
+        try:
+            return self._devices[deviceName]
+        except KeyError:
+            return self._device(deviceName)
 
 
     # Returns: []
-    def controls(self, device):
-        assert isinstance(device, str)
+    def controls(self, deviceName):
+        assert isinstance(deviceName, str)
 
-        try:
-            cached = self._getCached(device, 'controls')
-        except KeyError:
-            cached = self._controls(device)
-
-        return self._ensure(cached, [])
+        return self.device(deviceName).controls()
 
 
     # Returns: []
-    def controlledBy(self, device):
-        assert isinstance(device, str)
+    def controlledBy(self, deviceName):
+        assert isinstance(deviceName, str)
 
-        try:
-            cached = self._getCached(device, 'controlledBy')
-        except KeyError:
-            cached = self._controlledBy(device)
-
-        return self._ensure(cached, [])
-
-
-    # Returns: []
-    def properties(self, device):
-        assert isinstance(device, str)
-
-        try:
-            cached = self._getCached(device, 'properties')
-        except KeyError:
-            cached = self._properties(device)
-
-        return self._ensure(cached, [])
+        return self.device(deviceName).controlledBy()
 
 
     # Returns: {}
-    def propertiesDict(self, device, prefixToIgnore = "PLCF#"):
-        assert isinstance(device, str)
+    def properties(self, deviceName):
+        assert isinstance(deviceName, str)
 
-        if (device, prefixToIgnore) in self._propDict:
-            return self._propDict[device, prefixToIgnore]
+        return self.device(deviceName).properties()
 
-        propList = self.properties(device)
+
+    # Returns: {}
+    def propertiesDict(self, deviceName, prefixToIgnore = "PLCF#"):
+        assert isinstance(deviceName, str)
+
+        if (deviceName, prefixToIgnore) in self._propDict:
+            return self._propDict[deviceName, prefixToIgnore]
+
         result = {}
-
-        for elem in propList:
-            assert isinstance(elem, dict), type(elem)
-
-            name  = elem.get("name")
-            value = elem.get("value")
-
-            if value == "null" and "List" in elem.get("dataType"):
-                value = []
-
+        for (name, value) in self.properties(deviceName).iteritems():
             # remove prefix if it exists
             if name.startswith(prefixToIgnore):
                 name = name[len(prefixToIgnore):]
 
-            # sanity check against duplicate values, which would point to an
-            # issue with the entered data
-            assert name not in result
-
             result[name] = value
 
-        self._propDict[device, prefixToIgnore] = result
+        self._propDict[deviceName, prefixToIgnore] = result
 
         return result
 
 
     # Returns: ""
-    def getDeviceType(self, device):
-        assert isinstance(device, str), type(device)
+    def getDeviceType(self, deviceName):
+        assert isinstance(deviceName, str)
 
-        try:
-            return self._getCached(device, "deviceType")
-        except KeyError:
-            return self._getDeviceType(device)
+        return self.device(deviceName).deviceType()
 
 
     # Returns: ""
-    def getDescription(self, device):
-        assert isinstance(device, str), type(device)
+    def getDescription(self, deviceName):
+        assert isinstance(deviceName, str)
 
-        try:
-            return self._getCached(device, "description")
-        except KeyError:
-            return self._getDescription(device)
+        return self.device(deviceName).description()
 
 
     # Returns: []
-    def getArtefactNames(self, device):
-        assert isinstance(device, str), type(device)
+    def artifacts(self, deviceName):
+        assert isinstance(deviceName, str)
 
-        try:
-            artefacts  = self._getCached(device, "artifacts")
-        except KeyError:
-            artefacts = self._artefacts(device)
+        return self.device(deviceName).artifacts()
 
-        artefactNames = []
-        if artefacts is not None:
-          artefactNames = map(lambda an: an.get("name"), filter(lambda fa: fa.get("type") == "FILE", artefacts))
 
-        return artefactNames
+    # Returns: []
+    def getArtefactNames(self, deviceName):
+        assert isinstance(deviceName, str)
+
+        return self.device(deviceName).artifactNames()
 
 
     # Returns: ""
@@ -292,19 +309,16 @@ class CC(object):
         return saveas
 
 
-    def getArtefactURL(self, device, name):
-        assert isinstance(device, str), type(device)
-        assert isinstance(name, str),   type(name)
+    def getArtefactURL(self, deviceName, name):
+        assert isinstance(deviceName, str)
+        assert isinstance(name, str)
 
-        try:
-            artefacts  = self._getCached(device, "artifacts")
-        except KeyError:
-            artefacts = self._artefacts(device)
+        artifacts = self.device(deviceName).artifacts()
 
-        if artefacts is None:
+        if artifacts is None:
             return None
 
-        uris = filter(lambda ua: ua.get("type") == "URI" and ua.get("name") == name, artefacts)
+        uris = filter(lambda ua: ua.get("type") == "URI" and ua.get("name") == name, artifacts)
         if len(uris) == 0:
             return None
 
@@ -314,8 +328,8 @@ class CC(object):
 
 
     # Returns: []
-    def getSimilarDevices(self, device):
-        assert isinstance(device, str)
+    def getSimilarDevices(self, deviceName):
+        assert isinstance(deviceName, str)
 
         raise NotImplementedError
 
@@ -330,25 +344,25 @@ class CC(object):
         filename = os_path.join(directory, self.sanitizeFilename(filename))
         dumpfile = zipfile.ZipFile(filename, "w", zipfile.ZIP_DEFLATED)
 
-        dumpfile.writestr(os_path.join("ccdb", "device.dict"), str(self._deviceDict))
+        dumpfile.writestr(os_path.join("ccdb", "device.dict"), str(self._devices))
         for template in self._downloadedArtifacts:
             dumpfile.write(template, os_path.join("ccdb", template))
 
         return filename
 
 
-    def backtrack(self, prop, device):
+    def backtrack(self, prop, deviceName):
         assert isinstance(prop,   str)
-        assert isinstance(device, str)
+        assert isinstance(deviceName, str)
 
         # starting by one device, looking for property X, find a device
         # in a higher level of the hierarchy that has that property
 
-        if (device, prop) in self._backtrackCache:
-            return self._backtrackCache[device, prop]
+        if (deviceName, prop) in self._backtrackCache:
+            return self._backtrackCache[deviceName, prop]
 
         # starting point: all devices 'device' is controlled by
-        leftToProcess = list(self.controlledBy(device))
+        leftToProcess = list(self.controlledBy(deviceName))
         processed     = []
 
         # keep track of number of iterations
@@ -377,7 +391,7 @@ class CC(object):
 
             if prop in propDict:
                 val = propDict.get(prop)
-                self._backtrackCache[device, prop] = val
+                self._backtrackCache[deviceName, prop] = val
 
                 return val
 
@@ -402,23 +416,23 @@ class CC(object):
         crc32 = 0
 
         # get all devices
-        devices = self._deviceDict.keys()
+        deviceNames = self._devices.keys()
 
         # ... in alphabetical order
-        devices.sort()
+        deviceNames.sort()
 
         # now the same for each device:
-        for device in devices:
-            crc32 = zlib.crc32(device, crc32)
+        for deviceName in deviceNames:
+            crc32 = zlib.crc32(deviceName, crc32)
             if hashobj is not None:
-                hashobj.update(device)
+                hashobj.update(deviceName)
 
-            properties = self._deviceDict[device]
-            keys       = properties.keys()
+            device     = self._devices[deviceName]
+            keys       = device.keys()
             keys.sort()
 
             for k in keys:
-                tmp = self._getOrderedString([properties[k]])
+                tmp = self._getOrderedString([device[k]])
 
                 crc32 = zlib.crc32(k, crc32)
                 crc32 = zlib.crc32(tmp, crc32)
@@ -426,7 +440,6 @@ class CC(object):
                 if hashobj is not None:
                     hashobj.update(k)
                     hashobj.update(tmp)
-
 
         if hashobj is not None:
             crc32 = zlib.crc32(hashobj.hexdigest())

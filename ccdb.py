@@ -35,8 +35,90 @@ except ImportError:
 
 
 class CCDB(CC):
+    class Device(CC.Device):
+        ccdb = None
+
+        def __init__(self, slot):
+            super(CCDB.Device, self).__init__()
+            self._slot  = slot
+            self._props = None
+
+
+        def __str__(self):
+            return self.name()
+
+
+        def __repr__(self):
+            return str(self._slot)
+
+
+        def __getitem__(self, item):
+            return self._slot[item]
+
+
+        def keys(self):
+            return self._slot.keys()
+
+
+        def name(self):
+            return self._slot["name"]
+
+
+        def _controls(self):
+            return self._slot.get("controls", [])
+
+
+        def _controlledBy(self):
+            return self._slot.get("controlledBy", [])
+
+
+        def _properties(self):
+            if self._props is not None:
+                return self._props
+
+            props = self._slot.get("properties", [])
+            self._props = dict()
+            for prop in props:
+                name  = prop.get("name")
+                value = prop.get("value")
+
+                if value == "null" and "List" in prop.get("dataType"):
+                    value = []
+
+                # sanity check against duplicate values, which would point to an
+                # issue with the entered data
+                assert name not in self._props
+
+                self._props[name] = value
+
+            return self._props
+
+
+        def _deviceType(self):
+            return self._slot.get("deviceType", None)
+
+
+        def _description(self):
+            return self._slot.get("description", "")
+
+
+        def _artifacts(self):
+            return self._slot.get("artifacts", [])
+
+
+        def _artifactNames(self):
+            artifacts = self.artifacts()
+            artifactNames = []
+            if artifacts is not None:
+                artifactNames = map(lambda an: an.get("name"), filter(lambda fa: fa.get("type") == "FILE", artifacts))
+
+            return artifactNames
+
+
+
     def __init__(self, url = None, verify = True):
         CC.__init__(self)
+        CCDB.Device.ccdb = self
 
         if url is None:
             self._url = "https://ccdb.esss.lu.se/rest/"
@@ -44,40 +126,6 @@ class CCDB(CC):
             self._url = url
 
         self._verify = verify
-
-
-    def _controls(self, device):
-        # Greedily request transitive controls information
-        url    = "".join([ self._url, "slots/", device, "/controls/?transitive=", str(True) ])
-
-        result = self._get(url)
-        if result.status_code == 200:
-            slots = self.tostring(json.loads(result.text)["installationSlots"])
-            for slot in slots:
-                self._deviceDict[slot["name"]] = slot
-
-        # Also retrieve the device itself
-        return self._getField(device, 'controls')
-
-
-    def _controlledBy(self, device):
-        return self._getField(device, 'controlledBy')
-
-
-    def _properties(self, device):
-        return self._getField(device, 'properties')
-
-
-    def _getDeviceType(self, device):
-        return self._getField(device, "deviceType")
-
-
-    def _getDescription(self, device):
-        return self._getField(device, "description")
-
-
-    def _artefacts(self, device):
-        return self._getField(device, "artifacts")
 
 
     # download artefact and save as saveas
@@ -103,11 +151,11 @@ Cannot get artifact {dtyp}.{art}: error {code} ({url})""".format(dtyp = deviceTy
         return CC.download(url, saveas, verify = self._verify)
 
 
-    def getSimilarDevices(self, device):
-        assert isinstance(device, str)
-        assert device.count(":") == 1, "bad formatting of device name: " + device
+    def getSimilarDevices(self, deviceName):
+        assert isinstance(deviceName, str)
+        assert deviceName.count(":") == 1, "bad formatting of device name: " + deviceName
 
-        (slot, deviceName) = device.split(":")
+        slot = deviceName.split(":")[0]
 
         url = self._url + "slotNames/"
 
@@ -124,30 +172,29 @@ Cannot get artifact {dtyp}.{art}: error {code} ({url})""".format(dtyp = deviceTy
         candidates = filter(lambda x: x.startswith(slot), allDevices)
 
         # compute Levenshtein distances
-        distances  =  map(lambda x: (levenshtein.distance(device, x), x), candidates)
+        distances  =  map(lambda x: (levenshtein.distance(deviceName, x), x), candidates)
         distances.sort()
 
         return distances
 
 
-    def _getField(self, device, field):
-        assert isinstance(device, str)
-        assert isinstance(field,  str)
+    def _device(self, deviceName):
+        assert isinstance(deviceName, str)
     
-        if device not in self._deviceDict:
-            url     = self._url + "slots/" + device
+        if deviceName not in self._devices:
+            url     = self._url + "slots/" + deviceName
 
             result = self._get(url)
 
             if result.status_code == 204:
                 print "ERROR:"
-                print "Device " + device + " not found.\n"
+                print "Device " + deviceName + " not found.\n"
                 print "Please check the list of devices in CCDB, and keep"
                 print "in mind that device names are case-sensitive.\n"
                 print "Maybe you meant one of the following devices: "
                 print "(Accesing CCDB, may take a few seconds.)\n"
                 print "Most similar device names in CCDB in chosen slot (max. 10):"
-                top10 = self.getSimilarDevices(device)[:10]
+                top10 = self.getSimilarDevices(deviceName)[:10]
 
                 if top10 == []:
                     print "No devices found."
@@ -166,16 +213,21 @@ Cannot get artifact {dtyp}.{art}: error {code} ({url})""".format(dtyp = deviceTy
 
             tmpDict = self.tostring(json.loads(result.text))
 
+            if not self._devices:
+                # If this is the first device, assume this is the root device, so
+                # Greedily request transitive controls information
+                url    = "".join([ self._url, "slots/", deviceName, "/controls/?transitive=", str(True) ])
+
+                result = self._get(url)
+                if result.status_code == 200:
+                    slots = self.tostring(json.loads(result.text)["installationSlots"])
+                    for slot in slots:
+                        self._devices[slot["name"]] = self.Device(slot)
+
             # save downloaded data
-            self._deviceDict[device] = tmpDict
+            self._devices[deviceName] = self.Device(tmpDict)
 
-        else:
-            # retrieve memoized data
-            tmpDict = self._deviceDict[device]
-
-        res = tmpDict.get(field, [])
-
-        return res
+        return self._devices[deviceName]
 
 
     def _get(self, url):
