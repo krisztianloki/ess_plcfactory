@@ -71,11 +71,11 @@ output_files = dict()
 plc_type     = "SIEMENS"
 
 
-def getArtefact(deviceType, filename):
-    return glob.ccdb.getArtefact(deviceType, filename, TEMPLATE_DIR)
+def getArtifact(deviceType, filename):
+    return glob.ccdb.getArtifact(deviceType, filename, TEMPLATE_DIR)
 
 
-def openArtefact(deviceType, filenames, tag, templateID):
+def openArtifact(deviceType, filenames, tag, templateID):
     assert isinstance(deviceType, str )
     assert isinstance(filenames,  list)
     assert isinstance(tag,        str )
@@ -84,8 +84,8 @@ def openArtefact(deviceType, filenames, tag, templateID):
     lines = []
 
     for filename in filenames:
-        if matchingArtefact(filename, (tag, TEMPLATE_TAG), templateID):
-            filename = getArtefact(deviceType, filename)
+        if matchingArtifact(filename, (tag, TEMPLATE_TAG), templateID):
+            filename = getArtifact(deviceType, filename)
 
             if filename is None:
                 break
@@ -106,17 +106,17 @@ def getTemplateName(deviceType, filenames, templateID):
     result = None
 
     for filename in filenames:
-        if matchingArtefact(filename, TEMPLATE_TAG, templateID):
+        if matchingArtifact(filename, TEMPLATE_TAG, templateID):
 
             # download template and save in template directory
-            result = getArtefact(deviceType, filename)
+            result = getArtifact(deviceType, filename)
 
             break
 
     return result
 
 
-def matchingArtefact(filename, tag, templateID):
+def matchingArtifact(filename, tag, templateID):
     assert isinstance(filename,   str)
 
     # exactly one '.' in filename
@@ -141,11 +141,9 @@ def matchingArtefact(filename, tag, templateID):
     return filename.endswith(match)
 
 
-def createFilename(header, device, templateID, deviceType):
+def createFilename(header, device, templateID):
     assert isinstance(header,     list)
-    assert isinstance(device,     str )
     assert isinstance(templateID, str )
-    assert isinstance(deviceType, str )
 
     tag    = "#FILENAME"
     tagPos = findTag(header, tag)
@@ -153,7 +151,7 @@ def createFilename(header, device, templateID, deviceType):
     # default filename is chosen when no custom filename is specified
     if len(header) == 0 or tagPos == -1:
 
-        outputFile = device + "_" + deviceType + "_template-" + templateID \
+        outputFile = device.name() + "_" + device.deviceType() + "_template-" + templateID \
                    + "_" + glob.timestamp + ".scl"
 
         return CCDB.sanitizeFilename(outputFile)
@@ -237,60 +235,48 @@ def replaceTag(line, tag, insert):
     return line[:start] + insert + line[end:]
 
 
-def getArtefactNames(device):
-    assert isinstance(device, str)
-
-    # get artifact names of files attached to a device
-    deviceType = glob.ccdb.getDeviceType(device)
-    artefacts  = glob.ccdb.getArtefactNames(device)
-
-    return (deviceType, artefacts)
-
-
 def deviceTypeToFilename(deviceType):
     return glob.ccdb.sanitizeFilename(deviceType)
 
 
-def getIfDefFromURL(device, deviceType):
-    url = glob.ccdb.getArtefactURL(device, "EPI")
+def getIfDefFromURL(device):
+    url = glob.ccdb.getArtifactURL(device.name(), "EPI")
     if url is None:
         return None
 
-    filename = deviceTypeToFilename(deviceType).upper() + ".def"
+    filename = deviceTypeToFilename(device.deviceType()).upper() + ".def"
     url = "/".join([ url, "raw/master", filename ])
 
     print "Trying to download Interface Definition file from", url
 
-    return glob.ccdb.getArtefactFromURL(url, deviceType, filename, TEMPLATE_DIR)
+    return glob.ccdb.getArtifactFromURL(url, device.deviceType(), filename, TEMPLATE_DIR)
 
 
 #
 # Returns an interface definition object
 #
 def getIfDef(device):
-    assert isinstance(device, str)
-
-    deviceType = glob.ccdb.getDeviceType(device)
+    deviceType = device.deviceType()
 
     if deviceType in ifdefs:
         print "Device type: " + deviceType
 
         return ifdefs[deviceType]
 
-    artefacts = glob.ccdb.getArtefactNames(device)
+    artifacts = device.artifactNames()
 
-    template = filter(lambda ida: ida.endswith(IFDEF_TAG), artefacts)
+    template = filter(lambda ida: ida.endswith(IFDEF_TAG), artifacts)
 
     if len(template) > 1:
-        print "More than one Interface Definiton files were found for {device}: {defs}".format(device = device, defs = template)
+        print "More than one Interface Definiton files were found for {device}: {defs}".format(device = device.name(), defs = template)
         exit(1)
 
     #
     # FIXME: remove redundant checks and unneeded assignments
     #
     if len(template) == 0:
-        # No 'file' artefact found, let's see if there is a URL
-        filename = getIfDefFromURL(device, deviceType)
+        # No 'file' artifact found, let's see if there is a URL
+        filename = getIfDefFromURL(device)
         if filename is None:
             return None
 
@@ -301,10 +287,10 @@ def getIfDef(device):
 
 
     if filename is None:
-        filename = getArtefact(deviceType, template)
+        filename = getArtifact(deviceType, template)
 
     if filename is None:
-        print "Could not download Interface Definition file {f} for device {d}".format(f = template, d = device)
+        print "Could not download Interface Definition file {f} for device {d}".format(f = template, d = device.name())
         exit(1)
 
     with open(filename) as f:
@@ -319,25 +305,23 @@ def getIfDef(device):
 
 
 def buildControlsList(device):
-    assert isinstance(device, str)
-
     # find devices this device _directly_ controls
-    controls = glob.ccdb.controls(device)
+    controls = device.controls()
 
-    print device + " controls: "
+    print str(device) + " controls: "
 
-    for elem in controls:
-        print "\t- " + elem
+    for controlledDevice in controls:
+        print "\t- " + str(controlledDevice)
 
     print "\n"
 
     return controls
 
 
-def getHeaderFooter(templateID, deviceType, artefacts):
+def getHeaderFooter(templateID, deviceType, artifacts):
     assert isinstance(templateID, str)
     assert isinstance(deviceType, str)
-    assert isinstance(artefacts,  list)
+    assert isinstance(artifacts,  list)
 
     templatePrinter = tf.get_printer(templateID)
     if templatePrinter is not None:
@@ -347,8 +331,8 @@ def getHeaderFooter(templateID, deviceType, artefacts):
         footer = []
         templatePrinter.footer(footer)
     else:
-        header = openArtefact(deviceType, artefacts, HEADER_TAG, templateID)
-        footer = openArtefact(deviceType, artefacts, FOOTER_TAG, templateID)
+        header = openArtifact(deviceType, artifacts, HEADER_TAG, templateID)
+        footer = openArtifact(deviceType, artifacts, FOOTER_TAG, templateID)
 
     if len(header) == 0:
         print "No header found.\n"
@@ -363,22 +347,20 @@ def getHeaderFooter(templateID, deviceType, artefacts):
     return (header, footer, templatePrinter)
 
 
-def processTemplateID(templateID, rootDevice, rootDeviceType, rootArtefacts, controls):
+def processTemplateID(templateID, rootDevice, rootArtifacts, controls):
     assert isinstance(templateID,      str)
-    assert isinstance(rootDevice,      str)
-    assert isinstance(rootDeviceType,  str)
-    assert isinstance(rootArtefacts,   list)
+    assert isinstance(rootArtifacts,   list)
     assert isinstance(controls,        list)
 
     print "#" * 60
     print "Template ID " + templateID
-    print "Device at root: " + rootDevice + "\n"
+    print "Device at root: " + str(rootDevice) + "\n"
 
     # collect lines to be written at the end
     output = []
 
     # process header/footer
-    (header, footer, templatePrinter) = getHeaderFooter(templateID, rootDeviceType, rootArtefacts)
+    (header, footer, templatePrinter) = getHeaderFooter(templateID, rootDevice.deviceType(), rootArtifacts)
 
     print "Processing entire tree of controls-relationships:\n"
 
@@ -388,7 +370,7 @@ def processTemplateID(templateID, rootDevice, rootDeviceType, rootArtefacts, con
     # process the root device too
     toProcess  = [ rootDevice ]
     processed  = set()
-    outputFile = os.path.join(OUTPUT_DIR, createFilename(header, rootDevice, templateID, rootDeviceType))
+    outputFile = os.path.join(OUTPUT_DIR, createFilename(header, rootDevice, templateID))
 
     if len(header):
         header = pt.process(rootDevice, header)
@@ -398,19 +380,19 @@ def processTemplateID(templateID, rootDevice, rootDeviceType, rootArtefacts, con
 
     while toProcess != []:
 
-        elem = toProcess.pop()
+        device = toProcess.pop()
 
-        if elem in processed:  # this should be redundant
+        if device in processed:  # this should be redundant
             continue
 
-        print elem
+        print device
 
         # get template
         template = None
 
         # Try to process Interface Definition first
         if templatePrinter is not None:
-            ifdef = getIfDef(elem)
+            ifdef = getIfDef(device)
             if ifdef is not None:
                 print "Generating template from Definition File..."
                 template = []
@@ -418,10 +400,11 @@ def processTemplateID(templateID, rootDevice, rootDeviceType, rootArtefacts, con
 
         # Try to download template from artifact
         if template is None:
-            (deviceType, artefacts) = getArtefactNames(elem)
+            deviceType = device.deviceType()
+            artifacts  = device.artifactNames()
             print "Device type: " + deviceType
 
-            template = getTemplateName(deviceType, artefacts, templateID)
+            template = getTemplateName(deviceType, artifacts, templateID)
 
         # Try to check if we have a default template printer implementation
         if template is None and templatePrinter is not None:
@@ -431,20 +414,20 @@ def processTemplateID(templateID, rootDevice, rootDeviceType, rootArtefacts, con
 
         if template is not None:
             # process template and add result to output
-            output += pt.process(elem, template)
+            output += pt.process(device, template)
             print "Template processed."
 
         else:
             print "No template found."
 
-        controls = glob.ccdb.controls(elem)
+        controls = device.controls()
 
         print "This device controls: "
 
         if controls != None and len(controls) > 0:
 
             for c in controls:
-                print "\t- " + c #, c in processed
+                print "\t- " + str(c) #, c in processed
                 if c not in processed:
                     toProcess.append(c)
 
@@ -452,7 +435,7 @@ def processTemplateID(templateID, rootDevice, rootDeviceType, rootArtefacts, con
             print "N/A"
 
         print "=" * 40
-        processed.add(elem)
+        processed.add(device)
 
     print "\n"
 
@@ -508,20 +491,22 @@ def processTemplateID(templateID, rootDevice, rootDeviceType, rootArtefacts, con
     print "Hash sum: " + glob.ccdb.getHash(hashobj)
 
 
-def processDevice(device, templateIDs):
-    assert isinstance(device,      str)
+def processDevice(deviceName, templateIDs):
+    assert isinstance(deviceName,  str)
     assert isinstance(templateIDs, list)
 
     print "#" * 60
-    print "Device at root: " + device + "\n"
+    print "Device at root: " + deviceName + "\n"
+
+    device = glob.ccdb.device(deviceName)
 
     # find devices this device controls
     controls = buildControlsList(device)
 
     # get artifact names of files attached to the root device
-    (deviceType, rootArtefacts) = getArtefactNames(device)
+    rootArtifacts = device.artifactNames()
 
-    map(lambda x: processTemplateID(x, device, deviceType, rootArtefacts, controls), templateIDs)
+    map(lambda x: processTemplateID(x, device, rootArtifacts, controls), templateIDs)
 
 
 def makedirs(path):

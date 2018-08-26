@@ -65,11 +65,11 @@ class CCDB(CC):
 
 
         def _controls(self):
-            return self._slot.get("controls", [])
+            return map(lambda dn: self.ccdb.device(dn), self._ensure(self._slot.get("controls", []), []))
 
 
         def _controlledBy(self):
-            return self._slot.get("controlledBy", [])
+            return map(lambda dn: self.ccdb.device(dn), self._ensure(self._slot.get("controlledBy", []), []))
 
 
         def _properties(self):
@@ -94,6 +94,10 @@ class CCDB(CC):
             return self._props
 
 
+        def _propertiesDict(self, prefixToIgnore = True):
+            return self.ccdb._propertiesDict(self, prefixToIgnore)
+
+
         def _deviceType(self):
             return self._slot.get("deviceType", None)
 
@@ -115,6 +119,10 @@ class CCDB(CC):
             return artifactNames
 
 
+        def _backtrack(self, prop):
+            return self.ccdb._backtrack(self, prop)
+
+
 
     def __init__(self, url = None, verify = True):
         CC.__init__(self)
@@ -128,8 +136,8 @@ class CCDB(CC):
         self._verify = verify
 
 
-    # download artefact and save as saveas
-    def _getArtefact(self, deviceType, filename, saveas):
+    # download artifact and save as saveas
+    def _getArtifact(self, deviceType, filename, saveas):
         url    = self._url + "deviceTypes/" + deviceType + "/download/" + filename
 
         try:
@@ -143,7 +151,7 @@ Cannot get artifact {dtyp}.{art}: error {code} ({url})""".format(dtyp = deviceTy
             exit(1)
 
 
-    def _getArtefactFromURL(self, url, filename, saveas):
+    def _getArtifactFromURL(self, url, filename, saveas):
         return self.download(url, saveas)
 
 

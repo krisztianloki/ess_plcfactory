@@ -75,6 +75,11 @@ class CC(object):
             return self._ensure(self._properties(), [])
 
 
+        # Returns: {}
+        def propertiesDict(self, prefixToIgnore = True):
+            return self._ensure(self._propertiesDict(), {})
+
+
         # Returns: ""
         def deviceType(self):
             return self._ensure(self._deviceType(), "")
@@ -93,6 +98,11 @@ class CC(object):
         # Returns: []
         def artifactNames(self):
             return self._ensure(self._artifactNames(), [])
+
+
+        # Returns: ""
+        def backtrack(self, prop):
+            return self._ensure(self._backtrack(prop), "")
 
 
 
@@ -204,36 +214,21 @@ class CC(object):
             return self._device(deviceName)
 
 
-    # Returns: []
-    def controls(self, deviceName):
-        assert isinstance(deviceName, str)
-
-        return self.device(deviceName).controls()
-
-
-    # Returns: []
-    def controlledBy(self, deviceName):
-        assert isinstance(deviceName, str)
-
-        return self.device(deviceName).controlledBy()
-
-
     # Returns: {}
-    def properties(self, deviceName):
-        assert isinstance(deviceName, str)
+    def _propertiesDict(self, device, prefixToIgnore = "PLCF#"):
+        if prefixToIgnore == True:
+            prefixToIgnore = "PLCF#"
 
-        return self.device(deviceName).properties()
+        if prefixToIgnore == "":
+            return device.properties()
 
-
-    # Returns: {}
-    def propertiesDict(self, deviceName, prefixToIgnore = "PLCF#"):
-        assert isinstance(deviceName, str)
+        deviceName = device.name()
 
         if (deviceName, prefixToIgnore) in self._propDict:
             return self._propDict[deviceName, prefixToIgnore]
 
         result = {}
-        for (name, value) in self.properties(deviceName).iteritems():
+        for (name, value) in device.properties().iteritems():
             # remove prefix if it exists
             if name.startswith(prefixToIgnore):
                 name = name[len(prefixToIgnore):]
@@ -246,35 +241,7 @@ class CC(object):
 
 
     # Returns: ""
-    def getDeviceType(self, deviceName):
-        assert isinstance(deviceName, str)
-
-        return self.device(deviceName).deviceType()
-
-
-    # Returns: ""
-    def getDescription(self, deviceName):
-        assert isinstance(deviceName, str)
-
-        return self.device(deviceName).description()
-
-
-    # Returns: []
-    def artifacts(self, deviceName):
-        assert isinstance(deviceName, str)
-
-        return self.device(deviceName).artifacts()
-
-
-    # Returns: []
-    def getArtefactNames(self, deviceName):
-        assert isinstance(deviceName, str)
-
-        return self.device(deviceName).artifactNames()
-
-
-    # Returns: ""
-    def getArtefact(self, deviceType, filename, directory = "."):
+    def getArtifact(self, deviceType, filename, directory = "."):
         assert isinstance(deviceType, str)
         assert isinstance(filename,   basestring)
 
@@ -284,14 +251,14 @@ class CC(object):
         if os_path.exists(saveas):
             return saveas
 
-        self._getArtefact(deviceType, filename, saveas)
+        self._getArtifact(deviceType, filename, saveas)
         self._downloadedArtifacts.append(saveas)
 
         return saveas
 
 
     # Returns: ""
-    def getArtefactFromURL(self, url, deviceType, filename, directory = "."):
+    def getArtifactFromURL(self, url, deviceType, filename, directory = "."):
         assert isinstance(url,        basestring)
         assert isinstance(deviceType, str)
         assert isinstance(filename,   basestring)
@@ -303,13 +270,13 @@ class CC(object):
         if os_path.exists(saveas):
             return saveas
 
-        self._getArtefactFromURL(url, filename, saveas)
+        self._getArtifactFromURL(url, filename, saveas)
         self._downloadedArtifacts.append(saveas)
 
         return saveas
 
 
-    def getArtefactURL(self, deviceName, name):
+    def getArtifactURL(self, deviceName, name):
         assert isinstance(deviceName, str)
         assert isinstance(name, str)
 
@@ -351,9 +318,10 @@ class CC(object):
         return filename
 
 
-    def backtrack(self, prop, deviceName):
+    def _backtrack(self, device, prop):
         assert isinstance(prop,   str)
-        assert isinstance(deviceName, str)
+
+        deviceName = device.name()
 
         # starting by one device, looking for property X, find a device
         # in a higher level of the hierarchy that has that property
@@ -362,7 +330,7 @@ class CC(object):
             return self._backtrackCache[deviceName, prop]
 
         # starting point: all devices 'device' is controlled by
-        leftToProcess = list(self.controlledBy(deviceName))
+        leftToProcess = list(device.controlledBy())
         processed     = []
 
         # keep track of number of iterations
@@ -387,7 +355,7 @@ class CC(object):
             processed.append(elem)
 
             # get properties of device
-            propDict = self.propertiesDict(elem)
+            propDict = elem.propertiesDict()
 
             if prop in propDict:
                 val = propDict.get(prop)
@@ -397,7 +365,7 @@ class CC(object):
 
             # desired property not found in device x
             else:
-                c = self.controlledBy(elem)
+                c = elem.controlledBy()
                 if c is not None:
                   leftToProcess = c + leftToProcess
                   count        += 1

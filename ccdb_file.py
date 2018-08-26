@@ -36,7 +36,7 @@ class CCDB_FILE(CC):
         raise KeyError("No such device: {}".format(deviceName))
 
 
-    def _getArtefactFromDir(self, deviceType, filename, directory = None):
+    def _getArtifactFromDir(self, deviceType, filename, directory = None):
         assert isinstance(deviceType, str)
         assert isinstance(filename,   basestring)
 
@@ -46,10 +46,10 @@ class CCDB_FILE(CC):
         if os_path.exists(saveas):
             return saveas
 
-        return self._getArtefact(deviceType, filename, None)
+        return self._getArtifact(deviceType, filename, None)
 
 
-    def _getArtefactFromURLFromDir(self, url, deviceType, filename, directory = None):
+    def _getArtifactFromURLFromDir(self, url, deviceType, filename, directory = None):
         assert isinstance(url,        basestring)
         assert isinstance(deviceType, str)
         assert isinstance(filename,   basestring)
@@ -60,11 +60,11 @@ class CCDB_FILE(CC):
         if os_path.exists(saveas):
             return saveas
 
-        return self._getArtefactFromURL(url, saveas)
+        return self._getArtifactFromURL(url, saveas)
 
 
-    # extract artefact and save as saveas
-    def _getArtefactFromZip(self, deviceType, filename, saveas):
+    # extract artifact and save as saveas
+    def _getArtifactFromZip(self, deviceType, filename, saveas):
         with self._zipfile.open(self.saveas(deviceType, filename, os_path.join("ccdb", "templates"), CreateDir = False)) as r:
             with open(saveas, "w") as w:
                 w.writelines(r)
@@ -72,8 +72,8 @@ class CCDB_FILE(CC):
         return saveas
 
 
-    # extract artefact and save as saveas
-    def _getArtefactFromURLFromZip(self, url, filename, saveas):
+    # extract artifact and save as saveas
+    def _getArtifactFromURLFromZip(self, url, filename, saveas):
         with self._zipfile.open(self.saveas("", filename, os_path.join("ccdb", "templates", CC.urlToDir(url)), CreateDir = False)) as r:
             with open(saveas, "w") as w:
                 w.writelines(r)
@@ -81,12 +81,12 @@ class CCDB_FILE(CC):
         return saveas
 
 
-    def _getArtefact(self, deviceType, filename, saveas):
+    def _getArtifact(self, deviceType, filename, saveas):
         raise RuntimeError("Inconsistent CCDB dump: there is no template for {device} with name {filename}".format(device = deviceType, filename = filename))
 
 
     # prevent downloading possibly new revisions of def files
-    def _getArtefactFromURL(self, url, saveas):
+    def _getArtifactFromURL(self, url, saveas):
         raise RuntimeError("Inconsistent CCDB dump: there is no template downloaded from URL: {}".format(url))
 
 
@@ -121,8 +121,8 @@ class CCDB_FILE(CC):
                 raise
 
         self._createDevices(devicedict)
-        self.getArtefact = self._getArtefactFromDir
-        self.getArtefactFromURL = self._getArtefactFromURLFromDir
+        self.getArtifact = self._getArtifactFromDir
+        self.getArtifactFromURL = self._getArtifactFromURLFromDir
 
 
     def _readzip(self, filename):
@@ -134,5 +134,5 @@ class CCDB_FILE(CC):
         except KeyError:
             raise RuntimeError("Required file 'device.dict' does not exist!")
 
-        self._getArtefact = self._getArtefactFromZip
-        self._getArtefactFromURL = self._getArtefactFromURLFromZip
+        self._getArtifact = self._getArtifactFromZip
+        self._getArtifactFromURL = self._getArtifactFromURLFromZip

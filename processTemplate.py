@@ -5,15 +5,13 @@ __copyright__  = "Copyright 2016, European Spallation Source, Lund"
 __license__    = "GPLv3"
 
 # PLC Factory modules
-import plcf_glob as glob
 import plcf
 
 
 def processAll(lines, device):
     assert isinstance(lines,  list)
-    assert isinstance(device, str )
 
-    propDict = glob.ccdb.propertiesDict(device)
+    propDict = device.propertiesDict()
 
     # read each line, process them, add one by one to accumulator
     return map(lambda x: plcf.processLine(x, device, propDict), lines)
@@ -29,8 +27,6 @@ def getAllLines(filename):
 
 
 def process(device, filename_or_template):
-    assert isinstance(device,   str)
-
     if isinstance(filename_or_template, list):
         lines = filename_or_template
     else:
