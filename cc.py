@@ -404,12 +404,17 @@ class CC(object):
 
         # now the same for each device:
         for deviceName in deviceNames:
+            device     = self._devices[deviceName]
+
+            # Make sure that only controlled devices are hashed
+            if not device.isInControlledTree():
+                continue
+
             crc32 = zlib.crc32(deviceName, crc32)
             if hashobj is not None:
                 hashobj.update(deviceName)
 
-            device     = self._devices[deviceName]
-            keys       = device.keys()
+            keys = device.keys()
             keys.sort()
 
             for k in keys:
