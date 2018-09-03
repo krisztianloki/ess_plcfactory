@@ -36,7 +36,7 @@ class CC(object):
 
     class Device(object):
         def __init__(self):
-            pass
+            self._inControlledTree = False
 
 
         @staticmethod
@@ -60,14 +60,25 @@ class CC(object):
             raise NotImplementedError
 
 
+        def putInControlledTree(self):
+            self._inControlledTree = True
+
+
+        def isInControlledTree(self):
+            return self._inControlledTree
+
+
         # Returns: []
         def controls(self):
             return self._ensure(self._controls(), [])
 
 
         # Returns: []
-        def controlledBy(self):
-            return self._ensure(self._controlledBy(), [])
+        def controlledBy(self, filter_by_controlled_tree = False):
+            ctrldBy = self._ensure(self._controlledBy(filter_by_controlled_tree), [])
+            if not filter_by_controlled_tree:
+                return ctrldBy
+            return filter(lambda d: d.isInControlledTree(), ctrldBy)
 
 
         # Returns: []
@@ -207,10 +218,12 @@ class CC(object):
 
 
     # Returns: CC.Device
-    def device(self, deviceName):
+    def device(self, deviceName, cachedOnly = False):
         try:
             return self._devices[deviceName]
         except KeyError:
+            if cachedOnly:
+                return None
             return self._device(deviceName)
 
 
@@ -330,7 +343,7 @@ class CC(object):
             return self._backtrackCache[deviceName, prop]
 
         # starting point: all devices 'device' is controlled by
-        leftToProcess = list(device.controlledBy())
+        leftToProcess = device.controlledBy(True)
         processed     = []
 
         # keep track of number of iterations
@@ -344,7 +357,7 @@ class CC(object):
                 exit(1)
 
             if len(leftToProcess) == 0:
-                print "error in  backtracking; probably invalid input while searching for property " + prop
+                print "error in  backtracking after {} iterations; probably invalid input while searching for property {}".format(count, prop)
                 return " ==== BACKTRACKING ERROR ==== "
 
             elem = leftToProcess.pop()
@@ -365,7 +378,7 @@ class CC(object):
 
             # desired property not found in device x
             else:
-                c = elem.controlledBy()
+                c = elem.controlledBy(True)
                 if c is not None:
                   leftToProcess = c + leftToProcess
                   count        += 1

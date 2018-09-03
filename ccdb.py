@@ -68,8 +68,8 @@ class CCDB(CC):
             return map(lambda dn: self.ccdb.device(dn), self._ensure(self._slot.get("controls", []), []))
 
 
-        def _controlledBy(self):
-            return map(lambda dn: self.ccdb.device(dn), self._ensure(self._slot.get("controlledBy", []), []))
+        def _controlledBy(self, filter_by_controlled_tree):
+            return filter(lambda nn: nn is not None, map(lambda dn: self.ccdb.device(dn, filter_by_controlled_tree), self._ensure(self._slot.get("controlledBy", []), [])))
 
 
         def _properties(self):

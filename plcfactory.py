@@ -299,6 +299,8 @@ def getIfDef(device):
 
 
 def buildControlsList(device):
+    device.putInControlledTree()
+
     # find devices this device _directly_ controls
     pool = device.controls()
 
@@ -333,6 +335,7 @@ def buildControlsList(device):
 
         for dev in sorted(controlled_devices[device_type], key=sortkey):
             pool.append(dev)
+            dev.putInControlledTree()
             print "\t\t-- " + dev.name()
 
     print "\n"
