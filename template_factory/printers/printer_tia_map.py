@@ -126,7 +126,6 @@ END_FUNCTION
 DATA_BLOCK "EPICSToPLC"
 {{ S7_Optimized_Access := 'FALSE' }}
 VERSION : 0.1
-NON_RETAIN
    STRUCT
       "Word" : Array[0..[PLCF# {cmd_cnt} - 1]] of Word;
    END_STRUCT;
