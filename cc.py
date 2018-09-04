@@ -34,6 +34,43 @@ class CC(object):
     paths_cached = dict()
 
 
+    class Artifact(object):
+        # list of the path names of downloaded artifacts
+        downloadedArtifacts = list()
+
+        def __init__(self, device):
+            self._device = device
+
+
+        def __repr__(self):
+            return self.name()
+
+
+        def name(self):
+            raise NotImplementedError
+
+
+        def is_file(self):
+            raise NotImplementedError
+
+
+        def is_uri(self):
+            raise NotImplementedError
+
+
+        def filename(self):
+            raise NotImplementedError
+
+
+        def uri(self):
+            raise NotImplementedError
+
+
+        def download(self):
+            raise NotImplementedError
+
+
+
     class Device(object):
         def __init__(self):
             self._inControlledTree = False
@@ -108,7 +145,7 @@ class CC(object):
 
         # Returns: []
         def artifactNames(self):
-            return self._ensure(self._artifactNames(), [])
+            return map(lambda an: an.name(), filter(lambda fa: fa.is_file(), self.artifacts()))
 
 
         # Returns: ""
@@ -293,18 +330,13 @@ class CC(object):
         assert isinstance(deviceName, str)
         assert isinstance(name, str)
 
-        artifacts = self.device(deviceName).artifacts()
-
-        if artifacts is None:
-            return None
-
-        uris = filter(lambda ua: ua.get("type") == "URI" and ua.get("name") == name, artifacts)
+        uris = filter(lambda ua: ua.is_uri() and ua.name() == name, self.device(deviceName).artifacts())
         if len(uris) == 0:
             return None
 
         assert len(uris) == 1, uris
 
-        return uris[0].get("uri")
+        return uris[0].uri()
 
 
     # Returns: []

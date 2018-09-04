@@ -35,6 +35,41 @@ except ImportError:
 
 
 class CCDB(CC):
+    class Artifact(CC.Artifact):
+        def __init__(self, device, artifact):
+            super(CCDB.Artifact, self).__init__(device)
+            self._artifact = artifact
+
+
+        def name(self):
+            return self._artifact["name"]
+
+
+        def is_file(self):
+            return self._type() == "FILE"
+
+
+        def is_uri(self):
+            return self._type() == "URI"
+
+
+        def filename(self):
+            return self.name()
+
+
+        def uri(self):
+            return self._artifact["uri"]
+
+
+        def download(self):
+            raise NotImplementedError
+
+
+        def _type(self):
+            return self._artifact["type"]
+
+
+
     class Device(CC.Device):
         ccdb = None
 
@@ -42,6 +77,7 @@ class CCDB(CC):
             super(CCDB.Device, self).__init__()
             self._slot  = slot
             self._props = None
+            self._arts  = None
 
 
         def __str__(self):
@@ -107,16 +143,12 @@ class CCDB(CC):
 
 
         def _artifacts(self):
-            return self._slot.get("artifacts", [])
+            if self._arts is not None:
+                return self._arts
 
+            self._arts = map(lambda a: CCDB.Artifact(self, a), self._ensure(self._slot.get("artifacts", []), []))
 
-        def _artifactNames(self):
-            artifacts = self.artifacts()
-            artifactNames = []
-            if artifacts is not None:
-                artifactNames = map(lambda an: an.get("name"), filter(lambda fa: fa.get("type") == "FILE", artifacts))
-
-            return artifactNames
+            return self._arts
 
 
         def _backtrack(self, prop):
