@@ -65,13 +65,16 @@ class CCDB(CC):
             return self._artifact["kind"] == "TYPE"
 
 
-        def _download(self, save_as):
-            if self.is_perdevtype():
-                url = "/".join([ "deviceTypes", self._device.deviceType(), "download", self.filename() ])
-            else:
-                url = "/".join([ "slot", self._device.name(), "download", self.filename() ])
+        def _download(self, save_as, url = None):
+            if self.is_file():
+                if self.is_perdevtype():
+                    url = "/".join([ "deviceTypes", self._device.deviceType(), "download", self.filename() ])
+                else:
+                    url = "/".join([ "slot", self._device.name(), "download", self.filename() ])
 
-            return self._device.ccdb.download_from_ccdb(url, save_as)
+                return self._device.ccdb.download_from_ccdb(url, save_as)
+            else:
+                return self._device.ccdb.download(url, save_as)
 
 
         def _type(self):
@@ -165,43 +168,24 @@ class CCDB(CC):
 
 
 
-    def __init__(self, url = None, verify = True):
+    def __init__(self, url = None, verify_ssl_cert = True):
         CC.__init__(self)
         CCDB.Device.ccdb = self
 
         if url is None:
-            self._url = "https://ccdb.esss.lu.se/rest/"
+            self._base_url = "https://ccdb.esss.lu.se/rest/"
         else:
-            self._url = url
+            self._base_url = url
 
-        self._verify = verify
-
-
-    # download artifact and save as saveas
-    def _getArtifact(self, deviceType, filename, saveas):
-        url    = self._url + "deviceTypes/" + deviceType + "/download/" + filename
-
-        try:
-            return self.download(url, saveas)
-        except RuntimeError, e:
-            print """ERROR:
-Cannot get artifact {dtyp}.{art}: error {code} ({url})""".format(dtyp = deviceType,
-                                                                 art  = filename,
-                                                                 code = e,
-                                                                 url  = url)
-            exit(1)
+        self._verify_ssl_cert = verify_ssl_cert
 
 
-    def _getArtifactFromURL(self, url, filename, saveas):
-        return self.download(url, saveas)
+    def download_from_ccdb(self, url, save_as):
+        return CC.download(self._base_url + url, save_as, verify_ssl_cert = self._verify_ssl_cert)
 
 
-    def download_from_ccdb(self, url, saveas):
-        return CC.download(self._url + url, saveas, verify = self._verify)
-
-
-    def download(self, url, saveas):
-        return CC.download(url, saveas, verify = self._verify)
+    def download(self, url, save_as):
+        return CC.download(url, save_as, verify_ssl_cert = True)
 
 
     def getSimilarDevices(self, deviceName):
@@ -210,7 +194,7 @@ Cannot get artifact {dtyp}.{art}: error {code} ({url})""".format(dtyp = deviceTy
 
         slot = deviceName.split(":")[0]
 
-        url = self._url + "slotNames/"
+        url = self._base_url + "slotNames/"
 
         result  = self._get(url)
         tmpList = filter(lambda x: x["slotType"] == "SLOT", json.loads(result.text)["names"])
@@ -235,7 +219,7 @@ Cannot get artifact {dtyp}.{art}: error {code} ({url})""".format(dtyp = deviceTy
         assert isinstance(deviceName, str)
     
         if deviceName not in self._devices:
-            url     = self._url + "slots/" + deviceName
+            url     = self._base_url + "slots/" + deviceName
 
             result = self._get(url)
 
@@ -258,18 +242,14 @@ Cannot get artifact {dtyp}.{art}: error {code} ({url})""".format(dtyp = deviceTy
                 print "\nExiting.\n"
                 exit(1)
             elif result.status_code != 200:
-                print "ERROR:"
-                print "Server returned status code {code}".format(code = result.status_code)
-                print "\nExiting.\n"
-
-                exit(1)
+                raise CC.DownloadException(url = url, code = result.status_code)
 
             tmpDict = self.tostring(json.loads(result.text))
 
             if not self._devices:
                 # If this is the first device, assume this is the root device, so
                 # Greedily request transitive controls information
-                url    = "".join([ self._url, "slots/", deviceName, "/controls/?transitive=", str(True) ])
+                url    = "".join([ self._base_url, "slots/", deviceName, "/controls/?transitive=", str(True) ])
 
                 result = self._get(url)
                 if result.status_code == 200:
@@ -284,11 +264,11 @@ Cannot get artifact {dtyp}.{art}: error {code} ({url})""".format(dtyp = deviceTy
 
 
     def _get(self, url):
-        return requests.get(url, headers = { 'Accept' : 'application/json' }, verify = self._verify)
+        return requests.get(url, headers = { 'Accept' : 'application/json' }, verify = self._verify_ssl_cert)
 
 
 
 
 class CCDB_TEST(CCDB):
     def __init__(self):
-        CCDB.__init__(self, "https://ics-services.esss.lu.se/ccdb-test/rest/", verify = False)
+        CCDB.__init__(self, "https://ics-services.esss.lu.se/ccdb-test/rest/", verify_ssl_cert = False)

@@ -232,21 +232,21 @@ def replaceTag(line, tag, insert):
     return line[:start] + insert + line[end:]
 
 
-def deviceTypeToFilename(deviceType):
-    return glob.ccdb.sanitizeFilename(deviceType)
-
-
 def getIfDefFromURL(device):
-    url = glob.ccdb.getArtifactURL(device.name(), "EPI")
-    if url is None:
+    artifacts = filter(lambda u: u.is_uri() and u.name() == "EPI", device.artifacts())
+    if not artifacts:
         return None
 
-    filename = deviceTypeToFilename(device.deviceType()).upper() + ".def"
-    url = "/".join([ url, "raw/master", filename ])
+    if len(artifacts) > 1:
+        raise RuntimeError("More than one Interface Definition URLs were found for {device}: {urls}".format(device = device.name(), urls = map(lambda u: u.uri(), artifacts)))
 
-    print "Trying to download Interface Definition file from", url
+    filename = glob.ccdb.sanitizeFilename(device.deviceType().upper() + ".def")
+    url = "/".join([ "raw/master", filename ])
 
-    return glob.ccdb.getArtifactFromURL(url, device.deviceType(), filename, TEMPLATE_DIR)
+    print "Downloading Interface Definition file {filename} from {url}".format(filename = filename,
+                                                                               url      = artifacts[0].uri())
+
+    return artifacts[0].download(extra_url = url, output_dir = TEMPLATE_DIR)
 
 
 #

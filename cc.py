@@ -34,6 +34,39 @@ class CC(object):
     paths_cached = dict()
 
 
+    class Exception(Exception):
+        """Base class for Controls and Configuration exceptions"""
+
+
+
+    class DownloadException(Exception):
+        def __init__(self, url, code):
+            super(CC.DownloadException, self).__init__(url, code)
+            self.url  = url
+            self.code = code
+
+
+        def __str__(self):
+            return "Cannot download {url}: error {code}".format(url  = self.url,
+                                                                code = self.code)
+
+
+
+    class ArtifactException(DownloadException):
+        def __init__(self, dloadexception, deviceName, filename):
+            super(CC.ArtifactException, self).__init__(url = dloadexception.url, code = dloadexception.code)
+            self.deviceName = deviceName
+            self.filename   = filename
+
+
+        def __str__(self):
+            return "Cannot get artifact {art} of {device}: error {code} ({url})".format(device = self.deviceName,
+                                                                                        art    = self.filename,
+                                                                                        code   = self.code,
+                                                                                        url    = self.url)
+
+
+
     class Artifact(object):
         # list of the path names of downloaded artifacts
         downloadedArtifacts = list()
@@ -66,15 +99,28 @@ class CC(object):
             raise NotImplementedError
 
 
-        def download(self, output_dir = "."):
-            # FIXME: remove hardcoded deviceType prefix
-            save_as = CC.saveas(self._device.deviceType(), self.filename(), output_dir)
+        # Returns: ""
+        def download(self, extra_url = "", output_dir = "."):
+            if self.is_uri():
+                # ignore deviceType, the URL already makes the path unique
+                filename = CC.urlToFilename(extra_url)
+                url      = "/".join([ self.uri(), extra_url ])
+                save_as  = CC.saveas("", filename, os_path.join(output_dir, CC.urlToDir(url)))
+            else:
+                # FIXME: remove hardcoded deviceType prefix
+                filename = self.filename()
+                url      = None
+                save_as  = CC.saveas(self._device.deviceType(), filename, output_dir)
 
             # check if filename has already been downloaded
             if os_path.exists(save_as):
                 return save_as
 
-            self._download(save_as)
+            try:
+                self._download(save_as, url = url)
+            except CC.DownloadException, e:
+                raise CC.ArtifactException(e, deviceName = self._device.name(), filename = filename)
+
             self.downloadedArtifacts.append(save_as)
 
             return save_as
@@ -177,9 +223,6 @@ class CC(object):
         # key: (device, expression), value: property
         self._backtrackCache       = dict()
 
-        # list of the path names of downloaded artifacts
-        self._downloadedArtifacts  = list()
-
 
     @staticmethod
     def sanitizeFilename(filename):
@@ -194,11 +237,24 @@ class CC(object):
 
 
     @staticmethod
-    def urlToDir(url):
+    def urlComps(url):
         url_comps = urlsplit(url)
 
         comps = url_comps.netloc + url_comps.path
-        comps = comps.split('/')
+        return comps.split('/')
+
+
+    @staticmethod
+    def urlToFilename(url):
+        comps = CC.urlComps(url)
+        # assume the last component is a filename
+        return comps[-1]
+
+
+    @staticmethod
+    def urlToDir(url):
+        comps = CC.urlComps(url)
+
         # ignore the last component, it is assumed to be a filename
         del comps[-1]
 
@@ -251,17 +307,17 @@ class CC(object):
 
 
     @staticmethod
-    def download(url, saveas, verify = True):
-        result = requests.get(url, verify = verify)
+    def download(url, save_as, verify_ssl_cert = True):
+        result = requests.get(url, verify = verify_ssl_cert)
 
         if result.status_code != 200:
-            raise RuntimeError(result.status_code)
+            raise CC.DownloadException(url = url, code = result.status_code)
 
         # 'w' overwrites the file if it exists
-        with open(saveas, 'wb') as f:
+        with open(save_as, 'wb') as f:
             map(lambda x: f.write(x), result)
 
-        return saveas
+        return save_as
 
 
     # Returns: CC.Device
@@ -300,55 +356,6 @@ class CC(object):
         return result
 
 
-    # Returns: ""
-    def getArtifact(self, deviceType, filename, directory = "."):
-        assert isinstance(deviceType, str)
-        assert isinstance(filename,   basestring)
-
-        saveas = self.saveas(deviceType, filename, directory)
-
-        # check if filename has already been downloaded
-        if os_path.exists(saveas):
-            return saveas
-
-        self._getArtifact(deviceType, filename, saveas)
-        self._downloadedArtifacts.append(saveas)
-
-        return saveas
-
-
-    # Returns: ""
-    def getArtifactFromURL(self, url, deviceType, filename, directory = "."):
-        assert isinstance(url,        basestring)
-        assert isinstance(deviceType, str)
-        assert isinstance(filename,   basestring)
-
-        # ignore deviceType, the URL already makes the path unique
-        saveas = self.saveas("", filename, os_path.join(directory, CC.urlToDir(url)))
-
-        # check if filename has already been downloaded
-        if os_path.exists(saveas):
-            return saveas
-
-        self._getArtifactFromURL(url, filename, saveas)
-        self._downloadedArtifacts.append(saveas)
-
-        return saveas
-
-
-    def getArtifactURL(self, deviceName, name):
-        assert isinstance(deviceName, str)
-        assert isinstance(name, str)
-
-        uris = filter(lambda ua: ua.is_uri() and ua.name() == name, self.device(deviceName).artifacts())
-        if len(uris) == 0:
-            return None
-
-        assert len(uris) == 1, uris
-
-        return uris[0].uri()
-
-
     # Returns: []
     def getSimilarDevices(self, deviceName):
         assert isinstance(deviceName, str)
@@ -367,7 +374,7 @@ class CC(object):
         dumpfile = zipfile.ZipFile(filename, "w", zipfile.ZIP_DEFLATED)
 
         dumpfile.writestr(os_path.join("ccdb", "device.dict"), str(self._devices))
-        for template in self._downloadedArtifacts:
+        for template in self.Artifact.downloadedArtifacts:
             dumpfile.write(template, os_path.join("ccdb", template))
 
         return filename
@@ -395,8 +402,7 @@ class CC(object):
         while True:
 
             if count > 200:
-                print "something went wrong; too many iterations in backtracking while searching for property " + prop
-                exit(1)
+                raise CC.Exception("Something went wrong; too many iterations in backtracking while searching for property " + prop)
 
             if len(leftToProcess) == 0:
                 print "error in  backtracking after {} iterations; probably invalid input while searching for property {}".format(count, prop)
@@ -512,7 +518,6 @@ class CC(object):
                 continue
 
             else:
-                print "Input error", type(head)
-                exit(1)
+                raise CC.Exception("Input error", type(head))
 
         return res
