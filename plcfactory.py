@@ -71,53 +71,52 @@ output_files = dict()
 plc_type     = "SIEMENS"
 
 
-def getArtifact(deviceType, filename):
-    return glob.ccdb.getArtifact(deviceType, filename, TEMPLATE_DIR)
+def downloadArtifact(device):
+    # download template and save in template directory
+    return device.download(output_dir = TEMPLATE_DIR)
 
 
-def openArtifact(deviceType, filenames, tag, templateID):
-    assert isinstance(deviceType, str )
-    assert isinstance(filenames,  list)
-    assert isinstance(tag,        str )
-    assert isinstance(templateID, str )
+def openTemplate(device, tag, templateID):
+    assert isinstance(tag,        str)
+    assert isinstance(templateID, str)
 
-    lines = []
+    matches = filter(lambda f: matchingArtifact(f, (tag, TEMPLATE_TAG), templateID), device.artifacts())
 
-    for filename in filenames:
-        if matchingArtifact(filename, (tag, TEMPLATE_TAG), templateID):
-            filename = getArtifact(deviceType, filename)
+    if not matches:
+        return []
 
-            if filename is None:
-                break
+    if len(matches) > 1:
+        raise RuntimeError("More than one possible matching artifacts found for {template}: {artifacts}".format(template  = "_".join([ tag, TEMPLATE_TAG, templateID ]),
+                                                                                                                artifacts = matches))
 
-            with open(filename) as f:
-                lines = f.readlines()
+    filename = downloadArtifact(matches[0])
 
-            break
+    with open(filename) as f:
+        lines = f.readlines()
 
     return lines
 
 
-def getTemplateName(deviceType, filenames, templateID):
-    assert isinstance(deviceType, str )
-    assert isinstance(filenames,  list)
-    assert isinstance(templateID, str )
+def downloadTemplate(device, templateID):
+    assert isinstance(templateID, str)
 
-    result = None
+    matches = filter(lambda f:matchingArtifact(f, TEMPLATE_TAG, templateID), device.artifacts())
 
-    for filename in filenames:
-        if matchingArtifact(filename, TEMPLATE_TAG, templateID):
+    if not matches:
+        return None
 
-            # download template and save in template directory
-            result = getArtifact(deviceType, filename)
+    if len(matches) > 1:
+        raise RuntimeError("More than one possible matching artifacts found for {template}: {artifacts}".format(template  = "_".join([ TEMPLATE_TAG, templateID ]),
+                                                                                                                artifacts = matches))
 
-            break
-
-    return result
+    return downloadArtifact(matches[0])
 
 
-def matchingArtifact(filename, tag, templateID):
-    assert isinstance(filename,   str)
+def matchingArtifact(artifact, tag, templateID):
+    if not artifact.is_file():
+        return False
+
+    filename = artifact.filename()
 
     # exactly one '.' in filename
     if filename.count('.') != 1:
@@ -259,35 +258,18 @@ def getIfDef(device):
     if deviceType in ifdefs:
         return ifdefs[deviceType]
 
-    artifacts = device.artifactNames()
+    defs = filter(lambda a: a.is_file() and a.filename().endswith(IFDEF_TAG), device.artifacts())
 
-    template = filter(lambda ida: ida.endswith(IFDEF_TAG), artifacts)
+    if len(defs) > 1:
+        raise RuntimeError("More than one Interface Definiton files were found for {device}: {defs}".format(device = device.name(), defs = defs))
 
-    if len(template) > 1:
-        print "More than one Interface Definiton files were found for {device}: {defs}".format(device = device.name(), defs = template)
-        exit(1)
-
-    #
-    # FIXME: remove redundant checks and unneeded assignments
-    #
-    if len(template) == 0:
+    if defs:
+        filename = downloadArtifact(defs[0])
+    else:
         # No 'file' artifact found, let's see if there is a URL
         filename = getIfDefFromURL(device)
         if filename is None:
             return None
-
-        template = deviceTypeToFilename(deviceType)
-    else:
-        filename = None
-        template = template[0]
-
-
-    if filename is None:
-        filename = getArtifact(deviceType, template)
-
-    if filename is None:
-        print "Could not download Interface Definition file {f} for device {d}".format(f = template, d = device.name())
-        exit(1)
 
     with open(filename) as f:
         ifdef = tf.processLines(f, HASH = hashobj, FILENAME = filename)
@@ -325,7 +307,10 @@ def buildControlsList(device):
         except KeyError:
             controlled_devices[device_type] = [ dev ]
 
+    print "\r" + "#" * 60
+    print "Device at root: " + device.name() + "\n"
     print device.name() + " controls: "
+
     # sort items into a list
     def sortkey(device):
         return device.name()
@@ -343,10 +328,8 @@ def buildControlsList(device):
     return pool
 
 
-def getHeaderFooter(templateID, deviceType, artifacts):
+def getHeaderFooter(device, templateID):
     assert isinstance(templateID, str)
-    assert isinstance(deviceType, str)
-    assert isinstance(artifacts,  list)
 
     templatePrinter = tf.get_printer(templateID)
     if templatePrinter is not None:
@@ -356,15 +339,15 @@ def getHeaderFooter(templateID, deviceType, artifacts):
         footer = []
         templatePrinter.footer(footer)
     else:
-        header = openArtifact(deviceType, artifacts, HEADER_TAG, templateID)
-        footer = openArtifact(deviceType, artifacts, FOOTER_TAG, templateID)
+        header = openTemplate(device, HEADER_TAG, templateID)
+        footer = openTemplate(device, FOOTER_TAG, templateID)
 
-    if len(header) == 0:
+    if not header:
         print "No header found.\n"
     else:
         print "Header read.\n"
 
-    if len(footer) == 0:
+    if not footer:
         print "No footer found.\n"
     else:
         print "Footer read.\n"
@@ -372,10 +355,9 @@ def getHeaderFooter(templateID, deviceType, artifacts):
     return (header, footer, templatePrinter)
 
 
-def processTemplateID(templateID, devices, rootArtifacts):
+def processTemplateID(templateID, devices):
     assert isinstance(templateID,      str)
     assert isinstance(devices,         list)
-    assert isinstance(rootArtifacts,   list)
 
     start_time = time.time()
 
@@ -389,14 +371,14 @@ def processTemplateID(templateID, devices, rootArtifacts):
     output = []
 
     # process header/footer
-    (header, footer, templatePrinter) = getHeaderFooter(templateID, rootDevice.deviceType(), rootArtifacts)
+    (header, footer, templatePrinter) = getHeaderFooter(rootDevice, templateID)
     # has to acquire filename _before_ processing the header
     # there are some special tags that are only valid in the header
     outputFile = os.path.join(OUTPUT_DIR, createFilename(header, rootDevice, templateID))
-    if len(header):
+    if header:
         header = pt.process(rootDevice, header)
 
-    if len(footer):
+    if footer:
         footer = pt.process(rootDevice, footer)
 
     print "Processing entire tree of controls-relationships:\n"
@@ -424,9 +406,7 @@ def processTemplateID(templateID, devices, rootArtifacts):
 
         # Try to download template from artifact
         if template is None:
-            artifacts  = device.artifactNames()
-
-            template = getTemplateName(deviceType, artifacts, templateID)
+            template = downloadTemplate(device, templateID)
 
         # Try to check if we have a default template printer implementation
         if template is None and templatePrinter is not None:
@@ -454,7 +434,7 @@ def processTemplateID(templateID, devices, rootArtifacts):
 
     output      = header + output + footer
 
-    if len(output) == 0:
+    if not output:
         print "There were no templates for ID = " + templateID + ".\n"
         return
 
@@ -503,8 +483,7 @@ def processDevice(deviceName, templateIDs):
     assert isinstance(deviceName,  str)
     assert isinstance(templateIDs, list)
 
-    print "#" * 60
-    print "Device at root: " + deviceName + "\n"
+    print "Obtaining controls tree..."
 
     device = glob.ccdb.device(deviceName)
 
@@ -512,10 +491,7 @@ def processDevice(deviceName, templateIDs):
     devices = [ device ]
     devices.extend(buildControlsList(device))
 
-    # get artifact names of files attached to the root device
-    rootArtifacts = device.artifactNames()
-
-    map(lambda x: processTemplateID(x, devices, rootArtifacts), templateIDs)
+    map(lambda x: processTemplateID(x, devices), templateIDs)
 
 
 def makedirs(path):

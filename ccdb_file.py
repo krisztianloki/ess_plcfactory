@@ -19,7 +19,6 @@ class CCDB_FILE(CC):
         CC.__init__(self)
         CCDB.Device.ccdb = self
 
-
         if os_path.isdir(filename):
             self._readdir(filename)
         elif os_path.isfile(filename):

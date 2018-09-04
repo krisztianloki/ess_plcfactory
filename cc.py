@@ -66,8 +66,18 @@ class CC(object):
             raise NotImplementedError
 
 
-        def download(self):
-            raise NotImplementedError
+        def download(self, output_dir = "."):
+            # FIXME: remove hardcoded deviceType prefix
+            save_as = CC.saveas(self._device.deviceType(), self.filename(), output_dir)
+
+            # check if filename has already been downloaded
+            if os_path.exists(save_as):
+                return save_as
+
+            self._download(save_as)
+            self.downloadedArtifacts.append(save_as)
+
+            return save_as
 
 
 

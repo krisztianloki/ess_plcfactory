@@ -61,8 +61,17 @@ class CCDB(CC):
             return self._artifact["uri"]
 
 
-        def download(self):
-            raise NotImplementedError
+        def is_perdevtype(self):
+            return self._artifact["kind"] == "TYPE"
+
+
+        def _download(self, save_as):
+            if self.is_perdevtype():
+                url = "/".join([ "deviceTypes", self._device.deviceType(), "download", self.filename() ])
+            else:
+                url = "/".join([ "slot", self._device.name(), "download", self.filename() ])
+
+            return self._device.ccdb.download_from_ccdb(url, save_as)
 
 
         def _type(self):
@@ -185,6 +194,10 @@ Cannot get artifact {dtyp}.{art}: error {code} ({url})""".format(dtyp = deviceTy
 
     def _getArtifactFromURL(self, url, filename, saveas):
         return self.download(url, saveas)
+
+
+    def download_from_ccdb(self, url, saveas):
+        return CC.download(self._url + url, saveas, verify = self._verify)
 
 
     def download(self, url, saveas):
