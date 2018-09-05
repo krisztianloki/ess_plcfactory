@@ -382,7 +382,7 @@ class CC(object):
 
     @staticmethod
     def load(filename):
-        from ccdb_file import CCDB_Dump
+        from ccdb_dump import CCDB_Dump
         print "Trying to load CC dump from", filename
         return CCDB_Dump.load(filename)
 
