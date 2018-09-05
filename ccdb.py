@@ -154,11 +154,15 @@ class CCDB(CC):
             return self._slot.get("description", "")
 
 
+        def _artifact(self, a):
+            return CCDB.Artifact(self, a)
+
+
         def _artifacts(self):
             if self._arts is not None:
                 return self._arts
 
-            self._arts = map(lambda a: CCDB.Artifact(self, a), self._ensure(self._slot.get("artifacts", []), []))
+            self._arts = map(lambda a: self._artifact(a), self._ensure(self._slot.get("artifacts", []), []))
 
             return self._arts
 

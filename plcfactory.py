@@ -896,8 +896,8 @@ def main(argv):
 
 
     if args.ccdb:
-        from ccdb_file import CCDB_FILE
-        glob.ccdb = CCDB_FILE(args.ccdb)
+        from cc import CC
+        glob.ccdb = CC.load(args.ccdb)
     elif args.ccdb_test:
         from ccdb import CCDB_TEST
         glob.ccdb = CCDB_TEST()

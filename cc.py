@@ -380,6 +380,13 @@ class CC(object):
         return filename
 
 
+    @staticmethod
+    def load(filename):
+        from ccdb_file import CCDB_Dump
+        print "Trying to load CC dump from", filename
+        return CCDB_Dump.load(filename)
+
+
     def _backtrack(self, device, prop):
         assert isinstance(prop,   str)
 

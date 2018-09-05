@@ -14,124 +14,130 @@ from   cc import CC
 from ccdb import CCDB
 
 
-class CCDB_FILE(CC):
-    def __init__(self, filename):
-        CC.__init__(self)
-        CCDB.Device.ccdb = self
-
+class CCDB_Dump(object):
+    @staticmethod
+    def load(filename):
         if os_path.isdir(filename):
-            self._readdir(filename)
+            return CCDB_Dump.DirDump(filename)
         elif os_path.isfile(filename):
-            self._readzip(filename)
+            return CCDB_Dump.ZipDump(filename)
         else:
-            raise RuntimeError("No CCDB dump found at " + filename)
+            raise CC.Exception("No CCDB dump found at " + filename)
 
 
-    def dump(self, filename, dir = None):
-        return None
+
+    class Dump(CCDB):
+        def __init__(self):
+            super(CCDB_Dump.Dump, self).__init__()
+            CCDB.Device.ccdb = self
 
 
-    def _device(self, deviceName):
-        raise KeyError("No such device: {}".format(deviceName))
+        def dump(self, filename, dir = None):
+            return None
 
 
-    def _getArtifactFromDir(self, deviceType, filename, directory = None):
-        assert isinstance(deviceType, str)
-        assert isinstance(filename,   basestring)
-
-        saveas = self.saveas(deviceType, filename, os_path.join(self._rootpath, "templates"), CreateDir = False)
-
-        # check if filename has already been downloaded
-        if os_path.exists(saveas):
-            return saveas
-
-        return self._getArtifact(deviceType, filename, None)
+        # prevent downloading possibly new revisions of def files
+        def download_from_ccdb(self, url, save_as):
+            raise CC.DownloadException(url = url, code = "Inconsistent CCDB dump: this artifact was not downloaded from CCDB")
 
 
-    def _getArtifactFromURLFromDir(self, url, deviceType, filename, directory = None):
-        assert isinstance(url,        basestring)
-        assert isinstance(deviceType, str)
-        assert isinstance(filename,   basestring)
-
-        saveas = self.saveas("", filename, os_path.join(self._rootpath, "templates", CC.urlToDir(url)), CreateDir = False)
-
-        # check if filename has already been downloaded
-        if os_path.exists(saveas):
-            return saveas
-
-        return self._getArtifactFromURL(url, saveas)
+        # prevent downloading possibly new revisions of def files
+        def download(self, url, save_as):
+            raise CC.DownloadException(url = url, code = "Inconsistent CCDB dump: this artifact was not downloaded")
 
 
-    # extract artifact and save as saveas
-    def _getArtifactFromZip(self, deviceType, filename, saveas):
-        with self._zipfile.open(self.saveas(deviceType, filename, os_path.join("ccdb", "templates"), CreateDir = False)) as r:
-            with open(saveas, "w") as w:
-                w.writelines(r)
-
-        return saveas
+        def getSimilarDevices(self, device):
+            return []
 
 
-    # extract artifact and save as saveas
-    def _getArtifactFromURLFromZip(self, url, filename, saveas):
-        with self._zipfile.open(self.saveas("", filename, os_path.join("ccdb", "templates", CC.urlToDir(url)), CreateDir = False)) as r:
-            with open(saveas, "w") as w:
-                w.writelines(r)
-
-        return saveas
+        def _createDevices(self, devicedict):
+            deviceDict = ast.literal_eval(devicedict)
+            for (key, value) in deviceDict.iteritems():
+                self._devices[key] = self._create_device(value)
 
 
-    def _getArtifact(self, deviceType, filename, saveas):
-        raise RuntimeError("Inconsistent CCDB dump: there is no template for {device} with name {filename}".format(device = deviceType, filename = filename))
+        def _device(self, deviceName):
+            raise CC.Exception("Inconsistent CCDB dump: No such device: {}".format(deviceName))
 
 
-    # prevent downloading possibly new revisions of def files
-    def _getArtifactFromURL(self, url, saveas):
-        raise RuntimeError("Inconsistent CCDB dump: there is no template downloaded from URL: {}".format(url))
+
+    class DirDump(Dump):
+        class Artifact(CCDB.Artifact):
+            def download(self, extra_url = "", output_dir = "."):
+                return super(CCDB_Dump.DirDump.Artifact, self).download(extra_url, output_dir = os_path.join(self._device.ccdb._rootpath, "templates"))
 
 
-    # prevent downloading possibly new revisions of def files
-    def download(self, url, saveas):
-        raise RuntimeError("Inconsistent CCDB dump: there is no template downloaded from URL: {}".format(url))
+
+        class Device(CCDB.Device):
+            def _artifact(self, a):
+                return CCDB_Dump.DirDump.Artifact(self, a)
 
 
-    def getSimilarDevices(self, device):
-        return []
 
+        def __init__(self, directory):
+            super(CCDB_Dump.DirDump, self).__init__()
 
-    def _createDevices(self, devicedict):
-        deviceDict = ast.literal_eval(devicedict)
-        for (key, value) in deviceDict.iteritems():
-            self._devices[key] = CCDB.Device(value)
-
-
-    def _readdir(self, directory):
-        if os_path.isdir(os_path.join(directory, "ccdb")):
-            self._rootpath = os_path.join(directory, "ccdb")
-        else:
-            self._rootpath = directory
-
-        try:
-            with open(os_path.join(self._rootpath, "device.dict")) as dd:
-                devicedict = dd.readline()
-        except IOError, e:
-            if e.errno == 2:
-                raise RuntimeError("Required file 'device.dict' does not exist!")
+            if os_path.isdir(os_path.join(directory, "ccdb")):
+                self._rootpath = os_path.join(directory, "ccdb")
             else:
-                raise
+                self._rootpath = directory
 
-        self._createDevices(devicedict)
-        self.getArtifact = self._getArtifactFromDir
-        self.getArtifactFromURL = self._getArtifactFromURLFromDir
+            try:
+                with open(os_path.join(self._rootpath, "device.dict")) as dd:
+                    devicedict = dd.readline()
+            except IOError, e:
+                if e.errno == 2:
+                    raise CC.Exception("Required file 'device.dict' does not exist!")
+                else:
+                    raise
+
+            self._createDevices(devicedict)
 
 
-    def _readzip(self, filename):
-        import zipfile
-        self._zipfile = zipfile.ZipFile(filename, "r")
+        def _create_device(self, device):
+            return CCDB_Dump.DirDump.Device(device)
 
-        try:
-            self._createDevices(self._zipfile.read(os_path.join("ccdb", "device.dict")))
-        except KeyError:
-            raise RuntimeError("Required file 'device.dict' does not exist!")
 
-        self._getArtifact = self._getArtifactFromZip
-        self._getArtifactFromURL = self._getArtifactFromURLFromZip
+
+    class ZipDump(Dump):
+        class Device(CCDB.Device):
+            def _artifact(self, a):
+                return CCDB.Artifact(self, a)
+
+
+
+        def __init__(self, filename):
+            super(CCDB_Dump.ZipDump, self).__init__()
+
+            import zipfile
+            self._zipfile  = zipfile.ZipFile(filename, "r")
+            self._rootpath = "ccdb"
+
+            try:
+                self._createDevices(self._zipfile.read(os_path.join(self._rootpath, "device.dict")))
+            except KeyError:
+                raise CC.Exception("Required file 'device.dict' does not exist!")
+
+
+        def _create_device(self, device):
+            return CCDB_Dump.ZipDump.Device(device)
+
+
+
+        # extract artifact and save as save_as
+        def download_from_ccdb(self, url, save_as):
+            return self.download(url, save_as)
+
+
+        # extract artifact and save as save_as
+        def download(self, url, save_as):
+            try:
+                with self._zipfile.open(os_path.join(self._rootpath, save_as)) as r:
+                    with open(save_as, "w") as w:
+                        w.writelines(r)
+            except KeyError as e:
+                raise CC.DownloadException(url = url, code = e.args[0])
+            except Exception as e:
+                raise CC.DownloadException(url = url, code = repr(e))
+
+            return save_as
