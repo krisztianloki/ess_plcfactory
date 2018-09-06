@@ -7,8 +7,6 @@ __license__    = "GPLv3"
 
 # Python libraries
 import json
-import os
-import sys
 
 # PLC Factory modules
 from   cc import CC
@@ -17,10 +15,12 @@ import levenshtein
 try:
     import requests
 except ImportError:
+    from os  import path as os_path
+    from sys import path as sys_path
     # add directory for third-party libraries to module search path
-    parent_dir = os.path.abspath(os.path.dirname(__file__))
-    lib_dir    = os.path.join(parent_dir, 'libs')
-    sys.path.append(lib_dir)
+    parent_dir = os_path.abspath(os_path.dirname(__file__))
+    lib_dir    = os_path.join(parent_dir, 'libs')
+    sys_path.append(lib_dir)
     del parent_dir
     del lib_dir
 

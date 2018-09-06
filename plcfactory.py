@@ -57,6 +57,7 @@ import plcf
 import processTemplate as pt
 from   ccdb import CCDB
 from   future_print import future_print
+import helpers
 
 # global variables
 TEMPLATE_DIR = "templates"
@@ -152,7 +153,7 @@ def createFilename(header, device, templateID):
         outputFile = device.name() + "_" + device.deviceType() + "_template-" + templateID \
                    + "_" + glob.timestamp + ".scl"
 
-        return CCDB.sanitizeFilename(outputFile)
+        return helpers.sanitizeFilename(outputFile)
 
     else:
         filename = header[tagPos]
@@ -161,7 +162,7 @@ def createFilename(header, device, templateID):
         filename = filename[len(tag):].strip()
         filename = plcf.keywordsHeader(filename, device, templateID)
 
-        return CCDB.sanitizeFilename(filename)
+        return helpers.sanitizeFilename(filename)
 
 
 def findTag(lines, tag):
@@ -240,7 +241,7 @@ def getIfDefFromURL(device):
     if len(artifacts) > 1:
         raise RuntimeError("More than one Interface Definition URLs were found for {device}: {urls}".format(device = device.name(), urls = map(lambda u: u.uri(), artifacts)))
 
-    filename = glob.ccdb.sanitizeFilename(device.deviceType().upper() + ".def")
+    filename = helpers.sanitizeFilename(device.deviceType().upper() + ".def")
     url = "/".join([ "raw/master", filename ])
 
     print "Downloading Interface Definition file {filename} from {url}".format(filename = filename,
@@ -494,39 +495,13 @@ def processDevice(deviceName, templateIDs):
     map(lambda x: processTemplateID(x, devices), templateIDs)
 
 
-def makedirs(path):
-    try:
-        os.makedirs(path)
-    except OSError as ose:
-        if not os.path.isdir(path):
-            raise
-
-
-def rmdirs(path):
-    from shutil import rmtree
-    def onrmtreeerror(func, e_path, exc_info):
-        if e_path != path:
-            raise
-
-        if not (func is os.listdir or func is os.rmdir):
-            raise
-
-        if not (exc_info[0] is OSError or exc_info[0] is WindowsError):
-            raise
-
-        if exc_info[1].errno != 2:
-            raise
-
-    rmtree(path, onerror = onrmtreeerror)
-
-
 def create_zipfile(zipit):
     import zipfile
 
     if not zipit.endswith(".zip"):
         zipit += ".zip"
 
-    zipit = glob.ccdb.sanitizeFilename(zipit)
+    zipit = helpers.sanitizeFilename(zipit)
 
     z = zipfile.ZipFile(zipit, "w", zipfile.ZIP_DEFLATED)
 
@@ -555,11 +530,11 @@ def create_zipfile(zipit):
 def create_eem(basename):
     eem_files = []
     out_mdir  = os.path.join(OUTPUT_DIR, "modules", "-".join(["m-epics", basename]))
-    makedirs(out_mdir)
+    helpers.makedirs(out_mdir)
 
     def makedir(d):
         od = os.path.join(out_mdir, d)
-        makedirs(od)
+        helpers.makedirs(od)
         return od
 
     from shutil import copy2, copyfileobj
@@ -622,7 +597,7 @@ def create_eem(basename):
                 eem_files.extend(map(lambda x: os.path.join(miscdir, x), z.namelist()))
                 z.close()
         except:
-            rmdirs(os.path.join(miscdir, "ccdb"))
+            helpers.rmdirs(os.path.join(miscdir, "ccdb"))
             print "Cannot copy CCDB dump to EEE module"
 
     #
@@ -721,7 +696,7 @@ def main(argv):
 
     def add_eee_arg(parser, device):
         if device:
-            device = CCDB.sanitizeFilename(device.lower())
+            device = helpers.sanitizeFilename(device.lower())
         parser.add_argument(
                             '--eee',
                             '--eem',
@@ -979,15 +954,15 @@ def main(argv):
 
     if args.clear_templates:
         # remove templates downloaded in a previous run
-        rmdirs(TEMPLATE_DIR)
+        helpers.rmdirs(TEMPLATE_DIR)
     else:
         print "Reusing templates of any previous run"
 
-    makedirs(TEMPLATE_DIR)
+    helpers.makedirs(TEMPLATE_DIR)
 
     global OUTPUT_DIR
-    OUTPUT_DIR = os.path.join(OUTPUT_DIR, CCDB.sanitizeFilename(device.lower()))
-    makedirs(OUTPUT_DIR)
+    OUTPUT_DIR = os.path.join(OUTPUT_DIR, helpers.sanitizeFilename(device.lower()))
+    helpers.makedirs(OUTPUT_DIR)
 
     glob.modulename = eem
     processDevice(device, list(templateIDs))

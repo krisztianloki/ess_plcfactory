@@ -14,14 +14,11 @@ __status__     = "Production"
 __env__        = "Python version 2.7"
 
 # Python libraries
-import argparse
 import datetime
 import os
 import errno
 import sys
 import time
-import hashlib
-import zipfile
 
 #Global variables
 timestamp = '{:%Y%m%d%H%M%S}'.format(datetime.datetime.now())
@@ -85,13 +82,6 @@ LAST_DEVICE = -1
 
 Direct = False
 
-
-def makedirs(path):
-	try:
-		os.makedirs(path)
-	except OSError as ose:
-		if not os.path.isdir(path):
-			raise
 
 def Pre_ProcessIFA(IfaPath):
 	print ""
@@ -2978,7 +2968,4 @@ def main(argv):
 	print ""     
 
 if __name__ == "__main__":
-	try:
-		main(sys.argv[1:])
-	except InterfaceFactoryArgumentError, e:
-		exit(e.status)
+	main(sys.argv[1:])

@@ -6,10 +6,8 @@ __license__    = "GPLv3"
 
 
 # Python libraries
-from   os import makedirs as os_makedirs
 from   os import path     as os_path
 import zlib
-import unicodedata
 from   urlparse import urlsplit
 
 try:
@@ -27,6 +25,9 @@ except ImportError:
     # third-party libraries, stored in folder 'libs'
     import requests
 
+
+# PLC Factory modules
+import helpers
 
 
 
@@ -227,18 +228,6 @@ class CC(object):
 
 
     @staticmethod
-    def sanitizeFilename(filename):
-        if isinstance(filename, str):
-            filename = filename.decode("utf-8")
-
-        # replace accented characters with the unaccented equivalent
-        filename = unicodedata.normalize("NFKD", filename).encode("ASCII", "ignore")
-
-        result = map(lambda x: '_' if x in '<>:"/\|?*' else x, filename)
-        return "".join(result)
-
-
-    @staticmethod
     def urlComps(url):
         url_comps = urlsplit(url)
 
@@ -260,16 +249,7 @@ class CC(object):
         # ignore the last component, it is assumed to be a filename
         del comps[-1]
 
-        return os_path.join(*map(lambda sde: CC.sanitizeFilename(sde), comps))
-
-
-    @staticmethod
-    def makedirs(path):
-        try:
-            os_makedirs(path)
-        except OSError:
-            if not os_path.isdir(path):
-                raise
+        return os_path.join(*map(lambda sde: helpers.sanitizeFilename(sde), comps))
 
 
     @staticmethod
@@ -277,10 +257,10 @@ class CC(object):
         try:
             return CC.paths_cached[uniqueID, filename, directory]
         except KeyError:
-            dtdir = os_path.join(directory, CC.sanitizeFilename(uniqueID))
+            dtdir = os_path.join(directory, helpers.sanitizeFilename(uniqueID))
             if CreateDir:
-                CC.makedirs(dtdir)
-            path = os_path.normpath(os_path.join(dtdir, CC.sanitizeFilename(filename)))
+                helpers.makedirs(dtdir)
+            path = os_path.normpath(os_path.join(dtdir, helpers.sanitizeFilename(filename)))
             CC.paths_cached[uniqueID, filename, directory] = path
             return path
 
@@ -372,7 +352,7 @@ class CC(object):
         if not filename.endswith(".ccdb.zip"):
             filename += ".ccdb.zip"
 
-        filename = os_path.join(directory, self.sanitizeFilename(filename))
+        filename = os_path.join(directory, helpers.sanitizeFilename(filename))
         dumpfile = zipfile.ZipFile(filename, "w", zipfile.ZIP_DEFLATED)
 
         dumpfile.writestr(os_path.join("ccdb", "device.dict"), str(self._devices))

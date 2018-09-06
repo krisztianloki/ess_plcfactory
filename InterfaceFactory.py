@@ -20,8 +20,10 @@ import os
 import errno
 import sys
 import time
-import hashlib
 import zipfile
+
+# PLC Factory modules
+import helpers
 
 #Global variables
 timestamp = '{:%Y%m%d%H%M%S}'.format(datetime.datetime.now())
@@ -88,13 +90,6 @@ class InterfaceFactoryArgumentParser(argparse.ArgumentParser):
 		if message:
 			self._print_message(message, sys.stderr)
 		raise InterfaceFactoryArgumentError(status)
-
-def makedirs(path):
-	try:
-		os.makedirs(path)
-	except OSError as ose:
-		if not os.path.isdir(path):
-			raise
 
 def Pre_ProcessIFA(IfaPath):
 	print "PLCFactory file location: "+IfaPath
@@ -2724,7 +2719,7 @@ def main(argv):
 	# Make output directory
 	OutputDir, file_extension = os.path.splitext(inputzipfile)
 	OutputDir = OutputDir + "_TIAv"+TIAVersion
-	makedirs(OutputDir)
+	helpers.makedirs(OutputDir)
 
 	#Unzip content
 	with zipfile.ZipFile(inputzipfile, "r") as z:
