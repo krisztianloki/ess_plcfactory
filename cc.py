@@ -99,18 +99,20 @@ class CC(object):
             raise NotImplementedError
 
 
+        def uniqueID(self):
+            raise NotImplementedError
+
+
         # Returns: ""
         def download(self, extra_url = "", output_dir = "."):
             if self.is_uri():
-                # ignore deviceType, the URL already makes the path unique
                 filename = CC.urlToFilename(extra_url)
                 url      = "/".join([ self.uri(), extra_url ])
-                save_as  = CC.saveas("", filename, os_path.join(output_dir, CC.urlToDir(url)))
+                save_as  = CC.saveas(self.uniqueID(), filename, os_path.join(output_dir, CC.urlToDir(url)))
             else:
-                # FIXME: remove hardcoded deviceType prefix
                 filename = self.filename()
                 url      = None
-                save_as  = CC.saveas(self._device.deviceType(), filename, output_dir)
+                save_as  = CC.saveas(self.uniqueID(), filename, output_dir)
 
             # check if filename has already been downloaded
             if os_path.exists(save_as):
@@ -271,15 +273,15 @@ class CC(object):
 
 
     @staticmethod
-    def saveas(deviceType, filename, directory, CreateDir = True):
+    def saveas(uniqueID, filename, directory, CreateDir = True):
         try:
-            return CC.paths_cached[deviceType, filename, directory]
+            return CC.paths_cached[uniqueID, filename, directory]
         except KeyError:
-            dtdir = os_path.join(directory, CC.sanitizeFilename(deviceType))
+            dtdir = os_path.join(directory, CC.sanitizeFilename(uniqueID))
             if CreateDir:
                 CC.makedirs(dtdir)
             path = os_path.normpath(os_path.join(dtdir, CC.sanitizeFilename(filename)))
-            CC.paths_cached[deviceType, filename, directory] = path
+            CC.paths_cached[uniqueID, filename, directory] = path
             return path
 
 

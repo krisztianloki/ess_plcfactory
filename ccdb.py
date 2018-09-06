@@ -61,6 +61,17 @@ class CCDB(CC):
             return self._artifact["uri"]
 
 
+        def uniqueID(self):
+            if self.is_uri():
+                # ignore deviceType, the URL already makes the path unique
+                return ""
+
+            if self.is_perdevtype():
+                return self._device.deviceType()
+
+            return self._device.name()
+
+
         def is_perdevtype(self):
             return self._artifact["kind"] == "TYPE"
 
@@ -70,7 +81,7 @@ class CCDB(CC):
                 if self.is_perdevtype():
                     url = "/".join([ "deviceTypes", self._device.deviceType(), "download", self.filename() ])
                 else:
-                    url = "/".join([ "slot", self._device.name(), "download", self.filename() ])
+                    url = "/".join([ "slots", self._device.name(), "download", self.filename() ])
 
                 return self._device.ccdb.download_from_ccdb(url, save_as)
             else:
