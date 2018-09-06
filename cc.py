@@ -106,9 +106,10 @@ class CC(object):
 
 
         # Returns: ""
-        def download(self, extra_url = "", output_dir = None):
-            if output_dir is None:
-                output_dir = CC.TEMPLATE_DIR
+        def download(self, extra_url = ""):
+            # NOTE: we _must not_ use CC.TEMPLATE_DIR here,
+            # CCDB_Dump relies on creating an instance variant of TEMPLATE_DIR to point it to its own templates directory
+            output_dir = self._device.ccdb.TEMPLATE_DIR
 
             if self.is_uri():
                 filename = CC.urlToFilename(extra_url)

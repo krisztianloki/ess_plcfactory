@@ -53,7 +53,7 @@ class CCDB_Dump(object):
         def _createDevices(self, devicedict):
             deviceDict = ast.literal_eval(devicedict)
             for (key, value) in deviceDict.iteritems():
-                self._devices[key] = self._create_device(value)
+                self._devices[key] = CCDB.Device(value)
 
 
         def _device(self, deviceName):
@@ -62,18 +62,6 @@ class CCDB_Dump(object):
 
 
     class DirDump(Dump):
-        class Artifact(CCDB.Artifact):
-            def download(self, extra_url = "", output_dir = "."):
-                return super(CCDB_Dump.DirDump.Artifact, self).download(extra_url, output_dir = os_path.join(self._device.ccdb._rootpath, CC.TEMPLATE_DIR))
-
-
-
-        class Device(CCDB.Device):
-            def _artifact(self, a):
-                return CCDB_Dump.DirDump.Artifact(self, a)
-
-
-
         def __init__(self, directory):
             super(CCDB_Dump.DirDump, self).__init__()
 
@@ -93,19 +81,12 @@ class CCDB_Dump(object):
 
             self._createDevices(devicedict)
 
-
-        def _create_device(self, device):
-            return CCDB_Dump.DirDump.Device(device)
+            # Create our own TEMPLATE_DIR
+            self.TEMPLATE_DIR = os_path.join(self._rootpath, CC.TEMPLATE_DIR)
 
 
 
     class ZipDump(Dump):
-        class Device(CCDB.Device):
-            def _artifact(self, a):
-                return CCDB.Artifact(self, a)
-
-
-
         def __init__(self, filename):
             super(CCDB_Dump.ZipDump, self).__init__()
 
@@ -117,11 +98,6 @@ class CCDB_Dump(object):
                 self._createDevices(self._zipfile.read(os_path.join(self._rootpath, "device.dict")))
             except KeyError:
                 raise CC.Exception("Required file 'device.dict' does not exist!")
-
-
-        def _create_device(self, device):
-            return CCDB_Dump.ZipDump.Device(device)
-
 
 
         # extract artifact and save as save_as
