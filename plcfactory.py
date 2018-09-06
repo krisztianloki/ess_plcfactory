@@ -974,7 +974,12 @@ def main(argv):
         try:
             from InterfaceFactorySiemens import produce as ifa_produce
         except ImportError:
-            from InterfaceFactory import produce as ifa_produce
+            print """
+ERROR
+=====
+Siemens support is not found
+"""
+            exit(1)
         output_files.update(ifa_produce(OUTPUT_DIR, output_files["IFA"], output_files[tia_map], tia_version, nodiag = args.plc_no_diag, onlydiag = args.plc_only_diag, direct = args.plc_direct))
 
     if beckhoff:
