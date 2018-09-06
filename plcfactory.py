@@ -494,6 +494,8 @@ def processDevice(deviceName, templateIDs):
 
     map(lambda x: processTemplateID(x, devices), templateIDs)
 
+    return device
+
 
 def create_zipfile(zipit):
     import zipfile
@@ -555,7 +557,7 @@ def create_eem(basename):
 #    m_cp(output_files['EPICS-DB'],       "db",      basename + ".db")
 
     try:
-        m_cp(output_files['EPICS-TEST-DB'],  "db",      basename + "-test.db")
+        m_cp(output_files['EPICS-TEST-DB'],           "db",      basename + "-test.db")
     except KeyError:
         pass
 
@@ -574,16 +576,18 @@ def create_eem(basename):
 
     req_files    = []
     try:
-        m_cp(output_files['AUTOSAVE'],       "misc",    basename + ".req")
+        m_cp(output_files['AUTOSAVE'],                "misc",    basename + ".req")
         req_files.append(basename + ".req")
     except KeyError:
         pass
 
     try:
-        m_cp(output_files['AUTOSAVE-TEST'],       "misc",    basename + "-test.req")
+        m_cp(output_files['AUTOSAVE-TEST'],           "misc",    basename + "-test.req")
         req_files.append(basename + "-test.req")
     except KeyError:
         pass
+
+    m_cp(output_files["CREATOR"],                     "misc",    "creator")
 
     #
     # Copy CCDB dump
@@ -607,10 +611,12 @@ def create_eem(basename):
         eem_files.append(makefile.name)
         future_print("""include ${EPICS_ENV_PATH}/module.Makefile
 
-USR_DEPENDENCIES += s7plc_comms""", file = makefile)
-        if len(req_files):
+USR_DEPENDENCIES += s7plc_comms
+MISCS = ${AUTOMISCS} $(addprefix misc/, creator)
+""", file = makefile)
+        if req_files:
             future_print("USR_DEPENDENCIES += autosave", file = makefile)
-            future_print("MISCS = ${{AUTOMISCS}} $(addprefix misc/, {req_files})".format(req_files = " ".join(req_files)), file = makefile)
+            future_print("MISCS += $(addprefix misc/, {req_files})".format(req_files = " ".join(req_files)), file = makefile)
 
 
     output_files['EEM'] = eem_files
@@ -693,15 +699,22 @@ THE FOLLOWING FILES WERE NOT CHECKED:
             exit(1)
 
 
+def record_args(root_device):
+    creator = os.path.join(OUTPUT_DIR, createFilename(["#FILENAME [PLCF#INSTALLATION_SLOT]-creator-[PLCF#TIMESTAMP]"], root_device, ""))
+    with open(creator, 'w') as f:
+        future_print(" ".join(sys.argv), file = f)
+    output_files["CREATOR"] = creator
+
+
 def banner():
-        print " _____  _      _____   ______         _                    "
-        print "|  __ \| |    / ____| |  ____|       | |                   "
-        print "| |__) | |   | |      | |__ __ _  ___| |_ ___  _ __ _   _  "
-        print "|  ___/| |   | |      |  __/ _` |/ __| __/ _ \| '__| | | | "
-        print "| |    | |___| |____  | | ( (_| | (__| |( (_) | |  | |_| | "
-        print "|_|    |______\_____| |_|  \__,_|\___|\__\___/|_|   \__, | "
-        print "                                                     __/ | "
-        print "European Spallation Source, Lund                    |___/ \n"
+    print " _____  _      _____   ______         _                    "
+    print "|  __ \| |    / ____| |  ____|       | |                   "
+    print "| |__) | |   | |      | |__ __ _  ___| |_ ___  _ __ _   _  "
+    print "|  ___/| |   | |      |  __/ _` |/ __| __/ _ \| '__| | | | "
+    print "| |    | |___| |____  | | ( (_| | (__| |( (_) | |  | |_| | "
+    print "|_|    |______\_____| |_|  \__,_|\___|\__\___/|_|   \__, | "
+    print "                                                     __/ | "
+    print "European Spallation Source, Lund                    |___/ \n"
 
 
 
@@ -761,7 +774,7 @@ def main(argv):
         parser.add_argument(
                             '--list-templates',
                             dest    = "list_templates",
-                            help    = "give a list of the possible templates that can be generated on-the-fly from an interface definition",
+                            help    = "give a list of the possible templates that can be generated on-the-fly from an Interface Definition",
                             action  = "store_true"
                            )
 
@@ -1041,7 +1054,7 @@ def main(argv):
 
     glob.modulename = eem
     read_last_update()
-    processDevice(device, list(templateIDs))
+    root_device = processDevice(device, list(templateIDs))
 
     # Verify created files: they should be the same as the ones from the last run
     if args.verify:
@@ -1050,6 +1063,9 @@ def main(argv):
 
     # create a dump of CCDB
     output_files["CCDB-DUMP"] = glob.ccdb.dump("-".join([device, glob.timestamp]), OUTPUT_DIR)
+
+    # record the arguments used to run this instance
+    record_args(root_device)
 
     if tia_version or args.plc_only_diag:
         try:
