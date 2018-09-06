@@ -88,7 +88,7 @@ def Pre_ProcessIFA(IfaPath):
 	print ""
 	print "*******************************************"
 	print "*                                         *"
-	print "*   Generating Siemens PLC source code   *"
+	print "*   Generating Siemens PLC source code    *"
 	print "*                                         *"
 	print "*******************************************"
 	print ""
@@ -2875,8 +2875,8 @@ def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 def produce(OutputDir, IfaPath, SclPath, TIAVersion, **kwargs):
 	global Direct
 	Pre_ProcessIFA(IfaPath)
+	generated_files = dict()
 	if HASH <> "" and DeviceNum <> 0:
-		generated_files = dict()
 
 		#=============Call main functions=============
 		global ExternalSourceFile
@@ -2941,11 +2941,11 @@ def produce(OutputDir, IfaPath, SclPath, TIAVersion, **kwargs):
 		if HASH == "":
 			print "ERROR:"
 			print "After pre-processing the .IFA file there was no HASH code inside!\n"
-			return
+			return generated_files
 		if DeviceNum == 0:
 			print "ERROR:"
 			print "After pre-processing the .IFA file there were no DEVICES inside!\n"
-			return
+			return generated_files
 
 def main(argv):
 	os.system('clear')

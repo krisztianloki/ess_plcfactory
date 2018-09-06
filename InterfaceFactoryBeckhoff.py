@@ -1397,11 +1397,11 @@ def produce(OutputDir, IfaPath, SclPath, TIAVersion, **kwargs):
 		if HASH == "":
 			print "ERROR:"
 			print "After pre-processing the .IFA file there was no HASH code inside!\n"
-			return
+			return generated_files
 		if DeviceNum == 0:
 			print "ERROR:"
 			print "After pre-processing the .IFA file there were no DEVICES inside!\n"
-			return
+			return generated_files
 
 def main(argv):
 	os.system('clear')
