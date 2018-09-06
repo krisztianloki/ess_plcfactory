@@ -60,15 +60,17 @@ from   future_print import future_print
 import helpers
 
 # global variables
-OUTPUT_DIR   = "output"
-TEMPLATE_TAG = "TEMPLATE"
-HEADER_TAG   = "HEADER"
-FOOTER_TAG   = "FOOTER"
-IFDEF_TAG    = ".def"
-hashobj      = hashlib.sha256()
-ifdefs       = dict()
-output_files = dict()
-plc_type     = "SIEMENS"
+OUTPUT_DIR     = "output"
+TEMPLATE_TAG   = "TEMPLATE"
+HEADER_TAG     = "HEADER"
+FOOTER_TAG     = "FOOTER"
+IFDEF_TAG      = ".def"
+hashobj        = hashlib.sha256()
+ifdefs         = dict()
+output_files   = dict()
+previous_files = dict()
+plc_type       = "SIEMENS"
+last_updated   = None
 
 
 def openTemplate(device, tag, templateID):
@@ -135,7 +137,7 @@ def matchingArtifact(artifact, tag, templateID):
     return filename.endswith(match)
 
 
-def createFilename(header, device, templateID):
+def createFilename(header, device, templateID, **kwargs):
     assert isinstance(header,     list)
     assert isinstance(templateID, str )
 
@@ -154,7 +156,7 @@ def createFilename(header, device, templateID):
 
         # remove tag and strip surrounding whitespace
         filename = filename[len(tag):].strip()
-        filename = plcf.keywordsHeader(filename, device, templateID)
+        filename = plcf.keywordsHeader(filename, device, templateID, **kwargs)
 
         return helpers.sanitizeFilename(filename)
 
@@ -370,6 +372,10 @@ def processTemplateID(templateID, devices):
     # has to acquire filename _before_ processing the header
     # there are some special tags that are only valid in the header
     outputFile = os.path.join(OUTPUT_DIR, createFilename(header, rootDevice, templateID))
+
+    if last_updated is not None:
+        previous_files[templateID] = os.path.join(OUTPUT_DIR, createFilename(header, rootDevice, templateID, TIMESTAMP = last_updated))
+
     if header:
         header = pt.process(rootDevice, header)
 
@@ -613,6 +619,80 @@ USR_DEPENDENCIES += s7plc_comms""", file = makefile)
     return out_mdir
 
 
+def read_last_update():
+    global last_updated
+
+    fname = os.path.join(OUTPUT_DIR, ".last_updated")
+    try:
+        with open(fname, 'r') as lu:
+            last_updated = lu.read(14)
+    except IOError as e:
+        if e.errno == 2:
+            return
+        raise
+
+
+def create_last_update():
+    fname = os.path.join(OUTPUT_DIR, ".last_updated")
+    with open(fname, 'w') as lu:
+        future_print(glob.timestamp, file = lu)
+        output_files["LAST_UPDATE"] = fname
+
+
+def verify_output(strictness):
+    if strictness == 0 or (last_updated is None and strictness < 3):
+        return
+
+    import filecmp
+    # Compare files in output_files to those in previous_files
+    # previous_files will contain files that are not the same
+    # not_checked will contain files that are not found / not generated
+    not_checked = dict()
+    for (template, output) in output_files.iteritems():
+        try:
+            prev = previous_files[template]
+        except KeyError:
+            not_checked[template] = output
+            continue
+
+        #compare prev and output
+        try:
+            if filecmp.cmp(prev, output, shallow = 0):
+                previous_files.pop(template)
+        except OSError as e:
+            if e.errno == 2:
+                not_checked[template] = output
+                previous_files.pop(template)
+                continue
+            raise
+
+    if previous_files:
+        print "\n" + "=*" * 40
+        print """
+THE FOLLOWING FILES WERE CHANGED:
+"""
+        for (template, output) in previous_files.iteritems():
+            print "\t{template}:\t{filename}".format(template = template, filename = output)
+        print "\n" + "=*" * 40
+
+        exit(1)
+
+    # Record last update; even if strict checking was requested
+    create_last_update()
+
+    if not_checked:
+        print "\n" + "=*" * 40
+        print """
+THE FOLLOWING FILES WERE NOT CHECKED:
+"""
+        for (template, output) in not_checked.iteritems():
+            print "\t{template}:\t{filename}".format(template = template, filename = output)
+        print "\n" + "=*" * 40
+
+        if strictness > 1:
+            exit(1)
+
+
 def banner():
         print " _____  _      _____   ______         _                    "
         print "|  __ \| |    / ____| |  ____|       | |                   "
@@ -844,6 +924,15 @@ def main(argv):
                         action   = 'store_false')
 
     parser.add_argument(
+                        '--verify',
+                        dest     = "verify",
+                        help     = 'verify that the contents of the generated files did not change from the last run',
+                        metavar  = "strictness",
+                        type     = int,
+                        const    = 1,
+                        nargs    = '?')
+
+    parser.add_argument(
                         '-t',
                         '--template',
                         help     = 'template name',
@@ -951,7 +1040,13 @@ def main(argv):
     helpers.makedirs(OUTPUT_DIR)
 
     glob.modulename = eem
+    read_last_update()
     processDevice(device, list(templateIDs))
+
+    # Verify created files: they should be the same as the ones from the last run
+    if args.verify:
+        verify_output(args.verify)
+    create_last_update()
 
     # create a dump of CCDB
     output_files["CCDB-DUMP"] = glob.ccdb.dump("-".join([device, glob.timestamp]), OUTPUT_DIR)

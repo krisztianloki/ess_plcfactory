@@ -23,18 +23,20 @@ import plcf_ext        as ext
 
 
 
-def keywordsHeader(line, device, id):
-    assert isinstance(line,     str)
-    assert isinstance(id,       str)
+def keywordsHeader(line, device, templateID, **kwargs):
+    assert isinstance(line,       str)
+    assert isinstance(templateID, str)
 
     # dictionary of the form key: tag, value: replacement
     substDict = {'INSTALLATION_SLOT'      : device.name(),
                  'INSTALLATION_SLOT_DESC' : device.description(),
-                 'TEMPLATE'               : 'template-' + id,
+                 'TEMPLATE'               : 'template-' + templateID,
                  'TIMESTAMP'              : glob.timestamp,
                  'DEVICE_TYPE'            : device.deviceType(),
                  'ROOT_INSTALLATION_SLOT' : glob.root_installation_slot
                 }
+
+    substDict.update(kwargs)
 
     return processLine(line, device, substDict)
 
