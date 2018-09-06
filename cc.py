@@ -32,6 +32,7 @@ import helpers
 
 
 class CC(object):
+    TEMPLATE_DIR = "templates"
     paths_cached = dict()
 
 
@@ -105,7 +106,10 @@ class CC(object):
 
 
         # Returns: ""
-        def download(self, extra_url = "", output_dir = "."):
+        def download(self, extra_url = "", output_dir = None):
+            if output_dir is None:
+                output_dir = CC.TEMPLATE_DIR
+
             if self.is_uri():
                 filename = CC.urlToFilename(extra_url)
                 url      = "/".join([ self.uri(), extra_url ])
@@ -213,7 +217,7 @@ class CC(object):
 
 
 
-    def __init__(self):
+    def __init__(self, clear_templates = True):
         # all devices; key, Device pairs
         self._devices              = dict()
 
@@ -225,6 +229,14 @@ class CC(object):
         # cache for ^() expressions
         # key: (device, expression), value: property
         self._backtrackCache       = dict()
+
+        if clear_templates:
+            # clear templates downloaded in a previous run
+            helpers.rmdirs(CC.TEMPLATE_DIR)
+        else:
+            print "Reusing templates of any previous run"
+
+        helpers.makedirs(CC.TEMPLATE_DIR)
 
 
     @staticmethod

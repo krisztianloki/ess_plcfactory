@@ -64,7 +64,7 @@ class CCDB_Dump(object):
     class DirDump(Dump):
         class Artifact(CCDB.Artifact):
             def download(self, extra_url = "", output_dir = "."):
-                return super(CCDB_Dump.DirDump.Artifact, self).download(extra_url, output_dir = os_path.join(self._device.ccdb._rootpath, "templates"))
+                return super(CCDB_Dump.DirDump.Artifact, self).download(extra_url, output_dir = os_path.join(self._device.ccdb._rootpath, CC.TEMPLATE_DIR))
 
 
 

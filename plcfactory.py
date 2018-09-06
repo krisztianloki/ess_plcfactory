@@ -60,7 +60,6 @@ from   future_print import future_print
 import helpers
 
 # global variables
-TEMPLATE_DIR = "templates"
 OUTPUT_DIR   = "output"
 TEMPLATE_TAG = "TEMPLATE"
 HEADER_TAG   = "HEADER"
@@ -70,11 +69,6 @@ hashobj      = hashlib.sha256()
 ifdefs       = dict()
 output_files = dict()
 plc_type     = "SIEMENS"
-
-
-def downloadArtifact(device):
-    # download template and save in template directory
-    return device.download(output_dir = TEMPLATE_DIR)
 
 
 def openTemplate(device, tag, templateID):
@@ -90,7 +84,7 @@ def openTemplate(device, tag, templateID):
         raise RuntimeError("More than one possible matching artifacts found for {template}: {artifacts}".format(template  = "_".join([ tag, TEMPLATE_TAG, templateID ]),
                                                                                                                 artifacts = matches))
 
-    filename = downloadArtifact(matches[0])
+    filename = matches[0].download()
 
     with open(filename) as f:
         lines = f.readlines()
@@ -110,7 +104,7 @@ def downloadTemplate(device, templateID):
         raise RuntimeError("More than one possible matching artifacts found for {template}: {artifacts}".format(template  = "_".join([ TEMPLATE_TAG, templateID ]),
                                                                                                                 artifacts = matches))
 
-    return downloadArtifact(matches[0])
+    return matches[0].download()
 
 
 def matchingArtifact(artifact, tag, templateID):
@@ -247,7 +241,7 @@ def getIfDefFromURL(device):
     print "Downloading Interface Definition file {filename} from {url}".format(filename = filename,
                                                                                url      = artifacts[0].uri())
 
-    return artifacts[0].download(extra_url = url, output_dir = TEMPLATE_DIR)
+    return artifacts[0].download(extra_url = url)
 
 
 #
@@ -265,7 +259,7 @@ def getIfDef(device):
         raise RuntimeError("More than one Interface Definiton files were found for {device}: {defs}".format(device = device.name(), defs = defs))
 
     if defs:
-        filename = downloadArtifact(defs[0])
+        filename = defs[0].download()
     else:
         # No 'file' artifact found, let's see if there is a URL
         filename = getIfDefFromURL(device)
@@ -870,15 +864,6 @@ def main(argv):
         glob.root_installation_slot = device
 
 
-    if args.ccdb:
-        from cc import CC
-        glob.ccdb = CC.load(args.ccdb)
-    elif args.ccdb_test:
-        from ccdb import CCDB_TEST
-        glob.ccdb = CCDB_TEST()
-    else:
-        glob.ccdb = CCDB()
-
     default_printers = set(["DEVICE-LIST"])
 
     if args.plc_interface:
@@ -952,13 +937,14 @@ def main(argv):
 
     banner()
 
-    if args.clear_templates:
-        # remove templates downloaded in a previous run
-        helpers.rmdirs(TEMPLATE_DIR)
+    if args.ccdb:
+        from cc import CC
+        glob.ccdb = CC.load(args.ccdb)
+    elif args.ccdb_test:
+        from ccdb import CCDB_TEST
+        glob.ccdb = CCDB_TEST(clear_templates = args.clear_templates)
     else:
-        print "Reusing templates of any previous run"
-
-    helpers.makedirs(TEMPLATE_DIR)
+        glob.ccdb = CCDB(clear_templates = args.clear_templates)
 
     global OUTPUT_DIR
     OUTPUT_DIR = os.path.join(OUTPUT_DIR, helpers.sanitizeFilename(device.lower()))

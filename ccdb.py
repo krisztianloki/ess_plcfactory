@@ -183,8 +183,8 @@ class CCDB(CC):
 
 
 
-    def __init__(self, url = None, verify_ssl_cert = True):
-        CC.__init__(self)
+    def __init__(self, url = None, verify_ssl_cert = True, **kwargs):
+        CC.__init__(self, **kwargs)
         CCDB.Device.ccdb = self
 
         if url is None:
