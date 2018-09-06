@@ -397,7 +397,7 @@ def processTemplateID(templateID, devices):
             template = downloadTemplate(device, templateID)
 
         # Try to check if we have a default template printer implementation
-        if template is None and templatePrinter is not None:
+        if template is None and templatePrinter is not None and not templatePrinter.needs_ifdef():
             print "Using default built-in template..."
             template = []
             templatePrinter.body(None, template)

@@ -106,6 +106,11 @@ class PRINTER(object):
                     f.write(line)
 
 
+    def needs_ifdef(self):
+        # Check if _any_body() is overridden
+        return "_any_body" not in self.__class__.__dict__
+
+
     def header(self, output, **keyword_params):
         self._check_if_list(output)
 
