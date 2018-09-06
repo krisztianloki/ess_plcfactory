@@ -71,6 +71,7 @@ output_files   = dict()
 previous_files = dict()
 plc_type       = "SIEMENS"
 last_updated   = None
+device_tag     = None
 
 
 def openTemplate(device, tag, templateID):
@@ -125,14 +126,14 @@ def matchingArtifact(artifact, tag, templateID):
         assert isinstance(tag[0], str)
         assert isinstance(tag[1], str)
 
-        match  = "{}.txt".format("_".join([tag[0], tag[1], templateID]))
+        match  = "{}.txt".format("_".join([ tag[0], tag[1], templateID ]))
     else:
         assert isinstance(tag, str)
 
         # do not match HEADERs and FOOTERs if not in HEADER/FOOTER mode
         if HEADER_TAG in filename or FOOTER_TAG in filename:
             return False
-        match  = "{}.txt".format("_".join([tag, templateID]))
+        match  = "{}.txt".format("_".join([ tag, templateID ]))
 
     return filename.endswith(match)
 
@@ -217,14 +218,19 @@ def getEOL(header):
 
 
 def getIfDefFromURL(device):
-    artifacts = filter(lambda u: u.is_uri() and u.name() == "EPI", device.artifacts())
+    if device_tag:
+        epi = "_".join([ "EPI", device_tag ])
+    else:
+        epi = "EPI"
+
+    artifacts = filter(lambda u: u.is_uri() and u.name() == epi, device.artifacts())
     if not artifacts:
         return None
 
     if len(artifacts) > 1:
         raise RuntimeError("More than one Interface Definition URLs were found for {device}: {urls}".format(device = device.name(), urls = map(lambda u: u.uri(), artifacts)))
 
-    filename = helpers.sanitizeFilename(device.deviceType().upper() + ".def")
+    filename = helpers.sanitizeFilename(device.deviceType().upper() + IFDEF_TAG)
     url = "/".join([ "raw/master", filename ])
 
     print "Downloading Interface Definition file {filename} from {url}".format(filename = filename,
@@ -242,7 +248,12 @@ def getIfDef(device):
     if deviceType in ifdefs:
         return ifdefs[deviceType]
 
-    defs = filter(lambda a: a.is_file() and a.filename().endswith(IFDEF_TAG), device.artifacts())
+    if device_tag:
+        ifdef_tag = "".join([ "_", device_tag, IFDEF_TAG ])
+    else:
+        ifdef_tag = IFDEF_TAG
+
+    defs = filter(lambda a: a.is_file() and a.filename().endswith(ifdef_tag), device.artifacts())
 
     if len(defs) > 1:
         raise RuntimeError("More than one Interface Definiton files were found for {device}: {defs}".format(device = device.name(), defs = defs))
@@ -347,8 +358,13 @@ def processTemplateID(templateID, devices):
 
     rootDevice = devices[0]
 
+    if device_tag:
+        tagged_templateID = "_".join([ device_tag, templateID ])
+    else:
+        tagged_templateID = templateID
+
     print "#" * 60
-    print "Template ID " + templateID
+    print "Template ID " + tagged_templateID
     print "Device at root: " + str(rootDevice) + "\n"
 
     # collect lines to be written at the end
@@ -394,7 +410,7 @@ def processTemplateID(templateID, devices):
 
         # Try to download template from artifact
         if template is None:
-            template = downloadTemplate(device, templateID)
+            template = downloadTemplate(device, tagged_templateID)
 
         # Try to check if we have a default template printer implementation
         if template is None and templatePrinter is not None and not templatePrinter.needs_ifdef():
@@ -423,7 +439,7 @@ def processTemplateID(templateID, devices):
     output      = header + output + footer
 
     if not output:
-        print "There were no templates for ID = " + templateID + ".\n"
+        print "There were no templates for ID = " + tagged_templateID + ".\n"
         return
 
     lines  = output
@@ -464,7 +480,7 @@ def processTemplateID(templateID, devices):
 
     print "Output file written: " + outputFile + "\n",
     print "Hash sum: " + glob.ccdb.getHash(hashobj)
-    print("--- %s %.1f seconds ---\n" % (templateID, time.time() - start_time))
+    print("--- %s %.1f seconds ---\n" % (tagged_templateID, time.time() - start_time))
 
 
 def processDevice(deviceName, templateIDs):
@@ -518,7 +534,7 @@ def create_zipfile(zipit):
 
 def create_eem(basename):
     eem_files = []
-    out_mdir  = os.path.join(OUTPUT_DIR, "modules", "-".join(["m-epics", basename]))
+    out_mdir  = os.path.join(OUTPUT_DIR, "modules", "-".join([ "m-epics", basename ]))
     helpers.makedirs(out_mdir)
 
     def makedir(d):
@@ -540,8 +556,6 @@ def create_eem(basename):
             with open(parts) as partfile:
                 copyfileobj(partfile, dbfile)
         output_files['EEE-DB'] = dbfile.name
-
-#    m_cp(output_files['EPICS-DB'],       "db",      basename + ".db")
 
     try:
         m_cp(output_files['EPICS-TEST-DB'],           "db",      basename + "-test.db")
@@ -933,6 +947,11 @@ def main(argv):
                         nargs    = '?')
 
     parser.add_argument(
+                        '--tag',
+                        help     = 'tag to use if more than one matching artifact is found',
+                        type     = str)
+
+    parser.add_argument(
                         '-t',
                         '--template',
                         help     = 'template name',
@@ -952,6 +971,8 @@ def main(argv):
     else:
         glob.root_installation_slot = device
 
+    global device_tag
+    device_tag = args.tag
 
     default_printers = set(["DEVICE-LIST"])
 
@@ -1037,6 +1058,8 @@ def main(argv):
 
     global OUTPUT_DIR
     OUTPUT_DIR = os.path.join(OUTPUT_DIR, helpers.sanitizeFilename(device.lower()))
+    if device_tag:
+        OUTPUT_DIR = os.path.join(OUTPUT_DIR, helpers.sanitizeFilename("__".join([ "", "tag", device_tag ])))
     helpers.makedirs(OUTPUT_DIR)
 
     glob.modulename = eem
@@ -1049,7 +1072,7 @@ def main(argv):
     create_last_update()
 
     # create a dump of CCDB
-    output_files["CCDB-DUMP"] = glob.ccdb.dump("-".join([device, glob.timestamp]), OUTPUT_DIR)
+    output_files["CCDB-DUMP"] = glob.ccdb.dump("-".join([ device, glob.timestamp ]), OUTPUT_DIR)
 
     # record the arguments used to run this instance
     record_args(root_device)
@@ -1064,6 +1087,7 @@ ERROR
 Siemens support is not found
 """
             exit(1)
+
         output_files.update(ifa_produce(OUTPUT_DIR, output_files["IFA"], output_files[tia_map], tia_version, nodiag = args.plc_no_diag, onlydiag = args.plc_only_diag, direct = args.plc_direct))
 
     if beckhoff:
@@ -1076,6 +1100,7 @@ ERROR
 Beckhoff support is not found
 """
             exit(1)
+
         output_files.update(ifa_produce(OUTPUT_DIR, output_files["IFA"], "", beckhoff))
 
     if eem:
