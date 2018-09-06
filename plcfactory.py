@@ -164,7 +164,7 @@ def createFilename(header, device, templateID, **kwargs):
 def findTag(lines, tag):
     tagPos = -1
 
-    if lines is None:
+    if not lines:
         return tagPos
 
     assert isinstance(lines, list)
@@ -207,26 +207,13 @@ def getEOL(header):
     tag    = "#EOL"
     tagPos = findTag(header, tag)
 
-    if len(header) == 0 or tagPos == -1:
+    if tagPos == -1:
         return "\n"
 
     # this really is a quick and dirty hack
     # should be replaced by something like
     # #EOL CR LF
     return header[tagPos][len(tag):].strip().replace('\\n', '\n').replace('\\r', '\r').translate(None, '"\'')
-
-
-def replaceTag(line, tag, insert):
-    assert isinstance(line,   str)
-    assert isinstance(tag,    str)
-    assert isinstance(insert, str)
-
-    start = line.find(tag)
-    assert start != -1
-
-    end   = start + len(tag)
-
-    return line[:start] + insert + line[end:]
 
 
 def getIfDefFromURL(device):
