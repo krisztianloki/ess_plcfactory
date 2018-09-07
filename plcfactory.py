@@ -72,6 +72,8 @@ previous_files = dict()
 plc_type       = "SIEMENS"
 last_updated   = None
 device_tag     = None
+hashes         = dict()
+prev_hashes    = None
 
 
 def openTemplate(device, tag, templateID):
@@ -497,6 +499,9 @@ def processDevice(deviceName, templateIDs):
 
     map(lambda x: processTemplateID(x, devices), templateIDs)
 
+    global hashes
+    hashes[device.name()] = glob.ccdb.getHash(hashobj)
+
     return device
 
 
@@ -624,6 +629,40 @@ MISCS = ${AUTOMISCS} $(addprefix misc/, creator)
 
     print "Module created: " + out_mdir
     return out_mdir
+
+
+def create_data_dir():
+    dname = os.path.join(os.path.expanduser("~"), ".local/share/ics_plc_factory")
+    helpers.makedirs(dname)
+
+    return dname
+
+
+def read_data_files():
+    global hashes
+    global prev_hashes
+
+    try:
+        with open(os.path.join(create_data_dir(), "hashes")) as h:
+            raw_hashes = h.readline()
+    except:
+        return
+
+    from ast import literal_eval as ast_literal_eval
+    prev_hashes = ast_literal_eval(raw_hashes)
+    import copy
+    hashes = copy.deepcopy(prev_hashes)
+    del ast_literal_eval
+
+
+def write_data_files():
+    try:
+        with open(os.path.join(create_data_dir(), "hashes"), 'w') as h:
+            future_print(str(hashes), file = h)
+    except:
+        print("Was not able to save data files")
+        return
+
 
 
 def read_last_update():
@@ -1064,12 +1103,14 @@ def main(argv):
 
     glob.modulename = eem
     read_last_update()
+    read_data_files()
     root_device = processDevice(device, list(templateIDs))
 
     # Verify created files: they should be the same as the ones from the last run
     if args.verify:
         verify_output(args.verify)
     create_last_update()
+    write_data_files()
 
     # create a dump of CCDB
     output_files["CCDB-DUMP"] = glob.ccdb.dump("-".join([ device, glob.timestamp ]), OUTPUT_DIR)
@@ -1119,6 +1160,17 @@ Beckhoff support is not found
 
     if not args.clear_templates:
         print "\nTemplates were reused\n"
+
+    try:
+        if prev_hashes is not None and prev_hashes[root_device.name()] != hashes[root_device.name()]:
+            print("""
++++++++++++++++++++++++++++++++++++++++++++++++++++++
++ Be aware:                                         +
++	Our records show that the hash has changed. +
++++++++++++++++++++++++++++++++++++++++++++++++++++++
+""")
+    except KeyError:
+        pass
 
     print("--- %.1f seconds ---\n" % (time.time() - start_time))
 
