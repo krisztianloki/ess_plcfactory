@@ -95,7 +95,7 @@ dbLoadRecords("{modulename}.db", "PLCNAME=$(PLCNAME), MODVERSION=$(REQUIRE_{modu
         else:
             st_cmd_footer = """
 # Load plc interface database
-dbLoadRecords("{modulename}-test.db")
+dbLoadRecords("{modulename}-test.db", "MODVERSION=$(REQUIRE_{modulename}_VERSION)")
 """.format(modulename    = self.modulename())
 
         self._append(st_cmd_footer, output)

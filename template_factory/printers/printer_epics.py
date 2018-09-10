@@ -340,6 +340,12 @@ class EPICS_TEST(EPICS):
     def header(self, output, **keyword_params):
         PRINTER.header(self, output, **keyword_params).add_filename_header(output, "db")
         epics_db_header = """
+record(stringin, "{root_inst_slot}:ModVersionR") {{
+	field(DISP, "1")
+	field(VAL,  "$(MODVERSION=N/A)")
+	field(PINI, "YES")
+}}
+
 #########################################################
 ########## EPICS <-> PLC connection management ##########
 #########################################################

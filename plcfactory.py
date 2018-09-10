@@ -1105,12 +1105,7 @@ def main(argv):
         templateIDs.add("UPLOAD-PARAMS")
 
     if eem and "EPICS-TEST-DB" in templateIDs:
-        templateIDs.add("ST-TEST-CMD")
-
-    if eem and "AUTOSAVE" in templateIDs:
-        templateIDs.add("AUTOSAVE-ST-CMD")
-
-    if eem and "AUTOSAVE-TEST" in templateIDs:
+        templateIDs.add("AUTOSAVE-TEST")
         templateIDs.add("AUTOSAVE-ST-TEST-CMD")
 
     if "ST-CMD" in templateIDs and "AUTOSAVE-ST-CMD" in templateIDs:
