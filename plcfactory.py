@@ -643,7 +643,8 @@ USR_DEPENDENCIES += s7plc_comms
 MISCS = ${AUTOMISCS} $(addprefix misc/, creator)
 """, file = makefile)
         if req_files:
-            print("USR_DEPENDENCIES += autosave", file = makefile)
+            print("USR_DEPENDENCIES += autosave",   file = makefile)
+            print("USR_DEPENDENCIES += synappsstd", file = makefile)
             print("MISCS += $(addprefix misc/, {req_files})".format(req_files = " ".join(req_files)), file = makefile)
 
     #

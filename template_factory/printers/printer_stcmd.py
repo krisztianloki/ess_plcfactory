@@ -163,7 +163,7 @@ set_savefile_path("$(SAVEFILE_DIR)", "")
 set_pass0_restoreFile("{modulename}{test}.sav")
 
 # Create monitor set
-create_monitor_set("{modulename}{test}.req", 1, "")
+doAfterIocInit("create_monitor_set('{modulename}{test}.req', 1, '')")
 """.format(modulename    = self.modulename(),
            test          = "" if not self._test else "-test")
 
