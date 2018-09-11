@@ -232,7 +232,7 @@ class CCDB(CC):
 
     def _device(self, deviceName):
         assert isinstance(deviceName, str)
-    
+
         if deviceName not in self._devices:
             url     = self._base_url + "slots/" + deviceName
 
@@ -285,5 +285,6 @@ class CCDB(CC):
 
 
 class CCDB_TEST(CCDB):
-    def __init__(self):
-        CCDB.__init__(self, "https://ics-services.esss.lu.se/ccdb-test/rest/", verify_ssl_cert = False)
+    def __init__(self, **kwargs):
+        kwargs["verify_ssl_cert"] = False
+        CCDB.__init__(self, "https://ics-services.esss.lu.se/ccdb-test/rest/", **kwargs)
