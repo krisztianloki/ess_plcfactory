@@ -446,17 +446,55 @@ class CC(object):
         if self._hashSum is not None:
             return self._hashSum
 
-        if hashobj is not None:
-            assert "update" in dir(hashobj) and callable(hashobj.update)
+        class Hasher(object):
+            class CRC32(object):
+                def __init__(self):
+                    self._crc32 = 0
+
+
+                def update(self, string):
+                    self._crc32 = zlib.crc32(string, self._crc32)
+
+
+
+            def __init__(self, hashobj):
+                if hashobj is not None:
+                    assert "update" in dir(hashobj) and callable(hashobj.update) and "hexdigest" in dir(hashobj) and callable(hashobj.hexdigest)
+                else:
+                   hashobj = Hasher.CRC32()
+
+                self._hashobj = hashobj
+
+
+            def update(self, string):
+                self._hashobj.update(string.encode())
+
+
+            def _crc32(self):
+                if isinstance(self._hashobj, Hasher.CRC32):
+                    return self._hashobj._crc32
+
+                return zlib.crc32(hashobj.hexdigest().encode())
+
+
+            def get(self):
+                crc32 = self._crc32()
+                # Python3 returns an UNSIGNED integer. But we need a signed integer
+                if crc32 > 0x7FFFFFFF:
+                    return str(crc32 - 0x100000000)
+
+                return str(crc32)
+
+
 
         # compute checksum and hash
         # from all keys and their corresponding values in order, e.g.
         # key_1, value_1, key_2, value_2, ... key_n, value_n
-        crc32 = 0
 
         # get all devices
         deviceNames = self._devices.keys()
 
+        hasher = Hasher(hashobj)
         # now the same for each device in alphabetical order:
         for deviceName in sorted(deviceNames):
             device     = self._devices[deviceName]
@@ -465,24 +503,15 @@ class CC(object):
             if not device.isInControlledTree():
                 continue
 
-            crc32 = zlib.crc32(deviceName, crc32)
-            if hashobj is not None:
-                hashobj.update(deviceName)
+            hasher.update(deviceName)
 
             for k in sorted(device.keys()):
                 tmp = self._getOrderedString([device[k]])
 
-                crc32 = zlib.crc32(k, crc32)
-                crc32 = zlib.crc32(tmp, crc32)
+                hasher.update(k)
+                hasher.update(tmp)
 
-                if hashobj is not None:
-                    hashobj.update(k)
-                    hashobj.update(tmp)
-
-        if hashobj is not None:
-            crc32 = zlib.crc32(hashobj.hexdigest())
-
-        self._hashSum = str(crc32)
+        self._hashSum = hasher.get()
 
         return self._hashSum
 
@@ -500,7 +529,7 @@ class CC(object):
 
             head = toProcess.pop(0)
 
-            if isinstance(head, basestring):
+            if isinstance(head, str):
                 res += head
 
             elif isinstance(head, list):
@@ -519,6 +548,13 @@ class CC(object):
                 continue
 
             else:
+                # Python3 does not have basestring
+                try:
+                    if isinstance(head, basestring):
+                        res += head
+                        continue
+                except:
+                    pass
                 raise CC.Exception("Input error", type(head))
 
         return res

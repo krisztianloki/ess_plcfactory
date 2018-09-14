@@ -399,7 +399,7 @@ def processTemplateID(templateID, devices):
         print(device.name())
         print("Device type: " + deviceType)
 
-        hashobj.update(device.name())
+        hashobj.update(device.name().encode())
 
         # get template
         template = None

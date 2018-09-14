@@ -606,7 +606,7 @@ class IF_DEF(object):
                raise IfDefSyntaxError("Missing parentheses?")
 
             if result._hashed:
-                self._hash.update(stripped_source)
+                self._hash.update(stripped_source.encode())
         except AssertionError as e:
             raise IfDefInternalError(e)
         except SyntaxError as e:
@@ -1028,7 +1028,7 @@ class IF_DEF(object):
                 if isinstance(src, BASE_TYPE):
                     src.adjust_parameter(cmd_length)
 
-        self._hash.update(str(self._properties))
+        self._hash.update(str(self._properties).encode())
 
         self._active = False
 
