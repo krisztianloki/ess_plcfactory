@@ -299,6 +299,8 @@ class CC(object):
 
             return newdict
 
+        # This is only needed for Python2
+        # isinstance(string, str) above is enough in Python3
         assert isinstance(string, unicode), type(string)
 
         try:
