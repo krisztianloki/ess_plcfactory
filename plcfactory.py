@@ -218,7 +218,7 @@ def getEOL(header):
     # this really is a quick and dirty hack
     # should be replaced by something like
     # #EOL CR LF
-    return header[tagPos][len(tag):].strip().replace('\\n', '\n').replace('\\r', '\r').translate(None, '"\'')
+    return header[tagPos][len(tag):].strip().replace('\\n', '\n').replace('\\r', '\r').strip('"').strip("'")
 
 
 def getIfDefFromURL(device):
