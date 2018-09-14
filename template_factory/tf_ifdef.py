@@ -590,7 +590,7 @@ class IF_DEF(object):
             if not hasattr(val, '__call__') or f.startswith('_'):
                 continue
 
-            if val.func_name in ["ifdef_interface_func", "hashed_interface_func"]:
+            if val.__name__ in ["ifdef_interface_func", "hashed_interface_func"]:
                 self._evalEnv[f] = val
 
 
