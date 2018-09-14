@@ -503,7 +503,8 @@ def processDevice(deviceName, templateIDs):
     devices = [ device ]
     devices.extend(buildControlsList(device))
 
-    map(lambda x: processTemplateID(x, devices), templateIDs)
+    for templateID in templateIDs:
+        processTemplateID(templateID, devices)
 
     global hashes
     hashes[device.name()] = glob.ccdb.getHash(hashobj)

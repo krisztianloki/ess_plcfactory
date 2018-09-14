@@ -318,7 +318,8 @@ class CC(object):
 
         # 'w' overwrites the file if it exists
         with open(save_as, 'wb') as f:
-            map(lambda x: f.write(x), result)
+            for line in result:
+                f.write(line)
 
         return save_as
 
