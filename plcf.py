@@ -185,8 +185,6 @@ def evaluateExpression(expression, device, propDict):
     # in the hierarchy
     expression = evalUp(expression, device)
 
-    keys = propDict.keys()
-    keys.sort(key = lambda s: len(s), reverse = True)
     """
     Sorting property names from longest to shortest avoids
     the potential issue that a PLCF# expression can't be fully
@@ -212,7 +210,7 @@ def evaluateExpression(expression, device, propDict):
     to the "maximal munch" concept in compiler theory.
     """
 
-    for elem in keys:
+    for elem in sorted(propDict.keys(), key = lambda s: len(s), reverse = True):
         if elem in expression:
             value = propDict.get(elem)
             tmp   = substitute(expression, elem, value)

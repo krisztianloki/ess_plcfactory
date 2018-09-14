@@ -227,10 +227,7 @@ class CCDB(CC):
         candidates = filter(lambda x: x.startswith(slot), allDevices)
 
         # compute Levenshtein distances
-        distances  =  map(lambda x: (levenshtein.distance(deviceName, x), x), candidates)
-        distances.sort()
-
-        return distances
+        return sorted(map(lambda x: (levenshtein.distance(deviceName, x), x), candidates))
 
 
     def _device(self, deviceName):

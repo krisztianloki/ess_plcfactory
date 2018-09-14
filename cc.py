@@ -457,11 +457,8 @@ class CC(object):
         # get all devices
         deviceNames = self._devices.keys()
 
-        # ... in alphabetical order
-        deviceNames.sort()
-
-        # now the same for each device:
-        for deviceName in deviceNames:
+        # now the same for each device in alphabetical order:
+        for deviceName in sorted(deviceNames):
             device     = self._devices[deviceName]
 
             # Make sure that only controlled devices are hashed
@@ -472,10 +469,7 @@ class CC(object):
             if hashobj is not None:
                 hashobj.update(deviceName)
 
-            keys = device.keys()
-            keys.sort()
-
-            for k in keys:
+            for k in sorted(device.keys()):
                 tmp = self._getOrderedString([device[k]])
 
                 crc32 = zlib.crc32(k, crc32)
@@ -514,10 +508,7 @@ class CC(object):
                     toProcess.append(elem)
 
             elif isinstance(head, dict):
-                keys = head.keys()
-                keys.sort()
-
-                for elem in keys:
+                for elem in sorted(head.keys()):
                     toProcess.append(elem)
                     toProcess.append(head[elem])
 
