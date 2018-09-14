@@ -57,67 +57,66 @@ import plcf
 import processTemplate as pt
 from   ccdb import CCDB
 from   future_print import future_print
+import helpers
 
 # global variables
-TEMPLATE_DIR = "templates"
-OUTPUT_DIR   = "output"
-TEMPLATE_TAG = "TEMPLATE"
-HEADER_TAG   = "HEADER"
-FOOTER_TAG   = "FOOTER"
-IFDEF_TAG    = ".def"
-hashobj      = hashlib.sha256()
-ifdefs       = dict()
-output_files = dict()
-plc_type     = "SIEMENS"
+OUTPUT_DIR     = "output"
+TEMPLATE_TAG   = "TEMPLATE"
+HEADER_TAG     = "HEADER"
+FOOTER_TAG     = "FOOTER"
+IFDEF_TAG      = ".def"
+hashobj        = hashlib.sha256()
+ifdefs         = dict()
+output_files   = dict()
+previous_files = dict()
+plc_type       = "SIEMENS"
+last_updated   = None
+device_tag     = None
+hashes         = dict()
+prev_hashes    = None
 
 
-def getArtefact(deviceType, filename):
-    return glob.ccdb.getArtefact(deviceType, filename, TEMPLATE_DIR)
+def openTemplate(device, tag, templateID):
+    assert isinstance(tag,        str)
+    assert isinstance(templateID, str)
 
+    matches = filter(lambda f: matchingArtifact(f, (tag, TEMPLATE_TAG), templateID), device.artifacts())
 
-def openArtefact(deviceType, filenames, tag, templateID):
-    assert isinstance(deviceType, str )
-    assert isinstance(filenames,  list)
-    assert isinstance(tag,        str )
-    assert isinstance(templateID, str )
+    if not matches:
+        return []
 
-    lines = []
+    if len(matches) > 1:
+        raise RuntimeError("More than one possible matching artifacts found for {template}: {artifacts}".format(template  = "_".join([ tag, TEMPLATE_TAG, templateID ]),
+                                                                                                                artifacts = matches))
 
-    for filename in filenames:
-        if matchingArtefact(filename, (tag, TEMPLATE_TAG), templateID):
-            filename = getArtefact(deviceType, filename)
+    filename = matches[0].download()
 
-            if filename is None:
-                break
-
-            with open(filename) as f:
-                lines = f.readlines()
-
-            break
+    with open(filename) as f:
+        lines = f.readlines()
 
     return lines
 
 
-def getTemplateName(deviceType, filenames, templateID):
-    assert isinstance(deviceType, str )
-    assert isinstance(filenames,  list)
-    assert isinstance(templateID, str )
+def downloadTemplate(device, templateID):
+    assert isinstance(templateID, str)
 
-    result = None
+    matches = filter(lambda f:matchingArtifact(f, TEMPLATE_TAG, templateID), device.artifacts())
 
-    for filename in filenames:
-        if matchingArtefact(filename, TEMPLATE_TAG, templateID):
+    if not matches:
+        return None
 
-            # download template and save in template directory
-            result = getArtefact(deviceType, filename)
+    if len(matches) > 1:
+        raise RuntimeError("More than one possible matching artifacts found for {template}: {artifacts}".format(template  = "_".join([ TEMPLATE_TAG, templateID ]),
+                                                                                                                artifacts = matches))
 
-            break
-
-    return result
+    return matches[0].download()
 
 
-def matchingArtefact(filename, tag, templateID):
-    assert isinstance(filename,   str)
+def matchingArtifact(artifact, tag, templateID):
+    if not artifact.is_file():
+        return False
+
+    filename = artifact.filename()
 
     # exactly one '.' in filename
     if filename.count('.') != 1:
@@ -129,50 +128,46 @@ def matchingArtefact(filename, tag, templateID):
         assert isinstance(tag[0], str)
         assert isinstance(tag[1], str)
 
-        match  = "{}.txt".format("_".join([tag[0], tag[1], templateID]))
+        match  = "{}.txt".format("_".join([ tag[0], tag[1], templateID ]))
     else:
         assert isinstance(tag, str)
 
         # do not match HEADERs and FOOTERs if not in HEADER/FOOTER mode
         if HEADER_TAG in filename or FOOTER_TAG in filename:
             return False
-        match  = "{}.txt".format("_".join([tag, templateID]))
+        match  = "{}.txt".format("_".join([ tag, templateID ]))
 
     return filename.endswith(match)
 
 
-def createFilename(header, device, templateID, deviceType):
+def createFilename(header, device, templateID, **kwargs):
     assert isinstance(header,     list)
-    assert isinstance(device,     str )
     assert isinstance(templateID, str )
-    assert isinstance(deviceType, str )
 
     tag    = "#FILENAME"
     tagPos = findTag(header, tag)
 
     # default filename is chosen when no custom filename is specified
     if len(header) == 0 or tagPos == -1:
-
-        outputFile = device + "_" + deviceType + "_template-" + templateID \
+        outputFile = device.name() + "_" + device.deviceType() + "_template-" + templateID \
                    + "_" + glob.timestamp + ".scl"
 
-        return CCDB.sanitizeFilename(outputFile)
+        return helpers.sanitizeFilename(outputFile)
 
     else:
-
         filename = header[tagPos]
 
         # remove tag and strip surrounding whitespace
         filename = filename[len(tag):].strip()
-        filename = plcf.keywordsHeader(filename, device, templateID)
+        filename = plcf.keywordsHeader(filename, device, templateID, **kwargs)
 
-        return CCDB.sanitizeFilename(filename)
+        return helpers.sanitizeFilename(filename)
 
 
 def findTag(lines, tag):
     tagPos = -1
 
-    if lines is None:
+    if not lines:
         return tagPos
 
     assert isinstance(lines, list)
@@ -215,7 +210,7 @@ def getEOL(header):
     tag    = "#EOL"
     tagPos = findTag(header, tag)
 
-    if len(header) == 0 or tagPos == -1:
+    if tagPos == -1:
         return "\n"
 
     # this really is a quick and dirty hack
@@ -224,120 +219,114 @@ def getEOL(header):
     return header[tagPos][len(tag):].strip().replace('\\n', '\n').replace('\\r', '\r').translate(None, '"\'')
 
 
-def replaceTag(line, tag, insert):
-    assert isinstance(line,   str)
-    assert isinstance(tag,    str)
-    assert isinstance(insert, str)
+def getIfDefFromURL(device):
+    if device_tag:
+        epi = "_".join([ "EPI", device_tag ])
+    else:
+        epi = "EPI"
 
-    start = line.find(tag)
-    assert start != -1
-
-    end   = start + len(tag)
-
-    return line[:start] + insert + line[end:]
-
-
-def getArtefactNames(device):
-    assert isinstance(device, str)
-
-    # get artifact names of files attached to a device
-    deviceType = glob.ccdb.getDeviceType(device)
-    artefacts  = glob.ccdb.getArtefactNames(device)
-
-    return (deviceType, artefacts)
-
-
-def deviceTypeToFilename(deviceType):
-    return glob.ccdb.sanitizeFilename(deviceType)
-
-
-def getIfDefFromURL(device, deviceType):
-    url = glob.ccdb.getArtefactURL(device, "EPI")
-    if url is None:
+    artifacts = filter(lambda u: u.is_uri() and u.name() == epi, device.artifacts())
+    if not artifacts:
         return None
 
-    filename = deviceTypeToFilename(deviceType).upper() + ".def"
-    url = "/".join([ url, "raw/master", filename ])
+    if len(artifacts) > 1:
+        raise RuntimeError("More than one Interface Definition URLs were found for {device}: {urls}".format(device = device.name(), urls = map(lambda u: u.uri(), artifacts)))
 
-    print "Trying to download Interface Definition file from", url
+    filename = helpers.sanitizeFilename(device.deviceType().upper() + IFDEF_TAG)
+    url = "/".join([ "raw/master", filename ])
 
-    return glob.ccdb.getArtefactFromURL(url, deviceType, filename, TEMPLATE_DIR)
+    print "Downloading Interface Definition file {filename} from {url}".format(filename = filename,
+                                                                               url      = artifacts[0].uri())
+
+    return artifacts[0].download(extra_url = url)
 
 
 #
 # Returns an interface definition object
 #
 def getIfDef(device):
-    assert isinstance(device, str)
-
-    deviceType = glob.ccdb.getDeviceType(device)
+    deviceType = device.deviceType()
 
     if deviceType in ifdefs:
-        print "Device type: " + deviceType
-
         return ifdefs[deviceType]
 
-    artefacts = glob.ccdb.getArtefactNames(device)
+    if device_tag:
+        ifdef_tag = "".join([ "_", device_tag, IFDEF_TAG ])
+    else:
+        ifdef_tag = IFDEF_TAG
 
-    template = filter(lambda ida: ida.endswith(IFDEF_TAG), artefacts)
+    defs = filter(lambda a: a.is_file() and a.filename().endswith(ifdef_tag), device.artifacts())
 
-    if len(template) > 1:
-        print "More than one Interface Definiton files were found for {device}: {defs}".format(device = device, defs = template)
-        exit(1)
+    if len(defs) > 1:
+        raise RuntimeError("More than one Interface Definiton files were found for {device}: {defs}".format(device = device.name(), defs = defs))
 
-    #
-    # FIXME: remove redundant checks and unneeded assignments
-    #
-    if len(template) == 0:
-        # No 'file' artefact found, let's see if there is a URL
-        filename = getIfDefFromURL(device, deviceType)
+    if defs:
+        filename = defs[0].download()
+    else:
+        # No 'file' artifact found, let's see if there is a URL
+        filename = getIfDefFromURL(device)
         if filename is None:
             return None
-
-        template = deviceTypeToFilename(deviceType)
-    else:
-        filename = None
-        template = template[0]
-
-
-    if filename is None:
-        filename = getArtefact(deviceType, template)
-
-    if filename is None:
-        print "Could not download Interface Definition file {f} for device {d}".format(f = template, d = device)
-        exit(1)
 
     with open(filename) as f:
         ifdef = tf.processLines(f, HASH = hashobj, FILENAME = filename)
 
     if ifdef is not None:
-        print "Device type: " + deviceType
-
         ifdefs[deviceType] = ifdef
 
     return ifdef
 
 
 def buildControlsList(device):
-    assert isinstance(device, str)
+    device.putInControlledTree()
 
     # find devices this device _directly_ controls
-    controls = glob.ccdb.controls(device)
+    pool = device.controls()
 
-    print device + " controls: "
+    # find all devices that are directly or indirectly controlled by 'device'
+    controlled_devices = set(pool)
+    while pool:
+        dev = pool.pop()
 
-    for elem in controls:
-        print "\t- " + elem
+        cdevs = dev.controls()
+        for cdev in cdevs:
+            if cdev not in controlled_devices:
+                controlled_devices.add(cdev)
+                pool.append(cdev)
+
+    # group them by device type
+    pool = list(controlled_devices)
+    controlled_devices = dict()
+    for dev in pool:
+        device_type = dev.deviceType()
+        try:
+            controlled_devices[device_type].append(dev)
+        except KeyError:
+            controlled_devices[device_type] = [ dev ]
+
+    print "\r" + "#" * 60
+    print "Device at root: " + device.name() + "\n"
+    print device.name() + " controls: "
+
+    # sort items into a list
+    def sortkey(device):
+        return device.name()
+    pool = list()
+    for device_type in sorted(controlled_devices):
+        print "\t- " + device_type
+
+        for dev in sorted(controlled_devices[device_type], key=sortkey):
+            pool.append(dev)
+            dev.putInControlledTree()
+            print "\t\t-- " + dev.name()
 
     print "\n"
 
-    return controls
+    return pool
 
 
-def getHeaderFooter(templateID, deviceType, artefacts):
+def getHeaderFooter(device, templateID):
     assert isinstance(templateID, str)
-    assert isinstance(deviceType, str)
-    assert isinstance(artefacts,  list)
 
     templatePrinter = tf.get_printer(templateID)
     if templatePrinter is not None:
@@ -347,15 +336,15 @@ def getHeaderFooter(templateID, deviceType, artefacts):
         footer = []
         templatePrinter.footer(footer)
     else:
-        header = openArtefact(deviceType, artefacts, HEADER_TAG, templateID)
-        footer = openArtefact(deviceType, artefacts, FOOTER_TAG, templateID)
+        header = openTemplate(device, HEADER_TAG, templateID)
+        footer = openTemplate(device, FOOTER_TAG, templateID)
 
-    if len(header) == 0:
+    if not header:
         print "No header found.\n"
     else:
         print "Header read.\n"
 
-    if len(footer) == 0:
+    if not footer:
         print "No footer found.\n"
     else:
         print "Footer read.\n"
@@ -363,54 +352,59 @@ def getHeaderFooter(templateID, deviceType, artefacts):
     return (header, footer, templatePrinter)
 
 
-def processTemplateID(templateID, rootDevice, rootDeviceType, rootArtefacts, controls):
+def processTemplateID(templateID, devices):
     assert isinstance(templateID,      str)
-    assert isinstance(rootDevice,      str)
-    assert isinstance(rootDeviceType,  str)
-    assert isinstance(rootArtefacts,   list)
-    assert isinstance(controls,        list)
+    assert isinstance(devices,         list)
+
+    start_time = time.time()
+
+    rootDevice = devices[0]
+
+    if device_tag:
+        tagged_templateID = "_".join([ device_tag, templateID ])
+    else:
+        tagged_templateID = templateID
 
     print "#" * 60
-    print "Template ID " + templateID
-    print "Device at root: " + rootDevice + "\n"
+    print "Template ID " + tagged_templateID
+    print "Device at root: " + str(rootDevice) + "\n"
 
     # collect lines to be written at the end
     output = []
 
     # process header/footer
-    (header, footer, templatePrinter) = getHeaderFooter(templateID, rootDeviceType, rootArtefacts)
+    (header, footer, templatePrinter) = getHeaderFooter(rootDevice, templateID)
+    # has to acquire filename _before_ processing the header
+    # there are some special tags that are only valid in the header
+    outputFile = os.path.join(OUTPUT_DIR, createFilename(header, rootDevice, templateID))
+
+    if last_updated is not None:
+        previous_files[templateID] = os.path.join(OUTPUT_DIR, createFilename(header, rootDevice, templateID, TIMESTAMP = last_updated))
+
+    if header:
+        header = pt.process(rootDevice, header)
+
+    if footer:
+        footer = pt.process(rootDevice, footer)
 
     print "Processing entire tree of controls-relationships:\n"
 
     # for each device, find corresponding template and process it
     output     = []
+    for device in devices:
+        deviceType = device.deviceType()
 
-    # process the root device too
-    toProcess  = [ rootDevice ]
-    processed  = set()
-    outputFile = os.path.join(OUTPUT_DIR, createFilename(header, rootDevice, templateID, rootDeviceType))
+        print device.name()
+        print "Device type: " + deviceType
 
-    if len(header):
-        header = pt.process(rootDevice, header)
-
-    if len(footer):
-        footer = pt.process(rootDevice, footer)
-
-    while toProcess != []:
-
-        elem = toProcess.pop()
-
-        if elem in processed:  # this should be redundant
-            continue
-
-        print elem
+        hashobj.update(device.name())
 
         # get template
         template = None
 
         # Try to process Interface Definition first
         if templatePrinter is not None:
-            ifdef = getIfDef(elem)
+            ifdef = getIfDef(device)
             if ifdef is not None:
                 print "Generating template from Definition File..."
                 template = []
@@ -418,41 +412,23 @@ def processTemplateID(templateID, rootDevice, rootDeviceType, rootArtefacts, con
 
         # Try to download template from artifact
         if template is None:
-            (deviceType, artefacts) = getArtefactNames(elem)
-            print "Device type: " + deviceType
-
-            template = getTemplateName(deviceType, artefacts, templateID)
+            template = downloadTemplate(device, tagged_templateID)
 
         # Try to check if we have a default template printer implementation
-        if template is None and templatePrinter is not None:
+        if template is None and templatePrinter is not None and not templatePrinter.needs_ifdef():
             print "Using default built-in template..."
             template = []
             templatePrinter.body(None, template)
 
         if template is not None:
             # process template and add result to output
-            output += pt.process(elem, template)
+            output += pt.process(device, template)
             print "Template processed."
 
         else:
             print "No template found."
 
-        controls = glob.ccdb.controls(elem)
-
-        print "This device controls: "
-
-        if controls != None and len(controls) > 0:
-
-            for c in controls:
-                print "\t- " + c #, c in processed
-                if c not in processed:
-                    toProcess.append(c)
-
-        else:
-            print "N/A"
-
         print "=" * 40
-        processed.add(elem)
 
     print "\n"
 
@@ -464,8 +440,8 @@ def processTemplateID(templateID, rootDevice, rootDeviceType, rootArtefacts, con
 
     output      = header + output + footer
 
-    if len(output) == 0:
-        print "There were no templates for ID = " + templateID + ".\n"
+    if not output:
+        print "There were no templates for ID = " + tagged_templateID + ".\n"
         return
 
     lines  = output
@@ -506,48 +482,27 @@ def processTemplateID(templateID, rootDevice, rootDeviceType, rootArtefacts, con
 
     print "Output file written: " + outputFile + "\n",
     print "Hash sum: " + glob.ccdb.getHash(hashobj)
+    print("--- %s %.1f seconds ---\n" % (tagged_templateID, time.time() - start_time))
 
 
-def processDevice(device, templateIDs):
-    assert isinstance(device,      str)
+def processDevice(deviceName, templateIDs):
+    assert isinstance(deviceName,  str)
     assert isinstance(templateIDs, list)
 
-    print "#" * 60
-    print "Device at root: " + device + "\n"
+    print "Obtaining controls tree..."
 
-    # find devices this device controls
-    controls = buildControlsList(device)
+    device = glob.ccdb.device(deviceName)
 
-    # get artifact names of files attached to the root device
-    (deviceType, rootArtefacts) = getArtefactNames(device)
+    # create a stable list of controlled devices
+    devices = [ device ]
+    devices.extend(buildControlsList(device))
 
-    map(lambda x: processTemplateID(x, device, deviceType, rootArtefacts, controls), templateIDs)
+    map(lambda x: processTemplateID(x, devices), templateIDs)
 
+    global hashes
+    hashes[device.name()] = glob.ccdb.getHash(hashobj)
 
-def makedirs(path):
-    try:
-        os.makedirs(path)
-    except OSError as ose:
-        if not os.path.isdir(path):
-            raise
-
-
-def rmdirs(path):
-    from shutil import rmtree
-    def onrmtreeerror(func, e_path, exc_info):
-        if e_path != path:
-            raise
-
-        if not (func is os.listdir or func is os.rmdir):
-            raise
-
-        if not (exc_info[0] is OSError or exc_info[0] is WindowsError):
-            raise
-
-        if exc_info[1].errno != 2:
-            raise
-
-    rmtree(path, onerror = onrmtreeerror)
+    return device
 
 
 def create_zipfile(zipit):
@@ -556,7 +511,7 @@ def create_zipfile(zipit):
     if not zipit.endswith(".zip"):
         zipit += ".zip"
 
-    zipit = glob.ccdb.sanitizeFilename(zipit)
+    zipit = helpers.sanitizeFilename(zipit)
 
     z = zipfile.ZipFile(zipit, "w", zipfile.ZIP_DEFLATED)
 
@@ -584,12 +539,12 @@ def create_zipfile(zipit):
 
 def create_eem(basename):
     eem_files = []
-    out_mdir  = os.path.join(OUTPUT_DIR, "modules", "-".join(["m-epics", basename]))
-    makedirs(out_mdir)
+    out_mdir  = os.path.join(OUTPUT_DIR, "modules", "-".join([ "m-epics", basename ]))
+    helpers.makedirs(out_mdir)
 
     def makedir(d):
         od = os.path.join(out_mdir, d)
-        makedirs(od)
+        helpers.makedirs(od)
         return od
 
     from shutil import copy2, copyfileobj
@@ -607,10 +562,8 @@ def create_eem(basename):
                 copyfileobj(partfile, dbfile)
         output_files['EEE-DB'] = dbfile.name
 
-#    m_cp(output_files['EPICS-DB'],       "db",      basename + ".db")
-
     try:
-        m_cp(output_files['EPICS-TEST-DB'],  "db",      basename + "-test.db")
+        m_cp(output_files['EPICS-TEST-DB'],           "db",      basename + "-test.db")
     except KeyError:
         pass
 
@@ -629,16 +582,18 @@ def create_eem(basename):
 
     req_files    = []
     try:
-        m_cp(output_files['AUTOSAVE'],       "misc",    basename + ".req")
+        m_cp(output_files['AUTOSAVE'],                "misc",    basename + ".req")
         req_files.append(basename + ".req")
     except KeyError:
         pass
 
     try:
-        m_cp(output_files['AUTOSAVE-TEST'],       "misc",    basename + "-test.req")
+        m_cp(output_files['AUTOSAVE-TEST'],           "misc",    basename + "-test.req")
         req_files.append(basename + "-test.req")
     except KeyError:
         pass
+
+    m_cp(output_files["CREATOR"],                     "misc",    "creator")
 
     #
     # Copy CCDB dump
@@ -652,7 +607,7 @@ def create_eem(basename):
                 eem_files.extend(map(lambda x: os.path.join(miscdir, x), z.namelist()))
                 z.close()
         except:
-            rmdirs(os.path.join(miscdir, "ccdb"))
+            helpers.rmdirs(os.path.join(miscdir, "ccdb"))
             print "Cannot copy CCDB dump to EEE module"
 
     #
@@ -662,10 +617,12 @@ def create_eem(basename):
         eem_files.append(makefile.name)
         future_print("""include ${EPICS_ENV_PATH}/module.Makefile
 
-USR_DEPENDENCIES += s7plc_comms""", file = makefile)
-        if len(req_files):
+USR_DEPENDENCIES += s7plc_comms
+MISCS = ${AUTOMISCS} $(addprefix misc/, creator)
+""", file = makefile)
+        if req_files:
             future_print("USR_DEPENDENCIES += autosave", file = makefile)
-            future_print("MISCS = ${{AUTOMISCS}} $(addprefix misc/, {req_files})".format(req_files = " ".join(req_files)), file = makefile)
+            future_print("MISCS += $(addprefix misc/, {req_files})".format(req_files = " ".join(req_files)), file = makefile)
 
 
     output_files['EEM'] = eem_files
@@ -674,15 +631,130 @@ USR_DEPENDENCIES += s7plc_comms""", file = makefile)
     return out_mdir
 
 
+def create_data_dir():
+    dname = os.path.join(os.path.expanduser("~"), ".local/share/ics_plc_factory")
+    helpers.makedirs(dname)
+
+    return dname
+
+
+def read_data_files():
+    global hashes
+    global prev_hashes
+
+    try:
+        with open(os.path.join(create_data_dir(), "hashes")) as h:
+            raw_hashes = h.readline()
+    except:
+        return
+
+    from ast import literal_eval as ast_literal_eval
+    prev_hashes = ast_literal_eval(raw_hashes)
+    import copy
+    hashes = copy.deepcopy(prev_hashes)
+    del ast_literal_eval
+
+
+def write_data_files():
+    try:
+        with open(os.path.join(create_data_dir(), "hashes"), 'w') as h:
+            future_print(str(hashes), file = h)
+    except:
+        print("Was not able to save data files")
+        return
+
+
+
+def read_last_update():
+    global last_updated
+
+    fname = os.path.join(OUTPUT_DIR, ".last_updated")
+    try:
+        with open(fname, 'r') as lu:
+            last_updated = lu.read(14)
+    except IOError as e:
+        if e.errno == 2:
+            return
+        raise
+
+
+def create_last_update():
+    fname = os.path.join(OUTPUT_DIR, ".last_updated")
+    with open(fname, 'w') as lu:
+        future_print(glob.timestamp, file = lu)
+        output_files["LAST_UPDATE"] = fname
+
+
+def verify_output(strictness):
+    if strictness == 0 or (last_updated is None and strictness < 3):
+        return
+
+    import filecmp
+    # Compare files in output_files to those in previous_files
+    # previous_files will contain files that are not the same
+    # not_checked will contain files that are not found / not generated
+    not_checked = dict()
+    for (template, output) in output_files.iteritems():
+        try:
+            prev = previous_files[template]
+        except KeyError:
+            not_checked[template] = output
+            continue
+
+        #compare prev and output
+        try:
+            if filecmp.cmp(prev, output, shallow = 0):
+                previous_files.pop(template)
+        except OSError as e:
+            if e.errno == 2:
+                not_checked[template] = output
+                previous_files.pop(template)
+                continue
+            raise
+
+    if previous_files:
+        print "\n" + "=*" * 40
+        print """
+THE FOLLOWING FILES WERE CHANGED:
+"""
+        for (template, output) in previous_files.iteritems():
+            print "\t{template}:\t{filename}".format(template = template, filename = output)
+        print "\n" + "=*" * 40
+
+        exit(1)
+
+    # Record last update; even if strict checking was requested
+    create_last_update()
+
+    if not_checked:
+        print "\n" + "=*" * 40
+        print """
+THE FOLLOWING FILES WERE NOT CHECKED:
+"""
+        for (template, output) in not_checked.iteritems():
+            print "\t{template}:\t{filename}".format(template = template, filename = output)
+        print "\n" + "=*" * 40
+
+        if strictness > 1:
+            exit(1)
+
+
+def record_args(root_device):
+    creator = os.path.join(OUTPUT_DIR, createFilename(["#FILENAME [PLCF#INSTALLATION_SLOT]-creator-[PLCF#TIMESTAMP]"], root_device, ""))
+    with open(creator, 'w') as f:
+        future_print(" ".join(sys.argv), file = f)
+    output_files["CREATOR"] = creator
+
+
 def banner():
-        print " _____  _      _____   ______         _                    "
-        print "|  __ \| |    / ____| |  ____|       | |                   "
-        print "| |__) | |   | |      | |__ __ _  ___| |_ ___  _ __ _   _  "
-        print "|  ___/| |   | |      |  __/ _` |/ __| __/ _ \| '__| | | | "
-        print "| |    | |___| |____  | | | (_| | (__| || (_) | |  | |_| | "
-        print "|_|    |______\_____| |_|  \__,_|\___|\__\___/|_|   \__, | "
-        print "                                                     __/ | "
-        print "European Spallation Source, Lund                    |___/ \n"
+    print " _____  _      _____   ______         _                    "
+    print "|  __ \| |    / ____| |  ____|       | |                   "
+    print "| |__) | |   | |      | |__ __ _  ___| |_ ___  _ __ _   _  "
+    print "|  ___/| |   | |      |  __/ _` |/ __| __/ _ \| '__| | | | "
+    print "| |    | |___| |____  | | ( (_| | (__| |( (_) | |  | |_| | "
+    print "|_|    |______\_____| |_|  \__,_|\___|\__\___/|_|   \__, | "
+    print "                                                     __/ | "
+    print "European Spallation Source, Lund                    |___/ \n"
 
 
 
@@ -742,7 +814,7 @@ def main(argv):
         parser.add_argument(
                             '--list-templates',
                             dest    = "list_templates",
-                            help    = "give a list of the possible templates that can be generated on-the-fly from an interface definition",
+                            help    = "give a list of the possible templates that can be generated on-the-fly from an Interface Definition",
                             action  = "store_true"
                            )
 
@@ -751,7 +823,7 @@ def main(argv):
 
     def add_eee_arg(parser, device):
         if device:
-            device = CCDB.sanitizeFilename(device.lower())
+            device = helpers.sanitizeFilename(device.lower())
         parser.add_argument(
                             '--eee',
                             '--eem',
@@ -905,6 +977,20 @@ def main(argv):
                         action   = 'store_false')
 
     parser.add_argument(
+                        '--verify',
+                        dest     = "verify",
+                        help     = 'verify that the contents of the generated files did not change from the last run',
+                        metavar  = "strictness",
+                        type     = int,
+                        const    = 1,
+                        nargs    = '?')
+
+    parser.add_argument(
+                        '--tag',
+                        help     = 'tag to use if more than one matching artifact is found',
+                        type     = str)
+
+    parser.add_argument(
                         '-t',
                         '--template',
                         help     = 'template name',
@@ -924,15 +1010,8 @@ def main(argv):
     else:
         glob.root_installation_slot = device
 
-
-    if args.ccdb:
-        from ccdb_file import CCDB_FILE
-        glob.ccdb = CCDB_FILE(args.ccdb)
-    elif args.ccdb_test:
-        from ccdb import CCDB_TEST
-        glob.ccdb = CCDB_TEST()
-    else:
-        glob.ccdb = CCDB()
+    global device_tag
+    device_tag = args.tag
 
     default_printers = set(["DEVICE-LIST"])
 
@@ -1007,29 +1086,49 @@ def main(argv):
 
     banner()
 
-    if args.clear_templates:
-        # remove templates downloaded in a previous run
-        rmdirs(TEMPLATE_DIR)
+    if args.ccdb:
+        from cc import CC
+        glob.ccdb = CC.load(args.ccdb)
+    elif args.ccdb_test:
+        from ccdb import CCDB_TEST
+        glob.ccdb = CCDB_TEST(clear_templates = args.clear_templates)
     else:
-        print "Reusing templates of any previous run"
-
-    makedirs(TEMPLATE_DIR)
+        glob.ccdb = CCDB(clear_templates = args.clear_templates)
 
     global OUTPUT_DIR
-    OUTPUT_DIR = os.path.join(OUTPUT_DIR, CCDB.sanitizeFilename(device.lower()))
-    makedirs(OUTPUT_DIR)
+    OUTPUT_DIR = os.path.join(OUTPUT_DIR, helpers.sanitizeFilename(device.lower()))
+    if device_tag:
+        OUTPUT_DIR = os.path.join(OUTPUT_DIR, helpers.sanitizeFilename("__".join([ "", "tag", device_tag ])))
+    helpers.makedirs(OUTPUT_DIR)
 
     glob.modulename = eem
-    processDevice(device, list(templateIDs))
+    read_last_update()
+    read_data_files()
+    root_device = processDevice(device, list(templateIDs))
+
+    # Verify created files: they should be the same as the ones from the last run
+    if args.verify:
+        verify_output(args.verify)
+    create_last_update()
+    write_data_files()
 
     # create a dump of CCDB
-    output_files["CCDB-DUMP"] = glob.ccdb.dump("-".join([device, glob.timestamp]), OUTPUT_DIR)
+    output_files["CCDB-DUMP"] = glob.ccdb.dump("-".join([ device, glob.timestamp ]), OUTPUT_DIR)
+
+    # record the arguments used to run this instance
+    record_args(root_device)
 
     if tia_version or args.plc_only_diag:
         try:
             from InterfaceFactorySiemens import produce as ifa_produce
         except ImportError:
-            from InterfaceFactory import produce as ifa_produce
+            print """
+ERROR
+=====
+Siemens support is not found
+"""
+            exit(1)
+
         output_files.update(ifa_produce(OUTPUT_DIR, output_files["IFA"], output_files[tia_map], tia_version, nodiag = args.plc_no_diag, onlydiag = args.plc_only_diag, direct = args.plc_direct))
 
     if beckhoff:
@@ -1042,6 +1141,7 @@ ERROR
 Beckhoff support is not found
 """
             exit(1)
+
         output_files.update(ifa_produce(OUTPUT_DIR, output_files["IFA"], "", beckhoff))
 
     if eem:
@@ -1060,6 +1160,17 @@ Beckhoff support is not found
 
     if not args.clear_templates:
         print "\nTemplates were reused\n"
+
+    try:
+        if prev_hashes is not None and prev_hashes[root_device.name()] != hashes[root_device.name()]:
+            print("""
++++++++++++++++++++++++++++++++++++++++++++++++++++++
++ Be aware:                                         +
++	Our records show that the hash has changed. +
++++++++++++++++++++++++++++++++++++++++++++++++++++++
+""")
+    except KeyError:
+        pass
 
     print("--- %.1f seconds ---\n" % (time.time() - start_time))
 

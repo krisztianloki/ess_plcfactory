@@ -43,7 +43,7 @@ For further information, see the files in [doc](doc/).
 *   **--template list of templates**
     *   \[**REQUIRED** _if not using any plc options_\]
     *   The list of templates to process
-    *   `--template EPICS_DB TIA_MAP MY_SPECIAL_TEMPLATE`
+    *   `--template EPICS-DB TIA-MAP MY-SPECIAL-TEMPLATE`
 *   **--ccdb=<directory_of_ccdb_dump_OR_path_to_.ccdb.zip>**
     *   \[OPTIONAL\]
     *   Use the specified CCDB-dump of _device_ instead of connecting to the CCDB database
@@ -63,6 +63,13 @@ For further information, see the files in [doc](doc/).
     *   Create a zip file containing the generated files. The default file name is derived from _device_
     *   `--zip`
     *   `--zip=foobar.zip`
+*   **--tag=<tag_name>**
+    *   \[OPTIONAL\]
+    *   Used to select the correct template if more than one template was found
+    *   `--tag=mps` will match
+        *    template filenames like `*TEMPLATE_mps_<TEMPLATE-NAME>.txt`
+        *    Interface Definition filenames like `*_mps.def`
+        *    Interface Definition URLs with name `EPI_mps`
 
 ## EPICS-PLC integration
 

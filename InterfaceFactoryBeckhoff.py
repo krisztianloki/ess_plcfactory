@@ -14,15 +14,15 @@ __status__     = "Production"
 __env__        = "Python version 2.7"
 
 # Python libraries
-import argparse
 import datetime
 import os
 import errno
 import sys
 import time
-import hashlib
-import zipfile
 import shutil
+
+# PLC Factory modules
+import helpers
 
 #Global variables
 timestamp = '{:%Y%m%d%H%M%S}'.format(datetime.datetime.now())
@@ -82,12 +82,6 @@ OutputDirectory = ""
 
 GlobalIDCounter = 0
 
-def makedirs(path):
-	try:
-		os.makedirs(path)
-	except OSError as ose:
-		if not os.path.isdir(path):
-			raise
 
 def Pre_ProcessIFA(IfaPath):
 	print ""
@@ -1357,6 +1351,9 @@ def produce(OutputDir, IfaPath, SclPath, TIAVersion, **kwargs):
 	global OutputDirectory
 	global TotalStatusReg
 	global TotalCommandReg
+	global start_time
+
+	start_time      = time.time()
 	OutputDirectory = OutputDir
 	
 	generated_files = dict()
@@ -1366,11 +1363,9 @@ def produce(OutputDir, IfaPath, SclPath, TIAVersion, **kwargs):
 
 	if HASH <> "" and DeviceNum <> 0:
 
-		makedirs(os.path.join(OutputDirectory,"BECKHOFF"))
-		makedirs(os.path.join(OutputDirectory,"BECKHOFF","EPICS"))
-		makedirs(os.path.join(OutputDirectory,"BECKHOFF","EPICS","EPICS types"))
-		makedirs(os.path.join(OutputDirectory,"BECKHOFF","EPICS","EPICS calls"))
-		makedirs(os.path.join(OutputDirectory,"BECKHOFF","EPICS","ESS standard PLC code"))
+		helpers.makedirs(os.path.join(OutputDirectory,"BECKHOFF","EPICS","EPICS types"))
+		helpers.makedirs(os.path.join(OutputDirectory,"BECKHOFF","EPICS","EPICS calls"))
+		helpers.makedirs(os.path.join(OutputDirectory,"BECKHOFF","EPICS","ESS standard PLC code"))
 
 		#Process devices/device types
 		ProcessIFADevTypes(OutputDir, IfaPath)
@@ -1402,11 +1397,11 @@ def produce(OutputDir, IfaPath, SclPath, TIAVersion, **kwargs):
 		if HASH == "":
 			print "ERROR:"
 			print "After pre-processing the .IFA file there was no HASH code inside!\n"
-			return
+			return generated_files
 		if DeviceNum == 0:
 			print "ERROR:"
 			print "After pre-processing the .IFA file there were no DEVICES inside!\n"
-			return
+			return generated_files
 
 def main(argv):
 	os.system('clear')
@@ -1429,7 +1424,4 @@ def main(argv):
 	print ""     
 
 if __name__ == "__main__":
-	try:
-		main(sys.argv[1:])
-	except InterfaceFactoryArgumentError, e:
-		exit(e.status)
+	main(sys.argv[1:])

@@ -6,10 +6,8 @@ __license__    = "GPLv3"
 
 
 # Python libraries
-from   os import makedirs as os_makedirs
 from   os import path     as os_path
 import zlib
-import unicodedata
 from   urlparse import urlsplit
 
 try:
@@ -28,18 +26,203 @@ except ImportError:
     import requests
 
 
+# PLC Factory modules
+import helpers
+
 
 
 class CC(object):
+    TEMPLATE_DIR = "templates"
     paths_cached = dict()
 
 
-    def __init__(self):
-        self._hashSum              = None
+    class Exception(Exception):
+        """Base class for Controls and Configuration exceptions"""
 
-        # all devices and their properties
-        # key: device, value: dict of all properties/values
-        self._deviceDict           = dict()
+
+
+    class DownloadException(Exception):
+        def __init__(self, url, code):
+            super(CC.DownloadException, self).__init__(url, code)
+            self.url  = url
+            self.code = code
+
+
+        def __str__(self):
+            return "Cannot download {url}: error {code}".format(url  = self.url,
+                                                                code = self.code)
+
+
+
+    class ArtifactException(DownloadException):
+        def __init__(self, dloadexception, deviceName, filename):
+            super(CC.ArtifactException, self).__init__(url = dloadexception.url, code = dloadexception.code)
+            self.deviceName = deviceName
+            self.filename   = filename
+
+
+        def __str__(self):
+            return "Cannot get artifact {art} of {device}: error {code} ({url})".format(device = self.deviceName,
+                                                                                        art    = self.filename,
+                                                                                        code   = self.code,
+                                                                                        url    = self.url)
+
+
+
+    class Artifact(object):
+        # list of the path names of downloaded artifacts
+        downloadedArtifacts = list()
+
+        def __init__(self, device):
+            self._device = device
+
+
+        def __repr__(self):
+            return self.name()
+
+
+        def name(self):
+            raise NotImplementedError
+
+
+        def is_file(self):
+            raise NotImplementedError
+
+
+        def is_uri(self):
+            raise NotImplementedError
+
+
+        def filename(self):
+            raise NotImplementedError
+
+
+        def uri(self):
+            raise NotImplementedError
+
+
+        def uniqueID(self):
+            raise NotImplementedError
+
+
+        # Returns: ""
+        def download(self, extra_url = ""):
+            # NOTE: we _must not_ use CC.TEMPLATE_DIR here,
+            # CCDB_Dump relies on creating an instance variant of TEMPLATE_DIR to point it to its own templates directory
+            output_dir = self._device.ccdb.TEMPLATE_DIR
+
+            if self.is_uri():
+                filename = CC.urlToFilename(extra_url)
+                url      = "/".join([ self.uri(), extra_url ])
+                save_as  = CC.saveas(self.uniqueID(), filename, os_path.join(output_dir, CC.urlToDir(url)))
+            else:
+                filename = self.filename()
+                url      = None
+                save_as  = CC.saveas(self.uniqueID(), filename, output_dir)
+
+            # check if filename has already been downloaded
+            if os_path.exists(save_as):
+                return save_as
+
+            try:
+                self._download(save_as, url = url)
+            except CC.DownloadException, e:
+                raise CC.ArtifactException(e, deviceName = self._device.name(), filename = filename)
+
+            self.downloadedArtifacts.append(save_as)
+
+            return save_as
+
+
+
+    class Device(object):
+        def __init__(self):
+            self._inControlledTree = False
+
+
+        @staticmethod
+        def _ensure(var, default):
+            #
+            # Do not return None
+            #
+            if var is not None:
+                return var
+
+            return default
+
+
+        # Returns: {}
+        def keys(self):
+            raise NotImplementedError
+
+
+        # Returns: ""
+        def name(self):
+            raise NotImplementedError
+
+
+        def putInControlledTree(self):
+            self._inControlledTree = True
+
+
+        def isInControlledTree(self):
+            return self._inControlledTree
+
+
+        # Returns: []
+        def controls(self):
+            return self._ensure(self._controls(), [])
+
+
+        # Returns: []
+        def controlledBy(self, filter_by_controlled_tree = False):
+            ctrldBy = self._ensure(self._controlledBy(filter_by_controlled_tree), [])
+            if not filter_by_controlled_tree:
+                return ctrldBy
+            return filter(lambda d: d.isInControlledTree(), ctrldBy)
+
+
+        # Returns: []
+        def properties(self):
+            return self._ensure(self._properties(), [])
+
+
+        # Returns: {}
+        def propertiesDict(self, prefixToIgnore = True):
+            return self._ensure(self._propertiesDict(), {})
+
+
+        # Returns: ""
+        def deviceType(self):
+            return self._ensure(self._deviceType(), "")
+
+
+        # Returns: ""
+        def description(self):
+            return self._ensure(self._description(), "")
+
+
+        # Returns: []
+        def artifacts(self):
+            return self._ensure(self._artifacts(), [])
+
+
+        # Returns: []
+        def artifactNames(self):
+            return map(lambda an: an.name(), filter(lambda fa: fa.is_file(), self.artifacts()))
+
+
+        # Returns: ""
+        def backtrack(self, prop):
+            return self._ensure(self._backtrack(prop), "")
+
+
+
+    def __init__(self, clear_templates = True):
+        # all devices; key, Device pairs
+        self._devices              = dict()
+
+        self._hashSum              = None
 
         # cache for device, property dictionary
         self._propDict             = dict()
@@ -48,53 +231,50 @@ class CC(object):
         # key: (device, expression), value: property
         self._backtrackCache       = dict()
 
-        # list of the path names of downloaded artifacts
-        self._downloadedArtifacts  = list()
+        if clear_templates:
+            # clear templates downloaded in a previous run
+            helpers.rmdirs(CC.TEMPLATE_DIR)
+        else:
+            print "Reusing templates of any previous run"
+
+        helpers.makedirs(CC.TEMPLATE_DIR)
 
 
     @staticmethod
-    def sanitizeFilename(filename):
-        if isinstance(filename, str):
-            filename = filename.decode("utf-8")
+    def urlComps(url):
+        url_comps = urlsplit(url)
 
-        # replace accented characters with the unaccented equivalent
-        filename = unicodedata.normalize("NFKD", filename).encode("ASCII", "ignore")
+        comps = url_comps.netloc + url_comps.path
+        return comps.split('/')
 
-        result = map(lambda x: '_' if x in '<>:"/\|?*' else x, filename)
-        return "".join(result)
+
+    @staticmethod
+    def urlToFilename(url):
+        comps = CC.urlComps(url)
+        # assume the last component is a filename
+        return comps[-1]
 
 
     @staticmethod
     def urlToDir(url):
-        url_comps = urlsplit(url)
+        comps = CC.urlComps(url)
 
-        comps = url_comps.netloc + url_comps.path
-        comps = comps.split('/')
         # ignore the last component, it is assumed to be a filename
         del comps[-1]
 
-        return os_path.join(*map(lambda sde: CC.sanitizeFilename(sde), comps))
+        return os_path.join(*map(lambda sde: helpers.sanitizeFilename(sde), comps))
 
 
     @staticmethod
-    def makedirs(path):
+    def saveas(uniqueID, filename, directory, CreateDir = True):
         try:
-            os_makedirs(path)
-        except OSError:
-            if not os_path.isdir(path):
-                raise
-
-
-    @staticmethod
-    def saveas(deviceType, filename, directory, CreateDir = True):
-        try:
-            return CC.paths_cached[deviceType, filename, directory]
+            return CC.paths_cached[uniqueID, filename, directory]
         except KeyError:
-            dtdir = os_path.join(directory, CC.sanitizeFilename(deviceType))
+            dtdir = os_path.join(directory, helpers.sanitizeFilename(uniqueID))
             if CreateDir:
-                CC.makedirs(dtdir)
-            path = os_path.normpath(os_path.join(dtdir, CC.sanitizeFilename(filename)))
-            CC.paths_cached[deviceType, filename, directory] = path
+                helpers.makedirs(dtdir)
+            path = os_path.normpath(os_path.join(dtdir, helpers.sanitizeFilename(filename)))
+            CC.paths_cached[uniqueID, filename, directory] = path
             return path
 
 
@@ -122,200 +302,58 @@ class CC(object):
 
 
     @staticmethod
-    def _ensure(var, default):
-        #
-        # Do not return None
-        #
-        if var is not None:
-            return var
-
-        return default
-
-
-    @staticmethod
-    def download(url, saveas, verify = True):
-        result = requests.get(url, verify = verify)
+    def download(url, save_as, verify_ssl_cert = True):
+        result = requests.get(url, verify = verify_ssl_cert)
 
         if result.status_code != 200:
-            raise RuntimeError(result.status_code)
+            raise CC.DownloadException(url = url, code = result.status_code)
 
         # 'w' overwrites the file if it exists
-        with open(saveas, 'wb') as f:
+        with open(save_as, 'wb') as f:
             map(lambda x: f.write(x), result)
 
-        return saveas
+        return save_as
 
 
-    def _getCached(self, device, field):
-        return self._deviceDict[device].get(field, [])
-
-
-    # Returns: []
-    def controls(self, device):
-        assert isinstance(device, str)
-
+    # Returns: CC.Device
+    def device(self, deviceName, cachedOnly = False):
         try:
-            cached = self._getCached(device, 'controls')
+            return self._devices[deviceName]
         except KeyError:
-            cached = self._controls(device)
-
-        return self._ensure(cached, [])
-
-
-    # Returns: []
-    def controlledBy(self, device):
-        assert isinstance(device, str)
-
-        try:
-            cached = self._getCached(device, 'controlledBy')
-        except KeyError:
-            cached = self._controlledBy(device)
-
-        return self._ensure(cached, [])
-
-
-    # Returns: []
-    def properties(self, device):
-        assert isinstance(device, str)
-
-        try:
-            cached = self._getCached(device, 'properties')
-        except KeyError:
-            cached = self._properties(device)
-
-        return self._ensure(cached, [])
+            if cachedOnly:
+                return None
+            return self._device(deviceName)
 
 
     # Returns: {}
-    def propertiesDict(self, device, prefixToIgnore = "PLCF#"):
-        assert isinstance(device, str)
+    def _propertiesDict(self, device, prefixToIgnore = "PLCF#"):
+        if prefixToIgnore == True:
+            prefixToIgnore = "PLCF#"
 
-        if (device, prefixToIgnore) in self._propDict:
-            return self._propDict[device, prefixToIgnore]
+        if prefixToIgnore == "":
+            return device.properties()
 
-        propList = self.properties(device)
+        deviceName = device.name()
+
+        if (deviceName, prefixToIgnore) in self._propDict:
+            return self._propDict[deviceName, prefixToIgnore]
+
         result = {}
-
-        for elem in propList:
-            assert isinstance(elem, dict), type(elem)
-
-            name  = elem.get("name")
-            value = elem.get("value")
-
-            if value == "null" and "List" in elem.get("dataType"):
-                value = []
-
+        for (name, value) in device.properties().iteritems():
             # remove prefix if it exists
             if name.startswith(prefixToIgnore):
                 name = name[len(prefixToIgnore):]
 
-            # sanity check against duplicate values, which would point to an
-            # issue with the entered data
-            assert name not in result
-
             result[name] = value
 
-        self._propDict[device, prefixToIgnore] = result
+        self._propDict[deviceName, prefixToIgnore] = result
 
         return result
 
 
-    # Returns: ""
-    def getDeviceType(self, device):
-        assert isinstance(device, str), type(device)
-
-        try:
-            return self._getCached(device, "deviceType")
-        except KeyError:
-            return self._getDeviceType(device)
-
-
-    # Returns: ""
-    def getDescription(self, device):
-        assert isinstance(device, str), type(device)
-
-        try:
-            return self._getCached(device, "description")
-        except KeyError:
-            return self._getDescription(device)
-
-
     # Returns: []
-    def getArtefactNames(self, device):
-        assert isinstance(device, str), type(device)
-
-        try:
-            artefacts  = self._getCached(device, "artifacts")
-        except KeyError:
-            artefacts = self._artefacts(device)
-
-        artefactNames = []
-        if artefacts is not None:
-          artefactNames = map(lambda an: an.get("name"), filter(lambda fa: fa.get("type") == "FILE", artefacts))
-
-        return artefactNames
-
-
-    # Returns: ""
-    def getArtefact(self, deviceType, filename, directory = "."):
-        assert isinstance(deviceType, str)
-        assert isinstance(filename,   basestring)
-
-        saveas = self.saveas(deviceType, filename, directory)
-
-        # check if filename has already been downloaded
-        if os_path.exists(saveas):
-            return saveas
-
-        self._getArtefact(deviceType, filename, saveas)
-        self._downloadedArtifacts.append(saveas)
-
-        return saveas
-
-
-    # Returns: ""
-    def getArtefactFromURL(self, url, deviceType, filename, directory = "."):
-        assert isinstance(url,        basestring)
-        assert isinstance(deviceType, str)
-        assert isinstance(filename,   basestring)
-
-        # ignore deviceType, the URL already makes the path unique
-        saveas = self.saveas("", filename, os_path.join(directory, CC.urlToDir(url)))
-
-        # check if filename has already been downloaded
-        if os_path.exists(saveas):
-            return saveas
-
-        self._getArtefactFromURL(url, filename, saveas)
-        self._downloadedArtifacts.append(saveas)
-
-        return saveas
-
-
-    def getArtefactURL(self, device, name):
-        assert isinstance(device, str), type(device)
-        assert isinstance(name, str),   type(name)
-
-        try:
-            artefacts  = self._getCached(device, "artifacts")
-        except KeyError:
-            artefacts = self._artefacts(device)
-
-        if artefacts is None:
-            return None
-
-        uris = filter(lambda ua: ua.get("type") == "URI" and ua.get("name") == name, artefacts)
-        if len(uris) == 0:
-            return None
-
-        assert len(uris) == 1, uris
-
-        return uris[0].get("uri")
-
-
-    # Returns: []
-    def getSimilarDevices(self, device):
-        assert isinstance(device, str)
+    def getSimilarDevices(self, deviceName):
+        assert isinstance(deviceName, str)
 
         raise NotImplementedError
 
@@ -327,28 +365,36 @@ class CC(object):
         if not filename.endswith(".ccdb.zip"):
             filename += ".ccdb.zip"
 
-        filename = os_path.join(directory, self.sanitizeFilename(filename))
+        filename = os_path.join(directory, helpers.sanitizeFilename(filename))
         dumpfile = zipfile.ZipFile(filename, "w", zipfile.ZIP_DEFLATED)
 
-        dumpfile.writestr(os_path.join("ccdb", "device.dict"), str(self._deviceDict))
-        for template in self._downloadedArtifacts:
+        dumpfile.writestr(os_path.join("ccdb", "device.dict"), str(self._devices))
+        for template in self.Artifact.downloadedArtifacts:
             dumpfile.write(template, os_path.join("ccdb", template))
 
         return filename
 
 
-    def backtrack(self, prop, device):
+    @staticmethod
+    def load(filename):
+        from ccdb_dump import CCDB_Dump
+        print "Trying to load CC dump from", filename
+        return CCDB_Dump.load(filename)
+
+
+    def _backtrack(self, device, prop):
         assert isinstance(prop,   str)
-        assert isinstance(device, str)
+
+        deviceName = device.name()
 
         # starting by one device, looking for property X, find a device
         # in a higher level of the hierarchy that has that property
 
-        if (device, prop) in self._backtrackCache:
-            return self._backtrackCache[device, prop]
+        if (deviceName, prop) in self._backtrackCache:
+            return self._backtrackCache[deviceName, prop]
 
         # starting point: all devices 'device' is controlled by
-        leftToProcess = list(self.controlledBy(device))
+        leftToProcess = device.controlledBy(True)
         processed     = []
 
         # keep track of number of iterations
@@ -358,11 +404,10 @@ class CC(object):
         while True:
 
             if count > 200:
-                print "something went wrong; too many iterations in backtracking while searching for property " + prop
-                exit(1)
+                raise CC.Exception("Something went wrong; too many iterations in backtracking while searching for property " + prop)
 
             if len(leftToProcess) == 0:
-                print "error in  backtracking; probably invalid input while searching for property " + prop
+                print "error in  backtracking after {} iterations; probably invalid input while searching for property {}".format(count, prop)
                 return " ==== BACKTRACKING ERROR ==== "
 
             elem = leftToProcess.pop()
@@ -373,17 +418,17 @@ class CC(object):
             processed.append(elem)
 
             # get properties of device
-            propDict = self.propertiesDict(elem)
+            propDict = elem.propertiesDict()
 
             if prop in propDict:
                 val = propDict.get(prop)
-                self._backtrackCache[device, prop] = val
+                self._backtrackCache[deviceName, prop] = val
 
                 return val
 
             # desired property not found in device x
             else:
-                c = self.controlledBy(elem)
+                c = elem.controlledBy(True)
                 if c is not None:
                   leftToProcess = c + leftToProcess
                   count        += 1
@@ -402,23 +447,28 @@ class CC(object):
         crc32 = 0
 
         # get all devices
-        devices = self._deviceDict.keys()
+        deviceNames = self._devices.keys()
 
         # ... in alphabetical order
-        devices.sort()
+        deviceNames.sort()
 
         # now the same for each device:
-        for device in devices:
-            crc32 = zlib.crc32(device, crc32)
-            if hashobj is not None:
-                hashobj.update(device)
+        for deviceName in deviceNames:
+            device     = self._devices[deviceName]
 
-            properties = self._deviceDict[device]
-            keys       = properties.keys()
+            # Make sure that only controlled devices are hashed
+            if not device.isInControlledTree():
+                continue
+
+            crc32 = zlib.crc32(deviceName, crc32)
+            if hashobj is not None:
+                hashobj.update(deviceName)
+
+            keys = device.keys()
             keys.sort()
 
             for k in keys:
-                tmp = self._getOrderedString([properties[k]])
+                tmp = self._getOrderedString([device[k]])
 
                 crc32 = zlib.crc32(k, crc32)
                 crc32 = zlib.crc32(tmp, crc32)
@@ -426,7 +476,6 @@ class CC(object):
                 if hashobj is not None:
                     hashobj.update(k)
                     hashobj.update(tmp)
-
 
         if hashobj is not None:
             crc32 = zlib.crc32(hashobj.hexdigest())
@@ -471,7 +520,6 @@ class CC(object):
                 continue
 
             else:
-                print "Input error", type(head)
-                exit(1)
+                raise CC.Exception("Input error", type(head))
 
         return res

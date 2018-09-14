@@ -23,19 +23,20 @@ import plcf_ext        as ext
 
 
 
-def keywordsHeader(line, device, id):
-    assert isinstance(line,     str)
-    assert isinstance(device,   str)
-    assert isinstance(id,       str)
+def keywordsHeader(line, device, templateID, **kwargs):
+    assert isinstance(line,       str)
+    assert isinstance(templateID, str)
 
     # dictionary of the form key: tag, value: replacement
-    substDict = {'INSTALLATION_SLOT'      : device,
-                 'INSTALLATION_SLOT_DESC' : glob.ccdb.getDescription(device),
-                 'TEMPLATE'               : 'template-' + id,
+    substDict = {'INSTALLATION_SLOT'      : device.name(),
+                 'INSTALLATION_SLOT_DESC' : device.description(),
+                 'TEMPLATE'               : 'template-' + templateID,
                  'TIMESTAMP'              : glob.timestamp,
-                 'DEVICE_TYPE'            : glob.ccdb.getDeviceType(device),
+                 'DEVICE_TYPE'            : device.deviceType(),
                  'ROOT_INSTALLATION_SLOT' : glob.root_installation_slot
                 }
+
+    substDict.update(kwargs)
 
     return processLine(line, device, substDict)
 
@@ -133,7 +134,6 @@ def processLineCounter(line):
 # the result of the evaluation
 def processLine(line, device, substDict):
     assert isinstance(line,      str )
-    assert isinstance(device,    str )
     assert isinstance(substDict, dict)
 
     result = ""
@@ -166,7 +166,7 @@ def evalUp(expression, device):
         prop  = expression[start + 2:end]
 
         # backtrack
-        val  = glob.ccdb.backtrack(prop, device)
+        val  = device.backtrack(prop)
         expression = expression[:start] + val + expression[end+1:]
 
     return expression
@@ -176,7 +176,6 @@ def evalUp(expression, device):
 # from CCDB and returns the evaluated expression
 def evaluateExpression(expression, device, propDict):
     assert isinstance(expression,     str )
-    assert isinstance(device,   str )
     assert isinstance(propDict, dict)
 
     # resolve all references to properties in devices on a higher level
@@ -217,10 +216,9 @@ def evaluateExpression(expression, device, propDict):
             # recursion to take care of multiple occurrences of variables
             return evaluateExpression(tmp, device, propDict)
 
-    desc = glob.ccdb.getDescription(device)
     tag = 'INSTALLATION_SLOT_DESC'
     if tag in expression:
-        expression = substitute(expression, tag, desc)
+        expression = substitute(expression, tag, device.description())
 
     tag = 'ROOT_INSTALLATION_SLOT'
     if tag in expression:
@@ -228,12 +226,11 @@ def evaluateExpression(expression, device, propDict):
 
     tag = 'INSTALLATION_SLOT'
     if tag in expression:
-        expression = substitute(expression, tag, device)
+        expression = substitute(expression, tag, device.name())
 
-    deviceType = glob.ccdb.getDeviceType(device)
     tag = 'DEVICE_TYPE'
     if tag in expression:
-        expression = substitute(expression, tag, deviceType)
+        expression = substitute(expression, tag, device.deviceType())
 
     # evaluation happens after all substitutions have been performed
     try:

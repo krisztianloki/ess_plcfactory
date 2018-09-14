@@ -14,14 +14,11 @@ __status__     = "Production"
 __env__        = "Python version 2.7"
 
 # Python libraries
-import argparse
 import datetime
 import os
 import errno
 import sys
 import time
-import hashlib
-import zipfile
 
 #Global variables
 timestamp = '{:%Y%m%d%H%M%S}'.format(datetime.datetime.now())
@@ -86,19 +83,12 @@ LAST_DEVICE = -1
 Direct = False
 
 
-def makedirs(path):
-	try:
-		os.makedirs(path)
-	except OSError as ose:
-		if not os.path.isdir(path):
-			raise
-
 def Pre_ProcessIFA(IfaPath):
 	print ""
 	print ""
 	print "*******************************************"
 	print "*                                         *"
-	print "*   Generating Siemens PLC source code   *"
+	print "*   Generating Siemens PLC source code    *"
 	print "*                                         *"
 	print "*******************************************"
 	print ""
@@ -2885,8 +2875,8 @@ def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 def produce(OutputDir, IfaPath, SclPath, TIAVersion, **kwargs):
 	global Direct
 	Pre_ProcessIFA(IfaPath)
+	generated_files = dict()
 	if HASH <> "" and DeviceNum <> 0:
-		generated_files = dict()
 
 		#=============Call main functions=============
 		global ExternalSourceFile
@@ -2951,11 +2941,11 @@ def produce(OutputDir, IfaPath, SclPath, TIAVersion, **kwargs):
 		if HASH == "":
 			print "ERROR:"
 			print "After pre-processing the .IFA file there was no HASH code inside!\n"
-			return
+			return generated_files
 		if DeviceNum == 0:
 			print "ERROR:"
 			print "After pre-processing the .IFA file there were no DEVICES inside!\n"
-			return
+			return generated_files
 
 def main(argv):
 	os.system('clear')
@@ -2978,7 +2968,4 @@ def main(argv):
 	print ""     
 
 if __name__ == "__main__":
-	try:
-		main(sys.argv[1:])
-	except InterfaceFactoryArgumentError, e:
-		exit(e.status)
+	main(sys.argv[1:])
