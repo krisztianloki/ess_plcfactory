@@ -2906,7 +2906,7 @@ def produce(OutputDir, IfaPath, SclPath, TIAVersion, **kwargs):
 			standardPath = os.path.join(OutputDir, "PLCFactory_external_source_standard_TIAv{tiaversion}.scl".format(tiaversion = TIAVersion))
 			with open(standardPath, 'wb') as standardScl:
 				for line in ExternalSourceFile:
-					standardScl.write(line + '\r\n')
+					standardScl.write((line + '\r\n').encode())
 
 			generated_files["STANDARD_SCL"] = standardPath
 
@@ -2925,11 +2925,11 @@ def produce(OutputDir, IfaPath, SclPath, TIAVersion, **kwargs):
 		externalPath = os.path.join(OutputDir, "PLCFactory_external_source_TIAv{tiaversion}.scl".format(tiaversion = TIAVersion))
 		with open(externalPath, 'wb') as externalScl:
 			for line in ExternalSourceFile:
-				externalScl.write(line + '\r\n')
+				externalScl.write((line + '\r\n').encode())
 
 			if not onlydiag:
 				#Copy the .SCL from the ZIP file to the end of the code
-				with open(SclPath, 'r') as tiamap:
+				with open(SclPath, 'rb') as tiamap:
 					for line in tiamap:
 						externalScl.write(line)
 			else:

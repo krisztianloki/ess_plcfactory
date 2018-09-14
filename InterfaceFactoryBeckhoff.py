@@ -213,14 +213,14 @@ def Write_EPICS_device_calls():
 	externalPath = os.path.join(OutputDirectory,"BECKHOFF","EPICS","EPICS calls", "FC_EPICS_DEVICE_CALLS.TcPOU")
 	with open(externalPath, 'wb') as externalScl:
 		for line in FC_EPICS_DEVICE_CALLS_HEADER:
-			externalScl.write(line + '\r\n')
+			externalScl.write((line + '\r\n').encode())
 
 		for line in FC_EPICS_DEVICE_CALLS_BODY:
-			externalScl.write(line + '\r\n')
+			externalScl.write((line + '\r\n').encode())
 
 
 		for line in FC_EPICS_DEVICE_CALLS_FOOTER:
-			externalScl.write(line + '\r\n')
+			externalScl.write((line + '\r\n').encode())
 
 	FC_EPICS_DEVICE_CALLS_HEADER = []
 	FC_EPICS_DEVICE_CALLS_BODY = []
@@ -246,7 +246,7 @@ def Write_EPICS_GVL():
 	externalPath = os.path.join(OutputDirectory,"BECKHOFF","EPICS","ESS standard PLC code", "EPICS_GVL.TcGVL")
 	with open(externalPath, 'wb') as externalScl:
 		for line in EPICS_GVL:
-			externalScl.write(line + '\r\n')
+			externalScl.write((line + '\r\n').encode())
 
 	EPICS_GVL = []
 
@@ -281,7 +281,7 @@ def Write_Structs_and_Unions():
 	externalPath = os.path.join(OutputDirectory,"BECKHOFF","EPICS","ESS standard PLC code", "ST_2_UINT.TcDUT")
 	with open(externalPath, 'wb') as externalScl:
 		for line in ST_2_UINT:
-			externalScl.write(line + '\r\n')
+			externalScl.write((line + '\r\n').encode())
 
 	U_DINT_UINT.append("<?xml version=\"1.0\" encoding=\"utf-8\"?>");
 	U_DINT_UINT.append("<TcPlcObject ");
@@ -305,7 +305,7 @@ def Write_Structs_and_Unions():
 	externalPath = os.path.join(OutputDirectory,"BECKHOFF","EPICS","ESS standard PLC code", "U_DINT_UINTs.TcDUT")
 	with open(externalPath, 'wb') as externalScl:
 		for line in U_DINT_UINT:
-			externalScl.write(line + '\r\n')
+			externalScl.write((line + '\r\n').encode())
 
 	U_REAL_UINT.append("<?xml version=\"1.0\" encoding=\"utf-8\"?>");
 	U_REAL_UINT.append("<TcPlcObject ");
@@ -330,7 +330,7 @@ def Write_Structs_and_Unions():
 	externalPath = os.path.join(OutputDirectory,"BECKHOFF","EPICS","ESS standard PLC code", "U_REAL_UINTs.TcDUT")
 	with open(externalPath, 'wb') as externalScl:
 		for line in U_REAL_UINT:
-			externalScl.write(line + '\r\n')
+			externalScl.write((line + '\r\n').encode())
 
 	U_TIME_UINT.append("<?xml version=\"1.0\" encoding=\"utf-8\"?>");
 	U_TIME_UINT.append("<TcPlcObject Version=\"1.1.0.1\" ProductVersion=\"3.1.4022.10\">");
@@ -354,7 +354,7 @@ def Write_Structs_and_Unions():
 	externalPath = os.path.join(OutputDirectory,"BECKHOFF","EPICS","ESS standard PLC code", "U_TIME_UINTs.TcDUT")
 	with open(externalPath, 'wb') as externalScl:
 		for line in U_TIME_UINT:
-			externalScl.write(line + '\r\n')
+			externalScl.write((line + '\r\n').encode())
 
 	ST_2_UINT = []
 	U_DINT_UINT = []
@@ -631,7 +631,7 @@ def Write_FB_EPICS_S7_Comm():
 	externalPath = os.path.join(OutputDirectory,"BECKHOFF","EPICS","ESS standard PLC code", "FB_EPICS_S7_Comm.TcPOU")
 	with open(externalPath, 'wb') as externalScl:
 		for line in FB_EPICS_S7_Comm:
-			externalScl.write(line + '\r\n')
+			externalScl.write((line + '\r\n').encode())
 
 	FB_EPICS_S7_Comm = []
 
@@ -702,7 +702,7 @@ def Write_FB_Pulse():
 	externalPath = os.path.join(OutputDirectory,"BECKHOFF","EPICS","ESS standard PLC code", "FB_Pulse.TcPOU")
 	with open(externalPath, 'wb') as externalScl:
 		for line in FB_Pulse:
-			externalScl.write(line + '\r\n')
+			externalScl.write((line + '\r\n').encode())
 
 	FB_Pulse = []
 
@@ -724,32 +724,32 @@ def Write_DevType():
 	with open(externalPath, 'wb') as externalScl:
 		#DevTypeHeader
 		for line in DevTypeHeader:
-			externalScl.write(line + '\r\n')
+			externalScl.write((line + '\r\n').encode())
 		#DevTypeVAR_INPUT
-		externalScl.write("VAR_INPUT" + '\r\n')
-		externalScl.write("      nOffsetStatus	:INT;			//Offset for status variables"+ '\r\n');
-		externalScl.write("	  nOffsetCmd   :INT;			//Offset for command variables"+ '\r\n');
-		externalScl.write("      nOffsetPar   :INT;			//Offset for parameter variables"+ '\r\n');
+		externalScl.write(("VAR_INPUT" + '\r\n').encode())
+		externalScl.write(("      nOffsetStatus	:INT;			//Offset for status variables"+ '\r\n').encode())
+		externalScl.write(("	  nOffsetCmd   :INT;			//Offset for command variables"+ '\r\n').encode())
+		externalScl.write(("      nOffsetPar   :INT;			//Offset for parameter variables"+ '\r\n').encode())
 		for line in DevTypeVAR_INPUT:
-			externalScl.write(line + '\r\n')
-		externalScl.write("END_VAR" + '\r\n')
+			externalScl.write((line + '\r\n').encode())
+		externalScl.write(("END_VAR" + '\r\n').encode())
 		#DevTypeVAR_OUTPUT
-		externalScl.write("VAR_OUTPUT" + '\r\n')
+		externalScl.write(("VAR_OUTPUT" + '\r\n').encode())
 		for line in DevTypeVAR_OUTPUT:
-			externalScl.write(line + '\r\n')
-		externalScl.write("END_VAR" + '\r\n')
+			externalScl.write((line + '\r\n').encode())
+		externalScl.write(("END_VAR" + '\r\n').encode())
 		#DevTypeVAR_TEMP
 		for line in DevTypeVAR_TEMP:
-			externalScl.write(line + '\r\n')
+			externalScl.write((line + '\r\n').encode())
 		#DevTypeBODY_HEADER
 		for line in DevTypeBODY_HEADER:
-			externalScl.write(line + '\r\n')
+			externalScl.write((line + '\r\n').encode())
 		#DevTypeBODY_CODE
 		for line in DevTypeBODY_CODE:
-			externalScl.write(line + '\r\n')
+			externalScl.write((line + '\r\n').encode())
 		#DevTypeBODY_FOOTER
 		for line in DevTypeBODY_FOOTER:
-			externalScl.write(line + '\r\n')
+			externalScl.write((line + '\r\n').encode())
 
 	DevTypeHeader = []
 	DevTypeVAR_INPUT = []
