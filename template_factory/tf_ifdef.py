@@ -7,6 +7,7 @@ __license__    = "GPLv3"
 
 
 import copy
+from collections import OrderedDict
 #import inspect
 import hashlib
 
@@ -563,7 +564,7 @@ class IF_DEF(object):
         self._overlap               = None
         self._active                = True
         self._source                = ""
-        self._properties            = dict()
+        self._properties            = OrderedDict()
         self._to_plc_words_length   = 0
         self._from_plc_words_length = 0
         self._hash                  = HASH
