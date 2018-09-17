@@ -23,13 +23,16 @@ import sys
 import time
 import shutil
 
+# IFA modules
+from . import IFA
+
 # PLC Factory modules
 import helpers
 
 #Global variables
 timestamp = '{:%Y%m%d%H%M%S}'.format(datetime.datetime.now())
 
-OrderedLines = []
+ifa = None
 
 FC_EPICS_DEVICE_CALLS_HEADER = []
 FC_EPICS_DEVICE_CALLS_BODY = []
@@ -54,8 +57,6 @@ U_TIME_UINT = []
 EPICS_PLC_TesterDB = []
 
 
-DeviceNum = 0
-HASH = ""
 ActualDeviceName = ""
 ActualDeviceNameWhite = ""
 ActualDeviceType = ""
@@ -84,112 +85,6 @@ OutputDirectory = ""
 
 GlobalIDCounter = 0
 
-
-def Pre_ProcessIFA(IfaPath):
-	print("""
-
-*******************************************
-*                                         *
-*   Generating Beckhoff PLC source code   *
-*                                         *
-*******************************************
-
-PLCFactory file location: {}
-Pre-processing .ifa file...""".format(IfaPath))
-	#Pre process IFA to have Status, Command, Parameter order
-
-	global DeviceNum
-	DeviceNum = 0
-	global OrderedLines
-	OrderedLines = []
-	global HASH
-	HASH = ""
-	global MAX_IO_DEVICES
-	MAX_IO_DEVICES = 0
-	global MAX_LOCAL_MODULES
-	MAX_LOCAL_MODULES = 0
-	global MAX_MODULES_IN_IO_DEVICE
-	MAX_MODULES_IN_IO_DEVICE = 0
-
-
-	StatusArea = []
-	CommandArea = []
-	ParameterArea = []
-	Comments = []
-
-	InStatus = False
-	InCommand = False
-	InParameter = False
-
-	FirstDevice = True
-
-	with open(IfaPath) as f:
-		lines = f.readlines()
-		pos = 0
-		while pos < len(lines):
-			if lines[pos].rstrip() == "HASH":
-				HASH = lines[pos+1].rstrip()
-			if lines[pos].rstrip() == "MAX_IO_DEVICES":
-				MAX_IO_DEVICES = int(lines[pos+1].strip())
-				if MAX_IO_DEVICES <= 0:
-					MAX_IO_DEVICES = 1
-			if lines[pos].rstrip() == "MAX_LOCAL_MODULES":
-				MAX_LOCAL_MODULES = int(lines[pos+1].strip())
-				if MAX_LOCAL_MODULES <= 0:
-					MAX_LOCAL_MODULES = 1
-			if lines[pos].rstrip() == "MAX_MODULES_IN_IO_DEVICE":
-				MAX_MODULES_IN_IO_DEVICE = int(lines[pos+1].strip())
-				if MAX_MODULES_IN_IO_DEVICE <= 0:
-					MAX_MODULES_IN_IO_DEVICE = 1
-			if lines[pos].rstrip() == "DEVICE":
-				DeviceNum = DeviceNum + 1
-				InStatus = False
-				InCommand = False
-				InParameter = False
-				if FirstDevice == False:
-					for line in StatusArea:
-						OrderedLines.append(line)
-					for line in CommandArea:
-						OrderedLines.append(line)
-					for line in ParameterArea:
-						OrderedLines.append(line)
-				StatusArea = []
-				CommandArea = []
-				ParameterArea = []
-				FirstDevice = False
-			if pos+1 != len(lines):
-				if lines[pos].rstrip() == "STATUS":
-					InStatus = True
-					InCommand = False
-					InParameter = False
-				if lines[pos].rstrip() == "COMMAND":
-					InStatus = False
-					InCommand = True
-					InParameter = False
-				if lines[pos].rstrip() == "PARAMETER":
-					InStatus = False
-					InCommand = False
-					InParameter = True
-			if InStatus:
-				StatusArea.append(lines[pos])
-			if InCommand:
-				CommandArea.append(lines[pos])
-			if InParameter:
-				ParameterArea.append(lines[pos])
-
-			if not InStatus and not InCommand and not InParameter:
-				OrderedLines.append(lines[pos])
-			pos = pos + 1
-
-	for line in StatusArea:
-		OrderedLines.append(line)
-	for line in CommandArea:
-		OrderedLines.append(line)
-	for line in ParameterArea:
-		OrderedLines.append(line)
-
-
-	print("Total", str(DeviceNum), "device(s) pre-processed.\n")
 
 def WriteEPICS_PLC_TesterDB():
 
@@ -784,8 +679,6 @@ def ProcessIFADevTypes(OutputDir, IfaPath):
 
 	ProcessedDeviceNum = 0
 
-	global OrderedLines
-	global HASH
 	global ActualDeviceName
 	global ActualDeviceNameWhite
 	global ActualDeviceType
@@ -876,12 +769,12 @@ def ProcessIFADevTypes(OutputDir, IfaPath):
 
 
 
-	while pos < len(OrderedLines)-1:
-		if OrderedLines[pos].rstrip() == "TOTALEPICSTOPLCLENGTH":
-			TotalCommandReg = int(OrderedLines[pos + 1].rstrip())
-		if OrderedLines[pos].rstrip() == "TOTALPLCTOEPICSLENGTH":
-			TotalStatusReg = int(OrderedLines[pos + 1].rstrip())
-		if OrderedLines[pos].rstrip() == "DEVICE":
+	while pos < len(ifa.OrderedLines)-1:
+		if ifa.OrderedLines[pos].rstrip() == "TOTALEPICSTOPLCLENGTH":
+			TotalCommandReg = int(ifa.OrderedLines[pos + 1].rstrip())
+		if ifa.OrderedLines[pos].rstrip() == "TOTALPLCTOEPICSLENGTH":
+			TotalStatusReg = int(ifa.OrderedLines[pos + 1].rstrip())
+		if ifa.OrderedLines[pos].rstrip() == "DEVICE":
 			ProcessedDeviceNum = ProcessedDeviceNum + 1
 			InStatus = False
 			InCommand = False
@@ -922,7 +815,7 @@ def ProcessIFADevTypes(OutputDir, IfaPath):
 				FC_EPICS_DEVICE_CALLS_HEADER.append("EPICS_GVL.FB_EPICS_S7_Comm(")
 				FC_EPICS_DEVICE_CALLS_HEADER.append("    bConnect:=TRUE ,")
 				FC_EPICS_DEVICE_CALLS_HEADER.append("    nS7Port:=2000 ,")
-				FC_EPICS_DEVICE_CALLS_HEADER.append("    nPLC_Hash:="+HASH+" ,")
+				FC_EPICS_DEVICE_CALLS_HEADER.append("    nPLC_Hash:="+ifa.HASH+" ,")
 				FC_EPICS_DEVICE_CALLS_HEADER.append("    tSendTrig:=T#200MS ,")
 				FC_EPICS_DEVICE_CALLS_HEADER.append("    nCase=> ,")
 				FC_EPICS_DEVICE_CALLS_HEADER.append("    bConnected=> ,")
@@ -935,17 +828,17 @@ def ProcessIFADevTypes(OutputDir, IfaPath):
 				FC_EPICS_DEVICE_CALLS_FOOTER.append("</TcPlcObject>");
 
 			FirstDevice = False
-			if (OrderedLines[pos + 2].rstrip() != "DEVICE_TYPE") or (OrderedLines[pos + 4].rstrip() != "EPICSTOPLCLENGTH") or (OrderedLines[pos + 6].rstrip() != "EPICSTOPLCDATABLOCKOFFSET") or (OrderedLines[pos + 8].rstrip() != "EPICSTOPLCPARAMETERSSTART") or (OrderedLines[pos + 10].rstrip() != "PLCTOEPICSDATABLOCKOFFSET"):
+			if (ifa.OrderedLines[pos + 2].rstrip() != "DEVICE_TYPE") or (ifa.OrderedLines[pos + 4].rstrip() != "EPICSTOPLCLENGTH") or (ifa.OrderedLines[pos + 6].rstrip() != "EPICSTOPLCDATABLOCKOFFSET") or (ifa.OrderedLines[pos + 8].rstrip() != "EPICSTOPLCPARAMETERSSTART") or (ifa.OrderedLines[pos + 10].rstrip() != "PLCTOEPICSDATABLOCKOFFSET"):
 				print("ERROR:")
 				print("The .ifa file has a bad DEVICE format! Exiting PLCFactory...\n")
 				print("--- %.1f seconds ---\n" % (time.time() - start_time))
 				sys.exit()
-			ActualDeviceName = OrderedLines[pos+1].rstrip()
-			ActualDeviceType = OrderedLines[pos+3].rstrip()
-			EPICSTOPLCLENGTH = OrderedLines[pos+5].rstrip()
-			EPICSTOPLCDATABLOCKOFFSET = OrderedLines[pos+7].rstrip()
-			EPICSTOPLCPARAMETERSSTART = OrderedLines[pos+9].rstrip()
-			PLCTOEPICSDATABLOCKOFFSET = OrderedLines[pos+11].rstrip()
+			ActualDeviceName = ifa.OrderedLines[pos+1].rstrip()
+			ActualDeviceType = ifa.OrderedLines[pos+3].rstrip()
+			EPICSTOPLCLENGTH = ifa.OrderedLines[pos+5].rstrip()
+			EPICSTOPLCDATABLOCKOFFSET = ifa.OrderedLines[pos+7].rstrip()
+			EPICSTOPLCPARAMETERSSTART = ifa.OrderedLines[pos+9].rstrip()
+			PLCTOEPICSDATABLOCKOFFSET = ifa.OrderedLines[pos+11].rstrip()
 			ActualDeviceNameWhite = ActualDeviceName
 
 			Text = "Device: "+ ActualDeviceName + " Type: "+ ActualDeviceType
@@ -1047,16 +940,16 @@ def ProcessIFADevTypes(OutputDir, IfaPath):
 			else:
 				NewDeviceType = False
 
-		if OrderedLines[pos].rstrip() == "DEFINE_ARRAY":
+		if ifa.OrderedLines[pos].rstrip() == "DEFINE_ARRAY":
 			InArray = True
-			InArrayName = OrderedLines[pos+1].rstrip()
+			InArrayName = ifa.OrderedLines[pos+1].rstrip()
 			InArrayNum = 0
-		if OrderedLines[pos].rstrip() == "END_ARRAY":
+		if ifa.OrderedLines[pos].rstrip() == "END_ARRAY":
 			InArray = False
 			DevTypeVAR_INPUT.append("      " + InArrayName + " : Array[1.."+ str(InArrayNum) +"] OF "+ ActVariableType+";   //EPICS Status variables defined in an array")
 			InArrayName = ""
 
-		if OrderedLines[pos].rstrip() == "STATUS":
+		if ifa.OrderedLines[pos].rstrip() == "STATUS":
 			CloseLastVariable()
 			DevTypeBODY_CODE.append("")
 			DevTypeBODY_CODE.append("    //********************************************")
@@ -1067,7 +960,7 @@ def ProcessIFADevTypes(OutputDir, IfaPath):
 			InCommand = False
 			InParameter = False
 			StartingRegister = -1
-		if OrderedLines[pos].rstrip() == "COMMAND":
+		if ifa.OrderedLines[pos].rstrip() == "COMMAND":
 			CloseLastVariable()
 			DevTypeBODY_CODE.append("")
 			DevTypeBODY_CODE.append("    //********************************************")
@@ -1078,7 +971,7 @@ def ProcessIFADevTypes(OutputDir, IfaPath):
 			InCommand = True
 			InParameter = False
 			StartingRegister = -1
-		if OrderedLines[pos].rstrip() == "PARAMETER":
+		if ifa.OrderedLines[pos].rstrip() == "PARAMETER":
 			CloseLastVariable()
 			DevTypeBODY_CODE.append("")
 			DevTypeBODY_CODE.append("    //********************************************")
@@ -1090,20 +983,20 @@ def ProcessIFADevTypes(OutputDir, IfaPath):
 			InParameter = True
 			StartingRegister = -1
 		pos = pos + 1
-		# if OrderedLines[pos].rstrip().startswith("//"):
-			# DevTypeBODY_CODE.append("       "+OrderedLines[pos].rstrip())
-		if OrderedLines[pos].rstrip() == "VARIABLE":
-			if (OrderedLines[pos + 2].rstrip() != "EPICS") or (OrderedLines[pos + 4].rstrip() != "TYPE") or	(OrderedLines[pos + 6].rstrip() != "ARRAY_INDEX") or (OrderedLines[pos + 8].rstrip() != "BIT_NUMBER"):
+		# if ifa.OrderedLines[pos].rstrip().startswith("//"):
+			# DevTypeBODY_CODE.append("       "+ifa.OrderedLines[pos].rstrip())
+		if ifa.OrderedLines[pos].rstrip() == "VARIABLE":
+			if (ifa.OrderedLines[pos + 2].rstrip() != "EPICS") or (ifa.OrderedLines[pos + 4].rstrip() != "TYPE") or	(ifa.OrderedLines[pos + 6].rstrip() != "ARRAY_INDEX") or (ifa.OrderedLines[pos + 8].rstrip() != "BIT_NUMBER"):
 				print("ERROR:")
 				print("The .ifa file has a bad VARIABLE format! Exiting PLCFactory...\n")
 				print("--- %.1f seconds ---\n" % (time.time() - start_time))
 				sys.exit()
 
-			ActVariablePLCName = OrderedLines[pos + 1].rstrip()
-			ActVariableEPICSName = OrderedLines[pos + 3].rstrip()
-			ActVariableType = OrderedLines[pos + 5].rstrip()
-			ActVariableArrayIndex = int(OrderedLines[pos + 7].rstrip())
-			ActVariableBitNumber = int(OrderedLines[pos + 9].rstrip())
+			ActVariablePLCName = ifa.OrderedLines[pos + 1].rstrip()
+			ActVariableEPICSName = ifa.OrderedLines[pos + 3].rstrip()
+			ActVariableType = ifa.OrderedLines[pos + 5].rstrip()
+			ActVariableArrayIndex = int(ifa.OrderedLines[pos + 7].rstrip())
+			ActVariableBitNumber = int(ifa.OrderedLines[pos + 9].rstrip())
 
 			#Close the last variable if there is a new variable
 			if 	LastVariableType != ActVariableType:
@@ -1351,16 +1244,15 @@ def produce(OutputDir, IfaPath, SclPath, TIAVersion, **kwargs):
 	global TotalStatusReg
 	global TotalCommandReg
 	global start_time
+	global ifa
 
 	start_time      = time.time()
 	OutputDirectory = OutputDir
 
 	generated_files = dict()
 
-	#Pre-processing of the IFA file
-	Pre_ProcessIFA(IfaPath)
-
-	if HASH != "" and DeviceNum != 0:
+	try:
+		ifa = IFA(IfaPath)
 
 		helpers.makedirs(os.path.join(OutputDirectory,"BECKHOFF","EPICS","EPICS types"))
 		helpers.makedirs(os.path.join(OutputDirectory,"BECKHOFF","EPICS","EPICS calls"))
@@ -1388,19 +1280,10 @@ def produce(OutputDir, IfaPath, SclPath, TIAVersion, **kwargs):
 		Write_EPICS_GVL()
 
 		generated_files['BECKHOFF'] = shutil.make_archive(os.path.join(OutputDirectory,"PLCFactory_external_source_Beckhoff"), 'zip', os.path.join(OutputDirectory,"BECKHOFF"))
+	except IFA.Warning as e:
+		print(e)
 
-		return generated_files
-
-
-	else:
-		if HASH == "":
-			print("ERROR:")
-			print("After pre-processing the .IFA file there was no HASH code inside!\n")
-			return generated_files
-		if DeviceNum == 0:
-			print("ERROR:")
-			print("After pre-processing the .IFA file there were no DEVICES inside!\n")
-			return generated_files
+	return generated_files
 
 
 def main(argv):
