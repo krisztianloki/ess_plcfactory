@@ -23,6 +23,7 @@ class IFA(object):
         self.MAX_IO_DEVICES           = 0
         self.MAX_LOCAL_MODULES        = 0
         self.MAX_MODULES_IN_IO_DEVICE = 0
+        self.PLC_type                 = ""
         self.OrderedLines             = []
 
         self.PreProcess()
@@ -39,83 +40,92 @@ class IFA(object):
 
 PLCFactory file location: {}
 Pre-processing .ifa file...""".format(self.IfaPath))
-        #Pre process IFA to have Status, Command, Parameter order
 
-        StatusArea = []
-        CommandArea = []
-        ParameterArea = []
-        Comments = []
-
-        InStatus = False
-        InCommand = False
-        InParameter = False
-
-        FirstDevice = True
-
+        # Pre process IFA to have Status, Command, Parameter order
         with open(self.IfaPath) as f:
-            lines = f.readlines()
-            pos = 0
-            while pos < len(lines):
-                if lines[pos].rstrip() == "HASH":
-                    self.HASH = lines[pos+1].rstrip()
-                if lines[pos].rstrip() == "MAX_IO_DEVICES":
-                    self.MAX_IO_DEVICES = int(lines[pos+1].strip())
+            linetype = None
+
+            StatusArea    = []
+            CommandArea   = []
+            ParameterArea = []
+            Area          = None
+
+            for line in f:
+                line = line.strip()
+
+                if linetype is None:
+                    if line.startswith("//"):
+                        if Area is not None:
+                            Area.append(line)
+                        else:
+                            self.OrderedLines.append(line)
+                    else:
+                        linetype = line
+                    continue
+
+
+                if linetype == "HASH":
+                    self.HASH = line
+
+                elif linetype == "MAX_IO_DEVICES":
+                    self.MAX_IO_DEVICES = int(line)
                     if self.MAX_IO_DEVICES <= 0:
                         self.MAX_IO_DEVICES = 1
-                if lines[pos].rstrip() == "MAX_LOCAL_MODULES":
-                    self.MAX_LOCAL_MODULES = int(lines[pos+1].strip())
+
+                elif linetype == "MAX_LOCAL_MODULES":
+                    self.MAX_LOCAL_MODULES = int(line)
                     if self.MAX_LOCAL_MODULES <= 0:
                         self.MAX_LOCAL_MODULES = 1
-                if lines[pos].rstrip() == "MAX_MODULES_IN_IO_DEVICE":
-                    self.MAX_MODULES_IN_IO_DEVICE = int(lines[pos+1].strip())
+
+                elif linetype == "MAX_MODULES_IN_IO_DEVICE":
+                    self.MAX_MODULES_IN_IO_DEVICE = int(line)
                     if self.MAX_MODULES_IN_IO_DEVICE <= 0:
                         self.MAX_MODULES_IN_IO_DEVICE = 1
-                if lines[pos].rstrip() == "DEVICE":
+
+                elif linetype == "PLC_TYPE":
+                    self.PLC_type = line
+
+                elif linetype == "DEVICE":
                     self.DeviceNum = self.DeviceNum + 1
-                    InStatus = False
-                    InCommand = False
-                    InParameter = False
-                    if FirstDevice == False:
-                        for line in StatusArea:
-                            self.OrderedLines.append(line)
-                        for line in CommandArea:
-                            self.OrderedLines.append(line)
-                        for line in ParameterArea:
-                            self.OrderedLines.append(line)
-                    StatusArea = []
-                    CommandArea = []
+
+                    self.OrderedLines.extend(StatusArea)
+                    self.OrderedLines.extend(CommandArea)
+                    self.OrderedLines.extend(ParameterArea)
+
+                    StatusArea    = []
+                    CommandArea   = []
                     ParameterArea = []
-                    FirstDevice = False
-                if pos+1 != len(lines):
-                    if lines[pos].rstrip() == "STATUS":
-                        InStatus = True
-                        InCommand = False
-                        InParameter = False
-                    if lines[pos].rstrip() == "COMMAND":
-                        InStatus = False
-                        InCommand = True
-                        InParameter = False
-                    if lines[pos].rstrip() == "PARAMETER":
-                        InStatus = False
-                        InCommand = False
-                        InParameter = True
-                if InStatus:
-                    StatusArea.append(lines[pos])
-                if InCommand:
-                    CommandArea.append(lines[pos])
-                if InParameter:
-                    ParameterArea.append(lines[pos])
+                    Area          = None
 
-                if not InStatus and not InCommand and not InParameter:
-                    self.OrderedLines.append(lines[pos])
-                pos = pos + 1
+                if linetype == "BLOCK":
+                    if line == "STATUS":
+                        Area = StatusArea
+                    elif line == "COMMAND":
+                        Area = CommandArea
+                    elif line == "PARAMETER":
+                        Area = ParameterArea
+                    else:
+                        raise IFA.FatalException("Unknown block type", line)
 
-        for line in StatusArea:
-            self.OrderedLines.append(line)
-        for line in CommandArea:
-            self.OrderedLines.append(line)
-        for line in ParameterArea:
-            self.OrderedLines.append(line)
+                if Area is not None:
+                    Area.append(linetype)
+                    Area.append(line)
+                else:
+                    self.OrderedLines.append(linetype)
+                    self.OrderedLines.append(line)
+
+                linetype = None
+
+            if linetype is not None:
+                raise IFA.FatalException("""IFA is not well formed. Last lines:
+{type}
+{line}
+""".format(type = linetype,
+           line = line))
+
+            self.OrderedLines.extend(StatusArea)
+            self.OrderedLines.extend(CommandArea)
+            self.OrderedLines.extend(ParameterArea)
 
         if self.HASH is None:
             raise IFA.Warning("""
