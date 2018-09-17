@@ -1403,7 +1403,7 @@ def main(argv):
 
     if tia_version or args.plc_only_diag:
         try:
-            from InterfaceFactorySiemens import produce as ifa_produce
+            from interface_factory.InterfaceFactorySiemens import produce as ifa_produce
         except ImportError:
             print("""
 ERROR
@@ -1416,7 +1416,7 @@ Siemens support is not found
 
     if beckhoff:
         try:
-            from InterfaceFactoryBeckhoff import produce as ifa_produce
+            from interface_factory.InterfaceFactoryBeckhoff import produce as ifa_produce
         except ImportError:
             print("""
 ERROR
