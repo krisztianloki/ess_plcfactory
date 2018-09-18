@@ -1,6 +1,15 @@
 from __future__ import print_function
 
 class IFA(object):
+    valid_device_entries = [ 'DEVICE', 'DEVICE_TYPE', 'EPICSTOPLCPARAMETERSSTART', 'EPICSTOPLCLENGTH', 'EPICSTOPLCDATABLOCKOFFSET', 'PLCTOEPICSDATABLOCKOFFSET',
+                             'BLOCK', 'DEFINE_ARRAY', 'END_ARRAY',
+                             'VARIABLE', 'EPICS', 'TYPE', 'ARRAY_INDEX', 'BIT_NUMBER', 'BEAST', 'ARCHIVE' ]
+
+    valid_line_types     = [ 'HASH', 'MAX_IO_DEVICES', 'MAX_LOCAL_MODULES', 'MAX_MODULES_IN_IO_DEVICE', 'PLC_TYPE',
+                             'TOTALEPICSTOPLCLENGTH', 'TOTALPLCTOEPICSLENGTH' ]
+    valid_line_types.extend(valid_device_entries)
+
+
     class Exception(Exception):
         pass
 
@@ -77,6 +86,9 @@ Pre-processing .ifa file...""".format(self.IfaPath))
                         elif device is not None:
                             device.append(line)
                     else:
+                        if line not in IFA.valid_line_types:
+                            raise IFA.FatalException("Unknown IFA keyword", line)
+
                         linetype = line
                     continue
 
@@ -127,6 +139,9 @@ Pre-processing .ifa file...""".format(self.IfaPath))
                         Area          = None
                         device        = IFA.Device()
                         self.Devices.append(device)
+
+                    if device and linetype not in IFA.valid_device_entries:
+                        raise IFA.FatalException("Unknown device keyword", linetype)
 
                     if linetype == "BLOCK":
                         if line == "STATUS":
