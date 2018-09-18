@@ -937,7 +937,7 @@ def ProcessIFADevTypes(OutputDir, IfaPath):
 #		for line in device.comments:
 #			DevTypeBODY_CODE.append("       " + line)
 
-		for item in device.items:
+		for item in device:
 			if item.is_wrapper_array():
 				if item.is_start():
 					InArray     = True

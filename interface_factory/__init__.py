@@ -28,10 +28,37 @@ class IFA(object):
 
 
     class Device(object):
+        class DeviceItemIterator(object):
+            def __init__(self, iters):
+                self.__iters = iters
+
+
+            def next(self):
+                return self.__next__()
+
+
+            def __next__(self):
+                try:
+                    return next(self.__iters[0])
+                except StopIteration:
+                    self.__iters.pop(0)
+                    return self.next()
+                except IndexError:
+                    raise StopIteration
+
+
+
         def __init__(self, name):
             self.comments   = []
             self.parameters = { "DEVICE": name }
-            self.items      = []
+
+            self.status_items    = []
+            self.command_items   = []
+            self.parameter_items = []
+
+
+        def __iter__(self):
+            return IFA.Device.DeviceItemIterator([ iter(self.status_items), iter(self.command_items), iter(self.parameter_items) ])
 
 
         def append(self, line):
@@ -177,11 +204,7 @@ Pre-processing .ifa file...""".format(self.IfaPath))
         with open(self.IfaPath) as f:
             linetype = None
 
-            StatusArea    = []
-            CommandArea   = []
-            ParameterArea = []
-            Area          = None
-            Block         = None
+            Area     = None
 
             device   = None
             item     = None
@@ -238,18 +261,9 @@ Pre-processing .ifa file...""".format(self.IfaPath))
                         continue
 
                     elif linetype == "DEVICE":
-                        if device is not None:
-                            device.items.extend(StatusArea)
-                            device.items.extend(CommandArea)
-                            device.items.extend(ParameterArea)
-
-                        StatusArea    = []
-                        CommandArea   = []
-                        ParameterArea = []
-                        Area          = None
-                        Block         = None
-                        item          = None
-                        device        = IFA.Device(line)
+                        Area   = None
+                        item   = None
+                        device = IFA.Device(line)
                         self.Devices.append(device)
                         continue
 
@@ -257,16 +271,15 @@ Pre-processing .ifa file...""".format(self.IfaPath))
                         raise IFA.FatalException("Unknown DEVICE keyword", linetype)
 
                     if linetype == "BLOCK":
-                        Block = line
                         if line == "STATUS":
-                            Area = StatusArea
+                            Area = device.status_items
                         elif line == "COMMAND":
-                            Area = CommandArea
+                            Area = device.command_items
                         elif line == "PARAMETER":
-                            Area = ParameterArea
+                            Area = device.parameter_items
                         else:
                             raise IFA.FatalException("Unknown BLOCK type", line)
-                        Area.append(IFA.Block(Block))
+                        Area.append(IFA.Block(line))
                         item = None
                         continue
 
@@ -302,11 +315,6 @@ Pre-processing .ifa file...""".format(self.IfaPath))
 {line}
 """.format(type = linetype,
            line = line))
-
-            if device is not None:
-                device.items.extend(StatusArea)
-                device.items.extend(CommandArea)
-                device.items.extend(ParameterArea)
 
         if self.HASH is None:
             raise IFA.Warning("""
