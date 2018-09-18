@@ -769,175 +769,174 @@ def ProcessIFADevTypes(OutputDir, IfaPath):
 	TotalCommandReg = ifa.TOTALEPICSTOPLCLENGTH
 	TotalStatusReg  = ifa.TOTALPLCTOEPICSLENGTH
 	for device in ifa.Devices:
+		ProcessedDeviceNum = ProcessedDeviceNum + 1
+		InStatus = False
+		InCommand = False
+		InParameter = False
+		if FirstDevice == False:
+			CloseLastVariable()
+			if NewDeviceType == True:
+				Write_DevType()
+
+			else:
+				DevTypeHeader = []
+				DevTypeVAR_INPUT = []
+				DevTypeVAR_OUTPUT = []
+				DevTypeVAR_TEMP = []
+				DevTypeBODY_HEADER = []
+				DevTypeBODY_CODE = []
+				DevTypeBODY_FOOTER = []
+		else:
+			FC_EPICS_DEVICE_CALLS_HEADER.append("<?xml version=\"1.0\" encoding=\"utf-8\"?>");
+			FC_EPICS_DEVICE_CALLS_HEADER.append("<TcPlcObject ");
+			FC_EPICS_DEVICE_CALLS_HEADER.append("Version=\"1.1.0.1\" ProductVersion=\"3.1.4022.10\">");
+			FC_EPICS_DEVICE_CALLS_HEADER.append("<POU ");
+			GlobalIDCounter = GlobalIDCounter + 1
+			FC_EPICS_DEVICE_CALLS_HEADER.append("Name=\"FC_EPICS_DEVICE_CALLS\" Id=\"{5bb54db1-6fe3-4b17-2b0f-"+str(GlobalIDCounter).zfill(12)+"}\" SpecialFunc=\"None\">");
+			FC_EPICS_DEVICE_CALLS_HEADER.append("");
+			FC_EPICS_DEVICE_CALLS_HEADER.append("<Declaration>");
+			FC_EPICS_DEVICE_CALLS_HEADER.append("<![CDATA[");
+			FC_EPICS_DEVICE_CALLS_HEADER.append("FUNCTION FC_EPICS_DEVICE_CALLS : BOOL");
+			FC_EPICS_DEVICE_CALLS_HEADER.append("VAR_INPUT");
+			FC_EPICS_DEVICE_CALLS_HEADER.append("END_VAR");
+			FC_EPICS_DEVICE_CALLS_HEADER.append("VAR");
+			FC_EPICS_DEVICE_CALLS_HEADER.append("END_VAR");
+			FC_EPICS_DEVICE_CALLS_HEADER.append("]]>");
+			FC_EPICS_DEVICE_CALLS_HEADER.append("</Declaration>");
+			FC_EPICS_DEVICE_CALLS_HEADER.append("<Implementation>");
+			FC_EPICS_DEVICE_CALLS_HEADER.append("<ST>");
+			FC_EPICS_DEVICE_CALLS_HEADER.append("<![CDATA[");
+			FC_EPICS_DEVICE_CALLS_HEADER.append("EPICS_GVL.FB_EPICS_S7_Comm(")
+			FC_EPICS_DEVICE_CALLS_HEADER.append("    bConnect:=TRUE ,")
+			FC_EPICS_DEVICE_CALLS_HEADER.append("    nS7Port:=2000 ,")
+			FC_EPICS_DEVICE_CALLS_HEADER.append("    nPLC_Hash:="+ifa.HASH+" ,")
+			FC_EPICS_DEVICE_CALLS_HEADER.append("    tSendTrig:=T#200MS ,")
+			FC_EPICS_DEVICE_CALLS_HEADER.append("    nCase=> ,")
+			FC_EPICS_DEVICE_CALLS_HEADER.append("    bConnected=> ,")
+			FC_EPICS_DEVICE_CALLS_HEADER.append("    bError=> );")
+
+			FC_EPICS_DEVICE_CALLS_FOOTER.append("]]>");
+			FC_EPICS_DEVICE_CALLS_FOOTER.append("</ST>");
+			FC_EPICS_DEVICE_CALLS_FOOTER.append("</Implementation>");
+			FC_EPICS_DEVICE_CALLS_FOOTER.append("</POU>");
+			FC_EPICS_DEVICE_CALLS_FOOTER.append("</TcPlcObject>");
+
+		FirstDevice = False
+		if "DEVICE_TYPE" not in device.parameters or "EPICSTOPLCLENGTH" not in device.parameters or "EPICSTOPLCDATABLOCKOFFSET" not in device.parameters or "EPICSTOPLCPARAMETERSSTART" not in device.parameters or "PLCTOEPICSDATABLOCKOFFSET" not in device.parameters:
+			print("ERROR:")
+			print("The .ifa file has a bad DEVICE format! Exiting PLCFactory...\n")
+			print("--- %.1f seconds ---\n" % (time.time() - start_time))
+			sys.exit()
+		ActualDeviceName = device.parameters["DEVICE"]
+		ActualDeviceType = device.parameters["DEVICE_TYPE"]
+		EPICSTOPLCLENGTH = device.parameters["EPICSTOPLCLENGTH"]
+		EPICSTOPLCDATABLOCKOFFSET = device.parameters["EPICSTOPLCDATABLOCKOFFSET"]
+		EPICSTOPLCPARAMETERSSTART = device.parameters["EPICSTOPLCPARAMETERSSTART"]
+		PLCTOEPICSDATABLOCKOFFSET = device.parameters["PLCTOEPICSDATABLOCKOFFSET"]
+		ActualDeviceNameWhite = ActualDeviceName
+
+		Text = "Device: "+ ActualDeviceName + " Type: "+ ActualDeviceType
+		print("    ", "-" * len(Text), sep='')
+		print("    ", Text, sep='')
+		print("    ", "-" * len(Text), sep='')
+
+		ActualDeviceNameWhite = ActualDeviceNameWhite.replace(":","_")
+		ActualDeviceNameWhite = ActualDeviceNameWhite.replace("/","")
+		ActualDeviceNameWhite = ActualDeviceNameWhite.replace("\\","")
+		ActualDeviceNameWhite = ActualDeviceNameWhite.replace("?","")
+		ActualDeviceNameWhite = ActualDeviceNameWhite.replace("*","")
+		ActualDeviceNameWhite = ActualDeviceNameWhite.replace("[","")
+		ActualDeviceNameWhite = ActualDeviceNameWhite.replace("]","")
+		ActualDeviceNameWhite = ActualDeviceNameWhite.replace(".","")
+		ActualDeviceNameWhite = ActualDeviceNameWhite.replace("-","_")
+		ActualDeviceType = ActualDeviceType.replace("-","_")
+
+		if (int(EPICSTOPLCDATABLOCKOFFSET)<12288):
+			print("ERROR:")
+			print("The PLCs modbus offset held by the property: PLCF#EPICSToPLCDataBlockStartOffset in CCDB is less then 12288! \n")
+			print("Make sure your PLC in CCDB is PLC_BECKHOFF type instead of PLC! \n")
+			print("--- %.1f seconds ---\n" % (time.time() - start_time))
+			sys.exit()
+
+
+		FC_EPICS_DEVICE_CALLS_BODY.append("")
+		FC_EPICS_DEVICE_CALLS_BODY.append("//********************************************")
+		FC_EPICS_DEVICE_CALLS_BODY.append("// Device name: "+ActualDeviceName)
+		FC_EPICS_DEVICE_CALLS_BODY.append("// Device type: "+ActualDeviceType)
+		FC_EPICS_DEVICE_CALLS_BODY.append("//********************************************")
+		FC_EPICS_DEVICE_CALLS_BODY.append("");
+		FC_EPICS_DEVICE_CALLS_BODY.append("EPICS_GVL.FB_DEV_"+ActualDeviceNameWhite+"(")
+		FC_EPICS_DEVICE_CALLS_BODY.append("       nOffsetStatus:= "+str(int(PLCTOEPICSDATABLOCKOFFSET)+10)+",")
+		FC_EPICS_DEVICE_CALLS_BODY.append("       nOffsetCmd:="+str(int(EPICSTOPLCDATABLOCKOFFSET)-12288+10)+",")
+		FC_EPICS_DEVICE_CALLS_BODY.append("       nOffsetPar:="+str(int(EPICSTOPLCDATABLOCKOFFSET)-12288+10+int(EPICSTOPLCPARAMETERSSTART))+");")
+
+		EPICS_GVL.append("	FB_DEV_"+ActualDeviceNameWhite+"	:FB_DEVTYPE_"+ActualDeviceType+";					//Device instance("+ActualDeviceName+")");
+
+		#Check if DeviceType is already generated
+		if ActualDeviceType not in DeviceTypeList:
+
+			MaxStatusReg = 0;
+			MaxCommandReg = 0;
+
+			NewDeviceType = True
+			DeviceTypeList.append(ActualDeviceType)
+			print("    ->  New device type found. [", ActualDeviceType, "] Creating source code...", sep='')
+
+			DevTypeHeader.append("<?xml version=\"1.0\" encoding=\"utf-8\"?>")
+			DevTypeHeader.append("<TcPlcObject ")
+			DevTypeHeader.append("Version=\"1.1.0.1\" ProductVersion=\"3.1.4022.10\">")
+			DevTypeHeader.append("<POU ")
+			GlobalIDCounter = GlobalIDCounter + 1
+			DevTypeHeader.append("Name=\"FB_DEVTYPE_"+ActualDeviceType+"\" Id=\"{5bb54db1-6fe3-4b17-2b0f-"+str(GlobalIDCounter).zfill(12)+"}\" SpecialFunc=\"None\">")
+			DevTypeHeader.append("<Declaration>")
+			DevTypeHeader.append("<![CDATA[")
+			DevTypeHeader.append("FUNCTION_BLOCK FB_DEVTYPE_"+ActualDeviceType+"")
+
+			DevTypeVAR_TEMP.append("VAR")
+			DevTypeVAR_TEMP.append("	nTempUINT		:UINT;")
+			DevTypeVAR_TEMP.append("	sTempHStr		:T_MaxString;")
+			DevTypeVAR_TEMP.append("")
+			DevTypeVAR_TEMP.append("	uREAL2UINTs	:U_REAL_UINTs;")
+			DevTypeVAR_TEMP.append("	uUINTs2REAL	:U_REAL_UINTs;")
+			DevTypeVAR_TEMP.append("	uTIME2UINTs	:U_TIME_UINTs;")
+			DevTypeVAR_TEMP.append("	uUINTs2TIME	:U_TIME_UINTs;")
+			DevTypeVAR_TEMP.append("	uDINT2UINTs	:U_DINT_UINTs;")
+			DevTypeVAR_TEMP.append("	uUINTs2DINT	:U_DINT_UINTs;")
+			DevTypeVAR_TEMP.append("	fValue: INT;")
+			DevTypeVAR_TEMP.append("END_VAR")
+
+			DevTypeBODY_HEADER.append("")
+			DevTypeBODY_HEADER.append("]]>")
+			DevTypeBODY_HEADER.append("</Declaration>")
+			DevTypeBODY_HEADER.append("<Implementation>")
+			DevTypeBODY_HEADER.append("<ST>")
+			DevTypeBODY_HEADER.append("<![CDATA[")
+			DevTypeBODY_HEADER.append("(*")
+			DevTypeBODY_HEADER.append("**********************EPICS<-->Beckhoff integration at ESS in Lund, Sweden*******************************")
+			DevTypeBODY_HEADER.append("Data types handler for TCP/IP communication EPICS<--Beckhoff at ESS. Lund, Sweden.")
+			DevTypeBODY_HEADER.append("Created by: Andres Quintanilla (andres.quintanilla@esss.se)")
+			DevTypeBODY_HEADER.append("            Miklos Boros (miklos.boros@esss.se)")
+			DevTypeBODY_HEADER.append("Notes: Converts different types of data into UINT. Adds the converted data into the array to be sent to EPICS.")
+			DevTypeBODY_HEADER.append("The first 10 spaces of the array are reserved. nOffset input is used for that. ")
+			DevTypeBODY_HEADER.append("Code must not be changed manually. Code is generated and handled by PLC factory at ESS.")
+			DevTypeBODY_HEADER.append("Versions:")
+			DevTypeBODY_HEADER.append("Version 1: 06/04/2018. Communication stablished and stable")
+			DevTypeBODY_HEADER.append("**********************************************************************************************************")
+			DevTypeBODY_HEADER.append("*)")
+
+
+			DevTypeBODY_FOOTER.append("")
+			DevTypeBODY_FOOTER.append("]]>")
+			DevTypeBODY_FOOTER.append("</ST>")
+			DevTypeBODY_FOOTER.append("</Implementation>")
+			DevTypeBODY_FOOTER.append("</POU>")
+			DevTypeBODY_FOOTER.append("</TcPlcObject>")
+		else:
+			NewDeviceType = False
+
 		pos = 0
 
 		while pos < len(device.lines)-1:
-			if device.lines[pos].rstrip() == "DEVICE":
-				ProcessedDeviceNum = ProcessedDeviceNum + 1
-				InStatus = False
-				InCommand = False
-				InParameter = False
-				if FirstDevice == False:
-					CloseLastVariable()
-					if NewDeviceType == True:
-						Write_DevType()
-
-					else:
-						DevTypeHeader = []
-						DevTypeVAR_INPUT = []
-						DevTypeVAR_OUTPUT = []
-						DevTypeVAR_TEMP = []
-						DevTypeBODY_HEADER = []
-						DevTypeBODY_CODE = []
-						DevTypeBODY_FOOTER = []
-				else:
-					FC_EPICS_DEVICE_CALLS_HEADER.append("<?xml version=\"1.0\" encoding=\"utf-8\"?>");
-					FC_EPICS_DEVICE_CALLS_HEADER.append("<TcPlcObject ");
-					FC_EPICS_DEVICE_CALLS_HEADER.append("Version=\"1.1.0.1\" ProductVersion=\"3.1.4022.10\">");
-					FC_EPICS_DEVICE_CALLS_HEADER.append("<POU ");
-					GlobalIDCounter = GlobalIDCounter + 1
-					FC_EPICS_DEVICE_CALLS_HEADER.append("Name=\"FC_EPICS_DEVICE_CALLS\" Id=\"{5bb54db1-6fe3-4b17-2b0f-"+str(GlobalIDCounter).zfill(12)+"}\" SpecialFunc=\"None\">");
-					FC_EPICS_DEVICE_CALLS_HEADER.append("");
-					FC_EPICS_DEVICE_CALLS_HEADER.append("<Declaration>");
-					FC_EPICS_DEVICE_CALLS_HEADER.append("<![CDATA[");
-					FC_EPICS_DEVICE_CALLS_HEADER.append("FUNCTION FC_EPICS_DEVICE_CALLS : BOOL");
-					FC_EPICS_DEVICE_CALLS_HEADER.append("VAR_INPUT");
-					FC_EPICS_DEVICE_CALLS_HEADER.append("END_VAR");
-					FC_EPICS_DEVICE_CALLS_HEADER.append("VAR");
-					FC_EPICS_DEVICE_CALLS_HEADER.append("END_VAR");
-					FC_EPICS_DEVICE_CALLS_HEADER.append("]]>");
-					FC_EPICS_DEVICE_CALLS_HEADER.append("</Declaration>");
-					FC_EPICS_DEVICE_CALLS_HEADER.append("<Implementation>");
-					FC_EPICS_DEVICE_CALLS_HEADER.append("<ST>");
-					FC_EPICS_DEVICE_CALLS_HEADER.append("<![CDATA[");
-					FC_EPICS_DEVICE_CALLS_HEADER.append("EPICS_GVL.FB_EPICS_S7_Comm(")
-					FC_EPICS_DEVICE_CALLS_HEADER.append("    bConnect:=TRUE ,")
-					FC_EPICS_DEVICE_CALLS_HEADER.append("    nS7Port:=2000 ,")
-					FC_EPICS_DEVICE_CALLS_HEADER.append("    nPLC_Hash:="+ifa.HASH+" ,")
-					FC_EPICS_DEVICE_CALLS_HEADER.append("    tSendTrig:=T#200MS ,")
-					FC_EPICS_DEVICE_CALLS_HEADER.append("    nCase=> ,")
-					FC_EPICS_DEVICE_CALLS_HEADER.append("    bConnected=> ,")
-					FC_EPICS_DEVICE_CALLS_HEADER.append("    bError=> );")
-
-					FC_EPICS_DEVICE_CALLS_FOOTER.append("]]>");
-					FC_EPICS_DEVICE_CALLS_FOOTER.append("</ST>");
-					FC_EPICS_DEVICE_CALLS_FOOTER.append("</Implementation>");
-					FC_EPICS_DEVICE_CALLS_FOOTER.append("</POU>");
-					FC_EPICS_DEVICE_CALLS_FOOTER.append("</TcPlcObject>");
-
-				FirstDevice = False
-				if (device.lines[pos + 2].rstrip() != "DEVICE_TYPE") or (device.lines[pos + 4].rstrip() != "EPICSTOPLCLENGTH") or (device.lines[pos + 6].rstrip() != "EPICSTOPLCDATABLOCKOFFSET") or (device.lines[pos + 8].rstrip() != "EPICSTOPLCPARAMETERSSTART") or (device.lines[pos + 10].rstrip() != "PLCTOEPICSDATABLOCKOFFSET"):
-					print("ERROR:")
-					print("The .ifa file has a bad DEVICE format! Exiting PLCFactory...\n")
-					print("--- %.1f seconds ---\n" % (time.time() - start_time))
-					sys.exit()
-				ActualDeviceName = device.lines[pos+1].rstrip()
-				ActualDeviceType = device.lines[pos+3].rstrip()
-				EPICSTOPLCLENGTH = device.lines[pos+5].rstrip()
-				EPICSTOPLCDATABLOCKOFFSET = device.lines[pos+7].rstrip()
-				EPICSTOPLCPARAMETERSSTART = device.lines[pos+9].rstrip()
-				PLCTOEPICSDATABLOCKOFFSET = device.lines[pos+11].rstrip()
-				ActualDeviceNameWhite = ActualDeviceName
-
-				Text = "Device: "+ ActualDeviceName + " Type: "+ ActualDeviceType
-				print("    ", "-" * len(Text), sep='')
-				print("    ", Text, sep='')
-				print("    ", "-" * len(Text), sep='')
-
-				ActualDeviceNameWhite = ActualDeviceNameWhite.replace(":","_")
-				ActualDeviceNameWhite = ActualDeviceNameWhite.replace("/","")
-				ActualDeviceNameWhite = ActualDeviceNameWhite.replace("\\","")
-				ActualDeviceNameWhite = ActualDeviceNameWhite.replace("?","")
-				ActualDeviceNameWhite = ActualDeviceNameWhite.replace("*","")
-				ActualDeviceNameWhite = ActualDeviceNameWhite.replace("[","")
-				ActualDeviceNameWhite = ActualDeviceNameWhite.replace("]","")
-				ActualDeviceNameWhite = ActualDeviceNameWhite.replace(".","")
-				ActualDeviceNameWhite = ActualDeviceNameWhite.replace("-","_")
-				ActualDeviceType = ActualDeviceType.replace("-","_")
-
-				if (int(EPICSTOPLCDATABLOCKOFFSET)<12288):
-					print("ERROR:")
-					print("The PLCs modbus offset held by the property: PLCF#EPICSToPLCDataBlockStartOffset in CCDB is less then 12288! \n")
-					print("Make sure your PLC in CCDB is PLC_BECKHOFF type instead of PLC! \n")
-					print("--- %.1f seconds ---\n" % (time.time() - start_time))
-					sys.exit()
-
-
-				FC_EPICS_DEVICE_CALLS_BODY.append("")
-				FC_EPICS_DEVICE_CALLS_BODY.append("//********************************************")
-				FC_EPICS_DEVICE_CALLS_BODY.append("// Device name: "+ActualDeviceName)
-				FC_EPICS_DEVICE_CALLS_BODY.append("// Device type: "+ActualDeviceType)
-				FC_EPICS_DEVICE_CALLS_BODY.append("//********************************************")
-				FC_EPICS_DEVICE_CALLS_BODY.append("");
-				FC_EPICS_DEVICE_CALLS_BODY.append("EPICS_GVL.FB_DEV_"+ActualDeviceNameWhite+"(")
-				FC_EPICS_DEVICE_CALLS_BODY.append("       nOffsetStatus:= "+str(int(PLCTOEPICSDATABLOCKOFFSET)+10)+",")
-				FC_EPICS_DEVICE_CALLS_BODY.append("       nOffsetCmd:="+str(int(EPICSTOPLCDATABLOCKOFFSET)-12288+10)+",")
-				FC_EPICS_DEVICE_CALLS_BODY.append("       nOffsetPar:="+str(int(EPICSTOPLCDATABLOCKOFFSET)-12288+10+int(EPICSTOPLCPARAMETERSSTART))+");")
-
-				EPICS_GVL.append("	FB_DEV_"+ActualDeviceNameWhite+"	:FB_DEVTYPE_"+ActualDeviceType+";					//Device instance("+ActualDeviceName+")");
-
-				#Check if DeviceType is already generated
-				if ActualDeviceType not in DeviceTypeList:
-
-					MaxStatusReg = 0;
-					MaxCommandReg = 0;
-
-					NewDeviceType = True
-					DeviceTypeList.append(ActualDeviceType)
-					print("    ->  New device type found. [", ActualDeviceType, "] Creating source code...", sep='')
-
-					DevTypeHeader.append("<?xml version=\"1.0\" encoding=\"utf-8\"?>")
-					DevTypeHeader.append("<TcPlcObject ")
-					DevTypeHeader.append("Version=\"1.1.0.1\" ProductVersion=\"3.1.4022.10\">")
-					DevTypeHeader.append("<POU ")
-					GlobalIDCounter = GlobalIDCounter + 1
-					DevTypeHeader.append("Name=\"FB_DEVTYPE_"+ActualDeviceType+"\" Id=\"{5bb54db1-6fe3-4b17-2b0f-"+str(GlobalIDCounter).zfill(12)+"}\" SpecialFunc=\"None\">")
-					DevTypeHeader.append("<Declaration>")
-					DevTypeHeader.append("<![CDATA[")
-					DevTypeHeader.append("FUNCTION_BLOCK FB_DEVTYPE_"+ActualDeviceType+"")
-
-					DevTypeVAR_TEMP.append("VAR")
-					DevTypeVAR_TEMP.append("	nTempUINT		:UINT;")
-					DevTypeVAR_TEMP.append("	sTempHStr		:T_MaxString;")
-					DevTypeVAR_TEMP.append("")
-					DevTypeVAR_TEMP.append("	uREAL2UINTs	:U_REAL_UINTs;")
-					DevTypeVAR_TEMP.append("	uUINTs2REAL	:U_REAL_UINTs;")
-					DevTypeVAR_TEMP.append("	uTIME2UINTs	:U_TIME_UINTs;")
-					DevTypeVAR_TEMP.append("	uUINTs2TIME	:U_TIME_UINTs;")
-					DevTypeVAR_TEMP.append("	uDINT2UINTs	:U_DINT_UINTs;")
-					DevTypeVAR_TEMP.append("	uUINTs2DINT	:U_DINT_UINTs;")
-					DevTypeVAR_TEMP.append("	fValue: INT;")
-					DevTypeVAR_TEMP.append("END_VAR")
-
-					DevTypeBODY_HEADER.append("")
-					DevTypeBODY_HEADER.append("]]>")
-					DevTypeBODY_HEADER.append("</Declaration>")
-					DevTypeBODY_HEADER.append("<Implementation>")
-					DevTypeBODY_HEADER.append("<ST>")
-					DevTypeBODY_HEADER.append("<![CDATA[")
-					DevTypeBODY_HEADER.append("(*")
-					DevTypeBODY_HEADER.append("**********************EPICS<-->Beckhoff integration at ESS in Lund, Sweden*******************************")
-					DevTypeBODY_HEADER.append("Data types handler for TCP/IP communication EPICS<--Beckhoff at ESS. Lund, Sweden.")
-					DevTypeBODY_HEADER.append("Created by: Andres Quintanilla (andres.quintanilla@esss.se)")
-					DevTypeBODY_HEADER.append("            Miklos Boros (miklos.boros@esss.se)")
-					DevTypeBODY_HEADER.append("Notes: Converts different types of data into UINT. Adds the converted data into the array to be sent to EPICS.")
-					DevTypeBODY_HEADER.append("The first 10 spaces of the array are reserved. nOffset input is used for that. ")
-					DevTypeBODY_HEADER.append("Code must not be changed manually. Code is generated and handled by PLC factory at ESS.")
-					DevTypeBODY_HEADER.append("Versions:")
-					DevTypeBODY_HEADER.append("Version 1: 06/04/2018. Communication stablished and stable")
-					DevTypeBODY_HEADER.append("**********************************************************************************************************")
-					DevTypeBODY_HEADER.append("*)")
-
-
-					DevTypeBODY_FOOTER.append("")
-					DevTypeBODY_FOOTER.append("]]>")
-					DevTypeBODY_FOOTER.append("</ST>")
-					DevTypeBODY_FOOTER.append("</Implementation>")
-					DevTypeBODY_FOOTER.append("</POU>")
-					DevTypeBODY_FOOTER.append("</TcPlcObject>")
-				else:
-					NewDeviceType = False
-
 			if device.lines[pos].rstrip() == "DEFINE_ARRAY":
 				InArray = True
 				InArrayName = device.lines[pos+1].rstrip()

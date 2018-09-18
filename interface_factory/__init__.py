@@ -27,7 +27,8 @@ class IFA(object):
 
     class Device(object):
         def __init__(self):
-            self.lines = []
+            self.lines      = []
+            self.parameters = dict()
 
 
         def append(self, line):
@@ -157,8 +158,7 @@ Pre-processing .ifa file...""".format(self.IfaPath))
                         Area.append(linetype)
                         Area.append(line)
                     elif device is not None:
-                        device.append(linetype)
-                        device.append(line)
+                        device.parameters[linetype] = line
 
                 finally:
                     linetype = None
