@@ -123,14 +123,18 @@ class IFA(object):
 
 
 
-    class Variable(DeviceItem):
-        def __init__(self, name):
-            super(IFA.Variable, self).__init__()
+    class Variable(Block):
+        def __init__(self, name, block):
+            super(IFA.Variable, self).__init__(block)
             self.parameters = { "VARIABLE": name }
 
 
         def __repr__(self):
             return repr(self.parameters)
+
+
+        def is_block(self):
+            return False
 
 
         def is_variable(self):
@@ -205,6 +209,7 @@ Pre-processing .ifa file...""".format(self.IfaPath))
             linetype = None
 
             Area     = None
+            Block    = None
 
             device   = None
             item     = None
@@ -280,7 +285,8 @@ Pre-processing .ifa file...""".format(self.IfaPath))
                         else:
                             raise IFA.FatalException("Unknown BLOCK type", line)
                         Area.append(IFA.Block(line))
-                        item = None
+                        Block = line
+                        item  = None
                         continue
 
                     elif linetype == "DEFINE_ARRAY":
@@ -292,7 +298,7 @@ Pre-processing .ifa file...""".format(self.IfaPath))
                         continue
 
                     elif linetype == "VARIABLE":
-                        item = IFA.Variable(line)
+                        item = IFA.Variable(line, Block)
                         Area.append(item)
                         continue
 

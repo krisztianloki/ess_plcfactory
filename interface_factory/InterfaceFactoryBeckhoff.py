@@ -706,9 +706,6 @@ def ProcessIFADevTypes(OutputDir, IfaPath):
 	global EndString2
 	global IsDouble
 
-	InStatus = False
-	InCommand = False
-	InParameter = False
 	FirstDevice = True
 	StartingRegister = -1
 
@@ -770,9 +767,6 @@ def ProcessIFADevTypes(OutputDir, IfaPath):
 	TotalStatusReg  = ifa.TOTALPLCTOEPICSLENGTH
 	for device in ifa.Devices:
 		ProcessedDeviceNum = ProcessedDeviceNum + 1
-		InStatus = False
-		InCommand = False
-		InParameter = False
 		if FirstDevice == False:
 			CloseLastVariable()
 			if NewDeviceType == True:
@@ -957,27 +951,18 @@ def ProcessIFADevTypes(OutputDir, IfaPath):
 					DevTypeBODY_CODE.append("    //*************STATUS VARIABLES***************")
 					DevTypeBODY_CODE.append("    //********************************************")
 					DevTypeBODY_CODE.append("")
-					InStatus    = True
-					InCommand   = False
-					InParameter = False
 				if item.is_command():
 					DevTypeBODY_CODE.append("")
 					DevTypeBODY_CODE.append("    //********************************************")
 					DevTypeBODY_CODE.append("    //*************COMMAND VARIABLES**************")
 					DevTypeBODY_CODE.append("    //********************************************")
 					DevTypeBODY_CODE.append("")
-					InStatus    = False
-					InCommand   = True
-					InParameter = False
 				if item.is_parameter():
 					DevTypeBODY_CODE.append("")
 					DevTypeBODY_CODE.append("    //********************************************")
 					DevTypeBODY_CODE.append("    //************PARAMETER VARIABLES*************")
 					DevTypeBODY_CODE.append("    //********************************************")
 					DevTypeBODY_CODE.append("")
-					InStatus    = False
-					InCommand   = False
-					InParameter = True
 
 			elif item.is_variable():
 				if "VARIABLE" not in item.parameters or "EPICS" not in item.parameters or "TYPE" not in item.parameters or "ARRAY_INDEX" not in item.parameters or "BIT_NUMBER" not in item.parameters:
@@ -997,14 +982,14 @@ def ProcessIFADevTypes(OutputDir, IfaPath):
 					LastVariableType = ActVariableType
 					CloseLastVariable()
 
-				if InStatus:
+				if item.is_status():
 					if not InArray:
 						DevTypeVAR_INPUT.append("      " + ActVariablePLCName +"  :"+ ActVariableType+";        //EPICS Status variable: "+ActVariableEPICSName)
 
-				if InCommand:
+				if item.is_command():
 					DevTypeVAR_OUTPUT.append("      " + ActVariablePLCName +"  :"+ ActVariableType+";        //EPICS Command variable: "+ActVariableEPICSName)
 
-				if InParameter:
+				if item.is_parameter():
 					DevTypeVAR_OUTPUT.append("      " + ActVariablePLCName +"  :"+ ActVariableType+";        //EPICS Parameter variable: "+ActVariableEPICSName)
 
 				#SUPPORTED TYPES
@@ -1012,7 +997,7 @@ def ProcessIFADevTypes(OutputDir, IfaPath):
 
 				#====== BOOL TYPE ========
 				if ActVariableType == "BOOL":
-					if InStatus:
+					if item.is_status():
 						if StartingRegister != ActVariableArrayIndex:
 							CloseLastVariable()
 							StartingRegister = ActVariableArrayIndex
@@ -1024,7 +1009,7 @@ def ProcessIFADevTypes(OutputDir, IfaPath):
 							DevTypeBODY_CODE.append("       nTempUINT." + str(ActVariableBitNumber)+ "           := "+ ActVariablePLCName + ";       //EPICSName: "+ActVariableEPICSName)
 						IsDouble = False
 						EndString = "EPICS_GVL.aDataS7[nOffsetStatus + "+str(ActVariableArrayIndex) +"]    := nTempUINT;"
-					if InParameter or InCommand:
+					if item.is_parameter() or item.is_command():
 						if StartingRegister != ActVariableArrayIndex:
 							CloseLastVariable()
 							StartingRegister = ActVariableArrayIndex
@@ -1036,7 +1021,7 @@ def ProcessIFADevTypes(OutputDir, IfaPath):
 				#==========================
 				#====== BYTE TYPE ========
 				if ActVariableType == "BYTE":
-					if InStatus:
+					if item.is_status():
 						if StartingRegister != ActVariableArrayIndex:
 							CloseLastVariable()
 							StartingRegister = ActVariableArrayIndex
@@ -1048,7 +1033,7 @@ def ProcessIFADevTypes(OutputDir, IfaPath):
 							DevTypeBODY_CODE.append("       EPICS_GVL.aDataS7[nOffsetStatus + " + str(ActVariableArrayIndex)+ "]           := BYTE_TO_UINT("+ ActVariablePLCName + ");       //EPICSName: "+ActVariableEPICSName)
 						IsDouble = False
 						EndString = ""
-					if InParameter or InCommand:
+					if item.is_parameter() or item.is_command():
 						if StartingRegister != ActVariableArrayIndex:
 							CloseLastVariable()
 							StartingRegister = ActVariableArrayIndex
@@ -1059,7 +1044,7 @@ def ProcessIFADevTypes(OutputDir, IfaPath):
 				#==========================
 				#====== INT TYPE ========
 				if ActVariableType == "INT":
-					if InStatus:
+					if item.is_status():
 						if StartingRegister != ActVariableArrayIndex:
 							CloseLastVariable()
 							StartingRegister = ActVariableArrayIndex
@@ -1071,7 +1056,7 @@ def ProcessIFADevTypes(OutputDir, IfaPath):
 							DevTypeBODY_CODE.append("       EPICS_GVL.aDataS7[nOffsetStatus + " + str(ActVariableArrayIndex)+ "]           := INT_TO_UINT("+ ActVariablePLCName + ");       //EPICSName: "+ActVariableEPICSName)
 						IsDouble = False
 						EndString = ""
-					if InParameter or InCommand:
+					if item.is_parameter() or item.is_command():
 						if StartingRegister != ActVariableArrayIndex:
 							CloseLastVariable()
 							StartingRegister = ActVariableArrayIndex
@@ -1082,7 +1067,7 @@ def ProcessIFADevTypes(OutputDir, IfaPath):
 				#==========================
 				#====== WORD TYPE ========
 				if ActVariableType == "WORD":
-					if InStatus:
+					if item.is_status():
 						if StartingRegister != ActVariableArrayIndex:
 							CloseLastVariable()
 							StartingRegister = ActVariableArrayIndex
@@ -1094,7 +1079,7 @@ def ProcessIFADevTypes(OutputDir, IfaPath):
 							DevTypeBODY_CODE.append("       EPICS_GVL.aDataS7[nOffsetStatus + " + str(ActVariableArrayIndex)+ "]           := WORD_TO_UINT("+ ActVariablePLCName + ");       //EPICSName: "+ActVariableEPICSName)
 						IsDouble = False
 						EndString = ""
-					if InParameter or InCommand:
+					if item.is_parameter() or item.is_command():
 						if StartingRegister != ActVariableArrayIndex:
 							CloseLastVariable()
 							StartingRegister = ActVariableArrayIndex
@@ -1105,7 +1090,7 @@ def ProcessIFADevTypes(OutputDir, IfaPath):
 				#==========================
 				#====== DWORD TYPE ========
 				if ActVariableType == "DWORD":
-					if InStatus:
+					if item.is_status():
 						if InArray:
 							InArrayNum = InArrayNum + 1
 						if StartingRegister != ActVariableArrayIndex:
@@ -1116,7 +1101,7 @@ def ProcessIFADevTypes(OutputDir, IfaPath):
 						DevTypeBODY_CODE.append("       EPICS_GVL.aDataS7[nOffsetStatus + " + str(int(ActVariableArrayIndex)+1)+ "]           := DWORD_TO_UINT(SHR("+ ActVariablePLCName + ",16));       //EPICSName: "+ActVariableEPICSName)
 						IsDouble = False
 						EndString = ""
-					if InParameter or InCommand:
+					if item.is_parameter() or item.is_command():
 						if StartingRegister != ActVariableArrayIndex:
 							CloseLastVariable()
 							StartingRegister = ActVariableArrayIndex
@@ -1127,7 +1112,7 @@ def ProcessIFADevTypes(OutputDir, IfaPath):
 				#==========================
 				#====== REAL TYPE ========
 				if ActVariableType == "REAL":
-					if InStatus:
+					if item.is_status():
 						if InArray:
 							InArrayNum = InArrayNum + 1
 						if StartingRegister != ActVariableArrayIndex:
@@ -1139,7 +1124,7 @@ def ProcessIFADevTypes(OutputDir, IfaPath):
 						DevTypeBODY_CODE.append("       EPICS_GVL.aDataS7[nOffsetStatus + " + str(int(ActVariableArrayIndex)+1)+ "]           := uREAL2UINTs.stLowHigh.nHigh;       //EPICSName: "+ActVariableEPICSName)
 						IsDouble = False
 						EndString = ""
-					if InParameter or InCommand:
+					if item.is_parameter() or item.is_command():
 						if StartingRegister != ActVariableArrayIndex:
 							CloseLastVariable()
 							StartingRegister = ActVariableArrayIndex
@@ -1151,7 +1136,7 @@ def ProcessIFADevTypes(OutputDir, IfaPath):
 				#==========================
 				#====== DINT TYPE ========
 				if ActVariableType == "DINT":
-					if InStatus:
+					if item.is_status():
 						if InArray:
 							InArrayNum = InArrayNum + 1
 						if StartingRegister != ActVariableArrayIndex:
@@ -1163,7 +1148,7 @@ def ProcessIFADevTypes(OutputDir, IfaPath):
 						DevTypeBODY_CODE.append("       EPICS_GVL.aDataS7[nOffsetStatus + " + str(int(ActVariableArrayIndex)+1)+ "]           := uDINT2UINTs.stLowHigh.nHigh;       //EPICSName: "+ActVariableEPICSName)
 						IsDouble = False
 						EndString = ""
-					if InParameter or InCommand:
+					if item.is_parameter() or item.is_command():
 						if StartingRegister != ActVariableArrayIndex:
 							CloseLastVariable()
 							StartingRegister = ActVariableArrayIndex
@@ -1175,7 +1160,7 @@ def ProcessIFADevTypes(OutputDir, IfaPath):
 				#==========================
 				#====== TIME TYPE ========
 				if ActVariableType == "TIME":
-					if InStatus:
+					if item.is_status():
 						if InArray:
 							InArrayNum = InArrayNum + 1
 						if StartingRegister != ActVariableArrayIndex:
@@ -1187,7 +1172,7 @@ def ProcessIFADevTypes(OutputDir, IfaPath):
 						DevTypeBODY_CODE.append("       EPICS_GVL.aDataS7[nOffsetStatus + " + str(int(ActVariableArrayIndex)+1)+ "]           := uTIME2UINTs.stLowHigh.nHigh;       //EPICSName: "+ActVariableEPICSName)
 						IsDouble = False
 						EndString = ""
-					if InParameter or InCommand:
+					if item.is_parameter() or item.is_command():
 						if StartingRegister != ActVariableArrayIndex:
 							CloseLastVariable()
 							StartingRegister = ActVariableArrayIndex
@@ -1197,14 +1182,14 @@ def ProcessIFADevTypes(OutputDir, IfaPath):
 						EndString =  ActVariablePLCName + "				:= uUINTs2TIME.tValue;"
 						IsDouble = False
 				#==========================
-				if InStatus:
+				if item.is_status():
 					if ActVariableArrayIndex >= MaxStatusReg:
 						if IsDouble:
 							MaxStatusReg = ActVariableArrayIndex + 1
 						else:
 							MaxStatusReg = ActVariableArrayIndex
 
-				if InParameter or InCommand:
+				if item.is_parameter() or item.is_command():
 					if ActVariableArrayIndex >= MaxCommandReg:
 						if IsDouble:
 							MaxCommandReg = ActVariableArrayIndex + 1

@@ -2170,9 +2170,6 @@ def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 
 	global Direct
 
-	InStatus = False
-	InCommand = False
-	InParameter = False
 	FirstDevice = True
 	StartingRegister = -1
 
@@ -2206,9 +2203,6 @@ def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 
 	for device in ifa.Devices:
 		ProcessedDeviceNum = ProcessedDeviceNum + 1
-		InStatus    = False
-		InCommand   = False
-		InParameter = False
 		if FirstDevice == False:
 			CloseLastVariable()
 			if EndDeviceString != "":
@@ -2396,27 +2390,18 @@ def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 					DevTypeBODY_CODE.append("    //*************STATUS VARIABLES***************")
 					DevTypeBODY_CODE.append("    //********************************************")
 					DevTypeBODY_CODE.append("")
-					InStatus    = True
-					InCommand   = False
-					InParameter = False
 				elif item.is_command():
 					DevTypeBODY_CODE.append("")
 					DevTypeBODY_CODE.append("    //********************************************")
 					DevTypeBODY_CODE.append("    //*************COMMAND VARIABLES**************")
 					DevTypeBODY_CODE.append("    //********************************************")
 					DevTypeBODY_CODE.append("")
-					InStatus    = False
-					InCommand   = True
-					InParameter = False
 				elif item.is_parameter():
 					DevTypeBODY_CODE.append("")
 					DevTypeBODY_CODE.append("    //********************************************")
 					DevTypeBODY_CODE.append("    //************PARAMETER VARIABLES*************")
 					DevTypeBODY_CODE.append("    //********************************************")
 					DevTypeBODY_CODE.append("")
-					InStatus    = False
-					InCommand   = False
-					InParameter = True
 
 			elif item.is_variable():
 				if "VARIABLE" not in item.parameters or "EPICS" not in item.parameters or "TYPE" not in item.parameters or "ARRAY_INDEX" not in item.parameters or "BIT_NUMBER" not in item.parameters:
@@ -2436,7 +2421,7 @@ def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 					LastVariableType = ActVariableType
 					CloseLastVariable()
 
-				if InStatus:
+				if item.is_status():
 					if InArray:
 						DevTypeVAR_INOUT.append("      \"" + ActVariablePLCName + "\" "+"{ S7_HMI_Accessible := 'False'; S7_HMI_Visible := 'False'} : "+ ActVariableType+";   //EPICS Status variable in an array: "+ActVariableEPICSName)
 						EPICS_PLC_TesterDB.append("      \"" + ActualDeviceName+"_" + ActVariablePLCName + "\" "+"{ S7_HMI_Accessible := 'False'; S7_HMI_Visible := 'False'} : "+ ActVariableType+";   //EPICS Status variable: "+ActVariableEPICSName)
@@ -2453,14 +2438,14 @@ def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 							EPICS_device_calls_test_body.append("                                 "+"\""+ActVariablePLCName+"\""+" := \"EPICS_PLC_Tester\".#\""+ ActualDeviceName+"_" + ActVariablePLCName + "\",")
 
 
-				if InCommand:
+				if item.is_command():
 					DevTypeVAR_OUTPUT.append("      \"" + ActVariablePLCName + "\" "+"{ S7_HMI_Accessible := 'False'; S7_HMI_Visible := 'False'} : "+ ActVariableType+";   //EPICS Command variable: "+ActVariableEPICSName)
 					EPICS_PLC_TesterDB.append("      \"" + ActualDeviceName+"_" + ActVariablePLCName + "\" "+"{ S7_HMI_Accessible := 'False'; S7_HMI_Visible := 'False'} : "+ ActVariableType+";   //EPICS Command variable: "+ActVariableEPICSName)
 					if (TIAVersion == "13"):
 						EPICS_device_calls_test_body.append("                                 "+ActVariablePLCName+" => \"EPICS_PLC_Tester\".#\""+ ActualDeviceName+"_" + ActVariablePLCName + "\",")
 					if (TIAVersion == "14"):
 						EPICS_device_calls_test_body.append("                                 "+"\""+ActVariablePLCName+"\""+" => \"EPICS_PLC_Tester\".#\""+ ActualDeviceName+"_" + ActVariablePLCName + "\",")
-				if InParameter:
+				if item.is_parameter():
 					DevTypeVAR_OUTPUT.append("      \"" + ActVariablePLCName + "\" "+"{ S7_HMI_Accessible := 'False'; S7_HMI_Visible := 'False'} : "+ ActVariableType+";   //EPICS Parameter variable: "+ActVariableEPICSName)
 					EPICS_PLC_TesterDB.append("      \"" + ActualDeviceName+"_" + ActVariablePLCName + "\" "+"{ S7_HMI_Accessible := 'False'; S7_HMI_Visible := 'False'} : "+ ActVariableType+";   //EPICS Parameter variable: "+ActVariableEPICSName)
 					if (TIAVersion == "13"):
@@ -2473,7 +2458,7 @@ def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 
 				#====== BOOL TYPE ========
 				if ActVariableType == "BOOL":
-					if InStatus:
+					if item.is_status():
 						if InArray:
 							InArrayNum = InArrayNum + 1
 							DevTypeBODY_CODE_ARRAY.append("              #\""+ ActVariablePLCName +"\" := "+InArrayName+"["+str(InArrayNum)+"];")
@@ -2490,7 +2475,7 @@ def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 							DevTypeBODY_CODE.append("       #MyBoolsinWord[" + str((int(ActVariableBitNumber)-8)) + "] := #\""+ ActVariablePLCName +"\";    //EPICSName: "+ActVariableEPICSName)
 							IsDouble = False
 							EndString = "#StatusReg["+str(ActVariableArrayIndex) +"] := #MyWord;"
-					if InParameter or InCommand:
+					if item.is_parameter() or item.is_command():
 						if StartingRegister != ActVariableArrayIndex:
 							CloseLastVariable()
 							StartingRegister = ActVariableArrayIndex
@@ -2507,7 +2492,7 @@ def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 				#==========================
 				#====== BYTE TYPE ========
 				if ActVariableType == "BYTE":
-					if InStatus:
+					if item.is_status():
 						if InArray:
 							InArrayNum = InArrayNum + 1
 							DevTypeBODY_CODE_ARRAY.append("              #\""+ ActVariablePLCName +"\" := "+InArrayName+"["+str(InArrayNum)+"];")
@@ -2524,7 +2509,7 @@ def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 							DevTypeBODY_CODE.append("       #MyBytesinWord[1] := #\""+ ActVariablePLCName +"\";    //EPICSName: "+ActVariableEPICSName)
 							IsDouble = False
 							EndString = "#StatusReg["+str(ActVariableArrayIndex) +"] := #MyWord;"
-					if InParameter or InCommand:
+					if item.is_parameter() or item.is_command():
 						if StartingRegister != ActVariableArrayIndex:
 							CloseLastVariable()
 							StartingRegister = ActVariableArrayIndex
@@ -2541,7 +2526,7 @@ def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 				#==========================
 				#====== INT TYPE ========
 				if ActVariableType == "INT":
-					if InStatus:
+					if item.is_status():
 						if InArray:
 							InArrayNum = InArrayNum + 1
 							DevTypeBODY_CODE_ARRAY.append("              #\""+ ActVariablePLCName +"\" := "+InArrayName+"["+str(InArrayNum)+"];")
@@ -2553,7 +2538,7 @@ def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 						if ActVariableBitNumber == 0:
 							IsDouble = False
 							EndString = "#StatusReg["+str(ActVariableArrayIndex) +"] := #MyWordinInt;"
-					if InParameter or InCommand:
+					if item.is_parameter() or item.is_command():
 						if StartingRegister != ActVariableArrayIndex:
 							CloseLastVariable()
 							StartingRegister = ActVariableArrayIndex
@@ -2565,7 +2550,7 @@ def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 				#==========================
 				#====== WORD TYPE ========
 				if ActVariableType == "WORD":
-					if InStatus:
+					if item.is_status():
 						if InArray:
 							InArrayNum = InArrayNum + 1
 							DevTypeBODY_CODE_ARRAY.append("              #\""+ ActVariablePLCName +"\" := "+InArrayName+"["+str(InArrayNum)+"];")
@@ -2577,7 +2562,7 @@ def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 						if ActVariableBitNumber == 0:
 							IsDouble = False
 							EndString = "#StatusReg["+str(ActVariableArrayIndex) +"] := #MyWord;"
-					if InParameter or InCommand:
+					if item.is_parameter() or item.is_command():
 						if StartingRegister != ActVariableArrayIndex:
 							CloseLastVariable()
 							StartingRegister = ActVariableArrayIndex
@@ -2588,7 +2573,7 @@ def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 				#==========================
 				#====== DINT TYPE ========
 				if ActVariableType == "DINT":
-					if InStatus:
+					if item.is_status():
 						if InArray:
 							InArrayNum = InArrayNum + 1
 							DevTypeBODY_CODE_ARRAY.append("              #\""+ ActVariablePLCName +"\" := "+InArrayName+"["+str(InArrayNum)+"];")
@@ -2601,7 +2586,7 @@ def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 							IsDouble = True
 							EndString  = "#StatusReg["+str(ActVariableArrayIndex) +"] := #MyWordsinDint[0];"
 							EndString2 = "#StatusReg["+str(ActVariableArrayIndex+1) +"] := #MyWordsinDint[1];"
-					if InParameter or InCommand:
+					if item.is_parameter() or item.is_command():
 						if StartingRegister != ActVariableArrayIndex:
 							CloseLastVariable()
 							StartingRegister = ActVariableArrayIndex
@@ -2615,7 +2600,7 @@ def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 				#==========================
 				#====== DWORD TYPE ========
 				if ActVariableType == "DWORD":
-					if InStatus:
+					if item.is_status():
 						if InArray:
 							InArrayNum = InArrayNum + 1
 							DevTypeBODY_CODE_ARRAY.append("              #\""+ ActVariablePLCName +"\" := "+InArrayName+"["+str(InArrayNum)+"];")
@@ -2628,12 +2613,12 @@ def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 							IsDouble = True
 							EndString  = "#StatusReg["+str(ActVariableArrayIndex) +"] := #MyWordsinDWord[0];"
 							EndString2 = "#StatusReg["+str(ActVariableArrayIndex+1) +"] := #MyWordsinDWord[1];"
-					if InParameter or InCommand:
+					if item.is_parameter() or item.is_command():
 						print("DWORD is not supported for ModbusTCP")
 				#==========================
 				#====== REAL TYPE ========
 				if ActVariableType == "REAL":
-					if InStatus:
+					if item.is_status():
 						if InArray:
 							InArrayNum = InArrayNum + 1
 							DevTypeBODY_CODE_ARRAY.append("              #\""+ ActVariablePLCName +"\" := "+InArrayName+"["+str(InArrayNum)+"];")
@@ -2646,7 +2631,7 @@ def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 							IsDouble = True
 							EndString  = "#StatusReg["+str(ActVariableArrayIndex) +"] := #MyWordsinReal[0];"
 							EndString2 = "#StatusReg["+str(ActVariableArrayIndex+1) +"] := #MyWordsinReal[1];"
-					if InParameter or InCommand:
+					if item.is_parameter() or item.is_command():
 						if StartingRegister != ActVariableArrayIndex:
 							CloseLastVariable()
 							StartingRegister = ActVariableArrayIndex
@@ -2660,7 +2645,7 @@ def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 				#==========================
 				#====== TIME TYPE ========
 				if ActVariableType == "TIME":
-					if InStatus:
+					if item.is_status():
 						if InArray:
 							InArrayNum = InArrayNum + 1
 							DevTypeBODY_CODE_ARRAY.append("              #\""+ ActVariablePLCName +"\" := "+InArrayName+"["+str(InArrayNum)+"];")
@@ -2673,7 +2658,7 @@ def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 							IsDouble = True
 							EndString  = "#StatusReg["+str(ActVariableArrayIndex) +"] := #MyWordsinTime[0];"
 							EndString2 = "#StatusReg["+str(ActVariableArrayIndex+1) +"] := #MyWordsinTime[1];"
-					if InParameter or InCommand:
+					if item.is_parameter() or item.is_command():
 						if StartingRegister != ActVariableArrayIndex:
 							CloseLastVariable()
 							StartingRegister = ActVariableArrayIndex
@@ -2685,14 +2670,14 @@ def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 							IsDouble = True
 							EndString = ""
 				#==========================
-				if InStatus:
+				if item.is_status():
 					if ActVariableArrayIndex >= MaxStatusReg:
 						if IsDouble:
 							MaxStatusReg = ActVariableArrayIndex + 1
 						else:
 							MaxStatusReg = ActVariableArrayIndex
 
-				if InParameter or InCommand:
+				if item.is_parameter() or item.is_command():
 					if ActVariableArrayIndex >= MaxCommandReg:
 						if IsDouble:
 							MaxCommandReg = ActVariableArrayIndex + 1
