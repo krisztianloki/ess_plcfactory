@@ -2206,8 +2206,8 @@ def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 
 	for device in ifa.Devices:
 		ProcessedDeviceNum = ProcessedDeviceNum + 1
-		InStatus = False
-		InCommand = False
+		InStatus    = False
+		InCommand   = False
 		InParameter = False
 		if FirstDevice == False:
 			CloseLastVariable()
@@ -2238,7 +2238,7 @@ def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 				DeviceInstance.append("END_DATA_BLOCK")
 
 		FirstDevice = False
-		if "DEVICE_TYPE" not in device.parameters or "EPICSTOPLCLENGTH" not in device.parameters or "EPICSTOPLCDATABLOCKOFFSET" not in device.parameters or "EPICSTOPLCPARAMETERSSTART" not in device.parameters or "PLCTOEPICSDATABLOCKOFFSET" not in device.parameters:
+		if "DEVICE" not in device.parameters or "DEVICE_TYPE" not in device.parameters or "EPICSTOPLCLENGTH" not in device.parameters or "EPICSTOPLCDATABLOCKOFFSET" not in device.parameters or "EPICSTOPLCPARAMETERSSTART" not in device.parameters or "PLCTOEPICSDATABLOCKOFFSET" not in device.parameters:
 			print("ERROR:")
 			print("The .ifa file has a bad DEVICE format! Exiting PLCFactory...\n")
 			print("--- %.1f seconds ---\n" % (time.time() - start_time))
@@ -2373,65 +2373,63 @@ def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 			NewDeviceType = False
 
 
-		pos = 0
-		while pos < len(device.lines)-1:
-			if device.lines[pos].rstrip() == "DEFINE_ARRAY":
-				InArray = True
-				InArrayName = device.lines[pos+1].rstrip()
-				InArrayNum = 0
-			if device.lines[pos].rstrip() == "END_ARRAY":
-				InArray = False
-				DevTypeVAR_INPUT.append("      \"" + InArrayName + "\" "+"{ S7_HMI_Accessible := 'False'; S7_HMI_Visible := 'False'} : Array[1.."+ str(InArrayNum) +"] of "+ ActVariableType+";   //EPICS Status variables defined in an array")
-				InArrayName = ""
+		for line in device.comments:
+			DevTypeBODY_CODE.append("       " + line)
 
-			if device.lines[pos].rstrip() == "STATUS":
+		for item in device.items:
+			if item.is_wrapper_array():
+				if item.is_start():
+					InArray = True
+					InArrayName = item.name()
+					InArrayNum = 0
+				else:
+					InArray = False
+					DevTypeVAR_INPUT.append("      \"" + InArrayName + "\" "+"{ S7_HMI_Accessible := 'False'; S7_HMI_Visible := 'False'} : Array[1.."+ str(InArrayNum) +"] of "+ ActVariableType+";   //EPICS Status variables defined in an array")
+					InArrayName = ""
+
+			elif item.is_block():
 				CloseLastVariable()
-				DevTypeBODY_CODE.append("")
-				DevTypeBODY_CODE.append("    //********************************************")
-				DevTypeBODY_CODE.append("    //*************STATUS VARIABLES***************")
-				DevTypeBODY_CODE.append("    //********************************************")
-				DevTypeBODY_CODE.append("")
-				InStatus = True
-				InCommand = False
-				InParameter = False
 				StartingRegister = -1
-			if device.lines[pos].rstrip() == "COMMAND":
-				CloseLastVariable()
-				DevTypeBODY_CODE.append("")
-				DevTypeBODY_CODE.append("    //********************************************")
-				DevTypeBODY_CODE.append("    //*************COMMAND VARIABLES**************")
-				DevTypeBODY_CODE.append("    //********************************************")
-				DevTypeBODY_CODE.append("")
-				InStatus = False
-				InCommand = True
-				InParameter = False
-				StartingRegister = -1
-			if device.lines[pos].rstrip() == "PARAMETER":
-				CloseLastVariable()
-				DevTypeBODY_CODE.append("")
-				DevTypeBODY_CODE.append("    //********************************************")
-				DevTypeBODY_CODE.append("    //************PARAMETER VARIABLES*************")
-				DevTypeBODY_CODE.append("    //********************************************")
-				DevTypeBODY_CODE.append("")
-				InStatus = False
-				InCommand = False
-				InParameter = True
-				StartingRegister = -1
-			if device.lines[pos].rstrip().startswith("//"):
-				DevTypeBODY_CODE.append("       "+device.lines[pos].rstrip())
-			pos = pos + 1
-			if device.lines[pos].rstrip() == "VARIABLE":
-				if (device.lines[pos + 2].rstrip() != "EPICS") or (device.lines[pos + 4].rstrip() != "TYPE") or	(device.lines[pos + 6].rstrip() != "ARRAY_INDEX") or (device.lines[pos + 8].rstrip() != "BIT_NUMBER"):
+				if item.is_status():
+					DevTypeBODY_CODE.append("")
+					DevTypeBODY_CODE.append("    //********************************************")
+					DevTypeBODY_CODE.append("    //*************STATUS VARIABLES***************")
+					DevTypeBODY_CODE.append("    //********************************************")
+					DevTypeBODY_CODE.append("")
+					InStatus    = True
+					InCommand   = False
+					InParameter = False
+				elif item.is_command():
+					DevTypeBODY_CODE.append("")
+					DevTypeBODY_CODE.append("    //********************************************")
+					DevTypeBODY_CODE.append("    //*************COMMAND VARIABLES**************")
+					DevTypeBODY_CODE.append("    //********************************************")
+					DevTypeBODY_CODE.append("")
+					InStatus    = False
+					InCommand   = True
+					InParameter = False
+				elif item.is_parameter():
+					DevTypeBODY_CODE.append("")
+					DevTypeBODY_CODE.append("    //********************************************")
+					DevTypeBODY_CODE.append("    //************PARAMETER VARIABLES*************")
+					DevTypeBODY_CODE.append("    //********************************************")
+					DevTypeBODY_CODE.append("")
+					InStatus    = False
+					InCommand   = False
+					InParameter = True
+
+			elif item.is_variable():
+				if "VARIABLE" not in item.parameters or "EPICS" not in item.parameters or "TYPE" not in item.parameters or "ARRAY_INDEX" not in item.parameters or "BIT_NUMBER" not in item.parameters:
 					print("ERROR:")
 					print("The .ifa file has a bad VARIABLE format! Exiting PLCFactory...\n")
 					print("--- %.1f seconds ---\n" % (time.time() - start_time))
 					sys.exit()
 
-				ActVariablePLCName = device.lines[pos + 1].rstrip()
-				ActVariableEPICSName = device.lines[pos + 3].rstrip()
-				ActVariableType = device.lines[pos + 5].rstrip()
-				ActVariableArrayIndex = int(device.lines[pos + 7].rstrip())
-				ActVariableBitNumber = int(device.lines[pos + 9].rstrip())
+				ActVariablePLCName    = item.parameters["VARIABLE"]
+				ActVariableEPICSName  = item.parameters["EPICS"]
+				ActVariableType       = item.parameters["TYPE"]
+				ActVariableArrayIndex = int(item.parameters["ARRAY_INDEX"])
+				ActVariableBitNumber  = int(item.parameters["BIT_NUMBER"])
 
 				#Close the last variable if there is a new variable
 				if 	LastVariableType != ActVariableType:

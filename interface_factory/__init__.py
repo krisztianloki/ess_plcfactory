@@ -1,12 +1,14 @@
 from __future__ import print_function
 
 class IFA(object):
-    valid_device_entries = [ 'DEVICE', 'DEVICE_TYPE', 'EPICSTOPLCPARAMETERSSTART', 'EPICSTOPLCLENGTH', 'EPICSTOPLCDATABLOCKOFFSET', 'PLCTOEPICSDATABLOCKOFFSET',
-                             'BLOCK', 'DEFINE_ARRAY', 'END_ARRAY',
-                             'VARIABLE', 'EPICS', 'TYPE', 'ARRAY_INDEX', 'BIT_NUMBER', 'BEAST', 'ARCHIVE' ]
+    valid_variable_entries = [ 'VARIABLE', 'EPICS', 'TYPE', 'ARRAY_INDEX', 'BIT_NUMBER', 'BEAST', 'ARCHIVE' ]
 
-    valid_line_types     = [ 'HASH', 'MAX_IO_DEVICES', 'MAX_LOCAL_MODULES', 'MAX_MODULES_IN_IO_DEVICE', 'PLC_TYPE',
-                             'TOTALEPICSTOPLCLENGTH', 'TOTALPLCTOEPICSLENGTH' ]
+    valid_device_entries   = [ 'DEVICE', 'DEVICE_TYPE', 'EPICSTOPLCPARAMETERSSTART', 'EPICSTOPLCLENGTH', 'EPICSTOPLCDATABLOCKOFFSET', 'PLCTOEPICSDATABLOCKOFFSET',
+                               'BLOCK', 'DEFINE_ARRAY', 'END_ARRAY' ]
+    valid_device_entries.extend(valid_variable_entries)
+
+    valid_line_types       = [ 'HASH', 'MAX_IO_DEVICES', 'MAX_LOCAL_MODULES', 'MAX_MODULES_IN_IO_DEVICE', 'PLC_TYPE',
+                               'TOTALEPICSTOPLCLENGTH', 'TOTALPLCTOEPICSLENGTH' ]
     valid_line_types.extend(valid_device_entries)
 
 
@@ -26,17 +28,122 @@ class IFA(object):
 
 
     class Device(object):
-        def __init__(self):
-            self.lines      = []
-            self.parameters = dict()
+        def __init__(self, name):
+            self.comments   = []
+            self.parameters = { "DEVICE": name }
+            self.items      = []
 
 
         def append(self, line):
-            self.lines.append(line)
+            self.comments.append(line)
 
 
         def extend(self, area):
-            self.lines.extend(area)
+            self.comments.extend(area)
+
+
+
+    class DeviceItem(object):
+        def __init__(self):
+            self.comments = []
+
+
+        def append(self, line):
+            self.comments.append(line)
+
+
+        def extend(self, area):
+            self.comments.extend(area)
+
+
+        def is_block(self):
+            return False
+
+
+        def is_variable(self):
+            return False
+
+
+        def is_wrapper_array(self):
+            return False
+
+
+
+    class Block(DeviceItem):
+        def __init__(self, block):
+            super(IFA.Block, self).__init__()
+            self.__block = block[0]
+
+
+        def __repr__(self):
+            return "BLOCK " + self.__block
+
+
+        def is_block(self):
+            return True
+
+
+        def is_status(self):
+            return self.__block == 'S'
+
+
+        def is_command(self):
+            return self.__block == 'C'
+
+
+        def is_parameter(self):
+            return self.__block == 'P'
+
+
+
+    class Variable(DeviceItem):
+        def __init__(self, name):
+            super(IFA.Variable, self).__init__()
+            self.parameters = { "VARIABLE": name }
+
+
+        def __repr__(self):
+            return repr(self.parameters)
+
+
+        def is_variable(self):
+            return True
+
+
+
+    class WrapperArray(DeviceItem):
+        def __init__(self, array_name, start):
+            super(IFA.WrapperArray, self).__init__()
+            self.__array_name = array_name
+            self.__start      = start
+
+
+        def __repr__(self):
+            return ("BEGIN " if self.__start else "END ") + self.__array_name
+
+
+        def is_wrapper_array(self):
+            return True
+
+
+        def is_start(self):
+            return self.__start
+
+
+        def name(self):
+            return self.__array_name
+
+
+
+    class WrapperArrayStart(WrapperArray):
+        def __init__(self, array_name):
+            super(IFA.WrapperArrayStart, self).__init__(array_name, True)
+
+
+
+    class WrapperArrayEnd(WrapperArray):
+        def __init__(self, array_name):
+            super(IFA.WrapperArrayEnd, self).__init__(array_name, False)
 
 
 
@@ -74,16 +181,18 @@ Pre-processing .ifa file...""".format(self.IfaPath))
             CommandArea   = []
             ParameterArea = []
             Area          = None
+            Block         = None
 
-            device = None
+            device   = None
+            item     = None
 
             for line in f:
                 line = line.strip()
 
                 if linetype is None:
                     if line.startswith("//"):
-                        if Area is not None:
-                            Area.append(line)
+                        if item   is not None:
+                            item.append(line)
                         elif device is not None:
                             device.append(line)
                     else:
@@ -130,21 +239,25 @@ Pre-processing .ifa file...""".format(self.IfaPath))
 
                     elif linetype == "DEVICE":
                         if device is not None:
-                            device.extend(StatusArea)
-                            device.extend(CommandArea)
-                            device.extend(ParameterArea)
+                            device.items.extend(StatusArea)
+                            device.items.extend(CommandArea)
+                            device.items.extend(ParameterArea)
 
                         StatusArea    = []
                         CommandArea   = []
                         ParameterArea = []
                         Area          = None
-                        device        = IFA.Device()
+                        Block         = None
+                        item          = None
+                        device        = IFA.Device(line)
                         self.Devices.append(device)
+                        continue
 
                     if device and linetype not in IFA.valid_device_entries:
-                        raise IFA.FatalException("Unknown device keyword", linetype)
+                        raise IFA.FatalException("Unknown DEVICE keyword", linetype)
 
                     if linetype == "BLOCK":
+                        Block = line
                         if line == "STATUS":
                             Area = StatusArea
                         elif line == "COMMAND":
@@ -152,13 +265,33 @@ Pre-processing .ifa file...""".format(self.IfaPath))
                         elif line == "PARAMETER":
                             Area = ParameterArea
                         else:
-                            raise IFA.FatalException("Unknown block type", line)
+                            raise IFA.FatalException("Unknown BLOCK type", line)
+                        Area.append(IFA.Block(Block))
+                        item = None
+                        continue
 
-                    if Area is not None:
-                        Area.append(linetype)
-                        Area.append(line)
+                    elif linetype == "DEFINE_ARRAY":
+                        Area.append(IFA.WrapperArrayStart(line))
+                        continue
+
+                    elif linetype == "END_ARRAY":
+                        Area.append(IFA.WrapperArrayEnd(line))
+                        continue
+
+                    elif linetype == "VARIABLE":
+                        item = IFA.Variable(line)
+                        Area.append(item)
+                        continue
+
+                    if item and linetype not in IFA.valid_variable_entries:
+                        raise IFA.FatalException("Unknown VARIABLE keyword", linetype)
+
+                    if item is not None:
+                        item.parameters[linetype] = line
                     elif device is not None:
                         device.parameters[linetype] = line
+                    else:
+                        raise IFA.FatalException("Neither variable nor device")
 
                 finally:
                     linetype = None
@@ -171,9 +304,9 @@ Pre-processing .ifa file...""".format(self.IfaPath))
            line = line))
 
             if device is not None:
-                device.extend(StatusArea)
-                device.extend(CommandArea)
-                device.extend(ParameterArea)
+                device.items.extend(StatusArea)
+                device.items.extend(CommandArea)
+                device.items.extend(ParameterArea)
 
         if self.HASH is None:
             raise IFA.Warning("""
@@ -188,4 +321,3 @@ After pre-processing the .IFA file there were no DEVICES inside!
 """)
 
         print("Total", str(len(self.Devices)), "device(s) pre-processed.\n")
-
