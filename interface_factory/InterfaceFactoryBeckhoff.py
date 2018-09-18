@@ -92,8 +92,7 @@ def WriteEPICS_PLC_TesterDB():
 	global ExternalSourceFile
 
 
-	for line in EPICS_PLC_TesterDB:
-		ExternalSourceFile.append(line)
+	ExternalSourceFile.extend(EPICS_PLC_TesterDB)
 
 
 	EPICS_PLC_TesterDB = []

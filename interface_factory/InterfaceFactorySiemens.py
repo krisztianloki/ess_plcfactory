@@ -118,23 +118,19 @@ def WriteDevType():
 	global MaxStatusReg
 	global MaxCommandReg
 
-	for line in DevTypeHeader:
-		ExternalSourceFile.append(line)
+	ExternalSourceFile.extend(DevTypeHeader)
 
 	ExternalSourceFile.append("   VAR_INPUT")
-	for line in DevTypeVAR_INPUT:
-		ExternalSourceFile.append(line)
+	ExternalSourceFile.extend(DevTypeVAR_INPUT)
 	ExternalSourceFile.append("   END_VAR")
 
 	ExternalSourceFile.append("   VAR_OUTPUT")
-	for line in DevTypeVAR_OUTPUT:
-		ExternalSourceFile.append(line)
+	ExternalSourceFile.extend(DevTypeVAR_OUTPUT)
 	ExternalSourceFile.append("      DEVICE_PARAM_OK { S7_HMI_Accessible := 'False'; S7_HMI_Visible := 'False'} : Bool;")
 	ExternalSourceFile.append("   END_VAR")
 
 	ExternalSourceFile.append("   VAR_IN_OUT")
-	for line in DevTypeVAR_INOUT:
-		ExternalSourceFile.append(line)
+	ExternalSourceFile.extend(DevTypeVAR_INOUT)
 	ExternalSourceFile.append("   END_VAR")
 
 
@@ -143,27 +139,21 @@ def WriteDevType():
 	ExternalSourceFile.append("      CommandReg { S7_HMI_Accessible := 'False'; S7_HMI_Visible := 'False'} : Array[0.."+ str(MaxCommandReg) +"] of Word;")
 	ExternalSourceFile.append("   END_VAR")
 
-	for line in DevTypeDB_SPEC:
-		ExternalSourceFile.append(line)
+	ExternalSourceFile.extend(DevTypeDB_SPEC)
 
-	for line in DevTypeVAR_TEMP:
-		ExternalSourceFile.append(line)
+	ExternalSourceFile.extend(DevTypeVAR_TEMP)
 
-	for line in DevTypeBODY_HEADER:
-		ExternalSourceFile.append(line)
+	ExternalSourceFile.extend(DevTypeBODY_HEADER)
 
 	if DevTypeBODY_CODE_ARRAY != []:
 		ExternalSourceFile.append("        IF \"Utilities\".TestInProgress = FALSE THEN");
-	for line in DevTypeBODY_CODE_ARRAY:
-		ExternalSourceFile.append(line)
+	ExternalSourceFile.extend(DevTypeBODY_CODE_ARRAY)
 	if DevTypeBODY_CODE_ARRAY != []:
 		ExternalSourceFile.append("        END_IF;");
 
-	for line in DevTypeBODY_CODE:
-		ExternalSourceFile.append(line)
+	ExternalSourceFile.extend(DevTypeBODY_CODE)
 
-	for line in DevTypeBODY_END:
-		ExternalSourceFile.append(line)
+	ExternalSourceFile.extend(DevTypeBODY_END)
 
 	DevTypeHeader = []
 	DevTypeVAR_INPUT = []
@@ -188,8 +178,7 @@ def WriteEPICS_PLC_TesterDB():
 	ExternalSourceFile.append("   STRUCT")
 	ExternalSourceFile.append("      HeartBeat { S7_HMI_Accessible := 'False'; S7_HMI_Visible := 'False'} : Bool;")
 
-	for line in EPICS_PLC_TesterDB:
-		ExternalSourceFile.append(line)
+	ExternalSourceFile.extend(EPICS_PLC_TesterDB)
 
 	ExternalSourceFile.append("   END_STRUCT;")
 	ExternalSourceFile.append("BEGIN")
@@ -203,8 +192,7 @@ def WriteDeviceInstances():
 	global ExternalSourceFile
 	global Direct
 
-	for line in DeviceInstance:
-		ExternalSourceFile.append(line)
+	ExternalSourceFile.extend(DeviceInstance)
 
 	DeviceInstance = []
 
@@ -220,8 +208,7 @@ def WriteEPICS_device_calls():
 	ExternalSourceFile.append("");
 	ExternalSourceFile.append("   VAR_TEMP");
 
-	for line in EPICS_device_calls_header:
-		ExternalSourceFile.append(line)
+	ExternalSourceFile.extend(EPICS_device_calls_header)
 
 	ExternalSourceFile.append("   END_VAR");
 	ExternalSourceFile.append("");
@@ -235,8 +222,7 @@ def WriteEPICS_device_calls():
 	ExternalSourceFile.append("        \"Utilities\".TestInProgress := FALSE;");
 	ExternalSourceFile.append("");
 
-	for line in EPICS_device_calls_body:
-		ExternalSourceFile.append(line)
+	ExternalSourceFile.extend(EPICS_device_calls_body)
 
 	ExternalSourceFile.append("END_FUNCTION");
 
@@ -255,8 +241,7 @@ def WriteEPICS_device_calls_test():
 	ExternalSourceFile.append("");
 	ExternalSourceFile.append("   VAR_TEMP");
 
-	for line in EPICS_device_calls_test_header:
-		ExternalSourceFile.append(line)
+	ExternalSourceFile.extend(EPICS_device_calls_test_header)
 
 	ExternalSourceFile.append("   END_VAR");
 	ExternalSourceFile.append("");
@@ -270,8 +255,7 @@ def WriteEPICS_device_calls_test():
 	ExternalSourceFile.append("      \"Utilities\".TestInProgress := TRUE;");
 	ExternalSourceFile.append("");
 
-	for line in EPICS_device_calls_test_body:
-		ExternalSourceFile.append(line)
+	ExternalSourceFile.extend(EPICS_device_calls_test_body)
 
 	ExternalSourceFile.append("END_FUNCTION");
 
