@@ -216,15 +216,8 @@ class IFA(object):
 
     def PreParse(self):
         print("""
-
-*******************************************
-*                                         *
-*   Generating Siemens PLC source code    *
-*                                         *
-*******************************************
-
 PLCFactory file location: {}
-Pre-processing .ifa file...""".format(self.IfaPath))
+Pre-parsing .ifa file...""".format(self.IfaPath))
 
         # Pre process IFA to have Status, Command, Parameter order
         with open(self.IfaPath) as f:
@@ -352,7 +345,7 @@ Warning:
 After pre-processing the .IFA file there were no DEVICES inside!
 """)
 
-        print("Total", str(len(self.Devices)), "device(s) pre-processed.\n")
+        print("Total", str(len(self.Devices)), "device(s) pre-processed.")
 
 
     def Check(self):
@@ -364,3 +357,26 @@ After pre-processing the .IFA file there were no DEVICES inside!
 
             for item in device:
                 item.check()
+
+
+
+
+def produce(OutputDir, IfaPath, **kwargs):
+    ifa = None
+    try:
+        ifa = IFA(IfaPath)
+    except IFA.Warning as e:
+        print(e)
+        return dict()
+
+    factory = None
+    if ifa.PLC_type == "SIEMENS":
+        from InterfaceFactorySiemens import produce
+        factory = produce
+    elif ifa.PLC_type == "BECKHOFF":
+        from InterfaceFactoryBeckhoff import produce
+        factory = produce
+    else:
+        raise IFA.FatalException("Unsupported PLC_type", ifa.PLC_type)
+
+    return factory(OutputDir, ifa, **kwargs)

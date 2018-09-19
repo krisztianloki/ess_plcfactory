@@ -671,7 +671,7 @@ def CloseLastVariable():
 			DevTypeBODY_CODE.append("       " + EndString)
 			EndString = ""
 
-def ProcessIFADevTypes(OutputDir, IfaPath):
+def ProcessIFADevTypes(OutputDir):
 
 	#Process IFA devices
 	print("Processing .ifa file...")
@@ -1205,7 +1205,7 @@ def ProcessIFADevTypes(OutputDir, IfaPath):
 		print("Device types are not being generated. (Direct mode)\n")
 
 
-def produce(OutputDir, IfaPath, SclPath, TIAVersion, **kwargs):
+def produce(OutputDir, _ifa, **kwargs):
 
 	global MakeOutputFile
 	global OutputDirectory
@@ -1214,42 +1214,47 @@ def produce(OutputDir, IfaPath, SclPath, TIAVersion, **kwargs):
 	global start_time
 	global ifa
 
+	print("""
+*******************************************
+*                                         *
+*   Generating Beckhoff PLC source code   *
+*                                         *
+*******************************************
+""")
+
 	start_time      = time.time()
 	OutputDirectory = OutputDir
 
 	generated_files = dict()
 
-	try:
-		ifa = IFA(IfaPath)
+	ifa = _ifa
 
-		helpers.makedirs(os.path.join(OutputDirectory,"BECKHOFF","EPICS","EPICS types"))
-		helpers.makedirs(os.path.join(OutputDirectory,"BECKHOFF","EPICS","EPICS calls"))
-		helpers.makedirs(os.path.join(OutputDirectory,"BECKHOFF","EPICS","ESS standard PLC code"))
+	helpers.makedirs(os.path.join(OutputDirectory, "BECKHOFF", "EPICS", "EPICS types"))
+	helpers.makedirs(os.path.join(OutputDirectory, "BECKHOFF", "EPICS", "EPICS calls"))
+	helpers.makedirs(os.path.join(OutputDirectory, "BECKHOFF", "EPICS", "ESS standard PLC code"))
 
-		#Process devices/device types
-		ProcessIFADevTypes(OutputDir, IfaPath)
+	#Process devices/device types
+	ProcessIFADevTypes(OutputDir)
 
-		#Generate FC_EPICS_DEVICE_CALLS.TcPOU
-		Write_EPICS_device_calls();
+	#Generate FC_EPICS_DEVICE_CALLS.TcPOU
+	Write_EPICS_device_calls();
 
-		#Generate ST_2_UINT.TcDUT
-		#Generate U_DINT_UINTs.TcDUT
-		#Generate U_REAL_UINTs.TcDUT
-		#Generate U_TIME_UINTs.TcDUT
-		Write_Structs_and_Unions();
+	#Generate ST_2_UINT.TcDUT
+	#Generate U_DINT_UINTs.TcDUT
+	#Generate U_REAL_UINTs.TcDUT
+	#Generate U_TIME_UINTs.TcDUT
+	Write_Structs_and_Unions();
 
-		#Generate FB_EPICS_S7_Comm.TcPOU
-		Write_FB_EPICS_S7_Comm()
+	#Generate FB_EPICS_S7_Comm.TcPOU
+	Write_FB_EPICS_S7_Comm()
 
-		#Generate FB_Pulse.TcPOU
-		Write_FB_Pulse()
+	#Generate FB_Pulse.TcPOU
+	Write_FB_Pulse()
 
-		#Generate EPICS_GVL.TcGVL
-		Write_EPICS_GVL()
+	#Generate EPICS_GVL.TcGVL
+	Write_EPICS_GVL()
 
-		generated_files['BECKHOFF'] = shutil.make_archive(os.path.join(OutputDirectory,"PLCFactory_external_source_Beckhoff"), 'zip', os.path.join(OutputDirectory,"BECKHOFF"))
-	except IFA.Warning as e:
-		print(e)
+	generated_files['BECKHOFF'] = shutil.make_archive(os.path.join(OutputDirectory,"PLCFactory_external_source_Beckhoff"), 'zip', os.path.join(OutputDirectory,"BECKHOFF"))
 
 	return generated_files
 

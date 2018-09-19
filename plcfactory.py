@@ -1142,6 +1142,7 @@ def main(argv):
         args.plc_direct    = False
     else:
         tia_version = None
+        tia_map     = None
 
     beckhoff = args.beckhoff
 
@@ -1401,31 +1402,10 @@ def main(argv):
     # record the arguments used to run this instance
     record_args(root_device)
 
-    if tia_version or args.plc_only_diag:
-        try:
-            from interface_factory.InterfaceFactorySiemens import produce as ifa_produce
-        except ImportError:
-            print("""
-ERROR
-=====
-Siemens support is not found
-""")
-            exit(1)
+    if tia_version or args.plc_only_diag or beckhoff:
+        from interface_factory import produce as ifa_produce
 
-        output_files.update(ifa_produce(OUTPUT_DIR, output_files["IFA"], output_files[tia_map], tia_version, nodiag = args.plc_no_diag, onlydiag = args.plc_only_diag, direct = args.plc_direct))
-
-    if beckhoff:
-        try:
-            from interface_factory.InterfaceFactoryBeckhoff import produce as ifa_produce
-        except ImportError:
-            print("""
-ERROR
-=====
-Beckhoff support is not found
-""")
-            exit(1)
-
-        output_files.update(ifa_produce(OUTPUT_DIR, output_files["IFA"], "", beckhoff))
+        output_files.update(ifa_produce(OUTPUT_DIR, output_files["IFA"], SclPath = output_files.get(tia_map, ""), TIAVersion = tia_version, nodiag = args.plc_no_diag, onlydiag = args.plc_only_diag, direct = args.plc_direct))
 
     if eee:
         create_eee(glob.modulename, glob.snippet)
