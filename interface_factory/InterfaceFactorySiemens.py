@@ -2204,7 +2204,6 @@ def ProcessIFADevTypes(OutputDir, TIAVersion):
 	for device in ifa.Devices:
 		ProcessedDeviceNum = ProcessedDeviceNum + 1
 		if FirstDevice == False:
-			CloseLastVariable()
 			if EndDeviceString != "":
 				EPICS_device_calls_test_body.append("                                 DEVICE_PARAM_OK=>#\""+EndDeviceString+"\");")
 				EndDeviceString = ""
@@ -2673,7 +2672,9 @@ def ProcessIFADevTypes(OutputDir, TIAVersion):
 						else:
 							MaxCommandReg = ActVariableArrayIndex
 
-	CloseLastVariable()
+		# Processed all items in a device, let's close the last variable
+		CloseLastVariable()
+
 	#Constuct the output source file
 	if EndDeviceString != "":
 		EPICS_device_calls_test_body.append("                                 DEVICE_PARAM_OK=>#\""+EndDeviceString+"\");")

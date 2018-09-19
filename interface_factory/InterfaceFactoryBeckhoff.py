@@ -768,7 +768,6 @@ def ProcessIFADevTypes(OutputDir):
 	for device in ifa.Devices:
 		ProcessedDeviceNum = ProcessedDeviceNum + 1
 		if FirstDevice == False:
-			CloseLastVariable()
 			if NewDeviceType == True:
 				Write_DevType()
 
@@ -1185,7 +1184,9 @@ def ProcessIFADevTypes(OutputDir):
 						else:
 							MaxCommandReg = ActVariableArrayIndex
 
-	CloseLastVariable()
+		# Processed all items in a device, let's close the last variable
+		CloseLastVariable()
+
 	#Constuct the output source file
 	if NewDeviceType == True:
 		Write_DevType()
