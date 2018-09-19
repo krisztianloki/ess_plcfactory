@@ -706,7 +706,6 @@ def ProcessIFADevTypes(OutputDir):
 	global EndString2
 	global IsDouble
 
-	FirstDevice = True
 	StartingRegister = -1
 
 	ActVariablePLCName = ""
@@ -761,60 +760,46 @@ def ProcessIFADevTypes(OutputDir):
 	EPICS_GVL.append("");
 	EPICS_GVL.append("//Global Variables used in EPICS<-->Beckhoff communication at ESS. ");
 
+	FC_EPICS_DEVICE_CALLS_HEADER.append("<?xml version=\"1.0\" encoding=\"utf-8\"?>");
+	FC_EPICS_DEVICE_CALLS_HEADER.append("<TcPlcObject ");
+	FC_EPICS_DEVICE_CALLS_HEADER.append("Version=\"1.1.0.1\" ProductVersion=\"3.1.4022.10\">");
+	FC_EPICS_DEVICE_CALLS_HEADER.append("<POU ");
+	GlobalIDCounter = GlobalIDCounter + 1
+	FC_EPICS_DEVICE_CALLS_HEADER.append("Name=\"FC_EPICS_DEVICE_CALLS\" Id=\"{5bb54db1-6fe3-4b17-2b0f-"+str(GlobalIDCounter).zfill(12)+"}\" SpecialFunc=\"None\">");
+	FC_EPICS_DEVICE_CALLS_HEADER.append("");
+	FC_EPICS_DEVICE_CALLS_HEADER.append("<Declaration>");
+	FC_EPICS_DEVICE_CALLS_HEADER.append("<![CDATA[");
+	FC_EPICS_DEVICE_CALLS_HEADER.append("FUNCTION FC_EPICS_DEVICE_CALLS : BOOL");
+	FC_EPICS_DEVICE_CALLS_HEADER.append("VAR_INPUT");
+	FC_EPICS_DEVICE_CALLS_HEADER.append("END_VAR");
+	FC_EPICS_DEVICE_CALLS_HEADER.append("VAR");
+	FC_EPICS_DEVICE_CALLS_HEADER.append("END_VAR");
+	FC_EPICS_DEVICE_CALLS_HEADER.append("]]>");
+	FC_EPICS_DEVICE_CALLS_HEADER.append("</Declaration>");
+	FC_EPICS_DEVICE_CALLS_HEADER.append("<Implementation>");
+	FC_EPICS_DEVICE_CALLS_HEADER.append("<ST>");
+	FC_EPICS_DEVICE_CALLS_HEADER.append("<![CDATA[");
+	FC_EPICS_DEVICE_CALLS_HEADER.append("EPICS_GVL.FB_EPICS_S7_Comm(")
+	FC_EPICS_DEVICE_CALLS_HEADER.append("    bConnect:=TRUE ,")
+	FC_EPICS_DEVICE_CALLS_HEADER.append("    nS7Port:=2000 ,")
+	FC_EPICS_DEVICE_CALLS_HEADER.append("    nPLC_Hash:="+ifa.HASH+" ,")
+	FC_EPICS_DEVICE_CALLS_HEADER.append("    tSendTrig:=T#200MS ,")
+	FC_EPICS_DEVICE_CALLS_HEADER.append("    nCase=> ,")
+	FC_EPICS_DEVICE_CALLS_HEADER.append("    bConnected=> ,")
+	FC_EPICS_DEVICE_CALLS_HEADER.append("    bError=> );")
+
+	FC_EPICS_DEVICE_CALLS_FOOTER.append("]]>");
+	FC_EPICS_DEVICE_CALLS_FOOTER.append("</ST>");
+	FC_EPICS_DEVICE_CALLS_FOOTER.append("</Implementation>");
+	FC_EPICS_DEVICE_CALLS_FOOTER.append("</POU>");
+	FC_EPICS_DEVICE_CALLS_FOOTER.append("</TcPlcObject>");
 
 
 	TotalCommandReg = ifa.TOTALEPICSTOPLCLENGTH
 	TotalStatusReg  = ifa.TOTALPLCTOEPICSLENGTH
 	for device in ifa.Devices:
 		ProcessedDeviceNum = ProcessedDeviceNum + 1
-		if FirstDevice == False:
-			if NewDeviceType == True:
-				Write_DevType()
 
-			else:
-				DevTypeHeader = []
-				DevTypeVAR_INPUT = []
-				DevTypeVAR_OUTPUT = []
-				DevTypeVAR_TEMP = []
-				DevTypeBODY_HEADER = []
-				DevTypeBODY_CODE = []
-				DevTypeBODY_FOOTER = []
-		else:
-			FC_EPICS_DEVICE_CALLS_HEADER.append("<?xml version=\"1.0\" encoding=\"utf-8\"?>");
-			FC_EPICS_DEVICE_CALLS_HEADER.append("<TcPlcObject ");
-			FC_EPICS_DEVICE_CALLS_HEADER.append("Version=\"1.1.0.1\" ProductVersion=\"3.1.4022.10\">");
-			FC_EPICS_DEVICE_CALLS_HEADER.append("<POU ");
-			GlobalIDCounter = GlobalIDCounter + 1
-			FC_EPICS_DEVICE_CALLS_HEADER.append("Name=\"FC_EPICS_DEVICE_CALLS\" Id=\"{5bb54db1-6fe3-4b17-2b0f-"+str(GlobalIDCounter).zfill(12)+"}\" SpecialFunc=\"None\">");
-			FC_EPICS_DEVICE_CALLS_HEADER.append("");
-			FC_EPICS_DEVICE_CALLS_HEADER.append("<Declaration>");
-			FC_EPICS_DEVICE_CALLS_HEADER.append("<![CDATA[");
-			FC_EPICS_DEVICE_CALLS_HEADER.append("FUNCTION FC_EPICS_DEVICE_CALLS : BOOL");
-			FC_EPICS_DEVICE_CALLS_HEADER.append("VAR_INPUT");
-			FC_EPICS_DEVICE_CALLS_HEADER.append("END_VAR");
-			FC_EPICS_DEVICE_CALLS_HEADER.append("VAR");
-			FC_EPICS_DEVICE_CALLS_HEADER.append("END_VAR");
-			FC_EPICS_DEVICE_CALLS_HEADER.append("]]>");
-			FC_EPICS_DEVICE_CALLS_HEADER.append("</Declaration>");
-			FC_EPICS_DEVICE_CALLS_HEADER.append("<Implementation>");
-			FC_EPICS_DEVICE_CALLS_HEADER.append("<ST>");
-			FC_EPICS_DEVICE_CALLS_HEADER.append("<![CDATA[");
-			FC_EPICS_DEVICE_CALLS_HEADER.append("EPICS_GVL.FB_EPICS_S7_Comm(")
-			FC_EPICS_DEVICE_CALLS_HEADER.append("    bConnect:=TRUE ,")
-			FC_EPICS_DEVICE_CALLS_HEADER.append("    nS7Port:=2000 ,")
-			FC_EPICS_DEVICE_CALLS_HEADER.append("    nPLC_Hash:="+ifa.HASH+" ,")
-			FC_EPICS_DEVICE_CALLS_HEADER.append("    tSendTrig:=T#200MS ,")
-			FC_EPICS_DEVICE_CALLS_HEADER.append("    nCase=> ,")
-			FC_EPICS_DEVICE_CALLS_HEADER.append("    bConnected=> ,")
-			FC_EPICS_DEVICE_CALLS_HEADER.append("    bError=> );")
-
-			FC_EPICS_DEVICE_CALLS_FOOTER.append("]]>");
-			FC_EPICS_DEVICE_CALLS_FOOTER.append("</ST>");
-			FC_EPICS_DEVICE_CALLS_FOOTER.append("</Implementation>");
-			FC_EPICS_DEVICE_CALLS_FOOTER.append("</POU>");
-			FC_EPICS_DEVICE_CALLS_FOOTER.append("</TcPlcObject>");
-
-		FirstDevice = False
 		ActualDeviceName = device.properties["DEVICE"]
 		ActualDeviceType = device.properties["DEVICE_TYPE"]
 		EPICSTOPLCLENGTH = device.properties["EPICSTOPLCLENGTH"]
@@ -1187,17 +1172,17 @@ def ProcessIFADevTypes(OutputDir):
 		# Processed all items in a device, let's close the last variable
 		CloseLastVariable()
 
-	#Constuct the output source file
-	if NewDeviceType == True:
-		Write_DevType()
-	else:
-		DevTypeHeader = []
-		DevTypeVAR_INPUT = []
-		DevTypeVAR_OUTPUT = []
-		DevTypeVAR_TEMP = []
-		DevTypeBODY_HEADER = []
-		DevTypeBODY_CODE = []
-		DevTypeBODY_FOOTER = []
+		# Device is done, let's do some housekeeping
+		if NewDeviceType == True:
+			Write_DevType()
+		else:
+			DevTypeHeader = []
+			DevTypeVAR_INPUT = []
+			DevTypeVAR_OUTPUT = []
+			DevTypeVAR_TEMP = []
+			DevTypeBODY_HEADER = []
+			DevTypeBODY_CODE = []
+			DevTypeBODY_FOOTER = []
 
 	print("\nTotal", str(ProcessedDeviceNum), "device(s) processed.")
 	if not Direct:

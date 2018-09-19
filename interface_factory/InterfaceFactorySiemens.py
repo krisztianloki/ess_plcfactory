@@ -2170,7 +2170,6 @@ def ProcessIFADevTypes(OutputDir, TIAVersion):
 
 	global Direct
 
-	FirstDevice = True
 	StartingRegister = -1
 
 
@@ -2203,34 +2202,7 @@ def ProcessIFADevTypes(OutputDir, TIAVersion):
 
 	for device in ifa.Devices:
 		ProcessedDeviceNum = ProcessedDeviceNum + 1
-		if FirstDevice == False:
-			if EndDeviceString != "":
-				EPICS_device_calls_test_body.append("                                 DEVICE_PARAM_OK=>#\""+EndDeviceString+"\");")
-				EndDeviceString = ""
-			if NewDeviceType == True:
-				if not Direct:
-					WriteDevType()
 
-			else:
-				DevTypeHeader = []
-				DevTypeVAR_INPUT = []
-				DevTypeVAR_INOUT = []
-				DevTypeVAR_OUTPUT = []
-				DevTypeDB_SPEC = []
-				DevTypeVAR_TEMP = []
-				DevTypeBODY_HEADER = []
-				DevTypeBODY_CODE = []
-				DevTypeBODY_CODE_ARRAY = []
-				DevTypeBODY_END = []
-			if Direct:
-				DeviceInstance.append("   VAR")
-				DeviceInstance.append("      StatusReg { S7_HMI_Accessible := 'False'; S7_HMI_Visible := 'False'} : Array[0.."+ str(MaxStatusReg) +"] of Word;")
-				DeviceInstance.append("      CommandReg { S7_HMI_Accessible := 'False'; S7_HMI_Visible := 'False'} : Array[0.."+ str(MaxCommandReg) +"] of Word;")
-				DeviceInstance.append("   END_VAR")
-				DeviceInstance.append("BEGIN")
-				DeviceInstance.append("END_DATA_BLOCK")
-
-		FirstDevice = False
 		ActualDeviceName = device.properties["DEVICE"]
 		ActualDeviceType = device.properties["DEVICE_TYPE"]
 		EPICSTOPLCLENGTH = device.properties["EPICSTOPLCLENGTH"]
@@ -2675,32 +2647,34 @@ def ProcessIFADevTypes(OutputDir, TIAVersion):
 		# Processed all items in a device, let's close the last variable
 		CloseLastVariable()
 
+		# Device is done, let's do some housekeeping
+		if EndDeviceString != "":
+			EPICS_device_calls_test_body.append("                                 DEVICE_PARAM_OK=>#\""+EndDeviceString+"\");")
+			EndDeviceString = ""
+		if NewDeviceType == True:
+			if not Direct:
+				WriteDevType()
+		else:
+			DevTypeHeader = []
+			DevTypeVAR_INPUT = []
+			DevTypeVAR_INOUT = []
+			DevTypeVAR_OUTPUT = []
+			DevTypeDB_SPEC = []
+			DevTypeVAR_TEMP = []
+			DevTypeBODY_HEADER = []
+			DevTypeBODY_CODE = []
+			DevTypeBODY_CODE_ARRAY = []
+			DevTypeBODY_END = []
+		if Direct:
+			DeviceInstance.append("   VAR")
+			DeviceInstance.append("      StatusReg { S7_HMI_Accessible := 'False'; S7_HMI_Visible := 'False'} : Array[0.."+ str(MaxStatusReg) +"] of Word;")
+			DeviceInstance.append("      CommandReg { S7_HMI_Accessible := 'False'; S7_HMI_Visible := 'False'} : Array[0.."+ str(MaxCommandReg) +"] of Word;")
+			DeviceInstance.append("   END_VAR")
+			DeviceInstance.append("BEGIN")
+			DeviceInstance.append("END_DATA_BLOCK")
+
 	#Constuct the output source file
-	if EndDeviceString != "":
-		EPICS_device_calls_test_body.append("                                 DEVICE_PARAM_OK=>#\""+EndDeviceString+"\");")
-		EndDeviceString = ""
-	if NewDeviceType == True:
-		if not Direct:
-			WriteDevType()
-	else:
-		DevTypeHeader = []
-		DevTypeVAR_INPUT = []
-		DevTypeVAR_INOUT = []
-		DevTypeVAR_OUTPUT = []
-		DevTypeDB_SPEC = []
-		DevTypeVAR_TEMP = []
-		DevTypeBODY_HEADER = []
-		DevTypeBODY_CODE = []
-		DevTypeBODY_CODE_ARRAY = []
-		DevTypeBODY_END = []
-	if Direct:
-		DeviceInstance.append("   VAR")
-		DeviceInstance.append("      StatusReg { S7_HMI_Accessible := 'False'; S7_HMI_Visible := 'False'} : Array[0.."+ str(MaxStatusReg) +"] of Word;")
-		DeviceInstance.append("      CommandReg { S7_HMI_Accessible := 'False'; S7_HMI_Visible := 'False'} : Array[0.."+ str(MaxCommandReg) +"] of Word;")
-		DeviceInstance.append("   END_VAR")
-		DeviceInstance.append("BEGIN")
-		DeviceInstance.append("END_DATA_BLOCK")
-	else:
+	if not Direct:
 		WriteDeviceInstances()
 		WriteEPICS_PLC_TesterDB()
 		WriteEPICS_device_calls()
