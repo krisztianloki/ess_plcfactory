@@ -2232,17 +2232,12 @@ def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 				DeviceInstance.append("END_DATA_BLOCK")
 
 		FirstDevice = False
-		if "DEVICE" not in device.parameters or "DEVICE_TYPE" not in device.parameters or "EPICSTOPLCLENGTH" not in device.parameters or "EPICSTOPLCDATABLOCKOFFSET" not in device.parameters or "EPICSTOPLCPARAMETERSSTART" not in device.parameters or "PLCTOEPICSDATABLOCKOFFSET" not in device.parameters:
-			print("ERROR:")
-			print("The .ifa file has a bad DEVICE format! Exiting PLCFactory...\n")
-			print("--- %.1f seconds ---\n" % (time.time() - start_time))
-			sys.exit()
-		ActualDeviceName = device.parameters["DEVICE"]
-		ActualDeviceType = device.parameters["DEVICE_TYPE"]
-		EPICSTOPLCLENGTH = device.parameters["EPICSTOPLCLENGTH"]
-		EPICSTOPLCDATABLOCKOFFSET = device.parameters["EPICSTOPLCDATABLOCKOFFSET"]
-		EPICSTOPLCPARAMETERSSTART = device.parameters["EPICSTOPLCPARAMETERSSTART"]
-		PLCTOEPICSDATABLOCKOFFSET = device.parameters["PLCTOEPICSDATABLOCKOFFSET"]
+		ActualDeviceName = device.properties["DEVICE"]
+		ActualDeviceType = device.properties["DEVICE_TYPE"]
+		EPICSTOPLCLENGTH = device.properties["EPICSTOPLCLENGTH"]
+		EPICSTOPLCDATABLOCKOFFSET = device.properties["EPICSTOPLCDATABLOCKOFFSET"]
+		EPICSTOPLCPARAMETERSSTART = device.properties["EPICSTOPLCPARAMETERSSTART"]
+		PLCTOEPICSDATABLOCKOFFSET = device.properties["PLCTOEPICSDATABLOCKOFFSET"]
 		ActualDeviceNameWhite = ActualDeviceName
 		Text = "Device: "+ ActualDeviceName + " Type: "+ ActualDeviceType
 		print("    ", "-" * len(Text), sep='')
@@ -2404,17 +2399,11 @@ def ProcessIFADevTypes(OutputDir, IfaPath, TIAVersion):
 					DevTypeBODY_CODE.append("")
 
 			elif item.is_variable():
-				if "VARIABLE" not in item.parameters or "EPICS" not in item.parameters or "TYPE" not in item.parameters or "ARRAY_INDEX" not in item.parameters or "BIT_NUMBER" not in item.parameters:
-					print("ERROR:")
-					print("The .ifa file has a bad VARIABLE format! Exiting PLCFactory...\n")
-					print("--- %.1f seconds ---\n" % (time.time() - start_time))
-					sys.exit()
-
-				ActVariablePLCName    = item.parameters["VARIABLE"]
-				ActVariableEPICSName  = item.parameters["EPICS"]
-				ActVariableType       = item.parameters["TYPE"]
-				ActVariableArrayIndex = int(item.parameters["ARRAY_INDEX"])
-				ActVariableBitNumber  = int(item.parameters["BIT_NUMBER"])
+				ActVariablePLCName    = item.properties["VARIABLE"]
+				ActVariableEPICSName  = item.properties["EPICS"]
+				ActVariableType       = item.properties["TYPE"]
+				ActVariableArrayIndex = int(item.properties["ARRAY_INDEX"])
+				ActVariableBitNumber  = int(item.properties["BIT_NUMBER"])
 
 				#Close the last variable if there is a new variable
 				if 	LastVariableType != ActVariableType:

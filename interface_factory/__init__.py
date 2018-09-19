@@ -1,15 +1,21 @@
 from __future__ import print_function
 
 class IFA(object):
-    valid_variable_entries = [ 'VARIABLE', 'EPICS', 'TYPE', 'ARRAY_INDEX', 'BIT_NUMBER', 'BEAST', 'ARCHIVE' ]
+    mandatory_variable_properties = set([ 'VARIABLE', 'EPICS', 'TYPE', 'ARRAY_INDEX', 'BIT_NUMBER' ])
 
-    valid_device_entries   = [ 'DEVICE', 'DEVICE_TYPE', 'EPICSTOPLCPARAMETERSSTART', 'EPICSTOPLCLENGTH', 'EPICSTOPLCDATABLOCKOFFSET', 'PLCTOEPICSDATABLOCKOFFSET',
-                               'BLOCK', 'DEFINE_ARRAY', 'END_ARRAY' ]
-    valid_device_entries.extend(valid_variable_entries)
+    valid_variable_entries = set([ 'BEAST', 'ARCHIVE' ])
+    valid_variable_entries.update(mandatory_variable_properties)
 
-    valid_line_types       = [ 'HASH', 'MAX_IO_DEVICES', 'MAX_LOCAL_MODULES', 'MAX_MODULES_IN_IO_DEVICE', 'PLC_TYPE',
-                               'TOTALEPICSTOPLCLENGTH', 'TOTALPLCTOEPICSLENGTH' ]
-    valid_line_types.extend(valid_device_entries)
+    mandatory_device_properties = set([ 'DEVICE', 'DEVICE_TYPE', 'EPICSTOPLCPARAMETERSSTART', 'EPICSTOPLCLENGTH', 'EPICSTOPLCDATABLOCKOFFSET', 'PLCTOEPICSDATABLOCKOFFSET' ])
+
+    valid_device_entries   = set([ 'BLOCK', 'DEFINE_ARRAY', 'END_ARRAY' ])
+    valid_device_entries.update(mandatory_device_properties)
+    valid_device_entries.update(valid_variable_entries)
+
+    mandatory_ifa_properties = set([ 'HASH', 'MAX_IO_DEVICES', 'MAX_LOCAL_MODULES', 'MAX_MODULES_IN_IO_DEVICE', 'PLC_TYPE', 'TOTALEPICSTOPLCLENGTH', 'TOTALPLCTOEPICSLENGTH' ])
+
+    valid_line_types = set(mandatory_ifa_properties)
+    valid_line_types.update(valid_device_entries)
 
 
     class Exception(Exception):
@@ -50,7 +56,7 @@ class IFA(object):
 
         def __init__(self, name):
             self.comments   = []
-            self.parameters = { "DEVICE": name }
+            self.properties = { "DEVICE": name }
 
             self.status_items    = []
             self.command_items   = []
@@ -67,6 +73,11 @@ class IFA(object):
 
         def extend(self, area):
             self.comments.extend(area)
+
+
+        def check(self):
+            if not IFA.mandatory_device_properties <= set(self.properties.keys()):
+                raise IFA.FatalException("Missing DEVICE properties", IFA.mandatory_device_properties - set(self.properties.keys()))
 
 
 
@@ -93,6 +104,10 @@ class IFA(object):
 
         def is_wrapper_array(self):
             return False
+
+
+        def check(self):
+            pass
 
 
 
@@ -126,11 +141,11 @@ class IFA(object):
     class Variable(Block):
         def __init__(self, name, block):
             super(IFA.Variable, self).__init__(block)
-            self.parameters = { "VARIABLE": name }
+            self.properties = { "VARIABLE": name }
 
 
         def __repr__(self):
-            return repr(self.parameters)
+            return repr(self.properties)
 
 
         def is_block(self):
@@ -139,6 +154,11 @@ class IFA(object):
 
         def is_variable(self):
             return True
+
+
+        def check(self):
+            if not IFA.mandatory_variable_properties <= set(self.properties.keys()):
+                raise IFA.FatalException("Missing VARIABLE properties", IFA.mandatory_variable_properties - set(self.properties.keys()))
 
 
 
@@ -179,6 +199,7 @@ class IFA(object):
 
 
     def __init__(self, IfaPath):
+        self.properties               = dict()
         self.IfaPath                  = IfaPath
         self.HASH                     = None
         self.MAX_IO_DEVICES           = 0
@@ -189,10 +210,11 @@ class IFA(object):
         self.TOTALPLCTOEPICSLENGTH    = 0
         self.Devices                  = []
 
-        self.PreProcess()
+        self.PreParse()
+        self.Check()
 
 
-    def PreProcess(self):
+    def PreParse(self):
         print("""
 
 *******************************************
@@ -231,38 +253,40 @@ Pre-processing .ifa file...""".format(self.IfaPath))
                     continue
 
                 try:
-                    if linetype == "HASH":
-                        self.HASH = line
-                        continue
+                    if linetype in IFA.mandatory_ifa_properties:
+                        if linetype == "HASH":
+                            self.HASH = line
 
-                    elif linetype == "MAX_IO_DEVICES":
-                        self.MAX_IO_DEVICES = int(line)
-                        if self.MAX_IO_DEVICES <= 0:
-                            self.MAX_IO_DEVICES = 1
-                        continue
+                        elif linetype == "MAX_IO_DEVICES":
+                            line = int(line)
+                            if line <= 0:
+                                line = 1
+                            self.MAX_IO_DEVICES = line
 
-                    elif linetype == "MAX_LOCAL_MODULES":
-                        self.MAX_LOCAL_MODULES = int(line)
-                        if self.MAX_LOCAL_MODULES <= 0:
-                            self.MAX_LOCAL_MODULES = 1
-                        continue
+                        elif linetype == "MAX_LOCAL_MODULES":
+                            line = int(line)
+                            if line <= 0:
+                                line = 1
+                            self.MAX_LOCAL_MODULES = line
 
-                    elif linetype == "MAX_MODULES_IN_IO_DEVICE":
-                        self.MAX_MODULES_IN_IO_DEVICE = int(line)
-                        if self.MAX_MODULES_IN_IO_DEVICE <= 0:
-                            self.MAX_MODULES_IN_IO_DEVICE = 1
-                        continue
+                        elif linetype == "MAX_MODULES_IN_IO_DEVICE":
+                            line = int(line)
+                            if line <= 0:
+                                line = 1
+                            self.MAX_MODULES_IN_IO_DEVICE = line
 
-                    elif linetype == "PLC_TYPE":
-                        self.PLC_type = line
-                        continue
+                        elif linetype == "PLC_TYPE":
+                            self.PLC_type = line
 
-                    elif linetype == "TOTALEPICSTOPLCLENGTH":
-                        self.TOTALEPICSTOPLCLENGTH = int(line)
-                        continue
+                        elif linetype == "TOTALEPICSTOPLCLENGTH":
+                            line = int(line)
+                            self.TOTALEPICSTOPLCLENGTH = line
 
-                    elif linetype == "TOTALPLCTOEPICSLENGTH":
-                        self.TOTALPLCTOEPICSLENGTH = int(line)
+                        elif linetype == "TOTALPLCTOEPICSLENGTH":
+                            line = int(line)
+                            self.TOTALPLCTOEPICSLENGTH = line
+
+                        self.properties[linetype] = line
                         continue
 
                     elif linetype == "DEVICE":
@@ -306,9 +330,9 @@ Pre-processing .ifa file...""".format(self.IfaPath))
                         raise IFA.FatalException("Unknown VARIABLE keyword", linetype)
 
                     if item is not None:
-                        item.parameters[linetype] = line
+                        item.properties[linetype] = line
                     elif device is not None:
-                        device.parameters[linetype] = line
+                        device.properties[linetype] = line
                     else:
                         raise IFA.FatalException("Neither variable nor device")
 
@@ -322,16 +346,21 @@ Pre-processing .ifa file...""".format(self.IfaPath))
 """.format(type = linetype,
            line = line))
 
-        if self.HASH is None:
-            raise IFA.Warning("""
-ERROR:
-After pre-processing the .IFA file there was no HASH code inside!
-""")
-
         if not self.Devices:
             raise IFA.Warning("""
-ERROR:
+Warning:
 After pre-processing the .IFA file there were no DEVICES inside!
 """)
 
         print("Total", str(len(self.Devices)), "device(s) pre-processed.\n")
+
+
+    def Check(self):
+        if not IFA.mandatory_ifa_properties <= set(self.properties.keys()):
+            raise IFA.FatalException("Missing IFA properties", IFA.mandatory_ifa_properties - set(self.properties.keys()))
+
+        for device in self.Devices:
+            device.check()
+
+            for item in device:
+                item.check()
