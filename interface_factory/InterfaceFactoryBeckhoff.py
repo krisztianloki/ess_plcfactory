@@ -671,6 +671,314 @@ def CloseLastVariable():
 			DevTypeBODY_CODE.append("       " + EndString)
 			EndString = ""
 
+
+def AddBOOL(variable, InArrayName, InArrayNum, StartingRegister):
+	global DevTypeBODY_CODE
+	global DevTypeBODY_CODE_ARRAY
+	global EndString
+	global EndString2
+	global IsDouble
+
+	#====== BOOL TYPE ========
+	ActVariablePLCName    = variable.properties["VARIABLE"]
+	ActVariableEPICSName  = variable.properties["EPICS"]
+	ActVariableType       = variable.properties["TYPE"]
+	ActVariableArrayIndex = int(variable.properties["ARRAY_INDEX"])
+	ActVariableBitNumber  = int(variable.properties["BIT_NUMBER"])
+
+	if variable.is_status():
+		if StartingRegister != ActVariableArrayIndex:
+			CloseLastVariable()
+			StartingRegister = ActVariableArrayIndex
+			DevTypeBODY_CODE.append("")
+		if InArrayName is not None:
+			InArrayNum = InArrayNum + 1
+			DevTypeBODY_CODE.append("       nTempUINT." + str(ActVariableBitNumber)+ "           := "+ InArrayName + "[" +str(InArrayNum)+"];       //EPICSName: "+ActVariableEPICSName)
+		else:
+			DevTypeBODY_CODE.append("       nTempUINT." + str(ActVariableBitNumber)+ "           := "+ ActVariablePLCName + ";       //EPICSName: "+ActVariableEPICSName)
+		IsDouble = False
+		EndString = "EPICS_GVL.aDataS7[nOffsetStatus + "+str(ActVariableArrayIndex) +"]    := nTempUINT;"
+	if variable.is_parameter() or variable.is_command():
+		if StartingRegister != ActVariableArrayIndex:
+			CloseLastVariable()
+			StartingRegister = ActVariableArrayIndex
+			DevTypeBODY_CODE.append("")
+			DevTypeBODY_CODE.append("       nTempUINT			:= EPICS_GVL.aDataModbus[nOffsetCmd + "+str(ActVariableArrayIndex)+"];")
+		DevTypeBODY_CODE.append("       "+ActVariablePLCName+"             :=     nTempUINT." + str(ActVariableBitNumber)+ ";       //EPICSName: "+ActVariableEPICSName)
+		EndString = "if (EPICS_GVL.EasyTester <> 2) THEN EPICS_GVL.aDataModbus[nOffsetCmd + " + str(ActVariableArrayIndex)+ "]:=0; END_IF"
+		IsDouble = False
+
+	return (InArrayNum, StartingRegister)
+
+
+def AddBYTE(variable, InArrayName, InArrayNum, StartingRegister):
+	global DevTypeBODY_CODE
+	global DevTypeBODY_CODE_ARRAY
+	global EndString
+	global EndString2
+	global IsDouble
+
+	#====== BYTE TYPE ========
+	ActVariablePLCName    = variable.properties["VARIABLE"]
+	ActVariableEPICSName  = variable.properties["EPICS"]
+	ActVariableType       = variable.properties["TYPE"]
+	ActVariableArrayIndex = int(variable.properties["ARRAY_INDEX"])
+	ActVariableBitNumber  = int(variable.properties["BIT_NUMBER"])
+
+	if variable.is_status():
+		if StartingRegister != ActVariableArrayIndex:
+			CloseLastVariable()
+			StartingRegister = ActVariableArrayIndex
+			DevTypeBODY_CODE.append("")
+		if InArrayName is not None:
+			InArrayNum = InArrayNum + 1
+			DevTypeBODY_CODE.append("       EPICS_GVL.aDataS7[nOffsetStatus + " + str(ActVariableArrayIndex)+ "]           := BYTE_TO_UINT("+ InArrayName + "[" +str(InArrayNum)+"]);       //EPICSName: "+ActVariableEPICSName)
+		else:
+			DevTypeBODY_CODE.append("       EPICS_GVL.aDataS7[nOffsetStatus + " + str(ActVariableArrayIndex)+ "]           := BYTE_TO_UINT("+ ActVariablePLCName + ");       //EPICSName: "+ActVariableEPICSName)
+		IsDouble = False
+		EndString = ""
+	if variable.is_parameter() or variable.is_command():
+		if StartingRegister != ActVariableArrayIndex:
+			CloseLastVariable()
+			StartingRegister = ActVariableArrayIndex
+			DevTypeBODY_CODE.append("")
+		DevTypeBODY_CODE.append("       "+ActVariablePLCName+"             := UINT_TO_BYTE(EPICS_GVL.aDataModbus[nOffsetCmd + " + str(ActVariableArrayIndex)+ "]);       //EPICSName: "+ActVariableEPICSName)
+		EndString = ""
+		IsDouble = False
+
+	return (InArrayNum, StartingRegister)
+
+
+def AddINT(variable, InArrayName, InArrayNum, StartingRegister):
+	global DevTypeBODY_CODE
+	global DevTypeBODY_CODE_ARRAY
+	global EndString
+	global EndString2
+	global IsDouble
+
+	#====== INT TYPE ========
+	ActVariablePLCName    = variable.properties["VARIABLE"]
+	ActVariableEPICSName  = variable.properties["EPICS"]
+	ActVariableType       = variable.properties["TYPE"]
+	ActVariableArrayIndex = int(variable.properties["ARRAY_INDEX"])
+	ActVariableBitNumber  = int(variable.properties["BIT_NUMBER"])
+
+	if variable.is_status():
+		if StartingRegister != ActVariableArrayIndex:
+			CloseLastVariable()
+			StartingRegister = ActVariableArrayIndex
+			DevTypeBODY_CODE.append("")
+		if InArrayName is not None:
+			InArrayNum = InArrayNum + 1
+			DevTypeBODY_CODE.append("       EPICS_GVL.aDataS7[nOffsetStatus + " + str(ActVariableArrayIndex)+ "]           := INT_TO_UINT("+ InArrayName + "[" +str(InArrayNum)+"]);       //EPICSName: "+ActVariableEPICSName)
+		else:
+			DevTypeBODY_CODE.append("       EPICS_GVL.aDataS7[nOffsetStatus + " + str(ActVariableArrayIndex)+ "]           := INT_TO_UINT("+ ActVariablePLCName + ");       //EPICSName: "+ActVariableEPICSName)
+		IsDouble = False
+		EndString = ""
+	if variable.is_parameter() or variable.is_command():
+		if StartingRegister != ActVariableArrayIndex:
+			CloseLastVariable()
+			StartingRegister = ActVariableArrayIndex
+			DevTypeBODY_CODE.append("")
+		DevTypeBODY_CODE.append("       "+ActVariablePLCName+"             := UINT_TO_INT(EPICS_GVL.aDataModbus[nOffsetCmd + " + str(ActVariableArrayIndex)+ "]);       //EPICSName: "+ActVariableEPICSName)
+		EndString = ""
+		IsDouble = False
+
+	return (InArrayNum, StartingRegister)
+
+				#====== WORD TYPE ========
+def AddWORD(variable, InArrayName, InArrayNum, StartingRegister):
+	global DevTypeBODY_CODE
+	global DevTypeBODY_CODE_ARRAY
+	global EndString
+	global EndString2
+	global IsDouble
+
+	#====== WORD TYPE ========
+	ActVariablePLCName    = variable.properties["VARIABLE"]
+	ActVariableEPICSName  = variable.properties["EPICS"]
+	ActVariableType       = variable.properties["TYPE"]
+	ActVariableArrayIndex = int(variable.properties["ARRAY_INDEX"])
+	ActVariableBitNumber  = int(variable.properties["BIT_NUMBER"])
+
+	if variable.is_status():
+		if StartingRegister != ActVariableArrayIndex:
+			CloseLastVariable()
+			StartingRegister = ActVariableArrayIndex
+			DevTypeBODY_CODE.append("")
+		if InArrayName is not None:
+			InArrayNum = InArrayNum + 1
+			DevTypeBODY_CODE.append("       EPICS_GVL.aDataS7[nOffsetStatus + " + str(ActVariableArrayIndex)+ "]           := WORD_TO_UINT("+ InArrayName + "[" +str(InArrayNum)+"]);       //EPICSName: "+ActVariableEPICSName)
+		else:
+			DevTypeBODY_CODE.append("       EPICS_GVL.aDataS7[nOffsetStatus + " + str(ActVariableArrayIndex)+ "]           := WORD_TO_UINT("+ ActVariablePLCName + ");       //EPICSName: "+ActVariableEPICSName)
+		IsDouble = False
+		EndString = ""
+	if variable.is_parameter() or variable.is_command():
+		if StartingRegister != ActVariableArrayIndex:
+			CloseLastVariable()
+			StartingRegister = ActVariableArrayIndex
+			DevTypeBODY_CODE.append("")
+		DevTypeBODY_CODE.append("       "+ActVariablePLCName+"             := UINT_TO_WORD(EPICS_GVL.aDataModbus[nOffsetCmd + " + str(ActVariableArrayIndex)+ "]);       //EPICSName: "+ActVariableEPICSName)
+		EndString = ""
+		IsDouble = False
+
+	return (InArrayNum, StartingRegister)
+
+
+def AddDINT(variable, InArrayName, InArrayNum, StartingRegister):
+	global DevTypeBODY_CODE
+	global DevTypeBODY_CODE_ARRAY
+	global EndString
+	global EndString2
+	global IsDouble
+
+	#====== DINT TYPE ========
+	ActVariablePLCName    = variable.properties["VARIABLE"]
+	ActVariableEPICSName  = variable.properties["EPICS"]
+	ActVariableType       = variable.properties["TYPE"]
+	ActVariableArrayIndex = int(variable.properties["ARRAY_INDEX"])
+	ActVariableBitNumber  = int(variable.properties["BIT_NUMBER"])
+
+	if variable.is_status():
+		if InArrayName is not None:
+			InArrayNum = InArrayNum + 1
+		if StartingRegister != ActVariableArrayIndex:
+			CloseLastVariable()
+			StartingRegister = ActVariableArrayIndex
+			DevTypeBODY_CODE.append("")
+			DevTypeBODY_CODE.append("       uDINT2UINTs.nValue :="+ ActVariablePLCName + ";")
+		DevTypeBODY_CODE.append("       EPICS_GVL.aDataS7[nOffsetStatus + " + str(ActVariableArrayIndex)+ "]           := uDINT2UINTs.stLowHigh.nLow;       //EPICSName: "+ActVariableEPICSName)
+		DevTypeBODY_CODE.append("       EPICS_GVL.aDataS7[nOffsetStatus + " + str(int(ActVariableArrayIndex)+1)+ "]           := uDINT2UINTs.stLowHigh.nHigh;       //EPICSName: "+ActVariableEPICSName)
+		IsDouble = False
+		EndString = ""
+	if variable.is_parameter() or variable.is_command():
+		if StartingRegister != ActVariableArrayIndex:
+			CloseLastVariable()
+			StartingRegister = ActVariableArrayIndex
+			DevTypeBODY_CODE.append("")
+		DevTypeBODY_CODE.append("       uUINTs2DINT.stLowHigh.nLow             := EPICS_GVL.aDataModbus[nOffsetCmd + " + str(ActVariableArrayIndex)+ "];       //EPICSName: "+ActVariableEPICSName)
+		DevTypeBODY_CODE.append("       uUINTs2DINT.stLowHigh.nHigh             := EPICS_GVL.aDataModbus[nOffsetCmd + " + str(int(ActVariableArrayIndex)+1)+ "];       //EPICSName: "+ActVariableEPICSName)
+		EndString =  ActVariablePLCName + "				:= uUINTs2DINT.nValue;"
+		IsDouble = False
+
+	return (InArrayNum, StartingRegister)
+
+
+def AddDWORD(variable, InArrayName, InArrayNum, StartingRegister):
+	global DevTypeBODY_CODE
+	global DevTypeBODY_CODE_ARRAY
+	global EndString
+	global EndString2
+	global IsDouble
+
+	#====== DWORD TYPE ========
+	ActVariablePLCName    = variable.properties["VARIABLE"]
+	ActVariableEPICSName  = variable.properties["EPICS"]
+	ActVariableType       = variable.properties["TYPE"]
+	ActVariableArrayIndex = int(variable.properties["ARRAY_INDEX"])
+	ActVariableBitNumber  = int(variable.properties["BIT_NUMBER"])
+
+	if variable.is_status():
+		if InArrayName is not None:
+			InArrayNum = InArrayNum + 1
+		if StartingRegister != ActVariableArrayIndex:
+			CloseLastVariable()
+			StartingRegister = ActVariableArrayIndex
+			DevTypeBODY_CODE.append("")
+		DevTypeBODY_CODE.append("       EPICS_GVL.aDataS7[nOffsetStatus + " + str(ActVariableArrayIndex)+ "]           := DWORD_TO_UINT("+ ActVariablePLCName + ");       //EPICSName: "+ActVariableEPICSName)
+		DevTypeBODY_CODE.append("       EPICS_GVL.aDataS7[nOffsetStatus + " + str(int(ActVariableArrayIndex)+1)+ "]           := DWORD_TO_UINT(SHR("+ ActVariablePLCName + ",16));       //EPICSName: "+ActVariableEPICSName)
+		IsDouble = False
+		EndString = ""
+	if variable.is_parameter() or variable.is_command():
+		if StartingRegister != ActVariableArrayIndex:
+			CloseLastVariable()
+			StartingRegister = ActVariableArrayIndex
+			DevTypeBODY_CODE.append("")
+		DevTypeBODY_CODE.append("       DWORD for Modbus is not supported")
+		EndString = ""
+		IsDouble = False
+
+	return (InArrayNum, StartingRegister)
+
+
+def AddREAL(variable, InArrayName, InArrayNum, StartingRegister):
+	global DevTypeBODY_CODE
+	global DevTypeBODY_CODE_ARRAY
+	global EndString
+	global EndString2
+	global IsDouble
+
+	#====== REAL TYPE ========
+	ActVariablePLCName    = variable.properties["VARIABLE"]
+	ActVariableEPICSName  = variable.properties["EPICS"]
+	ActVariableType       = variable.properties["TYPE"]
+	ActVariableArrayIndex = int(variable.properties["ARRAY_INDEX"])
+	ActVariableBitNumber  = int(variable.properties["BIT_NUMBER"])
+
+	if variable.is_status():
+		if InArrayName is not None:
+			InArrayNum = InArrayNum + 1
+		if StartingRegister != ActVariableArrayIndex:
+			CloseLastVariable()
+			StartingRegister = ActVariableArrayIndex
+			DevTypeBODY_CODE.append("")
+			DevTypeBODY_CODE.append("       uREAL2UINTs.fValue :="+ ActVariablePLCName + ";")
+		DevTypeBODY_CODE.append("       EPICS_GVL.aDataS7[nOffsetStatus + " + str(ActVariableArrayIndex)+ "]           := uREAL2UINTs.stLowHigh.nLow;       //EPICSName: "+ActVariableEPICSName)
+		DevTypeBODY_CODE.append("       EPICS_GVL.aDataS7[nOffsetStatus + " + str(int(ActVariableArrayIndex)+1)+ "]           := uREAL2UINTs.stLowHigh.nHigh;       //EPICSName: "+ActVariableEPICSName)
+		IsDouble = False
+		EndString = ""
+	if variable.is_parameter() or variable.is_command():
+		if StartingRegister != ActVariableArrayIndex:
+			CloseLastVariable()
+			StartingRegister = ActVariableArrayIndex
+			DevTypeBODY_CODE.append("")
+		DevTypeBODY_CODE.append("       uUINTs2REAL.stLowHigh.nLow             := EPICS_GVL.aDataModbus[nOffsetCmd + " + str(ActVariableArrayIndex)+ "];       //EPICSName: "+ActVariableEPICSName)
+		DevTypeBODY_CODE.append("       uUINTs2REAL.stLowHigh.nHigh             := EPICS_GVL.aDataModbus[nOffsetCmd + " + str(int(ActVariableArrayIndex)+1)+ "];       //EPICSName: "+ActVariableEPICSName)
+		EndString =  ActVariablePLCName + "				:= uUINTs2REAL.fValue;"
+		IsDouble = False
+
+	return (InArrayNum, StartingRegister)
+
+
+def AddTIME(variable, InArrayName, InArrayNum, StartingRegister):
+	global DevTypeBODY_CODE
+	global DevTypeBODY_CODE_ARRAY
+	global EndString
+	global EndString2
+	global IsDouble
+
+	#====== TIME TYPE ========
+	ActVariablePLCName    = variable.properties["VARIABLE"]
+	ActVariableEPICSName  = variable.properties["EPICS"]
+	ActVariableType       = variable.properties["TYPE"]
+	ActVariableArrayIndex = int(variable.properties["ARRAY_INDEX"])
+	ActVariableBitNumber  = int(variable.properties["BIT_NUMBER"])
+
+	if variable.is_status():
+		if InArrayName is not None:
+			InArrayNum = InArrayNum + 1
+		if StartingRegister != ActVariableArrayIndex:
+			CloseLastVariable()
+			StartingRegister = ActVariableArrayIndex
+			DevTypeBODY_CODE.append("")
+			DevTypeBODY_CODE.append("       uTIME2UINTs.tValue :="+ ActVariablePLCName + ";")
+		DevTypeBODY_CODE.append("       EPICS_GVL.aDataS7[nOffsetStatus + " + str(ActVariableArrayIndex)+ "]           := uTIME2UINTs.stLowHigh.nLow;       //EPICSName: "+ActVariableEPICSName)
+		DevTypeBODY_CODE.append("       EPICS_GVL.aDataS7[nOffsetStatus + " + str(int(ActVariableArrayIndex)+1)+ "]           := uTIME2UINTs.stLowHigh.nHigh;       //EPICSName: "+ActVariableEPICSName)
+		IsDouble = False
+		EndString = ""
+	if variable.is_parameter() or variable.is_command():
+		if StartingRegister != ActVariableArrayIndex:
+			CloseLastVariable()
+			StartingRegister = ActVariableArrayIndex
+			DevTypeBODY_CODE.append("")
+		DevTypeBODY_CODE.append("       uUINTs2TIME.stLowHigh.nLow             := EPICS_GVL.aDataModbus[nOffsetCmd + " + str(ActVariableArrayIndex)+ "];       //EPICSName: "+ActVariableEPICSName)
+		DevTypeBODY_CODE.append("       uUINTs2TIME.stLowHigh.nHigh             := EPICS_GVL.aDataModbus[nOffsetCmd + " + str(int(ActVariableArrayIndex)+1)+ "];       //EPICSName: "+ActVariableEPICSName)
+		EndString =  ActVariablePLCName + "				:= uUINTs2TIME.tValue;"
+		IsDouble = False
+
+	return (InArrayNum, StartingRegister)
+
+
 def ProcessIFADevTypes(OutputDir):
 
 	#Process IFA devices
@@ -968,190 +1276,35 @@ def ProcessIFADevTypes(OutputDir):
 
 				#====== BOOL TYPE ========
 				if ActVariableType == "BOOL":
-					if item.is_status():
-						if StartingRegister != ActVariableArrayIndex:
-							CloseLastVariable()
-							StartingRegister = ActVariableArrayIndex
-							DevTypeBODY_CODE.append("")
-						if InArrayName is not None:
-							InArrayNum = InArrayNum + 1
-							DevTypeBODY_CODE.append("       nTempUINT." + str(ActVariableBitNumber)+ "           := "+ InArrayName + "[" +str(InArrayNum)+"];       //EPICSName: "+ActVariableEPICSName)
-						else:
-							DevTypeBODY_CODE.append("       nTempUINT." + str(ActVariableBitNumber)+ "           := "+ ActVariablePLCName + ";       //EPICSName: "+ActVariableEPICSName)
-						IsDouble = False
-						EndString = "EPICS_GVL.aDataS7[nOffsetStatus + "+str(ActVariableArrayIndex) +"]    := nTempUINT;"
-					if item.is_parameter() or item.is_command():
-						if StartingRegister != ActVariableArrayIndex:
-							CloseLastVariable()
-							StartingRegister = ActVariableArrayIndex
-							DevTypeBODY_CODE.append("")
-							DevTypeBODY_CODE.append("       nTempUINT			:= EPICS_GVL.aDataModbus[nOffsetCmd + "+str(ActVariableArrayIndex)+"];")
-						DevTypeBODY_CODE.append("       "+ActVariablePLCName+"             :=     nTempUINT." + str(ActVariableBitNumber)+ ";       //EPICSName: "+ActVariableEPICSName)
-						EndString = "if (EPICS_GVL.EasyTester <> 2) THEN EPICS_GVL.aDataModbus[nOffsetCmd + " + str(ActVariableArrayIndex)+ "]:=0; END_IF"
-						IsDouble = False
+					InArrayNum, StartingRegister = AddBOOL(item, InArrayName, InArrayNum, StartingRegister)
 				#==========================
 				#====== BYTE TYPE ========
 				elif ActVariableType == "BYTE":
-					if item.is_status():
-						if StartingRegister != ActVariableArrayIndex:
-							CloseLastVariable()
-							StartingRegister = ActVariableArrayIndex
-							DevTypeBODY_CODE.append("")
-						if InArrayName is not None:
-							InArrayNum = InArrayNum + 1
-							DevTypeBODY_CODE.append("       EPICS_GVL.aDataS7[nOffsetStatus + " + str(ActVariableArrayIndex)+ "]           := BYTE_TO_UINT("+ InArrayName + "[" +str(InArrayNum)+"]);       //EPICSName: "+ActVariableEPICSName)
-						else:
-							DevTypeBODY_CODE.append("       EPICS_GVL.aDataS7[nOffsetStatus + " + str(ActVariableArrayIndex)+ "]           := BYTE_TO_UINT("+ ActVariablePLCName + ");       //EPICSName: "+ActVariableEPICSName)
-						IsDouble = False
-						EndString = ""
-					if item.is_parameter() or item.is_command():
-						if StartingRegister != ActVariableArrayIndex:
-							CloseLastVariable()
-							StartingRegister = ActVariableArrayIndex
-							DevTypeBODY_CODE.append("")
-						DevTypeBODY_CODE.append("       "+ActVariablePLCName+"             := UINT_TO_BYTE(EPICS_GVL.aDataModbus[nOffsetCmd + " + str(ActVariableArrayIndex)+ "]);       //EPICSName: "+ActVariableEPICSName)
-						EndString = ""
-						IsDouble = False
+					InArrayNum, StartingRegister = AddBYTE(item, InArrayName, InArrayNum, StartingRegister)
 				#==========================
 				#====== INT TYPE ========
 				elif ActVariableType == "INT":
-					if item.is_status():
-						if StartingRegister != ActVariableArrayIndex:
-							CloseLastVariable()
-							StartingRegister = ActVariableArrayIndex
-							DevTypeBODY_CODE.append("")
-						if InArrayName is not None:
-							InArrayNum = InArrayNum + 1
-							DevTypeBODY_CODE.append("       EPICS_GVL.aDataS7[nOffsetStatus + " + str(ActVariableArrayIndex)+ "]           := INT_TO_UINT("+ InArrayName + "[" +str(InArrayNum)+"]);       //EPICSName: "+ActVariableEPICSName)
-						else:
-							DevTypeBODY_CODE.append("       EPICS_GVL.aDataS7[nOffsetStatus + " + str(ActVariableArrayIndex)+ "]           := INT_TO_UINT("+ ActVariablePLCName + ");       //EPICSName: "+ActVariableEPICSName)
-						IsDouble = False
-						EndString = ""
-					if item.is_parameter() or item.is_command():
-						if StartingRegister != ActVariableArrayIndex:
-							CloseLastVariable()
-							StartingRegister = ActVariableArrayIndex
-							DevTypeBODY_CODE.append("")
-						DevTypeBODY_CODE.append("       "+ActVariablePLCName+"             := UINT_TO_INT(EPICS_GVL.aDataModbus[nOffsetCmd + " + str(ActVariableArrayIndex)+ "]);       //EPICSName: "+ActVariableEPICSName)
-						EndString = ""
-						IsDouble = False
+					InArrayNum, StartingRegister = AddINT(item, InArrayName, InArrayNum, StartingRegister)
 				#==========================
 				#====== WORD TYPE ========
 				elif ActVariableType == "WORD":
-					if item.is_status():
-						if StartingRegister != ActVariableArrayIndex:
-							CloseLastVariable()
-							StartingRegister = ActVariableArrayIndex
-							DevTypeBODY_CODE.append("")
-						if InArrayName is not None:
-							InArrayNum = InArrayNum + 1
-							DevTypeBODY_CODE.append("       EPICS_GVL.aDataS7[nOffsetStatus + " + str(ActVariableArrayIndex)+ "]           := WORD_TO_UINT("+ InArrayName + "[" +str(InArrayNum)+"]);       //EPICSName: "+ActVariableEPICSName)
-						else:
-							DevTypeBODY_CODE.append("       EPICS_GVL.aDataS7[nOffsetStatus + " + str(ActVariableArrayIndex)+ "]           := WORD_TO_UINT("+ ActVariablePLCName + ");       //EPICSName: "+ActVariableEPICSName)
-						IsDouble = False
-						EndString = ""
-					if item.is_parameter() or item.is_command():
-						if StartingRegister != ActVariableArrayIndex:
-							CloseLastVariable()
-							StartingRegister = ActVariableArrayIndex
-							DevTypeBODY_CODE.append("")
-						DevTypeBODY_CODE.append("       "+ActVariablePLCName+"             := UINT_TO_WORD(EPICS_GVL.aDataModbus[nOffsetCmd + " + str(ActVariableArrayIndex)+ "]);       //EPICSName: "+ActVariableEPICSName)
-						EndString = ""
-						IsDouble = False
+					InArrayNum, StartingRegister = AddWORD(item, InArrayName, InArrayNum, StartingRegister)
 				#==========================
 				#====== DWORD TYPE ========
 				elif ActVariableType == "DWORD":
-					if item.is_status():
-						if InArrayName is not None:
-							InArrayNum = InArrayNum + 1
-						if StartingRegister != ActVariableArrayIndex:
-							CloseLastVariable()
-							StartingRegister = ActVariableArrayIndex
-							DevTypeBODY_CODE.append("")
-						DevTypeBODY_CODE.append("       EPICS_GVL.aDataS7[nOffsetStatus + " + str(ActVariableArrayIndex)+ "]           := DWORD_TO_UINT("+ ActVariablePLCName + ");       //EPICSName: "+ActVariableEPICSName)
-						DevTypeBODY_CODE.append("       EPICS_GVL.aDataS7[nOffsetStatus + " + str(int(ActVariableArrayIndex)+1)+ "]           := DWORD_TO_UINT(SHR("+ ActVariablePLCName + ",16));       //EPICSName: "+ActVariableEPICSName)
-						IsDouble = False
-						EndString = ""
-					if item.is_parameter() or item.is_command():
-						if StartingRegister != ActVariableArrayIndex:
-							CloseLastVariable()
-							StartingRegister = ActVariableArrayIndex
-							DevTypeBODY_CODE.append("")
-						DevTypeBODY_CODE.append("       DWORD for Modbus is not supported")
-						EndString = ""
-						IsDouble = False
+					InArrayNum, StartingRegister = AddDWORD(item, InArrayName, InArrayNum, StartingRegister)
 				#==========================
 				#====== REAL TYPE ========
 				elif ActVariableType == "REAL":
-					if item.is_status():
-						if InArrayName is not None:
-							InArrayNum = InArrayNum + 1
-						if StartingRegister != ActVariableArrayIndex:
-							CloseLastVariable()
-							StartingRegister = ActVariableArrayIndex
-							DevTypeBODY_CODE.append("")
-							DevTypeBODY_CODE.append("       uREAL2UINTs.fValue :="+ ActVariablePLCName + ";")
-						DevTypeBODY_CODE.append("       EPICS_GVL.aDataS7[nOffsetStatus + " + str(ActVariableArrayIndex)+ "]           := uREAL2UINTs.stLowHigh.nLow;       //EPICSName: "+ActVariableEPICSName)
-						DevTypeBODY_CODE.append("       EPICS_GVL.aDataS7[nOffsetStatus + " + str(int(ActVariableArrayIndex)+1)+ "]           := uREAL2UINTs.stLowHigh.nHigh;       //EPICSName: "+ActVariableEPICSName)
-						IsDouble = False
-						EndString = ""
-					if item.is_parameter() or item.is_command():
-						if StartingRegister != ActVariableArrayIndex:
-							CloseLastVariable()
-							StartingRegister = ActVariableArrayIndex
-							DevTypeBODY_CODE.append("")
-						DevTypeBODY_CODE.append("       uUINTs2REAL.stLowHigh.nLow             := EPICS_GVL.aDataModbus[nOffsetCmd + " + str(ActVariableArrayIndex)+ "];       //EPICSName: "+ActVariableEPICSName)
-						DevTypeBODY_CODE.append("       uUINTs2REAL.stLowHigh.nHigh             := EPICS_GVL.aDataModbus[nOffsetCmd + " + str(int(ActVariableArrayIndex)+1)+ "];       //EPICSName: "+ActVariableEPICSName)
-						EndString =  ActVariablePLCName + "				:= uUINTs2REAL.fValue;"
-						IsDouble = False
+					InArrayNum, StartingRegister = AddREAL(item, InArrayName, InArrayNum, StartingRegister)
 				#==========================
 				#====== DINT TYPE ========
 				elif ActVariableType == "DINT":
-					if item.is_status():
-						if InArrayName is not None:
-							InArrayNum = InArrayNum + 1
-						if StartingRegister != ActVariableArrayIndex:
-							CloseLastVariable()
-							StartingRegister = ActVariableArrayIndex
-							DevTypeBODY_CODE.append("")
-							DevTypeBODY_CODE.append("       uDINT2UINTs.nValue :="+ ActVariablePLCName + ";")
-						DevTypeBODY_CODE.append("       EPICS_GVL.aDataS7[nOffsetStatus + " + str(ActVariableArrayIndex)+ "]           := uDINT2UINTs.stLowHigh.nLow;       //EPICSName: "+ActVariableEPICSName)
-						DevTypeBODY_CODE.append("       EPICS_GVL.aDataS7[nOffsetStatus + " + str(int(ActVariableArrayIndex)+1)+ "]           := uDINT2UINTs.stLowHigh.nHigh;       //EPICSName: "+ActVariableEPICSName)
-						IsDouble = False
-						EndString = ""
-					if item.is_parameter() or item.is_command():
-						if StartingRegister != ActVariableArrayIndex:
-							CloseLastVariable()
-							StartingRegister = ActVariableArrayIndex
-							DevTypeBODY_CODE.append("")
-						DevTypeBODY_CODE.append("       uUINTs2DINT.stLowHigh.nLow             := EPICS_GVL.aDataModbus[nOffsetCmd + " + str(ActVariableArrayIndex)+ "];       //EPICSName: "+ActVariableEPICSName)
-						DevTypeBODY_CODE.append("       uUINTs2DINT.stLowHigh.nHigh             := EPICS_GVL.aDataModbus[nOffsetCmd + " + str(int(ActVariableArrayIndex)+1)+ "];       //EPICSName: "+ActVariableEPICSName)
-						EndString =  ActVariablePLCName + "				:= uUINTs2DINT.nValue;"
-						IsDouble = False
+					InArrayNum, StartingRegister = AddDINT(item, InArrayName, InArrayNum, StartingRegister)
 				#==========================
 				#====== TIME TYPE ========
 				elif ActVariableType == "TIME":
-					if item.is_status():
-						if InArrayName is not None:
-							InArrayNum = InArrayNum + 1
-						if StartingRegister != ActVariableArrayIndex:
-							CloseLastVariable()
-							StartingRegister = ActVariableArrayIndex
-							DevTypeBODY_CODE.append("")
-							DevTypeBODY_CODE.append("       uTIME2UINTs.tValue :="+ ActVariablePLCName + ";")
-						DevTypeBODY_CODE.append("       EPICS_GVL.aDataS7[nOffsetStatus + " + str(ActVariableArrayIndex)+ "]           := uTIME2UINTs.stLowHigh.nLow;       //EPICSName: "+ActVariableEPICSName)
-						DevTypeBODY_CODE.append("       EPICS_GVL.aDataS7[nOffsetStatus + " + str(int(ActVariableArrayIndex)+1)+ "]           := uTIME2UINTs.stLowHigh.nHigh;       //EPICSName: "+ActVariableEPICSName)
-						IsDouble = False
-						EndString = ""
-					if item.is_parameter() or item.is_command():
-						if StartingRegister != ActVariableArrayIndex:
-							CloseLastVariable()
-							StartingRegister = ActVariableArrayIndex
-							DevTypeBODY_CODE.append("")
-						DevTypeBODY_CODE.append("       uUINTs2TIME.stLowHigh.nLow             := EPICS_GVL.aDataModbus[nOffsetCmd + " + str(ActVariableArrayIndex)+ "];       //EPICSName: "+ActVariableEPICSName)
-						DevTypeBODY_CODE.append("       uUINTs2TIME.stLowHigh.nHigh             := EPICS_GVL.aDataModbus[nOffsetCmd + " + str(int(ActVariableArrayIndex)+1)+ "];       //EPICSName: "+ActVariableEPICSName)
-						EndString =  ActVariablePLCName + "				:= uUINTs2TIME.tValue;"
-						IsDouble = False
+					InArrayNum, StartingRegister = AddTIME(item, InArrayName, InArrayNum, StartingRegister)
 				#==========================
 				#=== not supported TYPE ===
 				else:

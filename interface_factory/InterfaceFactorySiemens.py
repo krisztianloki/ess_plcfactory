@@ -101,6 +101,340 @@ def CloseLastVariable():
 			DevTypeBODY_CODE.append("       " + EndString)
 			EndString = ""
 
+def AddBOOL(variable, InArrayName, InArrayNum, StartingRegister):
+	global DevTypeBODY_CODE
+	global DevTypeBODY_CODE_ARRAY
+	global EndString
+	global EndString2
+	global IsDouble
+
+	#====== BOOL TYPE ========
+	ActVariablePLCName    = variable.properties["VARIABLE"]
+	ActVariableEPICSName  = variable.properties["EPICS"]
+	ActVariableType       = variable.properties["TYPE"]
+	ActVariableArrayIndex = int(variable.properties["ARRAY_INDEX"])
+	ActVariableBitNumber  = int(variable.properties["BIT_NUMBER"])
+
+	if variable.is_status():
+		if InArrayName is not None:
+			InArrayNum = InArrayNum + 1
+			DevTypeBODY_CODE_ARRAY.append("              #\""+ ActVariablePLCName +"\" := "+InArrayName+"["+str(InArrayNum)+"];")
+		if StartingRegister != ActVariableArrayIndex:
+			CloseLastVariable()
+			StartingRegister = ActVariableArrayIndex
+			DevTypeBODY_CODE.append("")
+			DevTypeBODY_CODE.append("       #MyWord := W#0;")
+		if ActVariableBitNumber < 8:
+			DevTypeBODY_CODE.append("       #MyBoolsinWord[" + str((int(ActVariableBitNumber)+8)) + "] := #\""+ ActVariablePLCName +"\";    //EPICSName: "+ActVariableEPICSName)
+			IsDouble = False
+			EndString = "#StatusReg["+str(ActVariableArrayIndex) +"] := #MyWord;"
+		else:
+			DevTypeBODY_CODE.append("       #MyBoolsinWord[" + str((int(ActVariableBitNumber)-8)) + "] := #\""+ ActVariablePLCName +"\";    //EPICSName: "+ActVariableEPICSName)
+			IsDouble = False
+			EndString = "#StatusReg["+str(ActVariableArrayIndex) +"] := #MyWord;"
+	if variable.is_parameter() or variable.is_command():
+		if StartingRegister != ActVariableArrayIndex:
+			CloseLastVariable()
+			StartingRegister = ActVariableArrayIndex
+			DevTypeBODY_CODE.append("")
+			DevTypeBODY_CODE.append("       #MyWord := #CommandReg["+str(ActVariableArrayIndex) +"];")
+		if ActVariableBitNumber < 8:
+			DevTypeBODY_CODE.append("       #\""+ ActVariablePLCName +"\" := #MyBoolsinWord[" + str((int(ActVariableBitNumber)+8)) + "];    //EPICSName: "+ActVariableEPICSName)
+			IsDouble = False
+			EndString = ""
+		else:
+			DevTypeBODY_CODE.append("       #\""+ ActVariablePLCName +"\" := #MyBoolsinWord[" + str((int(ActVariableBitNumber)-8)) + "];    //EPICSName: "+ActVariableEPICSName)
+			IsDouble = False
+			EndString = ""
+
+	return (InArrayNum, StartingRegister)
+
+
+def AddBYTE(variable, InArrayName, InArrayNum, StartingRegister):
+	global DevTypeBODY_CODE
+	global DevTypeBODY_CODE_ARRAY
+	global EndString
+	global EndString2
+	global IsDouble
+
+	#====== BYTE TYPE ========
+	ActVariablePLCName    = variable.properties["VARIABLE"]
+	ActVariableEPICSName  = variable.properties["EPICS"]
+	ActVariableType       = variable.properties["TYPE"]
+	ActVariableArrayIndex = int(variable.properties["ARRAY_INDEX"])
+	ActVariableBitNumber  = int(variable.properties["BIT_NUMBER"])
+
+	if variable.is_status():
+		if InArrayName is not None:
+			InArrayNum = InArrayNum + 1
+			DevTypeBODY_CODE_ARRAY.append("              #\""+ ActVariablePLCName +"\" := "+InArrayName+"["+str(InArrayNum)+"];")
+		if StartingRegister != ActVariableArrayIndex:
+			CloseLastVariable()
+			StartingRegister = ActVariableArrayIndex
+			DevTypeBODY_CODE.append("")
+			DevTypeBODY_CODE.append("       #MyWord := W#0;")
+		if ActVariableBitNumber == 0:
+			DevTypeBODY_CODE.append("       #MyBytesinWord[0] := #\""+ ActVariablePLCName +"\";    //EPICSName: "+ActVariableEPICSName)
+			IsDouble = False
+			EndString = "#StatusReg["+str(ActVariableArrayIndex) +"] := #MyWord;"
+		else:
+			DevTypeBODY_CODE.append("       #MyBytesinWord[1] := #\""+ ActVariablePLCName +"\";    //EPICSName: "+ActVariableEPICSName)
+			IsDouble = False
+			EndString = "#StatusReg["+str(ActVariableArrayIndex) +"] := #MyWord;"
+	if variable.is_parameter() or variable.is_command():
+		if StartingRegister != ActVariableArrayIndex:
+			CloseLastVariable()
+			StartingRegister = ActVariableArrayIndex
+			DevTypeBODY_CODE.append("")
+			DevTypeBODY_CODE.append("       #MyWord := #CommandReg["+str(ActVariableArrayIndex) +"];")
+		if ActVariableBitNumber == 0:
+			DevTypeBODY_CODE.append("       #\""+ ActVariablePLCName +"\" := #MyBytesinWord[1];    //EPICSName: "+ActVariableEPICSName)
+			IsDouble = False
+			EndString = ""
+		else:
+			DevTypeBODY_CODE.append("       #\""+ ActVariablePLCName +"\" := #MyBytesinWord[0];    //EPICSName: "+ActVariableEPICSName)
+			IsDouble = False
+			EndString = ""
+
+	return (InArrayNum, StartingRegister)
+
+
+def AddINT(variable, InArrayName, InArrayNum, StartingRegister):
+	global DevTypeBODY_CODE
+	global DevTypeBODY_CODE_ARRAY
+	global EndString
+	global EndString2
+	global IsDouble
+
+	#====== INT TYPE ========
+	ActVariablePLCName    = variable.properties["VARIABLE"]
+	ActVariableEPICSName  = variable.properties["EPICS"]
+	ActVariableType       = variable.properties["TYPE"]
+	ActVariableArrayIndex = int(variable.properties["ARRAY_INDEX"])
+	ActVariableBitNumber  = int(variable.properties["BIT_NUMBER"])
+
+	if variable.is_status():
+		if InArrayName is not None:
+			InArrayNum = InArrayNum + 1
+			DevTypeBODY_CODE_ARRAY.append("              #\""+ ActVariablePLCName +"\" := "+InArrayName+"["+str(InArrayNum)+"];")
+		if StartingRegister != ActVariableArrayIndex:
+			CloseLastVariable()
+			StartingRegister = ActVariableArrayIndex
+			DevTypeBODY_CODE.append("")
+			DevTypeBODY_CODE.append("       #MyInt := #\""+ ActVariablePLCName +"\";")
+		if ActVariableBitNumber == 0:
+			IsDouble = False
+			EndString = "#StatusReg["+str(ActVariableArrayIndex) +"] := #MyWordinInt;"
+	if variable.is_parameter() or variable.is_command():
+		if StartingRegister != ActVariableArrayIndex:
+			CloseLastVariable()
+			StartingRegister = ActVariableArrayIndex
+			DevTypeBODY_CODE.append("")
+			DevTypeBODY_CODE.append("       #MyWordinInt := #CommandReg["+str(ActVariableArrayIndex) +"];")
+			DevTypeBODY_CODE.append("       #\""+ ActVariablePLCName +"\" := #MyInt;    //EPICSName: "+ActVariableEPICSName)
+			IsDouble = False
+			EndString = ""
+
+	return (InArrayNum, StartingRegister)
+
+
+def AddWORD(variable, InArrayName, InArrayNum, StartingRegister):
+	global DevTypeBODY_CODE
+	global DevTypeBODY_CODE_ARRAY
+	global EndString
+	global EndString2
+	global IsDouble
+
+	#====== WORD TYPE ========
+	ActVariablePLCName    = variable.properties["VARIABLE"]
+	ActVariableEPICSName  = variable.properties["EPICS"]
+	ActVariableType       = variable.properties["TYPE"]
+	ActVariableArrayIndex = int(variable.properties["ARRAY_INDEX"])
+	ActVariableBitNumber  = int(variable.properties["BIT_NUMBER"])
+
+	if variable.is_status():
+		if InArrayName is not None:
+			InArrayNum = InArrayNum + 1
+			DevTypeBODY_CODE_ARRAY.append("              #\""+ ActVariablePLCName +"\" := "+InArrayName+"["+str(InArrayNum)+"];")
+		if StartingRegister != ActVariableArrayIndex:
+			CloseLastVariable()
+			StartingRegister = ActVariableArrayIndex
+			DevTypeBODY_CODE.append("")
+			DevTypeBODY_CODE.append("       #MyWord := #\""+ ActVariablePLCName +"\";")
+		if ActVariableBitNumber == 0:
+			IsDouble = False
+			EndString = "#StatusReg["+str(ActVariableArrayIndex) +"] := #MyWord;"
+	if variable.is_parameter() or variable.is_command():
+		if StartingRegister != ActVariableArrayIndex:
+			CloseLastVariable()
+			StartingRegister = ActVariableArrayIndex
+			DevTypeBODY_CODE.append("")
+			DevTypeBODY_CODE.append("       #\""+ ActVariablePLCName +"\" := #CommandReg["+str(ActVariableArrayIndex) +"];    //EPICSName: "+ActVariableEPICSName)
+			IsDouble = False
+			EndString = ""
+
+	return (InArrayNum, StartingRegister)
+
+
+def AddDINT(variable, InArrayName, InArrayNum, StartingRegister):
+	global DevTypeBODY_CODE
+	global DevTypeBODY_CODE_ARRAY
+	global EndString
+	global EndString2
+	global IsDouble
+
+	#====== DINT TYPE ========
+	ActVariablePLCName    = variable.properties["VARIABLE"]
+	ActVariableEPICSName  = variable.properties["EPICS"]
+	ActVariableType       = variable.properties["TYPE"]
+	ActVariableArrayIndex = int(variable.properties["ARRAY_INDEX"])
+	ActVariableBitNumber  = int(variable.properties["BIT_NUMBER"])
+
+	if variable.is_status():
+		if InArrayName is not None:
+			InArrayNum = InArrayNum + 1
+			DevTypeBODY_CODE_ARRAY.append("              #\""+ ActVariablePLCName +"\" := "+InArrayName+"["+str(InArrayNum)+"];")
+		if StartingRegister != ActVariableArrayIndex:
+			CloseLastVariable()
+			StartingRegister = ActVariableArrayIndex
+			DevTypeBODY_CODE.append("")
+			DevTypeBODY_CODE.append("       #MyDInt := #\""+ ActVariablePLCName +"\";")
+		if ActVariableBitNumber == 0:
+			IsDouble = True
+			EndString  = "#StatusReg["+str(ActVariableArrayIndex) +"] := #MyWordsinDint[0];"
+			EndString2 = "#StatusReg["+str(ActVariableArrayIndex+1) +"] := #MyWordsinDint[1];"
+	if variable.is_parameter() or variable.is_command():
+		if StartingRegister != ActVariableArrayIndex:
+			CloseLastVariable()
+			StartingRegister = ActVariableArrayIndex
+			DevTypeBODY_CODE.append("")
+			DevTypeBODY_CODE.append("       #MyDInt	:= 0;")
+			DevTypeBODY_CODE.append("       #MyWordsinDint[0]	:= #CommandReg["+str(ActVariableArrayIndex) +"];")
+			DevTypeBODY_CODE.append("       #MyWordsinDint[1]	:= #CommandReg["+str(ActVariableArrayIndex+1) +"];")
+			DevTypeBODY_CODE.append("       #\""+ ActVariablePLCName +"\" := #MyDInt;    //EPICSName: "+ActVariableEPICSName)
+			IsDouble = True
+			EndString = ""
+
+	return (InArrayNum, StartingRegister)
+
+
+def AddDWORD(variable, InArrayName, InArrayNum, StartingRegister):
+	global DevTypeBODY_CODE
+	global DevTypeBODY_CODE_ARRAY
+	global EndString
+	global EndString2
+	global IsDouble
+
+	#====== DWORD TYPE ========
+	ActVariablePLCName    = variable.properties["VARIABLE"]
+	ActVariableEPICSName  = variable.properties["EPICS"]
+	ActVariableType       = variable.properties["TYPE"]
+	ActVariableArrayIndex = int(variable.properties["ARRAY_INDEX"])
+	ActVariableBitNumber  = int(variable.properties["BIT_NUMBER"])
+
+	if variable.is_status():
+		if InArrayName is not None:
+			InArrayNum = InArrayNum + 1
+			DevTypeBODY_CODE_ARRAY.append("              #\""+ ActVariablePLCName +"\" := "+InArrayName+"["+str(InArrayNum)+"];")
+		if StartingRegister != ActVariableArrayIndex:
+			CloseLastVariable()
+			StartingRegister = ActVariableArrayIndex
+			DevTypeBODY_CODE.append("")
+			DevTypeBODY_CODE.append("       #MyDWord := #\""+ ActVariablePLCName +"\";")
+		if ActVariableBitNumber == 0:
+			IsDouble = True
+			EndString  = "#StatusReg["+str(ActVariableArrayIndex) +"] := #MyWordsinDWord[0];"
+			EndString2 = "#StatusReg["+str(ActVariableArrayIndex+1) +"] := #MyWordsinDWord[1];"
+	if variable.is_parameter() or variable.is_command():
+		print("DWORD is not supported for ModbusTCP")
+
+	return (InArrayNum, StartingRegister)
+
+
+def AddREAL(variable, InArrayName, InArrayNum, StartingRegister):
+	global DevTypeBODY_CODE
+	global DevTypeBODY_CODE_ARRAY
+	global EndString
+	global EndString2
+	global IsDouble
+
+	#====== REAL TYPE ========
+	ActVariablePLCName    = variable.properties["VARIABLE"]
+	ActVariableEPICSName  = variable.properties["EPICS"]
+	ActVariableType       = variable.properties["TYPE"]
+	ActVariableArrayIndex = int(variable.properties["ARRAY_INDEX"])
+	ActVariableBitNumber  = int(variable.properties["BIT_NUMBER"])
+
+	if variable.is_status():
+		if InArrayName is not None:
+			InArrayNum = InArrayNum + 1
+			DevTypeBODY_CODE_ARRAY.append("              #\""+ ActVariablePLCName +"\" := "+InArrayName+"["+str(InArrayNum)+"];")
+		if StartingRegister != ActVariableArrayIndex:
+			CloseLastVariable()
+			StartingRegister = ActVariableArrayIndex
+			DevTypeBODY_CODE.append("")
+			DevTypeBODY_CODE.append("       #MyReal := #\""+ ActVariablePLCName +"\";")
+		if ActVariableBitNumber == 0:
+			IsDouble = True
+			EndString  = "#StatusReg["+str(ActVariableArrayIndex) +"] := #MyWordsinReal[0];"
+			EndString2 = "#StatusReg["+str(ActVariableArrayIndex+1) +"] := #MyWordsinReal[1];"
+	if variable.is_parameter() or variable.is_command():
+		if StartingRegister != ActVariableArrayIndex:
+			CloseLastVariable()
+			StartingRegister = ActVariableArrayIndex
+			DevTypeBODY_CODE.append("")
+			DevTypeBODY_CODE.append("       #MyReal	:= 0.0;")
+			DevTypeBODY_CODE.append("       #MyWordsinReal[0]	:= #CommandReg["+str(ActVariableArrayIndex) +"];")
+			DevTypeBODY_CODE.append("       #MyWordsinReal[1]	:= #CommandReg["+str(ActVariableArrayIndex+1) +"];")
+			DevTypeBODY_CODE.append("       #\""+ ActVariablePLCName +"\" := #MyReal;    //EPICSName: "+ActVariableEPICSName)
+			IsDouble = True
+			EndString = ""
+
+	return (InArrayNum, StartingRegister)
+
+
+def AddTIME(variable, InArrayName, InArrayNum, StartingRegister):
+	global DevTypeBODY_CODE
+	global DevTypeBODY_CODE_ARRAY
+	global EndString
+	global EndString2
+	global IsDouble
+
+	#====== TIME TYPE ========
+	ActVariablePLCName    = variable.properties["VARIABLE"]
+	ActVariableEPICSName  = variable.properties["EPICS"]
+	ActVariableType       = variable.properties["TYPE"]
+	ActVariableArrayIndex = int(variable.properties["ARRAY_INDEX"])
+	ActVariableBitNumber  = int(variable.properties["BIT_NUMBER"])
+
+	if variable.is_status():
+		if InArrayName is not None:
+			InArrayNum = InArrayNum + 1
+			DevTypeBODY_CODE_ARRAY.append("              #\""+ ActVariablePLCName +"\" := "+InArrayName+"["+str(InArrayNum)+"];")
+		if StartingRegister != ActVariableArrayIndex:
+			CloseLastVariable()
+			StartingRegister = ActVariableArrayIndex
+			DevTypeBODY_CODE.append("")
+			DevTypeBODY_CODE.append("       #MyTime := #\""+ ActVariablePLCName +"\";")
+		if ActVariableBitNumber == 0:
+			IsDouble = True
+			EndString  = "#StatusReg["+str(ActVariableArrayIndex) +"] := #MyWordsinTime[0];"
+			EndString2 = "#StatusReg["+str(ActVariableArrayIndex+1) +"] := #MyWordsinTime[1];"
+	if variable.is_parameter() or variable.is_command():
+		if StartingRegister != ActVariableArrayIndex:
+			CloseLastVariable()
+			StartingRegister = ActVariableArrayIndex
+			DevTypeBODY_CODE.append("")
+			DevTypeBODY_CODE.append("       #MyDInt	:= 0;")
+			DevTypeBODY_CODE.append("       #MyWordsinDint[0]	:= #CommandReg["+str(ActVariableArrayIndex) +"];")
+			DevTypeBODY_CODE.append("       #MyWordsinDint[1]	:= #CommandReg["+str(ActVariableArrayIndex+1) +"];")
+			DevTypeBODY_CODE.append("       #\""+ ActVariablePLCName +"\" := #MyDInt;    //EPICSName: "+ActVariableEPICSName)
+			IsDouble = True
+			EndString = ""
+
+	return (InArrayNum, StartingRegister)
+
+
 def WriteDevType():
 
 	global DevTypeHeader
@@ -2416,217 +2750,35 @@ def ProcessIFADevTypes(OutputDir, TIAVersion):
 
 				#====== BOOL TYPE ========
 				if ActVariableType == "BOOL":
-					if item.is_status():
-						if InArrayName is not None:
-							InArrayNum = InArrayNum + 1
-							DevTypeBODY_CODE_ARRAY.append("              #\""+ ActVariablePLCName +"\" := "+InArrayName+"["+str(InArrayNum)+"];")
-						if StartingRegister != ActVariableArrayIndex:
-							CloseLastVariable()
-							StartingRegister = ActVariableArrayIndex
-							DevTypeBODY_CODE.append("")
-							DevTypeBODY_CODE.append("       #MyWord := W#0;")
-						if ActVariableBitNumber < 8:
-							DevTypeBODY_CODE.append("       #MyBoolsinWord[" + str((int(ActVariableBitNumber)+8)) + "] := #\""+ ActVariablePLCName +"\";    //EPICSName: "+ActVariableEPICSName)
-							IsDouble = False
-							EndString = "#StatusReg["+str(ActVariableArrayIndex) +"] := #MyWord;"
-						else:
-							DevTypeBODY_CODE.append("       #MyBoolsinWord[" + str((int(ActVariableBitNumber)-8)) + "] := #\""+ ActVariablePLCName +"\";    //EPICSName: "+ActVariableEPICSName)
-							IsDouble = False
-							EndString = "#StatusReg["+str(ActVariableArrayIndex) +"] := #MyWord;"
-					if item.is_parameter() or item.is_command():
-						if StartingRegister != ActVariableArrayIndex:
-							CloseLastVariable()
-							StartingRegister = ActVariableArrayIndex
-							DevTypeBODY_CODE.append("")
-							DevTypeBODY_CODE.append("       #MyWord := #CommandReg["+str(ActVariableArrayIndex) +"];")
-						if ActVariableBitNumber < 8:
-							DevTypeBODY_CODE.append("       #\""+ ActVariablePLCName +"\" := #MyBoolsinWord[" + str((int(ActVariableBitNumber)+8)) + "];    //EPICSName: "+ActVariableEPICSName)
-							IsDouble = False
-							EndString = ""
-						else:
-							DevTypeBODY_CODE.append("       #\""+ ActVariablePLCName +"\" := #MyBoolsinWord[" + str((int(ActVariableBitNumber)-8)) + "];    //EPICSName: "+ActVariableEPICSName)
-							IsDouble = False
-							EndString = ""
+					InArrayNum, StartingRegister = AddBOOL(item, InArrayName, InArrayNum, StartingRegister)
 				#==========================
 				#====== BYTE TYPE ========
 				elif ActVariableType == "BYTE":
-					if item.is_status():
-						if InArrayName is not None:
-							InArrayNum = InArrayNum + 1
-							DevTypeBODY_CODE_ARRAY.append("              #\""+ ActVariablePLCName +"\" := "+InArrayName+"["+str(InArrayNum)+"];")
-						if StartingRegister != ActVariableArrayIndex:
-							CloseLastVariable()
-							StartingRegister = ActVariableArrayIndex
-							DevTypeBODY_CODE.append("")
-							DevTypeBODY_CODE.append("       #MyWord := W#0;")
-						if ActVariableBitNumber == 0:
-							DevTypeBODY_CODE.append("       #MyBytesinWord[0] := #\""+ ActVariablePLCName +"\";    //EPICSName: "+ActVariableEPICSName)
-							IsDouble = False
-							EndString = "#StatusReg["+str(ActVariableArrayIndex) +"] := #MyWord;"
-						else:
-							DevTypeBODY_CODE.append("       #MyBytesinWord[1] := #\""+ ActVariablePLCName +"\";    //EPICSName: "+ActVariableEPICSName)
-							IsDouble = False
-							EndString = "#StatusReg["+str(ActVariableArrayIndex) +"] := #MyWord;"
-					if item.is_parameter() or item.is_command():
-						if StartingRegister != ActVariableArrayIndex:
-							CloseLastVariable()
-							StartingRegister = ActVariableArrayIndex
-							DevTypeBODY_CODE.append("")
-							DevTypeBODY_CODE.append("       #MyWord := #CommandReg["+str(ActVariableArrayIndex) +"];")
-						if ActVariableBitNumber == 0:
-							DevTypeBODY_CODE.append("       #\""+ ActVariablePLCName +"\" := #MyBytesinWord[1];    //EPICSName: "+ActVariableEPICSName)
-							IsDouble = False
-							EndString = ""
-						else:
-							DevTypeBODY_CODE.append("       #\""+ ActVariablePLCName +"\" := #MyBytesinWord[0];    //EPICSName: "+ActVariableEPICSName)
-							IsDouble = False
-							EndString = ""
+					InArrayNum, StartingRegister = AddBYTE(item, InArrayName, InArrayNum, StartingRegister)
 				#==========================
 				#====== INT TYPE ========
 				elif ActVariableType == "INT":
-					if item.is_status():
-						if InArrayName is not None:
-							InArrayNum = InArrayNum + 1
-							DevTypeBODY_CODE_ARRAY.append("              #\""+ ActVariablePLCName +"\" := "+InArrayName+"["+str(InArrayNum)+"];")
-						if StartingRegister != ActVariableArrayIndex:
-							CloseLastVariable()
-							StartingRegister = ActVariableArrayIndex
-							DevTypeBODY_CODE.append("")
-							DevTypeBODY_CODE.append("       #MyInt := #\""+ ActVariablePLCName +"\";")
-						if ActVariableBitNumber == 0:
-							IsDouble = False
-							EndString = "#StatusReg["+str(ActVariableArrayIndex) +"] := #MyWordinInt;"
-					if item.is_parameter() or item.is_command():
-						if StartingRegister != ActVariableArrayIndex:
-							CloseLastVariable()
-							StartingRegister = ActVariableArrayIndex
-							DevTypeBODY_CODE.append("")
-							DevTypeBODY_CODE.append("       #MyWordinInt := #CommandReg["+str(ActVariableArrayIndex) +"];")
-							DevTypeBODY_CODE.append("       #\""+ ActVariablePLCName +"\" := #MyInt;    //EPICSName: "+ActVariableEPICSName)
-							IsDouble = False
-							EndString = ""
+					InArrayNum, StartingRegister = AddINT(item, InArrayName, InArrayNum, StartingRegister)
 				#==========================
 				#====== WORD TYPE ========
 				elif ActVariableType == "WORD":
-					if item.is_status():
-						if InArrayName is not None:
-							InArrayNum = InArrayNum + 1
-							DevTypeBODY_CODE_ARRAY.append("              #\""+ ActVariablePLCName +"\" := "+InArrayName+"["+str(InArrayNum)+"];")
-						if StartingRegister != ActVariableArrayIndex:
-							CloseLastVariable()
-							StartingRegister = ActVariableArrayIndex
-							DevTypeBODY_CODE.append("")
-							DevTypeBODY_CODE.append("       #MyWord := #\""+ ActVariablePLCName +"\";")
-						if ActVariableBitNumber == 0:
-							IsDouble = False
-							EndString = "#StatusReg["+str(ActVariableArrayIndex) +"] := #MyWord;"
-					if item.is_parameter() or item.is_command():
-						if StartingRegister != ActVariableArrayIndex:
-							CloseLastVariable()
-							StartingRegister = ActVariableArrayIndex
-							DevTypeBODY_CODE.append("")
-							DevTypeBODY_CODE.append("       #\""+ ActVariablePLCName +"\" := #CommandReg["+str(ActVariableArrayIndex) +"];    //EPICSName: "+ActVariableEPICSName)
-							IsDouble = False
-							EndString = ""
+					InArrayNum, StartingRegister = AddWORD(item, InArrayName, InArrayNum, StartingRegister)
 				#==========================
 				#====== DINT TYPE ========
 				elif ActVariableType == "DINT":
-					if item.is_status():
-						if InArrayName is not None:
-							InArrayNum = InArrayNum + 1
-							DevTypeBODY_CODE_ARRAY.append("              #\""+ ActVariablePLCName +"\" := "+InArrayName+"["+str(InArrayNum)+"];")
-						if StartingRegister != ActVariableArrayIndex:
-							CloseLastVariable()
-							StartingRegister = ActVariableArrayIndex
-							DevTypeBODY_CODE.append("")
-							DevTypeBODY_CODE.append("       #MyDInt := #\""+ ActVariablePLCName +"\";")
-						if ActVariableBitNumber == 0:
-							IsDouble = True
-							EndString  = "#StatusReg["+str(ActVariableArrayIndex) +"] := #MyWordsinDint[0];"
-							EndString2 = "#StatusReg["+str(ActVariableArrayIndex+1) +"] := #MyWordsinDint[1];"
-					if item.is_parameter() or item.is_command():
-						if StartingRegister != ActVariableArrayIndex:
-							CloseLastVariable()
-							StartingRegister = ActVariableArrayIndex
-							DevTypeBODY_CODE.append("")
-							DevTypeBODY_CODE.append("       #MyDInt	:= 0;")
-							DevTypeBODY_CODE.append("       #MyWordsinDint[0]	:= #CommandReg["+str(ActVariableArrayIndex) +"];")
-							DevTypeBODY_CODE.append("       #MyWordsinDint[1]	:= #CommandReg["+str(ActVariableArrayIndex+1) +"];")
-							DevTypeBODY_CODE.append("       #\""+ ActVariablePLCName +"\" := #MyDInt;    //EPICSName: "+ActVariableEPICSName)
-							IsDouble = True
-							EndString = ""
+					InArrayNum, StartingRegister = AddDINT(item, InArrayName, InArrayNum, StartingRegister)
 				#==========================
 				#====== DWORD TYPE ========
 				elif ActVariableType == "DWORD":
-					if item.is_status():
-						if InArrayName is not None:
-							InArrayNum = InArrayNum + 1
-							DevTypeBODY_CODE_ARRAY.append("              #\""+ ActVariablePLCName +"\" := "+InArrayName+"["+str(InArrayNum)+"];")
-						if StartingRegister != ActVariableArrayIndex:
-							CloseLastVariable()
-							StartingRegister = ActVariableArrayIndex
-							DevTypeBODY_CODE.append("")
-							DevTypeBODY_CODE.append("       #MyDWord := #\""+ ActVariablePLCName +"\";")
-						if ActVariableBitNumber == 0:
-							IsDouble = True
-							EndString  = "#StatusReg["+str(ActVariableArrayIndex) +"] := #MyWordsinDWord[0];"
-							EndString2 = "#StatusReg["+str(ActVariableArrayIndex+1) +"] := #MyWordsinDWord[1];"
-					if item.is_parameter() or item.is_command():
-						print("DWORD is not supported for ModbusTCP")
+					InArrayNum, StartingRegister = AddDWORD(item, InArrayName, InArrayNum, StartingRegister)
 				#==========================
 				#====== REAL TYPE ========
 				elif ActVariableType == "REAL":
-					if item.is_status():
-						if InArrayName is not None:
-							InArrayNum = InArrayNum + 1
-							DevTypeBODY_CODE_ARRAY.append("              #\""+ ActVariablePLCName +"\" := "+InArrayName+"["+str(InArrayNum)+"];")
-						if StartingRegister != ActVariableArrayIndex:
-							CloseLastVariable()
-							StartingRegister = ActVariableArrayIndex
-							DevTypeBODY_CODE.append("")
-							DevTypeBODY_CODE.append("       #MyReal := #\""+ ActVariablePLCName +"\";")
-						if ActVariableBitNumber == 0:
-							IsDouble = True
-							EndString  = "#StatusReg["+str(ActVariableArrayIndex) +"] := #MyWordsinReal[0];"
-							EndString2 = "#StatusReg["+str(ActVariableArrayIndex+1) +"] := #MyWordsinReal[1];"
-					if item.is_parameter() or item.is_command():
-						if StartingRegister != ActVariableArrayIndex:
-							CloseLastVariable()
-							StartingRegister = ActVariableArrayIndex
-							DevTypeBODY_CODE.append("")
-							DevTypeBODY_CODE.append("       #MyReal	:= 0.0;")
-							DevTypeBODY_CODE.append("       #MyWordsinReal[0]	:= #CommandReg["+str(ActVariableArrayIndex) +"];")
-							DevTypeBODY_CODE.append("       #MyWordsinReal[1]	:= #CommandReg["+str(ActVariableArrayIndex+1) +"];")
-							DevTypeBODY_CODE.append("       #\""+ ActVariablePLCName +"\" := #MyReal;    //EPICSName: "+ActVariableEPICSName)
-							IsDouble = True
-							EndString = ""
+					InArrayNum, StartingRegister = AddREAL(item, InArrayName, InArrayNum, StartingRegister)
 				#==========================
 				#====== TIME TYPE ========
 				elif ActVariableType == "TIME":
-					if item.is_status():
-						if InArrayName is not None:
-							InArrayNum = InArrayNum + 1
-							DevTypeBODY_CODE_ARRAY.append("              #\""+ ActVariablePLCName +"\" := "+InArrayName+"["+str(InArrayNum)+"];")
-						if StartingRegister != ActVariableArrayIndex:
-							CloseLastVariable()
-							StartingRegister = ActVariableArrayIndex
-							DevTypeBODY_CODE.append("")
-							DevTypeBODY_CODE.append("       #MyTime := #\""+ ActVariablePLCName +"\";")
-						if ActVariableBitNumber == 0:
-							IsDouble = True
-							EndString  = "#StatusReg["+str(ActVariableArrayIndex) +"] := #MyWordsinTime[0];"
-							EndString2 = "#StatusReg["+str(ActVariableArrayIndex+1) +"] := #MyWordsinTime[1];"
-					if item.is_parameter() or item.is_command():
-						if StartingRegister != ActVariableArrayIndex:
-							CloseLastVariable()
-							StartingRegister = ActVariableArrayIndex
-							DevTypeBODY_CODE.append("")
-							DevTypeBODY_CODE.append("       #MyDInt	:= 0;")
-							DevTypeBODY_CODE.append("       #MyWordsinDint[0]	:= #CommandReg["+str(ActVariableArrayIndex) +"];")
-							DevTypeBODY_CODE.append("       #MyWordsinDint[1]	:= #CommandReg["+str(ActVariableArrayIndex+1) +"];")
-							DevTypeBODY_CODE.append("       #\""+ ActVariablePLCName +"\" := #MyDInt;    //EPICSName: "+ActVariableEPICSName)
-							IsDouble = True
-							EndString = ""
+					InArrayNum, StartingRegister = AddTIME(item, InArrayName, InArrayNum, StartingRegister)
 				#==========================
 				#=== not supported TYPE ===
 				else:
