@@ -993,7 +993,7 @@ def ProcessIFADevTypes(OutputDir):
 						IsDouble = False
 				#==========================
 				#====== BYTE TYPE ========
-				if ActVariableType == "BYTE":
+				elif ActVariableType == "BYTE":
 					if item.is_status():
 						if StartingRegister != ActVariableArrayIndex:
 							CloseLastVariable()
@@ -1016,7 +1016,7 @@ def ProcessIFADevTypes(OutputDir):
 						IsDouble = False
 				#==========================
 				#====== INT TYPE ========
-				if ActVariableType == "INT":
+				elif ActVariableType == "INT":
 					if item.is_status():
 						if StartingRegister != ActVariableArrayIndex:
 							CloseLastVariable()
@@ -1039,7 +1039,7 @@ def ProcessIFADevTypes(OutputDir):
 						IsDouble = False
 				#==========================
 				#====== WORD TYPE ========
-				if ActVariableType == "WORD":
+				elif ActVariableType == "WORD":
 					if item.is_status():
 						if StartingRegister != ActVariableArrayIndex:
 							CloseLastVariable()
@@ -1062,7 +1062,7 @@ def ProcessIFADevTypes(OutputDir):
 						IsDouble = False
 				#==========================
 				#====== DWORD TYPE ========
-				if ActVariableType == "DWORD":
+				elif ActVariableType == "DWORD":
 					if item.is_status():
 						if InArray:
 							InArrayNum = InArrayNum + 1
@@ -1084,7 +1084,7 @@ def ProcessIFADevTypes(OutputDir):
 						IsDouble = False
 				#==========================
 				#====== REAL TYPE ========
-				if ActVariableType == "REAL":
+				elif ActVariableType == "REAL":
 					if item.is_status():
 						if InArray:
 							InArrayNum = InArrayNum + 1
@@ -1108,7 +1108,7 @@ def ProcessIFADevTypes(OutputDir):
 						IsDouble = False
 				#==========================
 				#====== DINT TYPE ========
-				if ActVariableType == "DINT":
+				elif ActVariableType == "DINT":
 					if item.is_status():
 						if InArray:
 							InArrayNum = InArrayNum + 1
@@ -1132,7 +1132,7 @@ def ProcessIFADevTypes(OutputDir):
 						IsDouble = False
 				#==========================
 				#====== TIME TYPE ========
-				if ActVariableType == "TIME":
+				elif ActVariableType == "TIME":
 					if item.is_status():
 						if InArray:
 							InArrayNum = InArrayNum + 1
@@ -1154,6 +1154,11 @@ def ProcessIFADevTypes(OutputDir):
 						DevTypeBODY_CODE.append("       uUINTs2TIME.stLowHigh.nHigh             := EPICS_GVL.aDataModbus[nOffsetCmd + " + str(int(ActVariableArrayIndex)+1)+ "];       //EPICSName: "+ActVariableEPICSName)
 						EndString =  ActVariablePLCName + "				:= uUINTs2TIME.tValue;"
 						IsDouble = False
+				#==========================
+				#=== not supported TYPE ===
+				else:
+					if not Direct:
+						raise IFA.FatalException("Unsupported variable type", ActVariableType)
 				#==========================
 				if item.is_status():
 					if ActVariableArrayIndex >= MaxStatusReg:

@@ -2451,7 +2451,7 @@ def ProcessIFADevTypes(OutputDir, TIAVersion):
 							EndString = ""
 				#==========================
 				#====== BYTE TYPE ========
-				if ActVariableType == "BYTE":
+				elif ActVariableType == "BYTE":
 					if item.is_status():
 						if InArray:
 							InArrayNum = InArrayNum + 1
@@ -2485,7 +2485,7 @@ def ProcessIFADevTypes(OutputDir, TIAVersion):
 							EndString = ""
 				#==========================
 				#====== INT TYPE ========
-				if ActVariableType == "INT":
+				elif ActVariableType == "INT":
 					if item.is_status():
 						if InArray:
 							InArrayNum = InArrayNum + 1
@@ -2509,7 +2509,7 @@ def ProcessIFADevTypes(OutputDir, TIAVersion):
 							EndString = ""
 				#==========================
 				#====== WORD TYPE ========
-				if ActVariableType == "WORD":
+				elif ActVariableType == "WORD":
 					if item.is_status():
 						if InArray:
 							InArrayNum = InArrayNum + 1
@@ -2532,7 +2532,7 @@ def ProcessIFADevTypes(OutputDir, TIAVersion):
 							EndString = ""
 				#==========================
 				#====== DINT TYPE ========
-				if ActVariableType == "DINT":
+				elif ActVariableType == "DINT":
 					if item.is_status():
 						if InArray:
 							InArrayNum = InArrayNum + 1
@@ -2559,7 +2559,7 @@ def ProcessIFADevTypes(OutputDir, TIAVersion):
 							EndString = ""
 				#==========================
 				#====== DWORD TYPE ========
-				if ActVariableType == "DWORD":
+				elif ActVariableType == "DWORD":
 					if item.is_status():
 						if InArray:
 							InArrayNum = InArrayNum + 1
@@ -2577,7 +2577,7 @@ def ProcessIFADevTypes(OutputDir, TIAVersion):
 						print("DWORD is not supported for ModbusTCP")
 				#==========================
 				#====== REAL TYPE ========
-				if ActVariableType == "REAL":
+				elif ActVariableType == "REAL":
 					if item.is_status():
 						if InArray:
 							InArrayNum = InArrayNum + 1
@@ -2604,7 +2604,7 @@ def ProcessIFADevTypes(OutputDir, TIAVersion):
 							EndString = ""
 				#==========================
 				#====== TIME TYPE ========
-				if ActVariableType == "TIME":
+				elif ActVariableType == "TIME":
 					if item.is_status():
 						if InArray:
 							InArrayNum = InArrayNum + 1
@@ -2629,6 +2629,11 @@ def ProcessIFADevTypes(OutputDir, TIAVersion):
 							DevTypeBODY_CODE.append("       #\""+ ActVariablePLCName +"\" := #MyDInt;    //EPICSName: "+ActVariableEPICSName)
 							IsDouble = True
 							EndString = ""
+				#==========================
+				#=== not supported TYPE ===
+				else:
+					if not Direct:
+						raise IFA.FatalException("Unsupported variable type", ActVariableType)
 				#==========================
 				if item.is_status():
 					if ActVariableArrayIndex >= MaxStatusReg:
