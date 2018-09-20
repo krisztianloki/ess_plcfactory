@@ -730,9 +730,8 @@ def ProcessIFADevTypes(OutputDir):
 	TotalStatusReg = 0;
 	TotalCommandReg = 0;
 
-	InArray = False
-	InArrayName = ""
-	InArrayNum = 0
+	InArrayName = None
+	InArrayNum  = None
 
 
 	EPICS_GVL.append("<?xml version=\"1.0\" encoding=\"utf-8\"?>");
@@ -913,13 +912,12 @@ def ProcessIFADevTypes(OutputDir):
 		for item in device:
 			if item.is_wrapper_array():
 				if item.is_start():
-					InArray     = True
 					InArrayName = item.name()
 					InArrayNum  = 0
 				else:
-					InArray = False
 					DevTypeVAR_INPUT.append("      " + InArrayName + " : Array[1.."+ str(InArrayNum) +"] OF "+ ActVariableType+";   //EPICS Status variables defined in an array")
-					InArrayName = ""
+					InArrayName = None
+					InArrayNum  = None
 
 			elif item.is_block():
 				CloseLastVariable()
@@ -956,7 +954,7 @@ def ProcessIFADevTypes(OutputDir):
 					CloseLastVariable()
 
 				if item.is_status():
-					if not InArray:
+					if InArrayName is None:
 						DevTypeVAR_INPUT.append("      " + ActVariablePLCName +"  :"+ ActVariableType+";        //EPICS Status variable: "+ActVariableEPICSName)
 
 				if item.is_command():
@@ -975,7 +973,7 @@ def ProcessIFADevTypes(OutputDir):
 							CloseLastVariable()
 							StartingRegister = ActVariableArrayIndex
 							DevTypeBODY_CODE.append("")
-						if InArray:
+						if InArrayName is not None:
 							InArrayNum = InArrayNum + 1
 							DevTypeBODY_CODE.append("       nTempUINT." + str(ActVariableBitNumber)+ "           := "+ InArrayName + "[" +str(InArrayNum)+"];       //EPICSName: "+ActVariableEPICSName)
 						else:
@@ -999,7 +997,7 @@ def ProcessIFADevTypes(OutputDir):
 							CloseLastVariable()
 							StartingRegister = ActVariableArrayIndex
 							DevTypeBODY_CODE.append("")
-						if InArray:
+						if InArrayName is not None:
 							InArrayNum = InArrayNum + 1
 							DevTypeBODY_CODE.append("       EPICS_GVL.aDataS7[nOffsetStatus + " + str(ActVariableArrayIndex)+ "]           := BYTE_TO_UINT("+ InArrayName + "[" +str(InArrayNum)+"]);       //EPICSName: "+ActVariableEPICSName)
 						else:
@@ -1022,7 +1020,7 @@ def ProcessIFADevTypes(OutputDir):
 							CloseLastVariable()
 							StartingRegister = ActVariableArrayIndex
 							DevTypeBODY_CODE.append("")
-						if InArray:
+						if InArrayName is not None:
 							InArrayNum = InArrayNum + 1
 							DevTypeBODY_CODE.append("       EPICS_GVL.aDataS7[nOffsetStatus + " + str(ActVariableArrayIndex)+ "]           := INT_TO_UINT("+ InArrayName + "[" +str(InArrayNum)+"]);       //EPICSName: "+ActVariableEPICSName)
 						else:
@@ -1045,7 +1043,7 @@ def ProcessIFADevTypes(OutputDir):
 							CloseLastVariable()
 							StartingRegister = ActVariableArrayIndex
 							DevTypeBODY_CODE.append("")
-						if InArray:
+						if InArrayName is not None:
 							InArrayNum = InArrayNum + 1
 							DevTypeBODY_CODE.append("       EPICS_GVL.aDataS7[nOffsetStatus + " + str(ActVariableArrayIndex)+ "]           := WORD_TO_UINT("+ InArrayName + "[" +str(InArrayNum)+"]);       //EPICSName: "+ActVariableEPICSName)
 						else:
@@ -1064,7 +1062,7 @@ def ProcessIFADevTypes(OutputDir):
 				#====== DWORD TYPE ========
 				elif ActVariableType == "DWORD":
 					if item.is_status():
-						if InArray:
+						if InArrayName is not None:
 							InArrayNum = InArrayNum + 1
 						if StartingRegister != ActVariableArrayIndex:
 							CloseLastVariable()
@@ -1086,7 +1084,7 @@ def ProcessIFADevTypes(OutputDir):
 				#====== REAL TYPE ========
 				elif ActVariableType == "REAL":
 					if item.is_status():
-						if InArray:
+						if InArrayName is not None:
 							InArrayNum = InArrayNum + 1
 						if StartingRegister != ActVariableArrayIndex:
 							CloseLastVariable()
@@ -1110,7 +1108,7 @@ def ProcessIFADevTypes(OutputDir):
 				#====== DINT TYPE ========
 				elif ActVariableType == "DINT":
 					if item.is_status():
-						if InArray:
+						if InArrayName is not None:
 							InArrayNum = InArrayNum + 1
 						if StartingRegister != ActVariableArrayIndex:
 							CloseLastVariable()
@@ -1134,7 +1132,7 @@ def ProcessIFADevTypes(OutputDir):
 				#====== TIME TYPE ========
 				elif ActVariableType == "TIME":
 					if item.is_status():
-						if InArray:
+						if InArrayName is not None:
 							InArrayNum = InArrayNum + 1
 						if StartingRegister != ActVariableArrayIndex:
 							CloseLastVariable()
