@@ -18,6 +18,9 @@ class IFA(object):
     valid_line_types = set(mandatory_ifa_properties)
     valid_line_types.update(valid_device_entries)
 
+    valid_var_types = set([ 'BOOL', 'BYTE', 'CHAR', 'WORD', 'DWORD', 'INT', 'DINT', 'REAL', 'SSTIME', 'TIME', 'LTIME', 'DATE', 'TIME_OF_DAY', 'STRING',
+                            'USINT', 'SINT', 'UINT', 'UDINT' ])
+
 
     class Exception(Exception):
         pass
@@ -160,6 +163,8 @@ class IFA(object):
         def check(self):
             if not IFA.mandatory_variable_properties <= set(self.properties.keys()):
                 raise IFA.FatalException("Missing VARIABLE properties", IFA.mandatory_variable_properties - set(self.properties.keys()))
+            if self.properties["TYPE"] not in IFA.valid_var_types:
+                raise IFA.FatalException("Unsupported PLC type", self.properties["TYPE"])
 
 
 
