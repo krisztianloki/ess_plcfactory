@@ -33,8 +33,8 @@ The following types can be used to add a variable to an interface definition:
 *   **analog**; an integer or floating point value. Maps to the **_analog input/output_** record in EPICS and the **_user specified_** PLC type in the PLC
 *   **time**; an interval (NOT a timestamp) in milliseconds. Maps to the **_analog input/output_** record in EPICS and to the **_TIME_** type in the PLC
 *   **alarm**; a simple 1-bit information that generates an EPICS alarm if its value is 1\. Maps to the **_binary input_** record in EPICS and to the **_BOOL_** type in the PLC.
-*   ~~**enum**; an enumeration. Maps to the **_multi-bit binary input/output_** record in EPICS and the **_user specified_** PLC type in the PLC~~
-*   ~~**bitmask**; bits of a 16 bit integer. Maps to the **_multi-bit binary input/output direct_** record in EPICS and to the **_INT_** type in the PLC~~
+*   **enum**; an enumeration. Maps to the **_multi-bit binary input/output_** record in EPICS and the **_user specified_** PLC type in the PLC
+*   **bitmask**; bits of a 16 bit integer. Maps to the **_multi-bit binary input/output direct_** record in EPICS and to the **_INT_** type in the PLC
 
 ## PLC Types
 
@@ -117,13 +117,13 @@ Adding more than one spare bit:
 
 **`add_major_alarm("<name>", "<short_alarm_message>")`**
 
-### ~~Enum variable~~
+### Enum variable
 
-~~**`add_enum("<name>")`**~~
+**`add_enum("<name>", "<plc_type">)`**
 
-### ~~Bitmask variable~~
+### Bitmask variable
 
-~~**`add_bitmask("<name>")`**~~
+**`add_bitmask("<name>", "<plc_type">)`**
 
 ## Specifying archiving requirements
 

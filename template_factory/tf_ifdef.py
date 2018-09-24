@@ -897,8 +897,7 @@ class IF_DEF(object):
             raise IfDefSyntaxError("Alarm message is missing: {func}(\"{name}\", \"Short alarm message\")".format(name = name, func = "add_minor_alarm" if sevr == "MINOR" else "add_major_alarm"))
 
         keyword_params.update(PV_OSV  = sevr)
-        if "PV_ONAM" not in keyword_params:
-            keyword_params.update(PV_ONAM = alarm_message)
+        _test_and_set_pv(keyword_params, "ONAM", alarm_message)
 
         var = ALARM(self._source, self._active_bit_def(), name, sevr, alarm_message, keyword_params)
         self._add(var)
@@ -969,22 +968,32 @@ class IF_DEF(object):
 
 
     @hashed_interface
-    def add_enum(self, name, plc_var_type = "INT", nobt = 16, shift = 0, **keyword_params):
+    def add_enum(self, name, plc_var_type, nobt = 16, shift = 0, **keyword_params):
         if not isinstance(name, str):
             raise IfDefSyntaxError("Name must be a string!")
+        if not isinstance(plc_var_type, str):
+            raise IfDefSyntaxError("PLC type must be a string!")
+
+        _test_and_set_pv(keyword_params, "NOBT", nobt)
+        _test_and_set_pv(keyword_params, "SHFT", shift)
 
         block = self._active_block()
-        var = ENUM(self._source, block, name, plc_var_type, nobt, shift, keyword_params)
+        var = ENUM(self._source, block, name, plc_var_type, keyword_params)
         self._add(var)
 
 
     @hashed_interface
-    def add_bitmask(self, name, plc_var_type = "INT", nobt = 16, shift = 0, **keyword_params):
+    def add_bitmask(self, name, plc_var_type, nobt = 16, shift = 0, **keyword_params):
         if not isinstance(name, str):
             raise IfDefSyntaxError("Name must be a string!")
+        if not isinstance(plc_var_type, str):
+            raise IfDefSyntaxError("PLC type must be a string!")
+
+        _test_and_set_pv(keyword_params, "NOBT", nobt)
+        _test_and_set_pv(keyword_params, "SHFT", shift)
 
         block = self._active_block()
-        var = BITMASK(self._source, block, name, plc_var_type, nobt, shift, keyword_params)
+        var = BITMASK(self._source, block, name, plc_var_type, keyword_params)
         self._add(var)
 
 
@@ -1530,9 +1539,7 @@ class ANALOG(BASE_TYPE):
 class ENUM(BASE_TYPE):
     pv_types = { BLOCK.CMD : "mbbo",   BLOCK.PARAM : "mbbo",   BLOCK.STATUS : "mbbi" }
 
-    def __init__(self, source, block, name, plc_var_type, nobt, shift, keyword_params):
-        _test_and_set_pv(keyword_params, "NOBT", nobt)
-        _test_and_set_pv(keyword_params, "SHFT", shift)
+    def __init__(self, source, block, name, plc_var_type, keyword_params):
         BASE_TYPE.__init__(self, source, block, name, plc_var_type, keyword_params)
 
 
@@ -1544,9 +1551,7 @@ class ENUM(BASE_TYPE):
 class BITMASK(BASE_TYPE):
     pv_types = { BLOCK.CMD : "mbboDirect",   BLOCK.PARAM : "mbboDirect",   BLOCK.STATUS : "mbbiDirect" }
 
-    def __init__(self, source, block, name, plc_var_type, nobt, shift, keyword_params):
-        _test_and_set_pv(keyword_params, "NOBT", nobt)
-        _test_and_set_pv(keyword_params, "SHFT", shift)
+    def __init__(self, source, block, name, plc_var_type, keyword_params):
         BASE_TYPE.__init__(self, source, block, name, plc_var_type, keyword_params)
 
 
