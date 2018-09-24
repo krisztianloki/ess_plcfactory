@@ -468,7 +468,11 @@ class CC(object):
 
 
             def update(self, string):
-                self._hashobj.update(string.encode())
+                try:
+                    self._hashobj.update(string.encode())
+                except UnicodeDecodeError:
+                    # Happens on Py2 with strings containing unicode characters
+                    self._hashobj.update(string)
 
 
             def _crc32(self):
