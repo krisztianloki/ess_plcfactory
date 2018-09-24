@@ -123,3 +123,16 @@ PLC Factory is capable of integrating (and generating code for) the following PL
 One of `--plc-direct`, `--plc-interface`, or `--plc-beckhoff` is required for EPICS-PLC integration. These options implicitly adds _EPICS-DB_, _IFA_, and the proper _TIA-MAP_ to the list of templates (which means you don't have to add any templates explicitly).
 
 The information on what is exchanged between EPICS and a PLC is defined in so-called **Interface Definition** files. For further information, please see [template_factory](template_factory/)
+
+#### Assigning Interface Definition files to devices
+
+Assigning Interface Definitions happens on the _device type_-level in CCDB. Every device that belongs to the same device type has the same Interface Definition. There are 2 distinct ways of assigning:
+
+*   Upload the Interface Definition file as an _Artifact_ of the _device type_. The only restriction is that the file must have a **.def** extension.
+*   Upload the Interface Definition file to a Git repository (only Bitbucket has been tested so far) and add the URL to the repository (without the **.git** extension) as an _External Link_ to the _device type_ and use **EPI** as the link name. By default PLCFactory constructs the filename to download as follows:
+    *    takes the name of the _device type_
+    *    in all uppercase
+    *    changes reserved characters (**<**, **>**, **:**, **"**, **/**, **\\**, **|**, **?**, **\***) to **_**
+    *    appends **.def**
+
+    It is possible to explicitly specify the filename in square brackets after _EPI_; **EPI[file-to-download]**. The file must still have a **.def** extension (although it is automatically appended if not already specified). This technique can be used to share the same Interface Definition across device types.

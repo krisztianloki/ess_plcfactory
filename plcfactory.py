@@ -227,14 +227,28 @@ def getIfDefFromURL(device):
     else:
         epi = "EPI"
 
-    artifacts = filter(lambda u: u.is_uri() and u.name() == epi, device.artifacts())
+    fqepi = epi + "["
+    artifacts = filter(lambda u: u.is_uri() and (u.name() == epi or u.name().startswith(fqepi)), device.artifacts())
     if not artifacts:
         return None
 
     if len(artifacts) > 1:
         raise RuntimeError("More than one Interface Definition URLs were found for {device}: {urls}".format(device = device.name(), urls = map(lambda u: u.uri(), artifacts)))
 
-    filename = helpers.sanitizeFilename(device.deviceType().upper() + IFDEF_TAG)
+    if artifacts[0].name() == epi:
+        filename = helpers.sanitizeFilename(device.deviceType().upper() + IFDEF_TAG)
+    else:
+        filename = artifacts[0].name()
+        if filename[len(epi)] != '[' or filename[-1] != ']':
+            raise RuntimeError("Invalid name format in Interface Definition URL for {device}: {name}".format(device = device.name(), name = filename))
+
+        filename = filename[len(epi) + 1 : -1]
+        if filename != helpers.sanitizeFilename(filename):
+            raise RuntimeError("Invalid filename in Interface Definition URL for {device}: {name}".format(device = device.name(), name = filename))
+
+        if not filename.endswith(IFDEF_TAG):
+            filename += IFDEF_TAG
+
     url = "/".join([ "raw/master", filename ])
 
     print("Downloading Interface Definition file {filename} from {url}".format(filename = filename,
