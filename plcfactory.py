@@ -593,13 +593,14 @@ def create_eem(basename):
     except KeyError:
         m_cp(output_files['ST-CMD'],                  "startup", basename + ".cmd")
 
+    test_cmd = True
     try:
         m_cp(output_files['AUTOSAVE-ST-TEST-CMD'],    "startup", basename + "-test.cmd")
     except KeyError:
         try:
             m_cp(output_files['ST-TEST-CMD'],         "startup", basename + "-test.cmd")
         except KeyError:
-            pass
+            test_cmd = False
 
     req_files    = []
     try:
@@ -645,8 +646,23 @@ MISCS = ${AUTOMISCS} $(addprefix misc/, creator)
             print("USR_DEPENDENCIES += autosave", file = makefile)
             print("MISCS += $(addprefix misc/, {req_files})".format(req_files = " ".join(req_files)), file = makefile)
 
+    #
+    # Create .gitignore
+    #
+    with open(os.path.join(out_mdir, ".gitignore"), "w") as gitignore:
+        eem_files.append(gitignore.name)
+        print("""# Ignore builddir
+/builddir
+""", file = gitignore)
 
     output_files['EEM'] = eem_files
+
+    if test_cmd:
+        #
+        # Create script to run test version of module
+        #
+        with open(os.path.join(OUTPUT_DIR, "run_test_module"), "w") as run:
+            print("""iocsh -r {modulename},local -c 'requireSnippet({modulename}-test.cmd)'""".format(modulename = basename), file = run)
 
     print("Module created:", out_mdir)
     return out_mdir
