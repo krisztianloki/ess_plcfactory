@@ -230,8 +230,18 @@ class CCDB(CC):
         return sorted(map(lambda x: (levenshtein.distance(deviceName, x), x), candidates))
 
 
+    def deviceName(self, deviceName):
+        """
+            Handles the case when a dictionary from a controls/controlledBy/etc list is used as 'deviceName'
+        """
+        try:
+            return deviceName["name"]
+        except TypeError:
+            return deviceName
+
+
     def _device(self, deviceName):
-        assert isinstance(deviceName, str)
+        deviceName = self.deviceName(deviceName)
 
         if deviceName not in self._devices:
             url     = self._base_url + "slots/" + deviceName
@@ -259,7 +269,15 @@ Most similar device names in CCDB in chosen slot (max. 10):""".format(deviceName
             elif result.status_code != 200:
                 raise CC.DownloadException(url = url, code = result.status_code)
 
-            tmpDict = self.tostring(json.loads(result.text))
+            # Old versions of CCDB returned the installation slot entry itself and not a dictionary
+            tmpDict = json.loads(result.text)
+            try:
+                device = self.tostring(tmpDict["installationSlots"])
+                if len(device) > 1:
+                    raise CC.Exception("More than one device found with the same name: {}".format(deviceName))
+                device = device[0]
+            except KeyError:
+                device = self.tostring(tmpDict)
 
             if not self._devices:
                 # If this is the first device, assume this is the root device, so
@@ -273,7 +291,7 @@ Most similar device names in CCDB in chosen slot (max. 10):""".format(deviceName
                         self._devices[slot["name"]] = self.Device(slot)
 
             # save downloaded data
-            self._devices[deviceName] = self.Device(tmpDict)
+            self._devices[deviceName] = self.Device(device)
 
         return self._devices[deviceName]
 

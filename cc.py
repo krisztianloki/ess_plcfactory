@@ -299,9 +299,17 @@ class CC(object):
 
             return newdict
 
-        # This is only needed for Python2
-        # isinstance(string, str) above is enough in Python3
-        assert isinstance(string, unicode), type(string)
+        if isinstance(string, int):
+            return str(string)
+
+        try:
+            # Have to check for unicode type in Python2
+            # isinstance(string, str) above is enough in Python3
+            if not isinstance(string, unicode):
+                raise CC.Exception("Unhandled type", type(string), string)
+        except NameError:
+            # Sadly, the 'from None' part is not valid in Python2
+            raise CC.Exception("Unhandled type", type(string), string)# from None
 
         try:
             return string.encode("unicode-escape").decode("string-escape").decode("utf-8").encode("utf-8")
@@ -327,11 +335,17 @@ class CC(object):
     # Returns: CC.Device
     def device(self, deviceName, cachedOnly = False):
         try:
-            return self._devices[deviceName]
+            return self._devices[self.deviceName(deviceName)]
         except KeyError:
             if cachedOnly:
                 return None
             return self._device(deviceName)
+
+
+    # Returns: the device name
+    # CCDB returns a dictionary of {nameId, Id, name} in controls/controlledBy/etc list
+    def deviceName(self, deviceName):
+        return deviceName
 
 
     # Returns: {}
