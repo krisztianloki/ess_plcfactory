@@ -976,6 +976,13 @@ def main(argv):
                         action   = 'store_true',
                         required = False)
 
+    parser.add_argument(
+                        '--ccdb-devel',
+                        dest     = "ccdb_devel",
+                        help     = argparse.SUPPRESS, #selects CCDB development database
+                        action   = 'store_true',
+                        required = False)
+
     # this argument is just for show as the corresponding value is
     # set to True by default                        
     parser.add_argument(
@@ -1125,6 +1132,9 @@ def main(argv):
     elif args.ccdb_test:
         from ccdb import CCDB_TEST
         glob.ccdb = CCDB_TEST(clear_templates = args.clear_templates)
+    elif args.ccdb_devel:
+        from ccdb import CCDB_DEVEL
+        glob.ccdb = CCDB_DEVEL(clear_templates = args.clear_templates)
     else:
         glob.ccdb = CCDB(clear_templates = args.clear_templates)
 
