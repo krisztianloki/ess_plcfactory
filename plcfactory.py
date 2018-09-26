@@ -639,6 +639,8 @@ def create_eem(basename):
         eem_files.append(makefile.name)
         print("""include ${EPICS_ENV_PATH}/module.Makefile
 
+# Let s7plc_comms decide the version of s7plc and modbus
+AUTO_DEPENDENCIES = NO
 USR_DEPENDENCIES += s7plc_comms
 MISCS = ${AUTOMISCS} $(addprefix misc/, creator)
 """, file = makefile)
