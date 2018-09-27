@@ -1,3 +1,7 @@
+from __future__ import print_function
+from __future__ import division
+from __future__ import absolute_import
+
 """ Template Factory: Interface Definition Classes """
 
 
@@ -586,7 +590,7 @@ class IF_DEF(object):
             if not hasattr(val, '__call__') or f.startswith('_'):
                 continue
 
-            if val.func_name in ["ifdef_interface_func", "hashed_interface_func"]:
+            if val.__name__ in ["ifdef_interface_func", "hashed_interface_func"]:
                 self._evalEnv[f] = val
 
 
@@ -602,12 +606,12 @@ class IF_DEF(object):
                raise IfDefSyntaxError("Missing parentheses?")
 
             if result._hashed:
-                self._hash.update(stripped_source)
-        except AssertionError, e:
+                self._hash.update(stripped_source.encode())
+        except AssertionError as e:
             raise IfDefInternalError(e)
-        except SyntaxError, e:
+        except SyntaxError as e:
             raise IfDefSyntaxError(e)
-        except NameError, e:
+        except NameError as e:
             raise IfDefSyntaxError(e)
 
 
@@ -643,7 +647,7 @@ class IF_DEF(object):
         if block is not None:
             block.end()
             self._properties[block.length_keyword()] = block.length() // 2
-            print "{var}: {length}".format(var = block.length_keyword(), length = str(block.length() // 2))
+            print("{var}: {length}".format(var = block.length_keyword(), length = str(block.length() // 2)))
 
 
     def _add(self, var):
@@ -893,8 +897,7 @@ class IF_DEF(object):
             raise IfDefSyntaxError("Alarm message is missing: {func}(\"{name}\", \"Short alarm message\")".format(name = name, func = "add_minor_alarm" if sevr == "MINOR" else "add_major_alarm"))
 
         keyword_params.update(PV_OSV  = sevr)
-        if "PV_ONAM" not in keyword_params:
-            keyword_params.update(PV_ONAM = alarm_message)
+        _test_and_set_pv(keyword_params, "ONAM", alarm_message)
 
         var = ALARM(self._source, self._active_bit_def(), name, sevr, alarm_message, keyword_params)
         self._add(var)
@@ -965,22 +968,32 @@ class IF_DEF(object):
 
 
     @hashed_interface
-    def add_enum(self, name, plc_var_type = "INT", nobt = 16, shift = 0, **keyword_params):
+    def add_enum(self, name, plc_var_type, nobt = 16, shift = 0, **keyword_params):
         if not isinstance(name, str):
             raise IfDefSyntaxError("Name must be a string!")
+        if not isinstance(plc_var_type, str):
+            raise IfDefSyntaxError("PLC type must be a string!")
+
+        _test_and_set_pv(keyword_params, "NOBT", nobt)
+        _test_and_set_pv(keyword_params, "SHFT", shift)
 
         block = self._active_block()
-        var = ENUM(self._source, block, name, plc_var_type, nobt, shift, keyword_params)
+        var = ENUM(self._source, block, name, plc_var_type, keyword_params)
         self._add(var)
 
 
     @hashed_interface
-    def add_bitmask(self, name, plc_var_type = "INT", nobt = 16, shift = 0, **keyword_params):
+    def add_bitmask(self, name, plc_var_type, nobt = 16, shift = 0, **keyword_params):
         if not isinstance(name, str):
             raise IfDefSyntaxError("Name must be a string!")
+        if not isinstance(plc_var_type, str):
+            raise IfDefSyntaxError("PLC type must be a string!")
+
+        _test_and_set_pv(keyword_params, "NOBT", nobt)
+        _test_and_set_pv(keyword_params, "SHFT", shift)
 
         block = self._active_block()
-        var = BITMASK(self._source, block, name, plc_var_type, nobt, shift, keyword_params)
+        var = BITMASK(self._source, block, name, plc_var_type, keyword_params)
         self._add(var)
 
 
@@ -1024,7 +1037,7 @@ class IF_DEF(object):
                 if isinstance(src, BASE_TYPE):
                     src.adjust_parameter(cmd_length)
 
-        self._hash.update(str(self._properties))
+        self._hash.update(str(self._properties).encode())
 
         self._active = False
 
@@ -1247,11 +1260,11 @@ class BASE_TYPE(SOURCE):
                 if len(value) > length:
                     msg_hdr = msg_hdr_fmt.format(field = key)
                     if self.sourcenum() != -1:
-                        print "At line number {lnum}:".format(lnum = self.sourcenum())
-                    print self._add_warning((msg_hdr + "{value} (length: {len} / {max_len})").format(value   = value,
+                        print("At line number {lnum}:".format(lnum = self.sourcenum()))
+                    print(self._add_warning((msg_hdr + "{value} (length: {len} / {max_len})").format(value   = value,
                                                                                                      len     = len(value),
-                                                                                                     max_len = length))
-                    print self._add_warning(" " * (len(msg_hdr) + length) + "^")
+                                                                                                     max_len = length)))
+                    print(self._add_warning(" " * (len(msg_hdr) + length) + "^"))
                     if strict:
                         self._keyword_params[key] = self._keyword_params[key][:length]
             except KeyError:
@@ -1526,9 +1539,7 @@ class ANALOG(BASE_TYPE):
 class ENUM(BASE_TYPE):
     pv_types = { BLOCK.CMD : "mbbo",   BLOCK.PARAM : "mbbo",   BLOCK.STATUS : "mbbi" }
 
-    def __init__(self, source, block, name, plc_var_type, nobt, shift, keyword_params):
-        _test_and_set_pv(keyword_params, "NOBT", nobt)
-        _test_and_set_pv(keyword_params, "SHFT", shift)
+    def __init__(self, source, block, name, plc_var_type, keyword_params):
         BASE_TYPE.__init__(self, source, block, name, plc_var_type, keyword_params)
 
 
@@ -1540,9 +1551,7 @@ class ENUM(BASE_TYPE):
 class BITMASK(BASE_TYPE):
     pv_types = { BLOCK.CMD : "mbboDirect",   BLOCK.PARAM : "mbboDirect",   BLOCK.STATUS : "mbbiDirect" }
 
-    def __init__(self, source, block, name, plc_var_type, nobt, shift, keyword_params):
-        _test_and_set_pv(keyword_params, "NOBT", nobt)
-        _test_and_set_pv(keyword_params, "SHFT", shift)
+    def __init__(self, source, block, name, plc_var_type, keyword_params):
         BASE_TYPE.__init__(self, source, block, name, plc_var_type, keyword_params)
 
 

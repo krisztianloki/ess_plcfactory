@@ -1,3 +1,6 @@
+from __future__ import print_function
+from __future__ import absolute_import
+
 """ PLC Factory: CCDB Interactions """
 
 __author__     = "Krisztian Loki, Gregor Ulm"
@@ -224,14 +227,21 @@ class CCDB(CC):
         candidates = filter(lambda x: x.startswith(slot), allDevices)
 
         # compute Levenshtein distances
-        distances  =  map(lambda x: (levenshtein.distance(deviceName, x), x), candidates)
-        distances.sort()
+        return sorted(map(lambda x: (levenshtein.distance(deviceName, x), x), candidates))
 
-        return distances
+
+    def deviceName(self, deviceName):
+        """
+            Handles the case when a dictionary from a controls/controlledBy/etc list is used as 'deviceName'
+        """
+        try:
+            return deviceName["name"]
+        except TypeError:
+            return deviceName
 
 
     def _device(self, deviceName):
-        assert isinstance(deviceName, str)
+        deviceName = self.deviceName(deviceName)
 
         if deviceName not in self._devices:
             url     = self._base_url + "slots/" + deviceName
@@ -239,27 +249,35 @@ class CCDB(CC):
             result = self._get(url)
 
             if result.status_code == 204:
-                print "ERROR:"
-                print "Device " + deviceName + " not found.\n"
-                print "Please check the list of devices in CCDB, and keep"
-                print "in mind that device names are case-sensitive.\n"
-                print "Maybe you meant one of the following devices: "
-                print "(Accesing CCDB, may take a few seconds.)\n"
-                print "Most similar device names in CCDB in chosen slot (max. 10):"
+                print("""ERROR:
+Device {} not found.
+Please check the list of devices in CCDB, and keep
+in mind that device names are case-sensitive.
+Maybe you meant one of the following devices:
+(Accesing CCDB, may take a few seconds.)
+Most similar device names in CCDB in chosen slot (max. 10):""".format(deviceName))
                 top10 = self.getSimilarDevices(deviceName)[:10]
 
                 if top10 == []:
-                    print "No devices found."
+                    print("No devices found.")
                 else:
                     for (score, dev) in top10:
-                        print dev
+                        print(dev)
 
-                print "\nExiting.\n"
+                print("\nExiting.\n")
                 exit(1)
             elif result.status_code != 200:
                 raise CC.DownloadException(url = url, code = result.status_code)
 
-            tmpDict = self.tostring(json.loads(result.text))
+            # Old versions of CCDB returned the installation slot entry itself and not a dictionary
+            tmpDict = json.loads(result.text)
+            try:
+                device = self.tostring(tmpDict["installationSlots"])
+                if len(device) > 1:
+                    raise CC.Exception("More than one device found with the same name: {}".format(deviceName))
+                device = device[0]
+            except KeyError:
+                device = self.tostring(tmpDict)
 
             if not self._devices:
                 # If this is the first device, assume this is the root device, so
@@ -273,7 +291,7 @@ class CCDB(CC):
                         self._devices[slot["name"]] = self.Device(slot)
 
             # save downloaded data
-            self._devices[deviceName] = self.Device(tmpDict)
+            self._devices[deviceName] = self.Device(device)
 
         return self._devices[deviceName]
 
@@ -288,3 +306,11 @@ class CCDB_TEST(CCDB):
     def __init__(self, **kwargs):
         kwargs["verify_ssl_cert"] = False
         CCDB.__init__(self, "https://ics-services.esss.lu.se/ccdb-test/rest/", **kwargs)
+
+
+
+
+class CCDB_DEVEL(CCDB):
+    def __init__(self, **kwargs):
+        kwargs["verify_ssl_cert"] = False
+        CCDB.__init__(self, "https://icsvd-app01.esss.lu.se/ccdb-test/rest/", **kwargs)

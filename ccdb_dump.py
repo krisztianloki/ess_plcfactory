@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+
 """ PLC Factory: CCDB dump parser """
 
 __author__     = "Krisztian Loki"
@@ -73,7 +75,7 @@ class CCDB_Dump(object):
             try:
                 with open(os_path.join(self._rootpath, "device.dict")) as dd:
                     devicedict = dd.readline()
-            except IOError, e:
+            except IOError as e:
                 if e.errno == 2:
                     raise CC.Exception("Required file 'device.dict' does not exist!")
                 else:

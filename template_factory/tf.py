@@ -1,3 +1,6 @@
+from __future__ import print_function
+from __future__ import absolute_import
+
 """ Template Factory:  """
 
 __author__     = "Krisztian Loki"
@@ -30,22 +33,22 @@ def _processLine(if_def, line, num):
     try:
         if_def.add(line, num)
     except SyntaxError:
-        print errormsg.format(error = "Syntax error", num = num, line = line.strip())
+        print(errormsg.format(error = "Syntax error", num = num, line = line.strip()))
         exit(1)
-    except IfDefException, e :
-        print errormsg.format(error = e.type(), num = num, line = line.strip())
+    except IfDefException as e :
+        print(errormsg.format(error = e.type(), num = num, line = line.strip()))
         if e.args:
-            print e.args[0]
+            print(e.args[0])
         exit(1)
-    except AssertionError, e :
-        print errormsg.format(error = "Internal error", num = num, line = line.strip())
+    except AssertionError as e :
+        print(errormsg.format(error = "Internal error", num = num, line = line.strip()))
         if e.args:
-            print e.args[0]
+            print(e.args[0])
         exit(1)
-    except Exception, e:
-        print errormsg.format(error = "Exception", num = num, line = line)
+    except Exception as e:
+        print(errormsg.format(error = "Exception", num = num, line = line))
         if e.args:
-            print e.args[0]
+            print(e.args[0])
         exit(1)
 
 
@@ -87,7 +90,7 @@ def processLines(lines, processor = None, **kwargs):
 
     if multiline:
         multiline_error = "Unclosed multiline string at {num}: {line}"
-        print multiline_error.format(num = multilinei, line = multiline)
+        print(multiline_error.format(num = multilinei, line = multiline))
         return None
 
     if_def.end()

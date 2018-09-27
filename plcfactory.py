@@ -1,5 +1,8 @@
 #!/usr/bin/python2
 
+from __future__ import print_function
+from __future__ import absolute_import
+
 """ PLC Factory: Entry point """
 
 __author__     = "Gregor Ulm"
@@ -33,7 +36,7 @@ del tf_dir
 
 try:
     import tf
-except AttributeError, e:
+except AttributeError as e:
     if e.args[0] == "'module' object has no attribute 'iglob'":
         # glob.py has been renamed to plcf_glob.py but the .pyc can still be
         # there. Remove the .pyc and reload glob and try to import tf again
@@ -56,7 +59,6 @@ import plcf_glob as glob
 import plcf
 import processTemplate as pt
 from   ccdb import CCDB
-from   future_print import future_print
 import helpers
 
 # global variables
@@ -216,7 +218,7 @@ def getEOL(header):
     # this really is a quick and dirty hack
     # should be replaced by something like
     # #EOL CR LF
-    return header[tagPos][len(tag):].strip().replace('\\n', '\n').replace('\\r', '\r').translate(None, '"\'')
+    return header[tagPos][len(tag):].strip().replace('\\n', '\n').replace('\\r', '\r').strip('"').strip("'")
 
 
 def getIfDefFromURL(device):
@@ -225,18 +227,32 @@ def getIfDefFromURL(device):
     else:
         epi = "EPI"
 
-    artifacts = filter(lambda u: u.is_uri() and u.name() == epi, device.artifacts())
+    fqepi = epi + "["
+    artifacts = filter(lambda u: u.is_uri() and (u.name() == epi or u.name().startswith(fqepi)), device.artifacts())
     if not artifacts:
         return None
 
     if len(artifacts) > 1:
         raise RuntimeError("More than one Interface Definition URLs were found for {device}: {urls}".format(device = device.name(), urls = map(lambda u: u.uri(), artifacts)))
 
-    filename = helpers.sanitizeFilename(device.deviceType().upper() + IFDEF_TAG)
+    if artifacts[0].name() == epi:
+        filename = helpers.sanitizeFilename(device.deviceType().upper() + IFDEF_TAG)
+    else:
+        filename = artifacts[0].name()
+        if filename[len(epi)] != '[' or filename[-1] != ']':
+            raise RuntimeError("Invalid name format in Interface Definition URL for {device}: {name}".format(device = device.name(), name = filename))
+
+        filename = filename[len(epi) + 1 : -1]
+        if filename != helpers.sanitizeFilename(filename):
+            raise RuntimeError("Invalid filename in Interface Definition URL for {device}: {name}".format(device = device.name(), name = filename))
+
+        if not filename.endswith(IFDEF_TAG):
+            filename += IFDEF_TAG
+
     url = "/".join([ "raw/master", filename ])
 
-    print "Downloading Interface Definition file {filename} from {url}".format(filename = filename,
-                                                                               url      = artifacts[0].uri())
+    print("Downloading Interface Definition file {filename} from {url}".format(filename = filename,
+                                                                               url      = artifacts[0].uri()))
 
     return artifacts[0].download(extra_url = url)
 
@@ -304,23 +320,23 @@ def buildControlsList(device):
         except KeyError:
             controlled_devices[device_type] = [ dev ]
 
-    print "\r" + "#" * 60
-    print "Device at root: " + device.name() + "\n"
-    print device.name() + " controls: "
+    print("\r" + "#" * 60)
+    print("Device at root: " + device.name() + "\n")
+    print(device.name() + " controls: ")
 
     # sort items into a list
     def sortkey(device):
         return device.name()
     pool = list()
     for device_type in sorted(controlled_devices):
-        print "\t- " + device_type
+        print("\t- " + device_type)
 
         for dev in sorted(controlled_devices[device_type], key=sortkey):
             pool.append(dev)
             dev.putInControlledTree()
-            print "\t\t-- " + dev.name()
+            print("\t\t-- " + dev.name())
 
-    print "\n"
+    print("\n")
 
     return pool
 
@@ -330,7 +346,7 @@ def getHeaderFooter(device, templateID):
 
     templatePrinter = tf.get_printer(templateID)
     if templatePrinter is not None:
-        print "Using built-in template header/footer"
+        print("Using built-in template header/footer")
         header = []
         templatePrinter.header(header, PLC_TYPE = plc_type)
         footer = []
@@ -340,14 +356,14 @@ def getHeaderFooter(device, templateID):
         footer = openTemplate(device, FOOTER_TAG, templateID)
 
     if not header:
-        print "No header found.\n"
+        print("No header found.\n")
     else:
-        print "Header read.\n"
+        print("Header read.\n")
 
     if not footer:
-        print "No footer found.\n"
+        print("No footer found.\n")
     else:
-        print "Footer read.\n"
+        print("Footer read.\n")
 
     return (header, footer, templatePrinter)
 
@@ -365,9 +381,9 @@ def processTemplateID(templateID, devices):
     else:
         tagged_templateID = templateID
 
-    print "#" * 60
-    print "Template ID " + tagged_templateID
-    print "Device at root: " + str(rootDevice) + "\n"
+    print("#" * 60)
+    print("Template ID " + tagged_templateID)
+    print("Device at root: " + str(rootDevice) + "\n")
 
     # collect lines to be written at the end
     output = []
@@ -387,17 +403,17 @@ def processTemplateID(templateID, devices):
     if footer:
         footer = pt.process(rootDevice, footer)
 
-    print "Processing entire tree of controls-relationships:\n"
+    print("Processing entire tree of controls-relationships:\n")
 
     # for each device, find corresponding template and process it
     output     = []
     for device in devices:
         deviceType = device.deviceType()
 
-        print device.name()
-        print "Device type: " + deviceType
+        print(device.name())
+        print("Device type: " + deviceType)
 
-        hashobj.update(device.name())
+        hashobj.update(device.name().encode())
 
         # get template
         template = None
@@ -406,7 +422,7 @@ def processTemplateID(templateID, devices):
         if templatePrinter is not None:
             ifdef = getIfDef(device)
             if ifdef is not None:
-                print "Generating template from Definition File..."
+                print("Generating template from Definition File...")
                 template = []
                 templatePrinter.body(ifdef, template)
 
@@ -416,21 +432,21 @@ def processTemplateID(templateID, devices):
 
         # Try to check if we have a default template printer implementation
         if template is None and templatePrinter is not None and not templatePrinter.needs_ifdef():
-            print "Using default built-in template..."
+            print("Using default built-in template...")
             template = []
             templatePrinter.body(None, template)
 
         if template is not None:
             # process template and add result to output
             output += pt.process(device, template)
-            print "Template processed."
+            print("Template processed.")
 
         else:
-            print "No template found."
+            print("No template found.")
 
-        print "=" * 40
+        print("=" * 40)
 
-    print "\n"
+    print("\n")
 
     # process #HASH keyword in header and footer
     header      = processHash(header)
@@ -441,7 +457,7 @@ def processTemplateID(templateID, devices):
     output      = header + output + footer
 
     if not output:
-        print "There were no templates for ID = " + tagged_templateID + ".\n"
+        print("There were no templates for ID = {}.\n".format(tagged_templateID))
         return
 
     lines  = output
@@ -476,12 +492,12 @@ def processTemplateID(templateID, devices):
             if not line.startswith("#COUNTER") \
                and not line.startswith("#FILENAME") \
                and not line.startswith("#EOL"):
-                future_print(line, end = eol, file = f)
+                print(line, end = eol, file = f)
 
     output_files[templateID] = outputFile
 
-    print "Output file written: " + outputFile + "\n",
-    print "Hash sum: " + glob.ccdb.getHash(hashobj)
+    print("Output file written:", outputFile)
+    print("Hash sum:", glob.ccdb.getHash(hashobj))
     print("--- %s %.1f seconds ---\n" % (tagged_templateID, time.time() - start_time))
 
 
@@ -489,7 +505,11 @@ def processDevice(deviceName, templateIDs):
     assert isinstance(deviceName,  str)
     assert isinstance(templateIDs, list)
 
-    print "Obtaining controls tree..."
+    try:
+        print("Obtaining controls tree...", end = '', flush = True)
+    except TypeError:
+        print("Obtaining controls tree...", end = '')
+        sys.stdout.flush()
 
     device = glob.ccdb.device(deviceName)
 
@@ -497,7 +517,8 @@ def processDevice(deviceName, templateIDs):
     devices = [ device ]
     devices.extend(buildControlsList(device))
 
-    map(lambda x: processTemplateID(x, devices), templateIDs)
+    for templateID in templateIDs:
+        processTemplateID(templateID, devices)
 
     global hashes
     hashes[device.name()] = glob.ccdb.getHash(hashobj)
@@ -533,7 +554,7 @@ def create_zipfile(zipit):
                 z.write(ff, removeoutdir(ff))
     z.close()
 
-    print "Zipfile created: " + zipit
+    print("Zipfile created:", zipit)
     return zipit
 
 
@@ -572,13 +593,14 @@ def create_eem(basename):
     except KeyError:
         m_cp(output_files['ST-CMD'],                  "startup", basename + ".cmd")
 
+    test_cmd = True
     try:
         m_cp(output_files['AUTOSAVE-ST-TEST-CMD'],    "startup", basename + "-test.cmd")
     except KeyError:
         try:
             m_cp(output_files['ST-TEST-CMD'],         "startup", basename + "-test.cmd")
         except KeyError:
-            pass
+            test_cmd = False
 
     req_files    = []
     try:
@@ -608,26 +630,42 @@ def create_eem(basename):
                 z.close()
         except:
             helpers.rmdirs(os.path.join(miscdir, "ccdb"))
-            print "Cannot copy CCDB dump to EEE module"
+            print("Cannot copy CCDB dump to EEE module")
 
     #
     # Generate Makefile
     #
     with open(os.path.join(out_mdir, "Makefile"), "w") as makefile:
         eem_files.append(makefile.name)
-        future_print("""include ${EPICS_ENV_PATH}/module.Makefile
+        print("""include ${EPICS_ENV_PATH}/module.Makefile
 
 USR_DEPENDENCIES += s7plc_comms
 MISCS = ${AUTOMISCS} $(addprefix misc/, creator)
 """, file = makefile)
         if req_files:
-            future_print("USR_DEPENDENCIES += autosave", file = makefile)
-            future_print("MISCS += $(addprefix misc/, {req_files})".format(req_files = " ".join(req_files)), file = makefile)
+            print("USR_DEPENDENCIES += autosave",   file = makefile)
+            print("USR_DEPENDENCIES += synappsstd", file = makefile)
+            print("MISCS += $(addprefix misc/, {req_files})".format(req_files = " ".join(req_files)), file = makefile)
 
+    #
+    # Create .gitignore
+    #
+    with open(os.path.join(out_mdir, ".gitignore"), "w") as gitignore:
+        eem_files.append(gitignore.name)
+        print("""# Ignore builddir
+/builddir
+""", file = gitignore)
 
     output_files['EEM'] = eem_files
 
-    print "Module created: " + out_mdir
+    if test_cmd:
+        #
+        # Create script to run test version of module
+        #
+        with open(os.path.join(OUTPUT_DIR, "run_test_module"), "w") as run:
+            print("""iocsh -r {modulename},local -c 'requireSnippet({modulename}-test.cmd)'""".format(modulename = basename), file = run)
+
+    print("Module created:", out_mdir)
     return out_mdir
 
 
@@ -658,7 +696,7 @@ def read_data_files():
 def write_data_files():
     try:
         with open(os.path.join(create_data_dir(), "hashes"), 'w') as h:
-            future_print(str(hashes), file = h)
+            print(str(hashes), file = h)
     except:
         print("Was not able to save data files")
         return
@@ -681,7 +719,7 @@ def read_last_update():
 def create_last_update():
     fname = os.path.join(OUTPUT_DIR, ".last_updated")
     with open(fname, 'w') as lu:
-        future_print(glob.timestamp, file = lu)
+        print(glob.timestamp, file = lu)
         output_files["LAST_UPDATE"] = fname
 
 
@@ -713,13 +751,13 @@ def verify_output(strictness):
             raise
 
     if previous_files:
-        print "\n" + "=*" * 40
-        print """
+        print("\n" + "=*" * 40)
+        print("""
 THE FOLLOWING FILES WERE CHANGED:
-"""
+""")
         for (template, output) in previous_files.iteritems():
-            print "\t{template}:\t{filename}".format(template = template, filename = output)
-        print "\n" + "=*" * 40
+            print("\t{template}:\t{filename}".format(template = template, filename = output))
+        print("\n" + "=*" * 40)
 
         exit(1)
 
@@ -727,13 +765,13 @@ THE FOLLOWING FILES WERE CHANGED:
     create_last_update()
 
     if not_checked:
-        print "\n" + "=*" * 40
-        print """
+        print("\n" + "=*" * 40)
+        print("""
 THE FOLLOWING FILES WERE NOT CHECKED:
-"""
+""")
         for (template, output) in not_checked.iteritems():
-            print "\t{template}:\t{filename}".format(template = template, filename = output)
-        print "\n" + "=*" * 40
+            print("\t{template}:\t{filename}".format(template = template, filename = output))
+        print("\n" + "=*" * 40)
 
         if strictness > 1:
             exit(1)
@@ -742,19 +780,19 @@ THE FOLLOWING FILES WERE NOT CHECKED:
 def record_args(root_device):
     creator = os.path.join(OUTPUT_DIR, createFilename(["#FILENAME [PLCF#INSTALLATION_SLOT]-creator-[PLCF#TIMESTAMP]"], root_device, ""))
     with open(creator, 'w') as f:
-        future_print(" ".join(sys.argv), file = f)
+        print(" ".join(sys.argv), file = f)
     output_files["CREATOR"] = creator
 
 
 def banner():
-    print " _____  _      _____   ______         _                    "
-    print "|  __ \| |    / ____| |  ____|       | |                   "
-    print "| |__) | |   | |      | |__ __ _  ___| |_ ___  _ __ _   _  "
-    print "|  ___/| |   | |      |  __/ _` |/ __| __/ _ \| '__| | | | "
-    print "| |    | |___| |____  | | ( (_| | (__| |( (_) | |  | |_| | "
-    print "|_|    |______\_____| |_|  \__,_|\___|\__\___/|_|   \__, | "
-    print "                                                     __/ | "
-    print "European Spallation Source, Lund                    |___/ \n"
+    print(" _____  _      _____   ______         _                    ")
+    print("|  __ \| |    / ____| |  ____|       | |                   ")
+    print("| |__) | |   | |      | |__ __ _  ___| |_ ___  _ __ _   _  ")
+    print("|  ___/| |   | |      |  __/ _` |/ __| __/ _ \| '__| | | | ")
+    print("| |    | |___| |____  | | ( (_| | (__| |( (_) | |  | |_| | ")
+    print("|_|    |______\_____| |_|  \__,_|\___|\__\___/|_|   \__, | ")
+    print("                                                     __/ | ")
+    print("European Spallation Source, Lund                    |___/ \n")
 
 
 
@@ -856,7 +894,7 @@ def main(argv):
     device = args.device
 
     if args.list_templates:
-        print tf.available_printers()
+        print(tf.available_printers())
         exit(0)
 
     if args.plc_direct is not None:
@@ -935,6 +973,13 @@ def main(argv):
                         '--test',
                         dest     = "ccdb_test",
                         help     = 'select CCDB test database',
+                        action   = 'store_true',
+                        required = False)
+
+    parser.add_argument(
+                        '--ccdb-devel',
+                        dest     = "ccdb_devel",
+                        help     = argparse.SUPPRESS, #selects CCDB development database
                         action   = 'store_true',
                         required = False)
 
@@ -1032,7 +1077,7 @@ def main(argv):
 
     if default_printers:
         if not default_printers <= set(tf.available_printers()):
-            print "Your PLCFactory does not support generating the following necessary templates: ", list(default_printers - set(tf.available_printers()))
+            print("Your PLCFactory does not support generating the following necessary templates:", list(default_printers - set(tf.available_printers())))
             exit(1)
 
         templateIDs = default_printers | set(args.template)
@@ -1068,12 +1113,7 @@ def main(argv):
         templateIDs.add("UPLOAD-PARAMS")
 
     if eem and "EPICS-TEST-DB" in templateIDs:
-        templateIDs.add("ST-TEST-CMD")
-
-    if eem and "AUTOSAVE" in templateIDs:
-        templateIDs.add("AUTOSAVE-ST-CMD")
-
-    if eem and "AUTOSAVE-TEST" in templateIDs:
+        templateIDs.add("AUTOSAVE-TEST")
         templateIDs.add("AUTOSAVE-ST-TEST-CMD")
 
     if "ST-CMD" in templateIDs and "AUTOSAVE-ST-CMD" in templateIDs:
@@ -1092,6 +1132,9 @@ def main(argv):
     elif args.ccdb_test:
         from ccdb import CCDB_TEST
         glob.ccdb = CCDB_TEST(clear_templates = args.clear_templates)
+    elif args.ccdb_devel:
+        from ccdb import CCDB_DEVEL
+        glob.ccdb = CCDB_DEVEL(clear_templates = args.clear_templates)
     else:
         glob.ccdb = CCDB(clear_templates = args.clear_templates)
 
@@ -1122,11 +1165,11 @@ def main(argv):
         try:
             from InterfaceFactorySiemens import produce as ifa_produce
         except ImportError:
-            print """
+            print("""
 ERROR
 =====
 Siemens support is not found
-"""
+""")
             exit(1)
 
         output_files.update(ifa_produce(OUTPUT_DIR, output_files["IFA"], output_files[tia_map], tia_version, nodiag = args.plc_no_diag, onlydiag = args.plc_only_diag, direct = args.plc_direct))
@@ -1135,11 +1178,11 @@ Siemens support is not found
         try:
             from InterfaceFactoryBeckhoff import produce as ifa_produce
         except ImportError:
-            print """
+            print("""
 ERROR
 =====
 Beckhoff support is not found
-"""
+""")
             exit(1)
 
         output_files.update(ifa_produce(OUTPUT_DIR, output_files["IFA"], "", beckhoff))
@@ -1155,11 +1198,11 @@ Beckhoff support is not found
         for warn in ifdef.warnings():
             if not has_warns:
                 has_warns = True
-                future_print("\nThe following warnings were detected:\n", file = sys.stderr)
-            future_print(warn, file = sys.stderr)
+                print("\nThe following warnings were detected:\n", file = sys.stderr)
+            print(warn, file = sys.stderr)
 
     if not args.clear_templates:
-        print "\nTemplates were reused\n"
+        print("\nTemplates were reused\n")
 
     try:
         if prev_hashes is not None and prev_hashes[root_device.name()] != hashes[root_device.name()]:
@@ -1180,6 +1223,6 @@ Beckhoff support is not found
 if __name__ == "__main__":
     try:
         main(sys.argv[1:])
-    except PLCFArgumentError, e:
-        future_print(e.message, file = sys.stderr)
+    except PLCFArgumentError as e:
+        print(e.message, file = sys.stderr)
         exit(e.status)

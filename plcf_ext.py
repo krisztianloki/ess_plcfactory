@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 """ PLC Factory: PLCF# Extensions """
 
 __author__     = "Gregor Ulm"
@@ -12,7 +13,7 @@ import plcf_glob
 # simple example:
 def foo(x):
     assert isinstance(x, int)
-    
+
     return x * x * x
 
 

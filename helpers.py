@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+
 """ PLC Factory: helper functions """
 
 __author__     = "Krisztian Loki"
@@ -8,7 +10,10 @@ __license__    = "GPLv3"
 # Python libraries
 import os
 import unicodedata
-from   urlparse import urlsplit
+try:
+    from   urlparse import urlsplit
+except ImportError:
+    from urllib.parse import urlsplit
 
 
 def rmdirs(path):
@@ -38,11 +43,20 @@ def makedirs(path):
 
 
 def sanitizeFilename(filename):
-    if isinstance(filename, str):
-        filename = filename.decode("utf-8")
+    # Only needed for Python2
+    try:
+        if isinstance(filename, str):
+            filename = filename.decode("utf-8")
+    except AttributeError:
+        # Python3 string does not have decode()
+        pass
 
     # replace accented characters with the unaccented equivalent
     filename = unicodedata.normalize("NFKD", filename).encode("ASCII", "ignore")
+
+    if isinstance(filename, bytes) and not isinstance(filename, str):
+        # Only needef for Python3
+        filename = filename.decode()
 
     result = map(lambda x: '_' if x in '<>:"/\|?*' else x, filename)
     return "".join(result)

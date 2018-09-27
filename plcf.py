@@ -1,3 +1,6 @@
+from __future__ import print_function
+from __future__ import absolute_import
+
 """ PLC Factory: PLCF# Language """
 
 __author__     = "Gregor Ulm"
@@ -182,8 +185,6 @@ def evaluateExpression(expression, device, propDict):
     # in the hierarchy
     expression = evalUp(expression, device)
 
-    keys = propDict.keys()
-    keys.sort(key = lambda s: len(s), reverse = True)
     """
     Sorting property names from longest to shortest avoids
     the potential issue that a PLCF# expression can't be fully
@@ -209,7 +210,7 @@ def evaluateExpression(expression, device, propDict):
     to the "maximal munch" concept in compiler theory.
     """
 
-    for elem in keys:
+    for elem in sorted(propDict.keys(), key = lambda s: len(s), reverse = True):
         if elem in expression:
             value = propDict.get(elem)
             tmp   = substitute(expression, elem, value)
@@ -306,10 +307,10 @@ def findMatchingSquareParenthesis(line):
                 return i
             d.append([ci, i])
         except IndexError:
-            print 'Too many closing parentheses'
+            print('Too many closing parentheses')
             return -1
   if istart:  # check if stack is empty afterwards
-    print 'Too many opening parentheses'
+    print('Too many opening parentheses')
     return -1
   d.sort()
   return d[0][1]

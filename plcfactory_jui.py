@@ -1,3 +1,6 @@
+from __future__ import print_function
+from __future__ import absolute_import
+
 """ PLC Factory UI based on Jupyterhub's ipywidgets module """
 
 from ipywidgets import Checkbox, Text, Textarea, Button, ToggleButton, HBox, VBox, Output, Layout, HTML
@@ -23,7 +26,7 @@ def show_widget(w):
 
 def show_wait_animation():
     global plc_result
-    
+
     for c in plcf_ui.children:
         if c != plcf_result:
             c.close()
@@ -53,7 +56,7 @@ def show_wait_animation():
 def run_plcfactory(w):
     global plcf_output
     global plcf_result
-    
+
     argv = []
     for (k,v) in widgets.iteritems():
         if isinstance(v.value, bool) and v.value:
@@ -67,7 +70,7 @@ def run_plcfactory(w):
                 argv.extend([k, str(v.value)])
 
     show_wait_animation()
-    
+
     plcf_output = Output()
     hide_widget(plcf_output)
 
@@ -75,11 +78,11 @@ def run_plcfactory(w):
     with plcf_output:
         from plcfactory import main as plcf
         from plcfactory import create_zipfile
-        
+
         try:
             if False:
                 from time import sleep
-                print "Waiting 5 seconds..."
+                print("Waiting 5 seconds...")
                 sleep(5)
             else:
                 plcf(argv)
@@ -98,7 +101,7 @@ def run_plcfactory(w):
 
 def show_plcfactory_output(change):
     global plcf_out_shown
-    
+
     if plcf_output is None:
         return
     if change["new"]:
@@ -115,9 +118,9 @@ def show_plcfactory_output(change):
 def create_ui():
     global plcf_ui
     global plcf_result
-    
+
     style = {"description_width": "initial"}
-    
+
     full_width_layout = Layout(width="99%")
     templates_layout  = Layout(width="99%", height="100px")
     plc       = Checkbox(value = True, description = "Generate EEE EPICS-PLC interface", style = style, layout = full_width_layout)
@@ -126,23 +129,23 @@ def create_ui():
     templates = Textarea(placeholder = "templates", description = "Templates to use:", style = style, layout = templates_layout)
 
     done      = Button(description = "Generate!", button_style = 'success', tooltip="Run PLCFactory to generate the output", layout = full_width_layout)
-    
+
     widgets['--device']   = device
     widgets['--plc']      = plc
     widgets['--eee']      = eee
     widgets['--template'] = templates
-    
+
     show_plcf_out = ToggleButton(description = "Show PLCFactory output", button_style = "info", style = style, layout = full_width_layout)
     show_plcf_out.observe(show_plcfactory_output, names = "value")
-    
+
     done.on_click(run_plcfactory)
-    
+
     plcf_result = HTML()
- 
+
     plcf_ui   = VBox([device, plc, eee, templates, done, plcf_result])
     hide_widget(plcf_ui)
     plcf_ui.layout.align_items = "stretch"
-    
+
     ui = VBox([show_plcf_out, plcf_ui])
     ui.layout.align_items = "stretch"
     display(ui)

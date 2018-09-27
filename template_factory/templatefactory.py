@@ -1,5 +1,8 @@
 #!/usr/bin/python
 
+from __future__ import print_function
+from __future__ import absolute_import
+
 __author__    = "Krisztian Loki"
 __copyright__ = "Copyright 2017, European Spallation Source, Lund"
 __license__   = "GPLv3"
@@ -29,7 +32,7 @@ def processDefinitionFile(definition, printers):
     assert isinstance(definition, str)
     assert isinstance(printers,   list)
 
-    print "Processing {definition}...".format(definition = definition)
+    print("Processing {definition}...".format(definition = definition))
 
     with open(definition) as m:
         if_def = tf.processLines(m, FILENAME = definition)
@@ -41,7 +44,7 @@ def processDefinitionFile(definition, printers):
     for printer in printers:
         createTemplate(definition, if_def, printer)
 
-    print
+    print()
 
 
 
@@ -81,7 +84,7 @@ if __name__ == "__main__":
     args = parser.parse_known_args()[0]
 
     if args.show_printers:
-        print available_printers
+        print(available_printers)
         exit(0)
 
     parser = argparse.ArgumentParser(parents = [ parser ])
@@ -94,11 +97,11 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.optimize:
-        print """
+        print("""
 ******************************
 *Using datablock optimization*
 ******************************
-"""
+""")
 
     if args.printers is None:
         # Do a syntax check only

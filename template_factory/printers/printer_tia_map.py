@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+
 """ Template Factory: TIA_MAP printer """
 
 

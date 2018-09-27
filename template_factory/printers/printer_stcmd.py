@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+
 """ Template Factory: Startup Snippet printer """
 
 
@@ -93,7 +95,7 @@ dbLoadRecords("{modulename}.db", "PLCNAME=$(PLCNAME), MODVERSION=$(REQUIRE_{modu
         else:
             st_cmd_footer = """
 # Load plc interface database
-dbLoadRecords("{modulename}-test.db")
+dbLoadRecords("{modulename}-test.db", "MODVERSION=$(REQUIRE_{modulename}_VERSION)")
 """.format(modulename    = self.modulename())
 
         self._append(st_cmd_footer, output)
@@ -161,7 +163,7 @@ set_savefile_path("$(SAVEFILE_DIR)", "")
 set_pass0_restoreFile("{modulename}{test}.sav")
 
 # Create monitor set
-create_monitor_set("{modulename}{test}.req", 1, "")
+doAfterIocInit("create_monitor_set('{modulename}{test}.req', 1, '')")
 """.format(modulename    = self.modulename(),
            test          = "" if not self._test else "-test")
 

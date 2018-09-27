@@ -1,3 +1,6 @@
+from __future__ import print_function
+from __future__ import absolute_import
+
 """ PLC Factory: Controls & Configuration abstraction """
 
 __author__     = "Krisztian Loki"
@@ -8,7 +11,10 @@ __license__    = "GPLv3"
 # Python libraries
 from   os import path     as os_path
 import zlib
-from   urlparse import urlsplit
+try:
+    from   urlparse import urlsplit
+except ImportError:
+    from urllib.parse import urlsplit
 
 try:
     import requests
@@ -126,7 +132,7 @@ class CC(object):
 
             try:
                 self._download(save_as, url = url)
-            except CC.DownloadException, e:
+            except CC.DownloadException as e:
                 raise CC.ArtifactException(e, deviceName = self._device.name(), filename = filename)
 
             self.downloadedArtifacts.append(save_as)
@@ -235,7 +241,7 @@ class CC(object):
             # clear templates downloaded in a previous run
             helpers.rmdirs(CC.TEMPLATE_DIR)
         else:
-            print "Reusing templates of any previous run"
+            print("Reusing templates of any previous run")
 
         helpers.makedirs(CC.TEMPLATE_DIR)
 
@@ -293,11 +299,21 @@ class CC(object):
 
             return newdict
 
-        assert isinstance(string, unicode), type(string)
+        if isinstance(string, int):
+            return str(string)
+
+        try:
+            # Have to check for unicode type in Python2
+            # isinstance(string, str) above is enough in Python3
+            if not isinstance(string, unicode):
+                raise CC.Exception("Unhandled type", type(string), string)
+        except NameError:
+            # Sadly, the 'from None' part is not valid in Python2
+            raise CC.Exception("Unhandled type", type(string), string)# from None
 
         try:
             return string.encode("unicode-escape").decode("string-escape").decode("utf-8").encode("utf-8")
-        except UnicodeDecodeError, e:
+        except UnicodeDecodeError as e:
             return string.encode("utf-8")
 
 
@@ -310,7 +326,8 @@ class CC(object):
 
         # 'w' overwrites the file if it exists
         with open(save_as, 'wb') as f:
-            map(lambda x: f.write(x), result)
+            for line in result:
+                f.write(line)
 
         return save_as
 
@@ -318,11 +335,17 @@ class CC(object):
     # Returns: CC.Device
     def device(self, deviceName, cachedOnly = False):
         try:
-            return self._devices[deviceName]
+            return self._devices[self.deviceName(deviceName)]
         except KeyError:
             if cachedOnly:
                 return None
             return self._device(deviceName)
+
+
+    # Returns: the device name
+    # CCDB returns a dictionary of {nameId, Id, name} in controls/controlledBy/etc list
+    def deviceName(self, deviceName):
+        return deviceName
 
 
     # Returns: {}
@@ -378,7 +401,7 @@ class CC(object):
     @staticmethod
     def load(filename):
         from ccdb_dump import CCDB_Dump
-        print "Trying to load CC dump from", filename
+        print("Trying to load CC dump from", filename)
         return CCDB_Dump.load(filename)
 
 
@@ -407,7 +430,7 @@ class CC(object):
                 raise CC.Exception("Something went wrong; too many iterations in backtracking while searching for property " + prop)
 
             if len(leftToProcess) == 0:
-                print "error in  backtracking after {} iterations; probably invalid input while searching for property {}".format(count, prop)
+                print("error in  backtracking after {} iterations; probably invalid input while searching for property {}".format(count, prop))
                 return " ==== BACKTRACKING ERROR ==== "
 
             elem = leftToProcess.pop()
@@ -438,49 +461,76 @@ class CC(object):
         if self._hashSum is not None:
             return self._hashSum
 
-        if hashobj is not None:
-            assert "update" in dir(hashobj) and callable(hashobj.update)
+        class Hasher(object):
+            class CRC32(object):
+                def __init__(self):
+                    self._crc32 = 0
+
+
+                def update(self, string):
+                    self._crc32 = zlib.crc32(string, self._crc32)
+
+
+
+            def __init__(self, hashobj):
+                if hashobj is not None:
+                    assert "update" in dir(hashobj) and callable(hashobj.update) and "hexdigest" in dir(hashobj) and callable(hashobj.hexdigest)
+                else:
+                   hashobj = Hasher.CRC32()
+
+                self._hashobj = hashobj
+
+
+            def update(self, string):
+                try:
+                    self._hashobj.update(string.encode())
+                except UnicodeDecodeError:
+                    # Happens on Py2 with strings containing unicode characters
+                    self._hashobj.update(string)
+
+
+            def _crc32(self):
+                if isinstance(self._hashobj, Hasher.CRC32):
+                    return self._hashobj._crc32
+
+                return zlib.crc32(hashobj.hexdigest().encode())
+
+
+            def get(self):
+                crc32 = self._crc32()
+                # Python3 returns an UNSIGNED integer. But we need a signed integer
+                if crc32 > 0x7FFFFFFF:
+                    return str(crc32 - 0x100000000)
+
+                return str(crc32)
+
+
 
         # compute checksum and hash
         # from all keys and their corresponding values in order, e.g.
         # key_1, value_1, key_2, value_2, ... key_n, value_n
-        crc32 = 0
 
         # get all devices
         deviceNames = self._devices.keys()
 
-        # ... in alphabetical order
-        deviceNames.sort()
-
-        # now the same for each device:
-        for deviceName in deviceNames:
+        hasher = Hasher(hashobj)
+        # now the same for each device in alphabetical order:
+        for deviceName in sorted(deviceNames):
             device     = self._devices[deviceName]
 
             # Make sure that only controlled devices are hashed
             if not device.isInControlledTree():
                 continue
 
-            crc32 = zlib.crc32(deviceName, crc32)
-            if hashobj is not None:
-                hashobj.update(deviceName)
+            hasher.update(deviceName)
 
-            keys = device.keys()
-            keys.sort()
-
-            for k in keys:
+            for k in sorted(device.keys()):
                 tmp = self._getOrderedString([device[k]])
 
-                crc32 = zlib.crc32(k, crc32)
-                crc32 = zlib.crc32(tmp, crc32)
+                hasher.update(k)
+                hasher.update(tmp)
 
-                if hashobj is not None:
-                    hashobj.update(k)
-                    hashobj.update(tmp)
-
-        if hashobj is not None:
-            crc32 = zlib.crc32(hashobj.hexdigest())
-
-        self._hashSum = str(crc32)
+        self._hashSum = hasher.get()
 
         return self._hashSum
 
@@ -498,7 +548,7 @@ class CC(object):
 
             head = toProcess.pop(0)
 
-            if isinstance(head, basestring):
+            if isinstance(head, str):
                 res += head
 
             elif isinstance(head, list):
@@ -506,10 +556,7 @@ class CC(object):
                     toProcess.append(elem)
 
             elif isinstance(head, dict):
-                keys = head.keys()
-                keys.sort()
-
-                for elem in keys:
+                for elem in sorted(head.keys()):
                     toProcess.append(elem)
                     toProcess.append(head[elem])
 
@@ -520,6 +567,13 @@ class CC(object):
                 continue
 
             else:
+                # Python3 does not have basestring
+                try:
+                    if isinstance(head, basestring):
+                        res += head
+                        continue
+                except:
+                    pass
                 raise CC.Exception("Input error", type(head))
 
         return res
