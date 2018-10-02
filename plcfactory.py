@@ -798,6 +798,53 @@ def banner():
 
 
 
+def check_for_updates():
+    import plcf_git as git
+
+    local_ref = git.get_local_ref()
+
+    if local_ref is None:
+        print("Could not check local version")
+        return False
+
+    check_time = time.time()
+
+    try:
+        with open(os.path.join(create_data_dir(), "updates")) as u:
+            raw_updates = u.readline()
+        from ast import literal_eval as ast_literal_eval
+        updates = ast_literal_eval(raw_updates)
+        if updates[0] + 600 > check_time:
+            if local_ref != updates[1]:
+                print("An update is available")
+            return False
+    except:
+        pass
+
+    print("Checking for updates...")
+    remote_ref = git.get_remote_ref()
+    if remote_ref is None:
+        print("Could not check for updates")
+        return False
+
+    updates = (check_time, remote_ref)
+    try:
+        with open(os.path.join(create_data_dir(), "updates"), "w") as u:
+            print(updates, file = u)
+    except:
+        pass
+
+    if remote_ref != local_ref:
+        print("""
+An update to PLC Factory is available.
+
+Please run `git pull`
+""")
+        return True
+
+    return False
+
+
 class PLCFArgumentError(Exception):
     def __init__(self, status, message = None):
         self.status  = status
@@ -878,6 +925,8 @@ def main(argv):
         return parser
 
 
+    if check_for_updates():
+        return
 
     parser = argparse.ArgumentParser(add_help = False)
 
@@ -897,7 +946,7 @@ def main(argv):
 
     if args.list_templates:
         print(tf.available_printers())
-        exit(0)
+        return
 
     if args.plc_direct is not None:
         tia_version        = args.plc_direct.lower()
