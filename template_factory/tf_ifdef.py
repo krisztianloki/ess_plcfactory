@@ -17,7 +17,7 @@ import hashlib
 
 
 
-inpv_template  = """record({recordtype}, "{inst_slot}:{name}")
+inpv_template  = """record({recordtype}, "{pv_name}")
 {{{alias}
 	field(SCAN, "I/O Intr")
 	field(DTYP, "S7plc")
@@ -28,7 +28,7 @@ inpv_template  = """record({recordtype}, "{inst_slot}:{name}")
 }}
 
 """
-test_inpv_template  = """record({recordtype}, "{inst_slot}:{name}")
+test_inpv_template  = """record({recordtype}, "{pv_name}")
 {{{alias}
 	{pv_extra}
 }}
@@ -36,7 +36,7 @@ test_inpv_template  = """record({recordtype}, "{inst_slot}:{name}")
 """
 
 
-outpv_template = """record({{recordtype}}, "{{inst_slot}}:{{name}}")
+outpv_template = """record({{recordtype}}, "{{pv_name}}")
 {{{{{{alias}}
 	field(DTYP, "{asyntype}")
 	field(OUT,  "@{asynio}($(PLCNAME)write, {{offset}}, {{link_extra}}){{var_type}}")
@@ -46,7 +46,7 @@ outpv_template = """record({{recordtype}}, "{{inst_slot}}:{{name}}")
 }}}}
 
 """
-test_outpv_template = """record({{recordtype}}, "{{inst_slot}}:{{name}}")
+test_outpv_template = """record({{recordtype}}, "{{pv_name}}")
 {{{{{{alias}}
 	{{pv_extra}}
 }}}}
@@ -1294,21 +1294,33 @@ class BASE_TYPE(SOURCE):
             return ""
 
 
-    def _build_pv_alias(self):
-        fmt = "\talias(\"{{inst_slot}}:{alias}\")"
+    def _build_pv_alias(self, inst_slot):
+        fmt = "\talias(\"{}\")"
         if BASE_TYPE.PV_ALIAS in self._keyword_params:
             if isinstance(self._keyword_params[BASE_TYPE.PV_ALIAS], str):
-                return fmt.format(alias = self._keyword_params[BASE_TYPE.PV_ALIAS])
-            return "\n".join([''] + map(lambda alias : fmt.format(alias = alias), self._keyword_params[BASE_TYPE.PV_ALIAS]) + [''])
+                return fmt.format(self._build_pv_name(inst_slot, self._keyword_params[BASE_TYPE.PV_ALIAS]))
+            return "\n".join([''] + map(lambda alias : fmt.format(self._build_pv_name(inst_slot, alias)), self._keyword_params[BASE_TYPE.PV_ALIAS]) + [''])
 
         return ""
+
+
+    def _build_pv_name(self, inst_slot, pv_name = None):
+        if pv_name is None:
+            pv_name = self.pv_name()
+
+        if inst_slot is None:
+            inst_slot = "[PLCF#INSTALLATION_SLOT]"
+        if inst_slot.startswith("[PLCF#"):
+            return "[PLCF#ext.check_pv_length('{}:{}')]".format(inst_slot[6:-1], pv_name)
+
+        return "{}:{}".format(inst_slot, pv_name)
+
 
     def toEPICS(self, inst_slot = "[PLCF#INSTALLATION_SLOT]", test = False):
         return (self.source(),
                 self.pv_template(test = test).format(recordtype = self.pv_type(),
-                                                     inst_slot  = inst_slot,
-                                                     name       = self.pv_name(),
-                                                     alias      = self._build_pv_alias().format(inst_slot = inst_slot),
+                                                     pv_name    = self._build_pv_name(inst_slot),
+                                                     alias      = self._build_pv_alias(inst_slot),
                                                      offset     = self.link_offset(),
                                                      var_type   = self.endian_correct_var_type(),
                                                      link_extra = self.link_extra() + self._get_user_link_extra(),

@@ -31,3 +31,17 @@ def to_filename(x):
 
 def eee_modulename():
     return plcf_glob.modulename
+
+
+class PVLengthException(PLCFExtException):
+    pass
+
+
+
+def check_pv_length(pv_name):
+    assert isinstance(pv_name, str)
+
+    if (len(pv_name) <= 60):
+        return pv_name
+
+    raise PVLengthException("The PV name '{pv_name}' is longer than permitted ({act_len} / 60)".format(pv_name = pv_name, act_len = len(pv_name)))
