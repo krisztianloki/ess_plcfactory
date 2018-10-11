@@ -22,7 +22,22 @@ will not lead to an error. Instead, such input is simply returned unchanged.
 
 # PLC Factory modules
 import plcf_glob       as glob
-import plcf_ext        as ext
+import plcf_ext
+
+evalenv = { "ext": plcf_ext }
+
+
+class PLCFException(Exception):
+    def __init__(self, expression, exception, *args):
+        super(PLCFException, self).__init__(*args)
+        self.expression = expression
+        self.exception  = exception
+
+
+    def __str__(self):
+        return "The following exception occured during the evaluation of '{expr}': {exc}: {msg}".format(expr = self.expression,
+                                                                                                        exc  = type(self.exception).__name__,
+                                                                                                        msg  = str(self.exception))
 
 
 
@@ -234,18 +249,32 @@ def evaluateExpression(expression, device, propDict):
         expression = substitute(expression, tag, device.deviceType())
 
     # evaluation happens after all substitutions have been performed
-    try:
-        wasquoted = False
-        #Do not evaluate expressions which consist soley of a quoted string
-        if expression.startswith('"') and expression.endswith('"') and expression.count('"') == 2:
-            wasquoted = True
-        #Evaluate this expression
-        result = eval(expression)
-        if wasquoted:
-            result = '"' + result + '"'
-    # catch references to slot names (and erroneous input)
-    except (SyntaxError, NameError) as e:
-        result = expression
+    wasquoted = False
+
+    #Do not evaluate expressions which consist soley of a quoted string
+    if (expression.startswith('"') and expression.endswith('"') and expression.count('"') == 2) or \
+       (expression.startswith("'") and expression.endswith("'") and expression.count("'") == 2):
+        wasquoted = expression[0]
+
+    if expression.startswith("ext."):
+        try:
+            #Evaluate ext module call
+            result = eval(expression, evalenv)
+        except plcf_ext.PLCFExtException as e:
+            raise e #from None
+        except Exception as e:
+            raise PLCFException(expression, e) #from None
+    else:
+        try:
+            #Evaluate this expression
+            result = eval(expression)
+            if wasquoted:
+                result = wasquoted + result + wasquoted
+        # catch references to slot names (and erroneous input)
+        except (SyntaxError, NameError) as e:
+            result = expression
+        except Exception as e:
+            raise PLCFException(expression, e) #from None
 
     return str(result)
 

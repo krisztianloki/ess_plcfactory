@@ -57,6 +57,7 @@ del parent_dir
 # PLC Factory modules
 import plcf_glob as glob
 import plcf
+from plcf_ext import PLCFExtException
 import processTemplate as pt
 from   ccdb import CCDB
 import helpers
@@ -76,6 +77,29 @@ last_updated   = None
 device_tag     = None
 hashes         = dict()
 prev_hashes    = None
+
+
+class PLCFactoryException(Exception):
+    status = 1
+
+
+
+class ProcessTemplateException(PLCFactoryException):
+    def __init__(self, device, template, exception, *args):
+        super(ProcessTemplateException, self).__init__(*args)
+        self.device    = device
+        self.template  = template
+        self.exception = exception
+
+
+    def __str__(self):
+        return """
+The following exception occured during the processing of template '{template}' on device '{device}':
+{exc}: {msg}""".format(template = self.template,
+                       device   = self.device,
+                       exc      = type(self.exception).__name__,
+                       msg      = self.exception)
+
 
 
 def openTemplate(device, tag, templateID):
@@ -438,7 +462,11 @@ def processTemplateID(templateID, devices):
 
         if template is not None:
             # process template and add result to output
-            output += pt.process(device, template)
+            try:
+                output += pt.process(device, template)
+            except (plcf.PLCFException, PLCFExtException) as e:
+                raise ProcessTemplateException(device.name(), templateID, e)
+
             print("Template processed.")
 
         else:
@@ -1276,4 +1304,7 @@ if __name__ == "__main__":
         main(sys.argv[1:])
     except PLCFArgumentError as e:
         print(e.message, file = sys.stderr)
+        exit(e.status)
+    except PLCFactoryException as e:
+        print(e)
         exit(e.status)
