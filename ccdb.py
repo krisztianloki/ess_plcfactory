@@ -138,7 +138,7 @@ class CCDB(CC):
             if self._props is not None:
                 return self._props
 
-            props = self._slot.get("properties", [])
+            props = self._ensure(self._slot.get("properties", []), [])
             self._props = dict()
             for prop in props:
                 name  = prop.get("name")

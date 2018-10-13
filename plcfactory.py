@@ -245,24 +245,11 @@ def getEOL(header):
     return header[tagPos][len(tag):].strip().replace('\\n', '\n').replace('\\r', '\r').strip('"').strip("'")
 
 
-def getIfDefFromURL(device):
-    if device_tag:
-        epi = "_".join([ "EPI", device_tag ])
-    else:
-        epi = "EPI"
-
-    fqepi = epi + "["
-    artifacts = filter(lambda u: u.is_uri() and (u.name() == epi or u.name().startswith(fqepi)), device.artifacts())
-    if not artifacts:
-        return None
-
-    if len(artifacts) > 1:
-        raise RuntimeError("More than one Interface Definition URLs were found for {device}: {urls}".format(device = device.name(), urls = map(lambda u: u.uri(), artifacts)))
-
-    if artifacts[0].name() == epi:
+def getIfDefFromURL(device, artifact, epi):
+    if artifact.name() == epi:
         filename = helpers.sanitizeFilename(device.deviceType().upper() + IFDEF_TAG)
     else:
-        filename = artifacts[0].name()
+        filename = artifact.name()
         if filename[len(epi)] != '[' or filename[-1] != ']':
             raise RuntimeError("Invalid name format in Interface Definition URL for {device}: {name}".format(device = device.name(), name = filename))
 
@@ -276,9 +263,9 @@ def getIfDefFromURL(device):
     url = "/".join([ "raw/master", filename ])
 
     print("Downloading Interface Definition file {filename} from {url}".format(filename = filename,
-                                                                               url      = artifacts[0].uri()))
+                                                                               url      = artifact.uri()))
 
-    return artifacts[0].download(extra_url = url)
+    return artifact.download(extra_url = url)
 
 
 #
@@ -304,7 +291,20 @@ def getIfDef(device):
         filename = defs[0].download()
     else:
         # No 'file' artifact found, let's see if there is a URL
-        filename = getIfDefFromURL(device)
+        if device_tag:
+            epi = "_".join([ "EPI", device_tag ])
+        else:
+            epi = "EPI"
+
+        fqepi = epi + "["
+        artifacts = filter(lambda u: u.is_uri() and (u.name() == epi or u.name().startswith(fqepi)), device.artifacts())
+        if not artifacts:
+            return None
+
+        if len(artifacts) > 1:
+            raise RuntimeError("More than one Interface Definition URLs were found for {device}: {urls}".format(device = device.name(), urls = map(lambda u: u.uri(), artifacts)))
+
+        filename = getIfDefFromURL(device, artifacts[0], epi)
         if filename is None:
             return None
 

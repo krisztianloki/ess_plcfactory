@@ -135,7 +135,7 @@ class CC(object):
             except CC.DownloadException as e:
                 raise CC.ArtifactException(e, deviceName = self._device.name(), filename = filename)
 
-            self.downloadedArtifacts.append(save_as)
+            CC.Artifact.downloadedArtifacts.append(save_as)
 
             return save_as
 
@@ -418,12 +418,15 @@ class CC(object):
 
         # starting point: all devices 'device' is controlled by
         leftToProcess = device.controlledBy(True)
-        processed     = []
+        # if not controlled by anything, search device itself. Mandatory for artifacts attached to the root device itself
+        if not leftToProcess:
+            leftToProcess = [ device ]
 
         # keep track of number of iterations
-        count         = 0
+        count = 0
 
         # process tree in BFS manner
+        processed = []
         while True:
 
             if count > 200:
