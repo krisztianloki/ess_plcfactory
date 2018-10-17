@@ -4,7 +4,7 @@ from __future__ import absolute_import
 
 
 __author__     = "Krisztian Loki"
-__copyright__  = "Copyright 2017, European Spallation Source, Lund"
+__copyright__  = "Copyright 2017,2018, European Spallation Source, Lund"
 __license__    = "GPLv3"
 
 
@@ -15,12 +15,36 @@ from tf_ifdef import STATUS_BLOCK
 
 
 def printer():
-    return [ (ST_CMD.name(), ST_CMD), (AUTOSAVE_ST_CMD.name(), AUTOSAVE_ST_CMD), (ST_TEST_CMD.name(), ST_TEST_CMD), (AUTOSAVE_ST_TEST_CMD.name(), AUTOSAVE_ST_TEST_CMD) ]
+    return [ (ST_CMD.name(), ST_CMD), (IOCSH.name(), IOCSH), (AUTOSAVE_ST_CMD.name(), AUTOSAVE_ST_CMD), (ST_TEST_CMD.name(), ST_TEST_CMD), (TEST_IOCSH.name(), TEST_IOCSH), (AUTOSAVE_ST_TEST_CMD.name(), AUTOSAVE_ST_TEST_CMD) ]
 
 
 
 
-class ST_CMD(PRINTER):
+class eee(object):
+    @staticmethod
+    def _extension():
+        return "cmd"
+
+
+    def _modversion(self):
+        return "REQUIRE_{modulename}_VERSION".format(modulename = self.modulename())
+
+
+
+
+class e3(object):
+    @staticmethod
+    def _extension():
+        return "iocsh"
+
+
+    def _modversion(self):
+        return "{modulename}_VERSION".format(modulename = self.modulename())
+
+
+
+
+class ST_CMD(eee, PRINTER):
     def __init__(self):
         super(ST_CMD, self).__init__()
 
@@ -39,7 +63,7 @@ class ST_CMD(PRINTER):
     # HEADER
     #
     def header(self, output, **keyword_parameters):
-        super(ST_CMD, self).header(output, **keyword_parameters).add_filename_header(output, inst_slot = self.modulename(), template = False, extension = "cmd")
+        super(ST_CMD, self).header(output, **keyword_parameters).add_filename_header(output, inst_slot = self.modulename(), template = False, extension = self._extension())
 
         st_cmd_header = """
 # @field IPADDR
@@ -50,11 +74,12 @@ class ST_CMD(PRINTER):
 # @type INTEGER
 # PLC->EPICS receive timeout (ms), should be longer than frequency of PLC SND block trigger (REQ input)
 
-# @field REQUIRE_{modulename}_VERSION
+# @field {modversion}
 # @runtime YES
 #COUNTER {status_cnt} = [PLCF#{status_cnt} + 10 * 2]
 
 """.format(modulename = self.modulename(),
+           modversion = self._modversion(),
            status_cnt = STATUS_BLOCK.counter_keyword())
 
         self._append(st_cmd_header, output)
@@ -96,13 +121,14 @@ modbusInterposeConfig("{modulename}", 0, $(RECVTIMEOUT), 0)
 drvModbusAsynConfigure("{modulename}write", "{modulename}", 0, 16, -1, 2, 0, 0, "S7-1500")
 
 # Load plc interface database
-dbLoadRecords("{modulename}.db", "PLCNAME={modulename}, MODVERSION=$(REQUIRE_{modulename}_VERSION)")
+dbLoadRecords("{modulename}.db", "PLCNAME={modulename}, MODVERSION=$({modversion})")
 """.format(s7drvport     = self.plcf("PLC-EPICS-COMMS: S7Port"),
            modbusdrvport = self.plcf("PLC-EPICS-COMMS: MBPort"),
            insize        = self.plcf(STATUS_BLOCK.counter_keyword()),
            endianness    = self.plcf("PLC-EPICS-COMMS:Endianness"),
            bigendian     = self.plcf("1 if 'PLC-EPICS-COMMS:Endianness' == 'BigEndian' else 0"),
-           modulename    = self.modulename()
+           modulename    = self.modulename(),
+           modversion    = self._modversion()
           )
 
         self._append(st_cmd_footer, output)
@@ -110,7 +136,19 @@ dbLoadRecords("{modulename}.db", "PLCNAME={modulename}, MODVERSION=$(REQUIRE_{mo
 
 
 
-class ST_TEST_CMD(PRINTER):
+class IOCSH(e3, ST_CMD):
+    def __init__(self):
+        super(IOCSH, self).__init__()
+
+
+    @staticmethod
+    def name():
+        return "IOCSH"
+
+
+
+
+class ST_TEST_CMD(eee, PRINTER):
     def __init__(self):
         super(ST_TEST_CMD, self).__init__()
 
@@ -129,13 +167,13 @@ class ST_TEST_CMD(PRINTER):
     # HEADER
     #
     def header(self, output, **keyword_parameters):
-        super(ST_TEST_CMD, self).header(output, **keyword_parameters).add_filename_header(output, inst_slot = self.modulename(), template = "test", extension = "cmd")
+        super(ST_TEST_CMD, self).header(output, **keyword_parameters).add_filename_header(output, inst_slot = self.modulename(), template = "test", extension = self._extension())
 
         st_cmd_header = """
-# @field REQUIRE_{modulename}_VERSION
+# @field {modversion}
 # @runtime YES
 
-""".format(modulename = self.modulename())
+""".format(modversion = self._modversion())
 
         self._append(st_cmd_header, output)
 
@@ -148,10 +186,23 @@ class ST_TEST_CMD(PRINTER):
 
         st_cmd_footer = """
 # Load plc interface database
-dbLoadRecords("{modulename}-test.db", "MODVERSION=$(REQUIRE_{modulename}_VERSION)")
-""".format(modulename    = self.modulename())
+dbLoadRecords("{modulename}-test.db", "MODVERSION=$({modversion})")
+""".format(modulename = self.modulename(),
+           modversion = self._modversion())
 
         self._append(st_cmd_footer, output)
+
+
+
+
+class TEST_IOCSH(e3, ST_TEST_CMD):
+    def __init__(self):
+        super(TEST_IOCSH, self).__init__()
+
+
+    @staticmethod
+    def name():
+        return "TEST-IOCSH"
 
 
 

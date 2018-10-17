@@ -586,8 +586,8 @@ def create_zipfile(zipit):
     return zipit
 
 
-def create_eem(basename):
-    eem_files = []
+def create_eee(basename):
+    eee_files = []
     out_mdir  = os.path.join(OUTPUT_DIR, "modules", "-".join([ "m-epics", basename ]))
     helpers.makedirs(out_mdir)
 
@@ -600,7 +600,7 @@ def create_eem(basename):
     def m_cp(f, d, newname):
         of = os.path.join(makedir(d), newname)
         copy2(f, of)
-        eem_files.append(of)
+        eee_files.append(of)
 
     #
     # Copy files
@@ -654,7 +654,7 @@ def create_eem(basename):
             import zipfile
             with zipfile.ZipFile(output_files['CCDB-DUMP'], "r") as z:
                 z.extractall(miscdir)
-                eem_files.extend(map(lambda x: os.path.join(miscdir, x), z.namelist()))
+                eee_files.extend(map(lambda x: os.path.join(miscdir, x), z.namelist()))
                 z.close()
         except:
             helpers.rmdirs(os.path.join(miscdir, "ccdb"))
@@ -664,7 +664,7 @@ def create_eem(basename):
     # Generate Makefile
     #
     with open(os.path.join(out_mdir, "Makefile"), "w") as makefile:
-        eem_files.append(makefile.name)
+        eee_files.append(makefile.name)
         print("""include ${EPICS_ENV_PATH}/module.Makefile
 
 # Let s7plc_comms decide the version of s7plc and modbus
@@ -682,12 +682,12 @@ MISCS = ${AUTOMISCS} $(addprefix misc/, creator)
     # Create .gitignore
     #
     with open(os.path.join(out_mdir, ".gitignore"), "w") as gitignore:
-        eem_files.append(gitignore.name)
+        eee_files.append(gitignore.name)
         print("""# Ignore builddir
 /builddir
 """, file = gitignore)
 
-    output_files['EEM'] = eem_files
+    output_files['EEE'] = eee_files
 
     #
     # Create script to run module with 'safe' defaults
@@ -965,9 +965,18 @@ def main(argv):
     def add_eee_arg(parser, modulename):
         parser.add_argument(
                             '--eee',
-                            '--eem',
-                            dest    = "eem",
+                            dest    = "eee",
                             help    = "create a minimal EEE module with EPICS-DB and startup snippet",
+                            metavar = "modulename",
+                            nargs   = "?",
+                            type    = str,
+                            const   = modulename
+                           )
+
+        parser.add_argument(
+                            '--e3',
+                            dest    = "e3",
+                            help    = "create a minimal E3 module with EPICS-DB and startup snippet",
                             metavar = "modulename",
                             nargs   = "?",
                             type    = str,
@@ -1033,13 +1042,20 @@ def main(argv):
 
     args = parser.parse_known_args(argv)[0]
 
-    if args.eem:
-        eem = args.eem.lower()
-        if eem.startswith('m-epics-'):
-            eem = eem[len('m-epics-'):]
-        modulename = eem
+    if args.eee:
+        eee = args.eee.lower()
+        if eee.startswith('m-epics-'):
+            eee = eee[len('m-epics-'):]
+        modulename = eee
     else:
-        eem = None
+        eee = None
+
+    if args.e3:
+        e3 = args.e3.lower()
+        if e3.startswith('m-epics-'):
+            e3 = e3[len('m-epics-'):]
+    else:
+        e3 = None
 
     # Third pass
     #  get all options
@@ -1136,7 +1152,7 @@ def main(argv):
                         nargs    = '+',
                         type     = str,
                         default  = [],
-                        required = not (tia_version or eem or beckhoff))
+                        required = not (tia_version or eee or e3 or beckhoff))
 
     # retrieve parameters
     args       = parser.parse_args(argv)
@@ -1166,8 +1182,11 @@ def main(argv):
         global plc_type
         plc_type = "BECKHOFF"
 
-    if eem:
+    if eee:
         default_printers.update( [ "EPICS-DB", "AUTOSAVE-ST-CMD", "AUTOSAVE" ] )
+
+    if e3:
+        default_printers.update( [ "EPICS-DB", "IOCSH", ] )
 
     if default_printers:
         if not default_printers <= set(tf.available_printers()):
@@ -1203,9 +1222,12 @@ def main(argv):
     if "EPICS-DB" in templateIDs:
         templateIDs.add("UPLOAD-PARAMS")
 
-    if eem and "EPICS-TEST-DB" in templateIDs:
+    if eee and "EPICS-TEST-DB" in templateIDs:
         templateIDs.add("AUTOSAVE-TEST")
         templateIDs.add("AUTOSAVE-ST-TEST-CMD")
+
+    if e3 and "EPICS-TEST-DB" in templateIDs:
+        templateIDs.add("TEST-IOCSH")
 
     if "ST-CMD" in templateIDs and "AUTOSAVE-ST-CMD" in templateIDs:
         templateIDs.remove("ST-CMD")
@@ -1236,6 +1258,7 @@ def main(argv):
     helpers.makedirs(OUTPUT_DIR)
 
     glob.modulename = modulename
+
     read_last_update()
     read_data_files()
     root_device = processDevice(device, list(templateIDs))
@@ -1278,8 +1301,8 @@ Beckhoff support is not found
 
         output_files.update(ifa_produce(OUTPUT_DIR, output_files["IFA"], "", beckhoff))
 
-    if eem:
-        create_eem(glob.modulename)
+    if eee:
+        create_eee(glob.modulename)
 
     if args.zipit is not None:
         create_zipfile(args.zipit)
