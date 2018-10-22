@@ -902,35 +902,37 @@ def main(argv):
         #
         # -d/--device cannot be added to the common args, because it is not a required option in the first pass but a required one in the second pass
         #
-        parser.add_argument(
-                            '--plc-interface',
-                            dest    = "plc_interface",
-                            help    = 'use the default templates for PLCs and generate interface PLC comms and diagnostics code',
-                            metavar = 'TIA-Portal-version',
-                            nargs   = "?",
-                            const   = 'TIAv14',
-                            type    = str
-                           )
+        plc_args = parser.add_mutually_exclusive_group()
 
-        parser.add_argument(
-                            '--plc-direct',
-                            dest    = "plc_direct",
-                            help    = 'use the default templates for PLCs and generate direct PLC comms and diagnostics code',
-                            metavar = 'TIA-Portal-version',
-                            nargs   = "?",
-                            const   = 'TIAv14',
-                            type    = str
-                           )
+        plc_args.add_argument(
+                              '--plc-interface',
+                              dest    = "plc_interface",
+                              help    = 'use the default templates for PLCs and generate interface PLC comms and diagnostics code',
+                              metavar = 'TIA-Portal-version',
+                              nargs   = "?",
+                              const   = 'TIAv14',
+                              type    = str
+                             )
 
-        parser.add_argument(
-                            '--plc-beckhoff',
-                            dest    = "beckhoff",
-                            help    = 'use the default templates for Beckhoff PLCs and generate interface Beckhoff PLC comms',
-                            metavar = 'Beckhoff-version',
-                            nargs   = "?",
-                            const   = 'not-used',
-                            type    = str
-                           )
+        plc_args.add_argument(
+                              '--plc-direct',
+                              dest    = "plc_direct",
+                              help    = 'use the default templates for PLCs and generate direct PLC comms and diagnostics code',
+                              metavar = 'TIA-Portal-version',
+                              nargs   = "?",
+                              const   = 'TIAv14',
+                              type    = str
+                             )
+
+        plc_args.add_argument(
+                              '--plc-beckhoff',
+                              dest    = "beckhoff",
+                              help    = 'use the default templates for Beckhoff PLCs and generate interface Beckhoff PLC comms',
+                              metavar = 'Beckhoff-version',
+                              nargs   = "?",
+                              const   = 'not-used',
+                              type    = str
+                             )
 
         parser.add_argument(
                             '--list-templates',
@@ -1053,50 +1055,54 @@ def main(argv):
                         type    = str
                        )
 
-    parser.add_argument(
-                        '--ccdb-test',
-                        '--test',
-                        dest     = "ccdb_test",
-                        help     = 'select CCDB test database',
-                        action   = 'store_true',
-                        required = False)
+    ccdb_args = parser.add_mutually_exclusive_group()
+    ccdb_args.add_argument(
+                           '--ccdb-test',
+                           '--test',
+                           dest     = "ccdb_test",
+                           help     = 'select CCDB test database',
+                           action   = 'store_true',
+                           required = False)
 
-    parser.add_argument(
-                        '--ccdb-devel',
-                        dest     = "ccdb_devel",
-                        help     = argparse.SUPPRESS, #selects CCDB development database
-                        action   = 'store_true',
-                        required = False)
+    ccdb_args.add_argument(
+                           '--ccdb-devel',
+                           dest     = "ccdb_devel",
+                           help     = argparse.SUPPRESS, #selects CCDB development database
+                           action   = 'store_true',
+                           required = False)
 
     # this argument is just for show as the corresponding value is
     # set to True by default                        
-    parser.add_argument(
-                        '--production',
-                        help     = 'select production database',
-                        action   = 'store_true',
-                        required = False)
+    ccdb_args.add_argument(
+                           '--ccdb-production',
+                           '--production',
+                           dest     = "ccdb_production",
+                           help     = 'select production database',
+                           action   = 'store_true',
+                           required = False)
 
-    parser.add_argument(
-                        '--ccdb',
-                        dest     = "ccdb",
-                        help     = 'use a CCDB dump as backend',
-                        metavar  = 'directory-to-CCDB-dump / name-of-.ccdb.zip',
-                        type     = str,
-                        required = False)
+    ccdb_args.add_argument(
+                           '--ccdb',
+                           dest     = "ccdb",
+                           help     = 'use a CCDB dump as backend',
+                           metavar  = 'directory-to-CCDB-dump / name-of-.ccdb.zip',
+                           type     = str,
+                           required = False)
 
-    parser.add_argument(
-                        '--plc-no-diag',
-                        dest     = "plc_no_diag",
-                        help     = 'do not generate PLC diagnostics code (if used with --plc-x)',
-                        action   = 'store_true',
-                        required = False)
+    diag_args = parser.add_mutually_exclusive_group()
+    diag_args.add_argument(
+                           '--plc-no-diag',
+                           dest     = "plc_no_diag",
+                           help     = 'do not generate PLC diagnostics code (if used with --plc-x)',
+                           action   = 'store_true',
+                           required = False)
 
-    parser.add_argument(
-                        '--plc-only-diag',
-                        dest     = "plc_only_diag",
-                        help     = 'generate PLC diagnostics code only (if used with --plc-x)',
-                        action   = 'store_true',
-                        required = False)
+    diag_args.add_argument(
+                           '--plc-only-diag',
+                           dest     = "plc_only_diag",
+                           help     = 'generate PLC diagnostics code only (if used with --plc-x)',
+                           action   = 'store_true',
+                           required = False)
 
     parser.add_argument(
                         '--cached',
@@ -1181,9 +1187,6 @@ def main(argv):
         # TIA-MAP-DIRECT and TIA-MAP-INTERFACE are incompatible
         if "TIA-MAP-INTERFACE" in templateIDs:
             raise PLCFArgumentError("Cannot use TIA-MAP-DIRECT and TIA-MAP-INTERFACE at the same time. They are incompatible.")
-
-    if args.plc_no_diag and args.plc_only_diag:
-        raise PLCFArgumentError("--plc-no-diag and --plc-only-diag are mutually exclusive")
 
     if args.plc_only_diag and tia_version is None:
         raise PLCFArgumentError('--plc-only-diag requires --plc-direct or --plc-interface')
