@@ -42,10 +42,6 @@ class ST_CMD(PRINTER):
         super(ST_CMD, self).header(output, **keyword_parameters)
 
         st_cmd_header = """#FILENAME {modulename}-[PLCF#TIMESTAMP].cmd
-# @field PLCNAME
-# @type STRING
-# asyn port name for the PLC
-
 # @field IPADDR
 # @type STRING
 # PLC IP address
@@ -82,11 +78,11 @@ class ST_CMD(PRINTER):
 
         st_cmd_footer = """
 # Call the EEE module responsible for configuring IOC to PLC comms configuration
-epicsEnvSet("$(PLCNAME)_CONFIGURE_MODBUS_READ", "#")
-requireSnippet(s7plc-comms.cmd, "PLCNAME=$(PLCNAME), IPADDR=$(IPADDR), S7DRVPORT={s7drvport}, MODBUSDRVPORT={modbusdrvport}, INSIZE={insize}, OUTSIZE=0, BIGENDIAN={bigendian}, RECVTIMEOUT=$(RECVTIMEOUT)")
+epicsEnvSet("{modulename}_CONFIGURE_MODBUS_READ", "#")
+requireSnippet(s7plc-comms.cmd, "PLCNAME={modulename}, IPADDR=$(IPADDR), S7DRVPORT={s7drvport}, MODBUSDRVPORT={modbusdrvport}, INSIZE={insize}, OUTSIZE=0, BIGENDIAN={bigendian}, RECVTIMEOUT=$(RECVTIMEOUT)")
 
 # Load plc interface database
-dbLoadRecords("{modulename}.db", "PLCNAME=$(PLCNAME), MODVERSION=$(REQUIRE_{modulename}_VERSION)")
+dbLoadRecords("{modulename}.db", "PLCNAME={modulename}, MODVERSION=$(REQUIRE_{modulename}_VERSION)")
 """.format(s7drvport     = self.plcf("PLC-EPICS-COMMS: S7Port"),
            modbusdrvport = self.plcf("PLC-EPICS-COMMS: MBPort"),
            insize        = self.plcf(STATUS_BLOCK.counter_keyword()),
