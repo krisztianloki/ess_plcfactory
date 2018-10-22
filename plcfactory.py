@@ -902,7 +902,9 @@ def main(argv):
         #
         # -d/--device cannot be added to the common args, because it is not a required option in the first pass but a required one in the second pass
         #
-        plc_args = parser.add_mutually_exclusive_group()
+        plc_group = parser.add_argument_group("PLC related options")
+
+        plc_args = plc_group.add_mutually_exclusive_group()
 
         plc_args.add_argument(
                               '--plc-interface',
@@ -933,6 +935,21 @@ def main(argv):
                               const   = 'not-used',
                               type    = str
                              )
+
+        diag_args = plc_group.add_mutually_exclusive_group()
+        diag_args.add_argument(
+                               '--plc-no-diag',
+                               dest     = "plc_no_diag",
+                               help     = 'do not generate PLC diagnostics code (if used with --plc-x)',
+                               action   = 'store_true',
+                               required = False)
+
+        diag_args.add_argument(
+                               '--plc-only-diag',
+                               dest     = "plc_only_diag",
+                               help     = 'generate PLC diagnostics code only (if used with --plc-x)',
+                               action   = 'store_true',
+                               required = False)
 
         parser.add_argument(
                             '--list-templates',
@@ -1055,7 +1072,7 @@ def main(argv):
                         type    = str
                        )
 
-    ccdb_args = parser.add_mutually_exclusive_group()
+    ccdb_args = parser.add_argument_group("CCDB related options").add_mutually_exclusive_group()
     ccdb_args.add_argument(
                            '--ccdb-test',
                            '--test',
@@ -1077,7 +1094,7 @@ def main(argv):
                            '--ccdb-production',
                            '--production',
                            dest     = "ccdb_production",
-                           help     = 'select production database',
+                           help     = 'select production CCDB database',
                            action   = 'store_true',
                            required = False)
 
@@ -1087,21 +1104,6 @@ def main(argv):
                            help     = 'use a CCDB dump as backend',
                            metavar  = 'directory-to-CCDB-dump / name-of-.ccdb.zip',
                            type     = str,
-                           required = False)
-
-    diag_args = parser.add_mutually_exclusive_group()
-    diag_args.add_argument(
-                           '--plc-no-diag',
-                           dest     = "plc_no_diag",
-                           help     = 'do not generate PLC diagnostics code (if used with --plc-x)',
-                           action   = 'store_true',
-                           required = False)
-
-    diag_args.add_argument(
-                           '--plc-only-diag',
-                           dest     = "plc_only_diag",
-                           help     = 'generate PLC diagnostics code only (if used with --plc-x)',
-                           action   = 'store_true',
                            required = False)
 
     parser.add_argument(
