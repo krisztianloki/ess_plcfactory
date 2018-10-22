@@ -688,6 +688,12 @@ MISCS = ${AUTOMISCS} $(addprefix misc/, creator)
 
     output_files['EEM'] = eem_files
 
+    #
+    # Create script to run module with 'safe' defaults
+    #
+    with open(os.path.join(OUTPUT_DIR, "run_module"), "w") as run:
+        print("""iocsh -r {modulename},local -c 'requireSnippet({modulename}.cmd, "IPADDR=127.0.0.1, RECVTIMEOUT=3000")'""".format(modulename = basename), file = run)
+
     if test_cmd:
         #
         # Create script to run test version of module
