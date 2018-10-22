@@ -21,9 +21,8 @@ def printer():
 
 
 class ST_CMD(PRINTER):
-    def __init__(self, test = False):
-        PRINTER.__init__(self)
-        self._test = test
+    def __init__(self):
+        super(ST_CMD, self).__init__()
 
 
     @staticmethod
@@ -31,13 +30,18 @@ class ST_CMD(PRINTER):
         return "ST-CMD"
 
 
+    @staticmethod
+    def st_suffix():
+        return ""
+
+
     #
     # HEADER
     #
     def header(self, output, **keyword_parameters):
-        PRINTER.header(self, output, **keyword_parameters)
+        super(ST_CMD, self).header(output, **keyword_parameters)
 
-        st_cmd_header = """#FILENAME {startup}{test}-[PLCF#TIMESTAMP].cmd
+        st_cmd_header = """#FILENAME {modulename}-[PLCF#TIMESTAMP].cmd
 # @field PLCNAME
 # @type STRING
 # asyn port name for the PLC
@@ -54,9 +58,7 @@ class ST_CMD(PRINTER):
 # @runtime YES
 #COUNTER {status_cnt} = [PLCF#{status_cnt} + 10 * 2]
 
-""".format(startup    = self.modulename(),
-           test       = "" if not self._test else "-test",
-           modulename = self.modulename(),
+""".format(modulename = self.modulename(),
            status_cnt = STATUS_BLOCK.counter_keyword())
 
         self._append(st_cmd_header, output)
@@ -76,10 +78,9 @@ class ST_CMD(PRINTER):
     # FOOTER
     #
     def footer(self, output):
-        PRINTER.footer(self, output)
+        super(ST_CMD, self).footer(output)
 
-        if not self._test:
-            st_cmd_footer = """
+        st_cmd_footer = """
 # Call the EEE module responsible for configuring IOC to PLC comms configuration
 epicsEnvSet("$(PLCNAME)_CONFIGURE_MODBUS_READ", "#")
 requireSnippet(s7plc-comms.cmd, "PLCNAME=$(PLCNAME), IPADDR=$(IPADDR), S7DRVPORT={s7drvport}, MODBUSDRVPORT={modbusdrvport}, INSIZE={insize}, OUTSIZE=0, BIGENDIAN={bigendian}, RECVTIMEOUT=$(RECVTIMEOUT)")
@@ -92,8 +93,49 @@ dbLoadRecords("{modulename}.db", "PLCNAME=$(PLCNAME), MODVERSION=$(REQUIRE_{modu
            bigendian     = self.plcf("1 if 'PLC-EPICS-COMMS:Endianness' == 'BigEndian' else 0"),
            modulename    = self.modulename()
           )
-        else:
-            st_cmd_footer = """
+
+        self._append(st_cmd_footer, output)
+
+
+
+
+class ST_TEST_CMD(PRINTER):
+    def __init__(self):
+        super(ST_TEST_CMD, self).__init__()
+
+
+    @staticmethod
+    def name():
+        return "ST-TEST-CMD"
+
+
+    @staticmethod
+    def st_suffix():
+        return "-test"
+
+
+    #
+    # HEADER
+    #
+    def header(self, output, **keyword_parameters):
+        super(ST_TEST_CMD, self).header(output, **keyword_parameters)
+
+        st_cmd_header = """#FILENAME {modulename}-test-[PLCF#TIMESTAMP].cmd
+# @field REQUIRE_{modulename}_VERSION
+# @runtime YES
+
+""".format(modulename = self.modulename())
+
+        self._append(st_cmd_header, output)
+
+
+    #
+    # FOOTER
+    #
+    def footer(self, output):
+        super(ST_TEST_CMD, self).footer(output)
+
+        st_cmd_footer = """
 # Load plc interface database
 dbLoadRecords("{modulename}-test.db", "MODVERSION=$(REQUIRE_{modulename}_VERSION)")
 """.format(modulename    = self.modulename())
@@ -103,52 +145,18 @@ dbLoadRecords("{modulename}-test.db", "MODVERSION=$(REQUIRE_{modulename}_VERSION
 
 
 
-class ST_TEST_CMD(ST_CMD):
-    def __init__(self):
-        ST_CMD.__init__(self, test = True)
-
-
-    @staticmethod
-    def name():
-        return "ST-TEST-CMD"
-
-
-
-
-class AUTOSAVE_ST_CMD(ST_CMD):
-    def __init__(self, **keyword_parameters):
-        ST_CMD.__init__(self, **keyword_parameters)
-
-
-    @staticmethod
-    def name():
-        return "AUTOSAVE-ST-CMD"
-
-
-    #
-    # HEADER
-    #
-    def header(self, output, **keyword_parameters):
-        ST_CMD.header(self, output, **keyword_parameters)
-
-        st_cmd_header = """# @field SAVEFILE_DIR
+def autosave_header(printer):
+    return """# @field SAVEFILE_DIR
 # @type  STRING
 # The directory where autosave should save files
 
 # @field REQUIRE_{modulename}_PATH
 # @runtime YES
-""".format(modulename    = self.modulename())
-
-        self._append(st_cmd_header, output)
+""".format(modulename    = printer.modulename())
 
 
-    #
-    # FOOTER
-    #
-    def footer(self, output):
-        ST_CMD.footer(self, output)
-
-        st_cmd_footer = """
+def autosave_footer(printer):
+    return """
 # Configure autosave
 # Number of sequenced backup files to write
 save_restoreSet_NumSeqFiles(1)
@@ -160,23 +168,69 @@ set_requestfile_path("$(REQUIRE_{modulename}_PATH)", "misc")
 set_savefile_path("$(SAVEFILE_DIR)", "")
 
 # Specify what save files should be restored
-set_pass0_restoreFile("{modulename}{test}.sav")
+set_pass0_restoreFile("{modulename}{st_suffix}.sav")
 
 # Create monitor set
-doAfterIocInit("create_monitor_set('{modulename}{test}.req', 1, '')")
-""".format(modulename    = self.modulename(),
-           test          = "" if not self._test else "-test")
-
-        self._append(st_cmd_footer, output)
+doAfterIocInit("create_monitor_set('{modulename}{st_suffix}.req', 1, '')")
+""".format(modulename    = printer.modulename(),
+           st_suffix     = printer.st_suffix())
 
 
 
 
-class AUTOSAVE_ST_TEST_CMD(AUTOSAVE_ST_CMD):
+class AUTOSAVE_ST_CMD(ST_CMD):
+    def __init__(self, **keyword_parameters):
+        super(AUTOSAVE_ST_CMD, self).__init__(**keyword_parameters)
+
+
+    @staticmethod
+    def name():
+        return "AUTOSAVE-ST-CMD"
+
+
+    #
+    # HEADER
+    #
+    def header(self, output, **keyword_parameters):
+        super(AUTOSAVE_ST_CMD, self).header(output, **keyword_parameters)
+
+        self._append(autosave_header(self), output)
+
+
+    #
+    # FOOTER
+    #
+    def footer(self, output):
+        super(AUTOSAVE_ST_CMD, self).footer(output)
+
+        self._append(autosave_footer(self), output)
+
+
+
+
+class AUTOSAVE_ST_TEST_CMD(ST_TEST_CMD):
     def __init__(self):
-        AUTOSAVE_ST_CMD.__init__(self, test = True)
+        super(AUTOSAVE_ST_TEST_CMD, self).__init__()
 
 
     @staticmethod
     def name():
         return "AUTOSAVE-ST-TEST-CMD"
+
+
+    #
+    # HEADER
+    #
+    def header(self, output, **keyword_parameters):
+        super(AUTOSAVE_ST_TEST_CMD, self).header(output, **keyword_parameters)
+
+        self._append(autosave_header(self), output)
+
+
+    #
+    # FOOTER
+    #
+    def footer(self, output):
+        super(AUTOSAVE_ST_TEST_CMD, self).footer(output)
+
+        self._append(autosave_footer(self), output)
