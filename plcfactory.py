@@ -961,9 +961,7 @@ def main(argv):
         return parser
 
 
-    def add_eee_arg(parser, device):
-        if device:
-            device = helpers.sanitizeFilename(device.lower())
+    def add_eee_arg(parser, modulename):
         parser.add_argument(
                             '--eee',
                             '--eem',
@@ -972,7 +970,7 @@ def main(argv):
                             metavar = "modulename",
                             nargs   = "?",
                             type    = str,
-                            const   = device
+                            const   = modulename
                            )
 
         return parser
@@ -1029,7 +1027,8 @@ def main(argv):
 
     # Second pass
     #  get EEE module name
-    add_eee_arg(parser, device)
+    modulename = helpers.sanitizeFilename(device.lower())
+    add_eee_arg(parser, modulename)
 
     args = parser.parse_known_args(argv)[0]
 
@@ -1037,6 +1036,7 @@ def main(argv):
         eem = args.eem.lower()
         if eem.startswith('m-epics-'):
             eem = eem[len('m-epics-'):]
+        modulename = eem
     else:
         eem = None
 
@@ -1045,7 +1045,7 @@ def main(argv):
     parser         = PLCFArgumentParser()
 
     add_common_parser_args(parser)
-    add_eee_arg(parser, device)
+    add_eee_arg(parser, modulename)
 
     parser.add_argument(
                         '-d',
@@ -1234,7 +1234,7 @@ def main(argv):
         OUTPUT_DIR = os.path.join(OUTPUT_DIR, helpers.sanitizeFilename("__".join([ "", "tag", device_tag ])))
     helpers.makedirs(OUTPUT_DIR)
 
-    glob.modulename = eem
+    glob.modulename = modulename
     read_last_update()
     read_data_files()
     root_device = processDevice(device, list(templateIDs))
