@@ -27,6 +27,7 @@ import errno
 import sys
 import time
 import hashlib
+from shutil import copy2, copyfileobj
 
 # Template Factory
 parent_dir = os.path.abspath(os.path.dirname(__file__))
@@ -64,6 +65,7 @@ import helpers
 
 # global variables
 OUTPUT_DIR     = "output"
+MODULES_DIR    = "module_templates"
 TEMPLATE_TAG   = "TEMPLATE"
 HEADER_TAG     = "HEADER"
 FOOTER_TAG     = "FOOTER"
@@ -586,6 +588,27 @@ def create_zipfile(zipit):
     return zipit
 
 
+def m_copytree(src, dst):
+    copied = []
+    for name in os.listdir(src):
+        srcname = os.path.join(src, name)
+        dstname = os.path.join(dst, name)
+
+        if os.path.isdir(srcname):
+            helpers.makedirs(dstname)
+            copied.extend(m_copytree(srcname, dstname))
+        else:
+            copied.append(dstname)
+            if name == "CONFIG_MODULE":
+                with open(dstname, 'w') as f:
+                    for line in pt.process(None, srcname):
+                        print(line, end = '', file = f)
+            else:
+                copy2(srcname, dstname)
+
+    return copied
+
+
 def create_eee(basename):
     eee_files = []
     out_mdir  = os.path.join(OUTPUT_DIR, "modules", "-".join([ "m-epics", basename ]))
@@ -601,6 +624,8 @@ def create_eee(basename):
         of = os.path.join(makedir(d), newname)
         copy2(f, of)
         eee_files.append(of)
+
+    eee_files.extend(m_copytree(os.path.join(MODULES_DIR, "eee"), out_mdir))
 
     #
     # Copy files
@@ -661,31 +686,14 @@ def create_eee(basename):
             print("Cannot copy CCDB dump to EEE module")
 
     #
-    # Generate Makefile
+    # Modify Makefile if needed
     #
-    with open(os.path.join(out_mdir, "Makefile"), "w") as makefile:
-        eee_files.append(makefile.name)
-        print("""include ${EPICS_ENV_PATH}/module.Makefile
-
-# Let s7plc_comms decide the version of s7plc and modbus
-AUTO_DEPENDENCIES = NO
-USR_DEPENDENCIES += s7plc,1.2.0
-USR_DEPENDENCIES += modbus,2.9.0-ESS1
-MISCS = ${AUTOMISCS} $(addprefix misc/, creator)
-""", file = makefile)
-        if req_files:
-            print("USR_DEPENDENCIES += autosave",   file = makefile)
-            print("USR_DEPENDENCIES += synappsstd", file = makefile)
-            print("MISCS += $(addprefix misc/, {req_files})".format(req_files = " ".join(req_files)), file = makefile)
-
-    #
-    # Create .gitignore
-    #
-    with open(os.path.join(out_mdir, ".gitignore"), "w") as gitignore:
-        eee_files.append(gitignore.name)
-        print("""# Ignore builddir
-/builddir
-""", file = gitignore)
+    if req_files:
+        with open(os.path.join(out_mdir, "Makefile"), "a") as makefile:
+            print("""
+USR_DEPENDENCIES += autosave
+USR_DEPENDENCIES += synappsstd
+MISCS += $(wildcard misc/*.req)""", file = makefile)
 
     output_files['EEE'] = eee_files
 
@@ -740,29 +748,12 @@ def create_e3(basename):
         helpers.makedirs(od)
         return od
 
-    from shutil import copy2, copyfileobj
     def m_cp(f, d, newname):
         of = os.path.join(makedir(d), newname)
         copy2(f, of)
         e3_files.append(of)
 
-    def m_copytree(src, dst):
-        for name in os.listdir(src):
-            srcname = os.path.join(src, name)
-            dstname = os.path.join(dst, name)
-
-            if os.path.isdir(srcname):
-                helpers.makedirs(dstname)
-                m_copytree(srcname, dstname)
-            else:
-                if name == "CONFIG_MODULE":
-                    with open(dstname, 'w') as f:
-                        for line in pt.process(None, srcname):
-                            print(line, end = '', file = f)
-                else:
-                    copy2(srcname, dstname)
-
-    m_copytree("module_templates/e3", out_mdir)
+    e3_files.extend(m_copytree(os.path.join(MODULES_DIR, "e3"), out_mdir))
 
     out_sdir = os.path.join(out_mdir, "-".join([ basename, "loc" ]))
     helpers.makedirs(out_sdir)
