@@ -13,7 +13,10 @@ import plcf
 def processAll(lines, device):
     assert isinstance(lines,  list)
 
-    propDict = device.propertiesDict()
+    if device is not None:
+        propDict = device.propertiesDict()
+    else:
+        propDict = dict()
 
     # read each line, process them, add one by one to accumulator
     return map(lambda x: plcf.processLine(x, device, propDict), lines)

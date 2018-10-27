@@ -33,6 +33,10 @@ def eee_modulename():
     return plcf_glob.modulename
 
 
+def e3_modulename():
+    return plcf_glob.modulename
+
+
 class PVLengthException(PLCFExtException):
     pass
 

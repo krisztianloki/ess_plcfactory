@@ -702,7 +702,7 @@ MISCS = ${AUTOMISCS} $(addprefix misc/, creator)
         with open(os.path.join(OUTPUT_DIR, "run_test_module"), "w") as run:
             print("""iocsh -r {modulename},local -c 'requireSnippet({modulename}-test.cmd)'""".format(modulename = basename), file = run)
 
-    print("Module created:", out_mdir)
+    print("EEE Module created:", out_mdir)
     return out_mdir
 
 
@@ -728,6 +728,108 @@ def read_data_files():
     import copy
     hashes = copy.deepcopy(prev_hashes)
     del ast_literal_eval
+
+
+def create_e3(basename):
+    e3_files = []
+    out_mdir = os.path.join(OUTPUT_DIR, "modules", "-".join([ "e3", basename ]))
+    helpers.makedirs(out_mdir)
+
+    def makedir(d):
+        od = os.path.join(out_sdir, d)
+        helpers.makedirs(od)
+        return od
+
+    from shutil import copy2, copyfileobj
+    def m_cp(f, d, newname):
+        of = os.path.join(makedir(d), newname)
+        copy2(f, of)
+        e3_files.append(of)
+
+    def m_copytree(src, dst):
+        for name in os.listdir(src):
+            srcname = os.path.join(src, name)
+            dstname = os.path.join(dst, name)
+
+            if os.path.isdir(srcname):
+                helpers.makedirs(dstname)
+                m_copytree(srcname, dstname)
+            else:
+                if name == "CONFIG_MODULE":
+                    with open(dstname, 'w') as f:
+                        for line in pt.process(None, srcname):
+                            print(line, end = '', file = f)
+                else:
+                    copy2(srcname, dstname)
+
+    m_copytree("module_templates/e3", out_mdir)
+
+    out_sdir = os.path.join(out_mdir, "-".join([ basename, "loc" ]))
+    helpers.makedirs(out_sdir)
+
+    #
+    # Copy files
+    #
+    with open(os.path.join(makedir("db"), basename + ".db"), "w") as dbfile:
+        for parts in [ output_files['EPICS-DB'], output_files['UPLOAD-PARAMS'] ]:
+            with open(parts) as partfile:
+                copyfileobj(partfile, dbfile)
+        output_files['E3-DB'] = dbfile.name
+
+    try:
+        m_cp(output_files['EPICS-TEST-DB'],           "db",      basename + "-test.db")
+    except KeyError:
+        pass
+
+    try:
+        m_cp(output_files['AUTOSAVE-IOCSH'],          "iocsh",   basename + ".iocsh")
+    except KeyError:
+        m_cp(output_files['IOCSH'],                   "iocsh",   basename + ".iocsh")
+
+    test_cmd = True
+    try:
+        m_cp(output_files['AUTOSAVE-TEST-IOCSH'],     "iocsh",   basename + "-test.iocsh")
+    except KeyError:
+        try:
+            m_cp(output_files['TEST-IOCSH'],          "iocsh",   basename + "-test.iocsh")
+        except KeyError:
+            test_cmd = False
+
+    req_files    = []
+    try:
+        m_cp(output_files['AUTOSAVE'],                "misc",    basename + ".req")
+        req_files.append(basename + ".req")
+    except KeyError:
+        pass
+
+    try:
+        m_cp(output_files['AUTOSAVE-TEST'],           "misc",    basename + "-test.req")
+        req_files.append(basename + "-test.req")
+    except KeyError:
+        pass
+
+    m_cp(output_files["CREATOR"],                     "misc",    "creator")
+
+    #
+    # Copy CCDB dump
+    #
+    if output_files['CCDB-DUMP'] is not None:
+        miscdir = os.path.join(out_sdir, "misc")
+        try:
+            import zipfile
+            with zipfile.ZipFile(output_files['CCDB-DUMP'], "r") as z:
+                z.extractall(miscdir)
+                e3_files.extend(map(lambda x: os.path.join(miscdir, x), z.namelist()))
+                z.close()
+        except:
+            helpers.rmdirs(os.path.join(miscdir, "ccdb"))
+            print("Cannot copy CCDB dump to E3 module")
+
+
+    output_files['E3'] = e3_files
+
+    print("E3 Module created:", out_mdir)
+    return out_mdir
 
 
 def write_data_files():
@@ -1303,6 +1405,8 @@ Beckhoff support is not found
 
     if eee:
         create_eee(glob.modulename)
+    if e3:
+        create_e3(glob.modulename)
 
     if args.zipit is not None:
         create_zipfile(args.zipit)
