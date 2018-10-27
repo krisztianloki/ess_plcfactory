@@ -31,7 +31,7 @@ class ST_CMD(PRINTER):
 
 
     @staticmethod
-    def st_suffix():
+    def flavor():
         return ""
 
 
@@ -67,7 +67,7 @@ class ST_CMD(PRINTER):
         status = if_def._status_block()
         if status is not None:
             self._append("#COUNTER {status_cnt} = [PLCF# {status_cnt} + {db_length}]".format(status_cnt = STATUS_BLOCK.counter_keyword(),
-                                                                                             db_length = status.length()), output)
+                                                                                             db_length  = status.length()), output)
 
 
     #
@@ -77,15 +77,30 @@ class ST_CMD(PRINTER):
         super(ST_CMD, self).footer(output)
 
         st_cmd_footer = """
-# Call the EEE module responsible for configuring IOC to PLC comms configuration
-epicsEnvSet("{modulename}_CONFIGURE_MODBUS_READ", "#")
-requireSnippet(s7plc-comms.cmd, "PLCNAME={modulename}, IPADDR=$(IPADDR), S7DRVPORT={s7drvport}, MODBUSDRVPORT={modbusdrvport}, INSIZE={insize}, OUTSIZE=0, BIGENDIAN={bigendian}, RECVTIMEOUT=$(RECVTIMEOUT)")
+# S7 port           : {s7drvport}
+# Input block size  : {insize} bytes
+# Output block size : 0 bytes
+# Endianness        : {endianness}
+s7plcConfigure("{modulename}", $(IPADDR), {s7drvport}, {insize}, 0, {bigendian}, $(RECVTIMEOUT), 0)
+
+# Modbus port       : {modbusdrvport}
+drvAsynIPPortConfigure("{modulename}", $(IPADDR):{modbusdrvport}, 0, 0, 1)
+
+# Link type         : TCP/IP (0)
+modbusInterposeConfig("{modulename}", 0, $(RECVTIMEOUT), 0)
+
+# Slave address     : 0
+# Function code     : 16 - Write Multiple Registers
+# Addressing        : Absolute (-1)
+# Data segment      : 2 words
+drvModbusAsynConfigure("{modulename}write", "{modulename}", 0, 16, -1, 2, 0, 0, "S7-1500")
 
 # Load plc interface database
 dbLoadRecords("{modulename}.db", "PLCNAME={modulename}, MODVERSION=$(REQUIRE_{modulename}_VERSION)")
 """.format(s7drvport     = self.plcf("PLC-EPICS-COMMS: S7Port"),
            modbusdrvport = self.plcf("PLC-EPICS-COMMS: MBPort"),
            insize        = self.plcf(STATUS_BLOCK.counter_keyword()),
+           endianness    = self.plcf("PLC-EPICS-COMMS:Endianness"),
            bigendian     = self.plcf("1 if 'PLC-EPICS-COMMS:Endianness' == 'BigEndian' else 0"),
            modulename    = self.modulename()
           )
@@ -106,7 +121,7 @@ class ST_TEST_CMD(PRINTER):
 
 
     @staticmethod
-    def st_suffix():
+    def flavor():
         return "-test"
 
 
@@ -148,7 +163,7 @@ def autosave_header(printer):
 
 # @field REQUIRE_{modulename}_PATH
 # @runtime YES
-""".format(modulename    = printer.modulename())
+""".format(modulename = printer.modulename())
 
 
 def autosave_footer(printer):
@@ -164,12 +179,12 @@ set_requestfile_path("$(REQUIRE_{modulename}_PATH)", "misc")
 set_savefile_path("$(SAVEFILE_DIR)", "")
 
 # Specify what save files should be restored
-set_pass0_restoreFile("{modulename}{st_suffix}.sav")
+set_pass0_restoreFile("{modulename}{flavor}.sav")
 
 # Create monitor set
-doAfterIocInit("create_monitor_set('{modulename}{st_suffix}.req', 1, '')")
-""".format(modulename    = printer.modulename(),
-           st_suffix     = printer.st_suffix())
+doAfterIocInit("create_monitor_set('{modulename}{flavor}.req', 1, '')")
+""".format(modulename = printer.modulename(),
+           flavor     = printer.flavor())
 
 
 

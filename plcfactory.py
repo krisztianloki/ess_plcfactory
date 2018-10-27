@@ -669,7 +669,8 @@ def create_eem(basename):
 
 # Let s7plc_comms decide the version of s7plc and modbus
 AUTO_DEPENDENCIES = NO
-USR_DEPENDENCIES += s7plc_comms
+USR_DEPENDENCIES += s7plc,1.2.0
+USR_DEPENDENCIES += modbus,2.9.0-ESS1
 MISCS = ${AUTOMISCS} $(addprefix misc/, creator)
 """, file = makefile)
         if req_files:
