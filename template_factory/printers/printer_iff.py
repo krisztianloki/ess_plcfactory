@@ -70,7 +70,7 @@ class IFF(PRINTER):
         #
         # No need to initialize counters to 10, IFA does not need it
         #
-        PRINTER.header(self, output, **keyword_params).add_filename_header(output, "ifa")
+        PRINTER.header(self, output, **keyword_params).add_filename_header(output, extension = "ifa")
         self._append("""HASH
 #HASH
 PLC_TYPE

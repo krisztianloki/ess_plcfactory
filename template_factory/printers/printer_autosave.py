@@ -33,7 +33,7 @@ class AUTOSAVE(PRINTER):
     # HEADER
     #
     def header(self, output, **keyword_params):
-        PRINTER.header(self, output, **keyword_params).add_filename_header(output, "req")
+        PRINTER.header(self, output, **keyword_params).add_filename_header(output, extension = "req")
 
         return self
 
@@ -65,9 +65,7 @@ class AUTOSAVE_TEST(AUTOSAVE):
     # HEADER
     #
     def header(self, output, **keyword_params):
-        PRINTER.header(self, output, **keyword_params)
-        self._append("""#FILENAME {inst_slot}-[PLCF#TEMPLATE]-[PLCF#TIMESTAMP]-test.req
-""".format(inst_slot = self.inst_slot()), output)
+        PRINTER.header(self, output, **keyword_params).add_filename_header(output, custom = "{inst_slot}-[PLCF#TEMPLATE]-[PLCF#TIMESTAMP]-test.req".format(inst_slot = self.inst_slot()))
 
         return self
 

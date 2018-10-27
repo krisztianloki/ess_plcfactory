@@ -39,9 +39,9 @@ class ST_CMD(PRINTER):
     # HEADER
     #
     def header(self, output, **keyword_parameters):
-        super(ST_CMD, self).header(output, **keyword_parameters)
+        super(ST_CMD, self).header(output, **keyword_parameters).add_filename_header(output, inst_slot = self.modulename(), template = False, extension = "cmd")
 
-        st_cmd_header = """#FILENAME {modulename}-[PLCF#TIMESTAMP].cmd
+        st_cmd_header = """
 # @field IPADDR
 # @type STRING
 # PLC IP address
@@ -129,9 +129,9 @@ class ST_TEST_CMD(PRINTER):
     # HEADER
     #
     def header(self, output, **keyword_parameters):
-        super(ST_TEST_CMD, self).header(output, **keyword_parameters)
+        super(ST_TEST_CMD, self).header(output, **keyword_parameters).add_filename_header(output, inst_slot = self.modulename(), template = "test", extension = "cmd")
 
-        st_cmd_header = """#FILENAME {modulename}-test-[PLCF#TIMESTAMP].cmd
+        st_cmd_header = """
 # @field REQUIRE_{modulename}_VERSION
 # @runtime YES
 

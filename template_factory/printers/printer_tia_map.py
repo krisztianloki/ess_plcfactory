@@ -43,9 +43,9 @@ class TIA_MAP_DIRECT(PRINTER):
     # HEADER
     #
     def header(self, output, **keyword_params):
-        PRINTER.header(self, output, **keyword_params)
+        PRINTER.header(self, output, **keyword_params).add_filename_header(output, template = "TIA-MAP", extension = "scl")
 
-        self._append("""#FILENAME {inst_slot}-TIA-MAP-{timestamp}.scl
+        self._append("""
 #EOL "\\r\\n"
 #COUNTER {cmd_cnt} = [PLCF# {cmd_cnt} + 10];
 #COUNTER {status_cnt} = [PLCF# {status_cnt} + 10];
@@ -79,7 +79,6 @@ VERSION : 0.1
       // {inst_slot}: PLC <-> EPICS Communication Mapping
       //------------------------------------------------------------------------
 """.format(inst_slot  = self.inst_slot(),
-           timestamp  = self.timestamp(),
            cmd_cnt    = CMD_BLOCK.counter_keyword(),
            status_cnt = STATUS_BLOCK.counter_keyword()), output)
 
