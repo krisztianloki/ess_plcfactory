@@ -24,15 +24,21 @@
 ## The following lines are mandatory, please don't change them.
 where_am_I := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 include $(E3_REQUIRE_TOOLS)/driver.makefile
-#include $(where_am_I)/../configure/DECOUPLE_FLAGS
+include $(where_am_I)/../configure/DECOUPLE_FLAGS
 
 
 TEMPLATES += $(wildcard db/*.db)
 SCRIPTS   += $(wildcard iocsh/*.iocsh)
 
 REQUIRED=modbus s7plc
-modbus_VERSION=2.11.0p
-s7plc_VERSION=1.4.0p
+
+ifneq ($(strip $(MODBUS_DEP_VERSION)),)
+modbus_VERSION=$(MODBUS_DEP_VERSION)
+endif
+
+ifneq ($(strip $(S7PLC_DEP_VERSION)),)
+s7plc_VERSION=$(S7PLC_DEP_VERSION)
+endif
 
 
 ## This RULE should be used in case of inflating DB files 
