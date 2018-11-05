@@ -1243,30 +1243,53 @@ class BASE_TYPE(SOURCE):
         return self._keyword_params[param_name]
 
 
+    def _check_length(self, field, field_val, length_strict):
+        msg_hdr_fmt = "The {field} field of the pv is too long: "
+
+        (length, strict) = length_strict
+        if len(field_val) > length:
+            msg_hdr = msg_hdr_fmt.format(field = field)
+            if self.sourcenum() != -1:
+                print("At line number {lnum}:".format(lnum = self.sourcenum()))
+            print(self._add_warning((msg_hdr + "{value} (length: {len} / {max_len})").format(value   = field_val,
+                                                                                             len     = len(field_val),
+                                                                                             max_len = length)))
+            print(self._add_warning(" " * (len(msg_hdr) + length) + "^"))
+
+            if strict:
+                self._keyword_params[field] = field_val[:length]
+
+
     def _check_pv_extra(self):
         msg_hdr_fmt = "The {field} field of the pv is too long: "
 
         try:
             if self._keyword_params[BASE_TYPE.PV_ALIAS] == "" or self._keyword_params[BASE_TYPE.PV_ALIAS] == []:
                 raise IfDefSyntaxError("Empty PV_ALIAS")
+
+            if isinstance(self._keyword_params[BASE_TYPE.PV_ALIAS], str):
+                self._keyword_params[BASE_TYPE.PV_ALIAS] = [ self._keyword_params[BASE_TYPE.PV_ALIAS] ]
+            elif not isinstance(self._keyword_params[BASE_TYPE.PV_ALIAS], list):
+                raise IfDefSyntaxError("PV_ALIAS must be a string or a list")
         except KeyError:
             pass
 
-        for key, value in self._keyword_params.iteritems():
-            if not key.startswith(BASE_TYPE.PV_PREFIX):
+        for field, value in self._keyword_params.iteritems():
+            if not field.startswith(BASE_TYPE.PV_PREFIX):
                 continue
+
+            if not isinstance(value, str) and field != BASE_TYPE.PV_ALIAS:
+                raise IfDefSyntaxError("{field} can only be a string")
+
             try:
-                (length, strict) = BASE_TYPE.field_lengths[key]
-                if len(value) > length:
-                    msg_hdr = msg_hdr_fmt.format(field = key)
-                    if self.sourcenum() != -1:
-                        print("At line number {lnum}:".format(lnum = self.sourcenum()))
-                    print(self._add_warning((msg_hdr + "{value} (length: {len} / {max_len})").format(value   = value,
-                                                                                                     len     = len(value),
-                                                                                                     max_len = length)))
-                    print(self._add_warning(" " * (len(msg_hdr) + length) + "^"))
-                    if strict:
-                        self._keyword_params[key] = self._keyword_params[key][:length]
+                length_strict = BASE_TYPE.field_lengths[field]
+                if not isinstance(value, list):
+                    self._check_length(field, value, length_strict)
+                else:
+                    # Make sure that we don't have to truncate the field value
+                    assert(length_strict[1] == False)
+                    for field_val in value:
+                        self._check_length(field, field_val, length_strict)
             except KeyError:
                 pass
 
@@ -1297,8 +1320,9 @@ class BASE_TYPE(SOURCE):
     def _build_pv_alias(self, inst_slot):
         fmt = "\talias(\"{}\")"
         if BASE_TYPE.PV_ALIAS in self._keyword_params:
-            if isinstance(self._keyword_params[BASE_TYPE.PV_ALIAS], str):
-                return fmt.format(self._build_pv_name(inst_slot, self._keyword_params[BASE_TYPE.PV_ALIAS]))
+            # empty line
+            # aliases
+            # empty line
             return "\n".join([''] + map(lambda alias : fmt.format(self._build_pv_name(inst_slot, alias)), self._keyword_params[BASE_TYPE.PV_ALIAS]) + [''])
 
         return ""
