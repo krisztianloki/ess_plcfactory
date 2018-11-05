@@ -20,8 +20,8 @@ import hashlib
 inpv_template  = """record({recordtype}, "{pv_name}")
 {{{alias}
 	field(SCAN, "I/O Intr")
-	field(DTYP, "S7plc")
-	field(INP,  "@$(PLCNAME)/{offset} T={var_type}{link_extra}")
+	field(DTYP, "{dtyp}")
+	field(INP,  "@{inst_io}/{offset} T={var_type}{link_extra}")
 	field(DISS, "INVALID")
 	field(DISV, "0")
 	field(SDIS, "[PLCF#ROOT_INSTALLATION_SLOT]:PLCHashCorrectR"){pv_extra}
@@ -36,20 +36,20 @@ test_inpv_template  = """record({recordtype}, "{pv_name}")
 """
 
 
-outpv_template = """record({{recordtype}}, "{{pv_name}}")
-{{{{{{alias}}
-	field(DTYP, "{asyntype}")
-	field(OUT,  "@{asynio}($(PLCNAME)write, {{offset}}, {{link_extra}}){{var_type}}")
+outpv_template = """record({recordtype}, "{pv_name}")
+{{{alias}
+	field(DTYP, "{dtyp}")
+	field(OUT,  "@{inst_io}($(PLCNAME)write, {offset}, {link_extra}){var_type}")
 	field(DISS, "INVALID")
 	field(DISV, "0")
-	field(SDIS, "[PLCF#ROOT_INSTALLATION_SLOT]:PLCHashCorrectR"){{pv_extra}}
-}}}}
+	field(SDIS, "[PLCF#ROOT_INSTALLATION_SLOT]:PLCHashCorrectR"){pv_extra}
+}}
 
 """
-test_outpv_template = """record({{recordtype}}, "{{pv_name}}")
-{{{{{{alias}}
-	{{pv_extra}}
-}}}}
+test_outpv_template = """record({recordtype}, "{pv_name}")
+{{{alias}
+	{pv_extra}
+}}
 
 """
 
@@ -319,21 +319,6 @@ class BLOCK(SOURCE):
         self._length = self._block_offset
 
 
-    def pv_template(self, test = False, asyntype = None, asynio = None):
-        if test:
-            pv_templates = { BLOCK.CMD : test_outpv_template,   BLOCK.PARAM : test_outpv_template,   BLOCK.STATUS : test_inpv_template }
-        else:
-            pv_templates = { BLOCK.CMD : outpv_template,   BLOCK.PARAM : outpv_template,   BLOCK.STATUS : inpv_template }
-        pv_temp = pv_templates[self.type()]
-
-        if not self.is_status_block():
-            assert isinstance(asyntype, str), func_param_msg("asyntype", "string")
-            assert isinstance(asynio,   str), func_param_msg("asynio",   "string")
-
-            return pv_temp.format(asyntype = asyntype, asynio = asynio)
-        return pv_temp
-
-
     def compute_offset(self, num_bytes):
         if isinstance(num_bytes, int):
             self._block_offset += num_bytes
@@ -373,6 +358,16 @@ class STATUS_BLOCK(BLOCK):
                     TIME  = [ "INT32",   "LONG" ])
 
 
+    @staticmethod
+    def dtyp():
+        return "S7plc"
+
+
+    @staticmethod
+    def inst_io():
+        return "$(PLCNAME)"
+
+
     def __init__(self, source, optimize):
         BLOCK.__init__(self, source, BLOCK.STATUS, optimize)
 
@@ -380,6 +375,13 @@ class STATUS_BLOCK(BLOCK):
     def link_offset(self, var):
         offset_template = "[PLCF# ( {root} + {counter} ) * 2 + {offset}]"
         return offset_template.format(root = self.root_of_db(), counter = self.counter_keyword(), offset = var.offset())
+
+
+    def pv_template(self, test = False):
+        if test:
+            return test_inpv_template
+        else:
+            return inpv_template
 
 
 
@@ -428,6 +430,16 @@ class MODBUS(object):
         return MODBUS._valid_type_pairs
 
 
+    @staticmethod
+    def dtyp():
+        return "asynInt32"
+
+
+    @staticmethod
+    def inst_io():
+        return "asyn"
+
+
     def endian_correct_epics_type(self, epics_type):
         if epics_type not in self._endian_specific_epics_types:
             return super(MODBUS, self).endian_correct_epics_type(epics_type)
@@ -438,6 +450,13 @@ class MODBUS(object):
     def link_offset(self, var):
         offset_template = "[PLCF# ( {root} + {counter} ) + {offset}]"
         return offset_template.format(root = self.root_of_db(), counter = self.counter_keyword(), offset = var.offset() // 2)
+
+
+    def pv_template(self, test = False):
+        if test:
+            return test_outpv_template
+        else:
+            return outpv_template
 
 
 
@@ -1209,6 +1228,14 @@ class BASE_TYPE(SOURCE):
         raise NotImplementedError
 
 
+    def dtyp(self):
+        return self._block.dtyp()
+
+
+    def inst_io(self):
+        return self._block.inst_io()
+
+
     def adjust_parameter(self, cmd_length):
         assert isinstance(cmd_length, int), func_param_msg("cmd_length", "int")
 
@@ -1340,17 +1367,6 @@ class BASE_TYPE(SOURCE):
         return "{}:{}".format(inst_slot, pv_name)
 
 
-    def toEPICS(self, inst_slot = "[PLCF#INSTALLATION_SLOT]", test = False):
-        return (self.source(),
-                self.pv_template(test = test).format(recordtype = self.pv_type(),
-                                                     pv_name    = self._build_pv_name(inst_slot),
-                                                     alias      = self._build_pv_alias(inst_slot),
-                                                     offset     = self.link_offset(),
-                                                     var_type   = self.endian_correct_var_type(),
-                                                     link_extra = self.link_extra() + self._get_user_link_extra(),
-                                                     pv_extra   = self._build_pv_extra()))
-
-
     def bit_number(self):
         return 0
 
@@ -1368,8 +1384,8 @@ class BASE_TYPE(SOURCE):
         return self._block.link_offset(self)
 
 
-    def pv_template(self, test = False, asyntype = "asynInt32", asynio = "asyn"):
-        return self._block.pv_template(test = test, asyntype = asyntype, asynio = asynio)
+    def pv_template(self, test = False):
+        return self._block.pv_template(test = test)
 
 
     def link_extra(self):
@@ -1507,6 +1523,20 @@ class BIT(BASE_TYPE):
         return "BOOL"
 
 
+    def dtyp(self):
+        if self.is_status():
+            return super(BIT, self).dtyp()
+
+        return "asynUInt32Digital"
+
+
+    def inst_io(self):
+        if self.is_status():
+            return super(BIT, self).inst_io()
+
+        return "asynMask"
+
+
     def offset(self):
         return self._bit_def._offset + self._param_offset
 
@@ -1519,10 +1549,6 @@ class BIT(BASE_TYPE):
         self._bit_def.add_bit(1)
 
 
-    def pv_template(self, test = False):
-        return self._block.pv_template(test = test, asyntype = "asynUInt32Digital", asynio = "asynMask")
-
-
     def link_extra(self):
         return self._bit_def.link_extra(self)
 
@@ -1530,6 +1556,7 @@ class BIT(BASE_TYPE):
     def var_type(self):
         if self.is_command() or self.is_parameter():
             return ""
+
         return self._bit_def.var_type()
 
 
@@ -1561,10 +1588,11 @@ class ANALOG(BASE_TYPE):
         BASE_TYPE.__init__(self, source, block, name, plc_var_type, keyword_params)
 
 
-    def pv_template(self, test = False):
-        if self._var_type in self._block.valid_type_pairs()["REAL"]:
-            return BASE_TYPE.pv_template(self, test = test, asyntype = "asynFloat64")
-        return BASE_TYPE.pv_template(self, test = test)
+    def dtyp(self):
+        if not self.is_status() and self._var_type in self._block.valid_type_pairs()["REAL"]:
+            return "asynFloat64"
+
+        return super(ANALOG, self).dtyp()
 
 
     def pv_type(self):
@@ -1595,8 +1623,18 @@ class BITMASK(BASE_TYPE):
         return BITMASK.pv_types[self.block_type()]
 
 
-    def pv_template(self, test = False):
-        return self._block.pv_template(test = test, asyntype = "asynUInt32Digital", asynio = "asynMask")
+    def dtyp(self):
+        if self.is_status():
+            return super(BITMASK, self).dtyp()
+
+        return "asynUInt32Digital"
+
+
+    def inst_io(self):
+        if self.is_status():
+            return super(BITMASK, self).inst_io()
+
+        return "asynMask"
 
 
     def link_extra(self):

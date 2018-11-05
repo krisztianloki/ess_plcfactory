@@ -29,7 +29,7 @@ def printer():
 #
 class EPICS(PRINTER):
     def __init__(self, test = False):
-        PRINTER.__init__(self, comments = True, show_origin = True, preserve_empty_lines = True)
+        super(EPICS, self).__init__(comments = True, show_origin = True, preserve_empty_lines = True)
         self._test   = test
         self._if_def = None
 
@@ -41,6 +41,19 @@ class EPICS(PRINTER):
     @staticmethod
     def name():
         return "EPICS-DB"
+
+
+    def _toEPICS(self, var, inst_slot = "[PLCF#INSTALLATION_SLOT]", test = False):
+        return (var.source(),
+                var.pv_template(test = self._test).format(recordtype = var.pv_type(),
+                                                          pv_name    = var._build_pv_name(self._if_def.inst_slot()),
+                                                          alias      = var._build_pv_alias(self._if_def.inst_slot()),
+                                                          dtyp       = var.dtyp(),
+                                                          inst_io    = var.inst_io(),
+                                                          offset     = var.link_offset(),
+                                                          var_type   = var.endian_correct_var_type(),
+                                                          link_extra = var.link_extra() + var._get_user_link_extra(),
+                                                          pv_extra   = var._build_pv_extra()))
 
 
     #
@@ -228,7 +241,7 @@ record(ai, "{root_inst_slot}:HeartbeatFromPLCR") {{
             elif isinstance(src, SOURCE):
                 self._body_source(src, output)
             else:
-                self._append(src.toEPICS(inst_slot = if_def.inst_slot(), test = self._test))
+                self._append(self._toEPICS(src))
 
         self._body_end_param(if_def, output)
         self._append("\n\n")
@@ -255,7 +268,7 @@ record(ai, "{root_inst_slot}:HeartbeatFromPLCR") {{
 
 
     def _body_var(self, var, output):
-        self._append(var.toEPICS(inst_slot = self._if_def.inst_slot(), test = self._test))
+        self._append(self._toEPICS(var))
         if not var.is_parameter():
             return
 
