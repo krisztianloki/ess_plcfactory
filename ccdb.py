@@ -10,6 +10,7 @@ __license__    = "GPLv3"
 
 # Python libraries
 import json
+from ast import literal_eval as ast_literal_eval
 
 # PLC Factory modules
 from   cc import CC
@@ -144,8 +145,12 @@ class CCDB(CC):
                 name  = prop.get("name")
                 value = prop.get("value")
 
-                if value == "null" and "List" in prop.get("dataType"):
-                    value = []
+                if "List" in prop.get("dataType"):
+                    if value == "null":
+                        value = []
+                    else:
+                        value = ast_literal_eval(value)
+                        assert isinstance(value, list)
 
                 # sanity check against duplicate values, which would point to an
                 # issue with the entered data
