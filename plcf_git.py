@@ -5,17 +5,24 @@ import subprocess
 
 
 
-def get_local_ref():
+def get_current_branch():
     try:
-        return subprocess.check_output(shlex_split("git rev-parse master")).strip()
+        return subprocess.check_output(shlex_split("git rev-parse --abbrev-ref HEAD")).strip()
     except subprocess.CalledProcessError:
         return None
 
 
-def get_remote_ref():
+def get_local_ref(branch = "master"):
     try:
-        output = subprocess.check_output(shlex_split("git ls-remote --quiet --exit-code origin refs/heads/master"))
-        return output[:-len("refs/heads/master\n")].strip()
+        return subprocess.check_output(shlex_split("git rev-parse {}".format(branch))).strip()
+    except subprocess.CalledProcessError:
+        return None
+
+
+def get_remote_ref(branch = "master"):
+    try:
+        output = subprocess.check_output(shlex_split("git ls-remote --quiet --exit-code origin refs/heads/{}".format(branch)))
+        return output[:-len("refs/heads/{}\n".format(branch))].strip()
     except subprocess.CalledProcessError:
         return None
 

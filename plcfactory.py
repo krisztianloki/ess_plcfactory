@@ -62,6 +62,8 @@ from plcf_ext import PLCFExtException
 import processTemplate as pt
 from   ccdb import CCDB
 import helpers
+import plcf_git as git
+
 
 # global variables
 OUTPUT_DIR     = "output"
@@ -79,6 +81,8 @@ last_updated   = None
 device_tag     = None
 hashes         = dict()
 prev_hashes    = None
+branch         = git.get_current_branch()
+commit_id      = git.get_local_ref(branch)
 
 
 class PLCFactoryException(Exception):
@@ -374,7 +378,7 @@ def getHeaderFooter(device, templateID):
     if templatePrinter is not None:
         print("Using built-in template header/footer")
         header = []
-        templatePrinter.header(header, PLC_TYPE = plc_type)
+        templatePrinter.header(header, PLC_TYPE = plc_type, COMMIT_ID = commit_id)
         footer = []
         templatePrinter.footer(footer)
     else:
@@ -910,6 +914,12 @@ THE FOLLOWING FILES WERE NOT CHECKED:
 def record_args(root_device):
     creator = os.path.join(OUTPUT_DIR, createFilename(["#FILENAME [PLCF#INSTALLATION_SLOT]-creator-[PLCF#TIMESTAMP]"], root_device, ""))
     with open(creator, 'w') as f:
+        print("""#!/bin/sh
+
+#PLCFactory branch: {branch}
+#PLCFactory commit: {commit}
+""".format(branch = branch,
+           commit = commit_id), file = f)
         print(" ".join(sys.argv), file = f)
     output_files["CREATOR"] = creator
 
@@ -927,8 +937,6 @@ def banner():
 
 
 def check_for_updates():
-    import plcf_git as git
-
     local_ref = git.get_local_ref()
 
     if local_ref is None:

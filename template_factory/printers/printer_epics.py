@@ -63,9 +63,16 @@ class EPICS(PRINTER):
         PRINTER.header(self, output, **keyword_params).add_filename_header(output, extension = "db")
         epics_db_header = """
 record(stringin, "{root_inst_slot}:ModVersionR") {{
-	field(DISP, "1")
-	field(VAL,  "$(MODVERSION=N/A)")
-	field(PINI, "YES")
+	field(DISP,	"1")
+	field(VAL,	"$(MODVERSION=N/A)")
+	field(PINI,	"YES")
+}}
+
+record(stringin, "{root_inst_slot}:PLCFCommitR") {{
+	field(DISP,	"1")
+#{plcf_commit}
+	field(VAL,	"{plcf_commit_39}")
+	field(PINI,	"YES")
 }}
 
 #########################################################
@@ -201,8 +208,9 @@ record(ai, "{root_inst_slot}:HeartbeatFromPLCR") {{
 
 #COUNTER {cmd_cnt} = [PLCF#{cmd_cnt} + 10];
 #COUNTER {status_cnt} = [PLCF#{status_cnt} + 10];
-""".format(inst_slot       = self.inst_slot(),
-           root_inst_slot  = self.root_inst_slot(),
+""".format(root_inst_slot  = self.root_inst_slot(),
+           plcf_commit     = keyword_params.get("COMMIT_ID", "N/A"),
+           plcf_commit_39  = keyword_params.get("COMMIT_ID", "N/A")[:39],
            cmd_cnt         = CMD_BLOCK.counter_keyword(),
            status_cnt      = STATUS_BLOCK.counter_keyword())
 
@@ -354,9 +362,16 @@ class EPICS_TEST(EPICS):
         PRINTER.header(self, output, **keyword_params).add_filename_header(output, extension = "db")
         epics_db_header = """
 record(stringin, "{root_inst_slot}:ModVersionR") {{
-	field(DISP, "1")
-	field(VAL,  "$(MODVERSION=N/A)")
-	field(PINI, "YES")
+	field(DISP,	"1")
+	field(VAL,	"$(MODVERSION=N/A)")
+	field(PINI,	"YES")
+}}
+
+record(stringin, "{root_inst_slot}:PLCFCommitR") {{
+	field(DISP,	"1")
+#{plcf_commit}
+	field(VAL,	"{plcf_commit_39}")
+	field(PINI,	"YES")
 }}
 
 #########################################################
@@ -472,8 +487,9 @@ record(ai, "{root_inst_slot}:HeartbeatFromPLCR") {{
 	field(FLNK,	"{root_inst_slot}:iGotHeartbeat")
 }}
 
-""".format(inst_slot      = self.inst_slot(),
-           root_inst_slot = self.root_inst_slot())
+""".format(root_inst_slot = self.root_inst_slot(),
+           plcf_commit    = keyword_params.get("COMMIT_ID", "N/A"),
+           plcf_commit_39 = keyword_params.get("COMMIT_ID", "N/A")[:39])
 
         self._append(epics_db_header, output)
         return self
@@ -500,8 +516,7 @@ class UPLOAD_PARAMS(PRINTER):
         PRINTER.header(self, output, **keyword_params).add_filename_header(output, extension = "db")
         epics_db_header = """
 record(fanout, "{root_inst_slot}:UploadParametersS") {{
-""".format(inst_slot      = self.inst_slot(),
-           root_inst_slot = self.root_inst_slot())
+""".format(root_inst_slot = self.root_inst_slot())
 
         self._append(epics_db_header, output)
         return self
