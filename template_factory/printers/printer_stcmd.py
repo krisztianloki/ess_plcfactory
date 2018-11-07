@@ -63,7 +63,7 @@ class ST_CMD(eee, PRINTER):
     # HEADER
     #
     def header(self, output, **keyword_parameters):
-        super(ST_CMD, self).header(output, **keyword_parameters).add_filename_header(output, inst_slot = self.modulename(), template = False, extension = self._extension())
+        super(ST_CMD, self).header(output, **keyword_parameters).add_filename_header(output, inst_slot = self.snippet(), template = False, extension = self._extension())
 
         st_cmd_header = """
 # @field IPADDR
@@ -78,8 +78,7 @@ class ST_CMD(eee, PRINTER):
 # @runtime YES
 #COUNTER {status_cnt} = [PLCF#{status_cnt} + 10 * 2]
 
-""".format(modulename = self.modulename(),
-           modversion = self._modversion(),
+""".format(modversion = self._modversion(),
            status_cnt = STATUS_BLOCK.counter_keyword())
 
         self._append(st_cmd_header, output)
@@ -167,7 +166,7 @@ class ST_TEST_CMD(eee, PRINTER):
     # HEADER
     #
     def header(self, output, **keyword_parameters):
-        super(ST_TEST_CMD, self).header(output, **keyword_parameters).add_filename_header(output, inst_slot = self.modulename(), template = "test", extension = self._extension())
+        super(ST_TEST_CMD, self).header(output, **keyword_parameters).add_filename_header(output, inst_slot = self.snippet(), template = "test", extension = self._extension())
 
         st_cmd_header = """
 # @field {modversion}

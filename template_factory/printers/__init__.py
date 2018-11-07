@@ -96,6 +96,10 @@ class PRINTER(object):
         return self.plcf("ext.eee_modulename()")
 
 
+    def snippet(self):
+        return self.plcf("ext.snippet()")
+
+
     def comment(self):
         return ""
 

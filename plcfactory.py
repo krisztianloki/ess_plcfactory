@@ -547,6 +547,20 @@ def processDevice(deviceName, templateIDs):
 
     device = glob.ccdb.device(deviceName)
 
+    if glob.modulename is None:
+        dev_props = device.properties()
+        modulename = dev_props.get("EPICSModule", [])
+        if len(modulename) == 1:
+            glob.modulename = modulename[0]
+        else:
+            glob.modulename = helpers.sanitizeFilename(deviceName.lower())
+
+        snippet = dev_props.get("EPICSSnippet", [])
+        if len(snippet) == 1:
+            glob.snippet = snippet[0]
+        else:
+            glob.snippet = glob.modulename
+
     # create a stable list of controlled devices
     devices = [ device ]
     devices.extend(buildControlsList(device))
@@ -613,9 +627,9 @@ def m_copytree(src, dst):
     return copied
 
 
-def create_eee(basename):
+def create_eee(modulename, snippet):
     eee_files = []
-    out_mdir  = os.path.join(OUTPUT_DIR, "modules", "-".join([ "m-epics", basename ]))
+    out_mdir  = os.path.join(OUTPUT_DIR, "modules", "-".join([ "m-epics", modulename ]))
     helpers.makedirs(out_mdir)
 
     def makedir(d):
@@ -634,41 +648,41 @@ def create_eee(basename):
     #
     # Copy files
     #
-    with open(os.path.join(makedir("db"), basename + ".db"), "w") as dbfile:
+    with open(os.path.join(makedir("db"), modulename + ".db"), "w") as dbfile:
         for parts in [ output_files['EPICS-DB'], output_files['UPLOAD-PARAMS'] ]:
             with open(parts) as partfile:
                 copyfileobj(partfile, dbfile)
         output_files['EEE-DB'] = dbfile.name
 
     try:
-        m_cp(output_files['EPICS-TEST-DB'],           "db",      basename + "-test.db")
+        m_cp(output_files['EPICS-TEST-DB'],           "db",      modulename + "-test.db")
     except KeyError:
         pass
 
     try:
-        m_cp(output_files['AUTOSAVE-ST-CMD'],         "startup", basename + ".cmd")
+        m_cp(output_files['AUTOSAVE-ST-CMD'],         "startup", snippet + ".cmd")
     except KeyError:
-        m_cp(output_files['ST-CMD'],                  "startup", basename + ".cmd")
+        m_cp(output_files['ST-CMD'],                  "startup", snippet + ".cmd")
 
     test_cmd = True
     try:
-        m_cp(output_files['AUTOSAVE-ST-TEST-CMD'],    "startup", basename + "-test.cmd")
+        m_cp(output_files['AUTOSAVE-ST-TEST-CMD'],    "startup", snippet + "-test.cmd")
     except KeyError:
         try:
-            m_cp(output_files['ST-TEST-CMD'],         "startup", basename + "-test.cmd")
+            m_cp(output_files['ST-TEST-CMD'],         "startup", snippet + "-test.cmd")
         except KeyError:
             test_cmd = False
 
     req_files    = []
     try:
-        m_cp(output_files['AUTOSAVE'],                "misc",    basename + ".req")
-        req_files.append(basename + ".req")
+        m_cp(output_files['AUTOSAVE'],                "misc",    modulename + ".req")
+        req_files.append(modulename + ".req")
     except KeyError:
         pass
 
     try:
-        m_cp(output_files['AUTOSAVE-TEST'],           "misc",    basename + "-test.req")
-        req_files.append(basename + "-test.req")
+        m_cp(output_files['AUTOSAVE-TEST'],           "misc",    modulename + "-test.req")
+        req_files.append(modulename + "-test.req")
     except KeyError:
         pass
 
@@ -705,14 +719,16 @@ MISCS += $(wildcard misc/*.req)""", file = makefile)
     # Create script to run module with 'safe' defaults
     #
     with open(os.path.join(OUTPUT_DIR, "run_module"), "w") as run:
-        print("""iocsh -r {modulename},local -c 'requireSnippet({modulename}.cmd, "IPADDR=127.0.0.1, RECVTIMEOUT=3000")'""".format(modulename = basename), file = run)
+        print("""iocsh -r {modulename},local -c 'requireSnippet({snippet}.cmd, "IPADDR=127.0.0.1, RECVTIMEOUT=3000")'""".format(modulename = modulename,
+                                                                                                                                snippet    = snippet), file = run)
 
     if test_cmd:
         #
         # Create script to run test version of module
         #
         with open(os.path.join(OUTPUT_DIR, "run_test_module"), "w") as run:
-            print("""iocsh -r {modulename},local -c 'requireSnippet({modulename}-test.cmd)'""".format(modulename = basename), file = run)
+            print("""iocsh -r {modulename},local -c 'requireSnippet({snippet}-test.cmd)'""".format(modulename = modulename,
+                                                                                                   snippet    = snippet), file = run)
 
     print("EEE Module created:", out_mdir)
     return out_mdir
@@ -742,9 +758,9 @@ def read_data_files():
     del ast_literal_eval
 
 
-def create_e3(basename):
+def create_e3(modulename, snippet):
     e3_files = []
-    out_mdir = os.path.join(OUTPUT_DIR, "modules", "-".join([ "e3", basename ]))
+    out_mdir = os.path.join(OUTPUT_DIR, "modules", "-".join([ "e3", modulename ]))
     helpers.makedirs(out_mdir)
 
     def makedir(d):
@@ -759,47 +775,47 @@ def create_e3(basename):
 
     e3_files.extend(m_copytree(os.path.join(MODULES_DIR, "e3"), out_mdir))
 
-    out_sdir = os.path.join(out_mdir, "-".join([ basename, "loc" ]))
+    out_sdir = os.path.join(out_mdir, "-".join([ modulename, "loc" ]))
     helpers.makedirs(out_sdir)
 
     #
     # Copy files
     #
-    with open(os.path.join(makedir("db"), basename + ".db"), "w") as dbfile:
+    with open(os.path.join(makedir("db"), modulename + ".db"), "w") as dbfile:
         for parts in [ output_files['EPICS-DB'], output_files['UPLOAD-PARAMS'] ]:
             with open(parts) as partfile:
                 copyfileobj(partfile, dbfile)
         output_files['E3-DB'] = dbfile.name
 
     try:
-        m_cp(output_files['EPICS-TEST-DB'],           "db",      basename + "-test.db")
+        m_cp(output_files['EPICS-TEST-DB'],           "db",      modulename + "-test.db")
     except KeyError:
         pass
 
     try:
-        m_cp(output_files['AUTOSAVE-IOCSH'],          "iocsh",   basename + ".iocsh")
+        m_cp(output_files['AUTOSAVE-IOCSH'],          "iocsh",   snippet + ".iocsh")
     except KeyError:
-        m_cp(output_files['IOCSH'],                   "iocsh",   basename + ".iocsh")
+        m_cp(output_files['IOCSH'],                   "iocsh",   snippet + ".iocsh")
 
     test_cmd = True
     try:
-        m_cp(output_files['AUTOSAVE-TEST-IOCSH'],     "iocsh",   basename + "-test.iocsh")
+        m_cp(output_files['AUTOSAVE-TEST-IOCSH'],     "iocsh",   snippet + "-test.iocsh")
     except KeyError:
         try:
-            m_cp(output_files['TEST-IOCSH'],          "iocsh",   basename + "-test.iocsh")
+            m_cp(output_files['TEST-IOCSH'],          "iocsh",   snippet + "-test.iocsh")
         except KeyError:
             test_cmd = False
 
     req_files    = []
     try:
-        m_cp(output_files['AUTOSAVE'],                "misc",    basename + ".req")
-        req_files.append(basename + ".req")
+        m_cp(output_files['AUTOSAVE'],                "misc",    modulename + ".req")
+        req_files.append(modulename + ".req")
     except KeyError:
         pass
 
     try:
-        m_cp(output_files['AUTOSAVE-TEST'],           "misc",    basename + "-test.req")
-        req_files.append(basename + "-test.req")
+        m_cp(output_files['AUTOSAVE-TEST'],           "misc",    modulename + "-test.req")
+        req_files.append(modulename + "-test.req")
     except KeyError:
         pass
 
@@ -1067,7 +1083,7 @@ def main(argv):
         return parser
 
 
-    def add_eee_arg(parser, modulename):
+    def add_eee_arg(parser):
         parser.add_argument(
                             '--eee',
                             dest    = "eee",
@@ -1075,7 +1091,7 @@ def main(argv):
                             metavar = "modulename",
                             nargs   = "?",
                             type    = str,
-                            const   = modulename
+                            const   = ""
                            )
 
         parser.add_argument(
@@ -1085,7 +1101,7 @@ def main(argv):
                             metavar = "modulename",
                             nargs   = "?",
                             type    = str,
-                            const   = modulename
+                            const   = ""
                            )
 
         return parser
@@ -1141,33 +1157,40 @@ def main(argv):
             raise PLCFArgumentError(1, "Invalid TIA version: " + tia_version)
 
     # Second pass
-    #  get EEE module name
-    modulename = helpers.sanitizeFilename(device.lower())
-    add_eee_arg(parser, modulename)
+    #  get EEE and E3
+    add_eee_arg(parser)
 
     args = parser.parse_known_args(argv)[0]
 
-    if args.eee:
-        eee = args.eee.lower()
-        if eee.startswith('m-epics-'):
-            eee = eee[len('m-epics-'):]
-        modulename = eee
+    modulename = None
+    if args.eee is not None:
+        if args.eee != "":
+            modulename = args.eee.lower()
+            if modulename.startswith('m-epics-'):
+                modulename = modulename[len('m-epics-'):]
+        eee = True
     else:
-        eee = None
+        eee = False
 
-    if args.e3:
-        e3 = args.e3.lower()
-        if e3.startswith('m-epics-'):
-            e3 = e3[len('m-epics-'):]
+    if args.e3 is not None:
+        if args.e3 != "":
+            e3 = args.e3.lower()
+            if e3.startswith('e3-'):
+                e3 = e3[len('e3-'):]
+        e3 = True
     else:
-        e3 = None
+        e3 = False
+
+    if modulename:
+        glob.modulename = modulename
+        glob.snippet    = modulename
 
     # Third pass
     #  get all options
     parser         = PLCFArgumentParser()
 
     add_common_parser_args(parser)
-    add_eee_arg(parser, modulename)
+    add_eee_arg(parser)
 
     parser.add_argument(
                         '-d',
@@ -1362,8 +1385,6 @@ def main(argv):
         OUTPUT_DIR = os.path.join(OUTPUT_DIR, helpers.sanitizeFilename("__".join([ "", "tag", device_tag ])))
     helpers.makedirs(OUTPUT_DIR)
 
-    glob.modulename = modulename
-
     read_last_update()
     read_data_files()
     root_device = processDevice(device, list(templateIDs))
@@ -1407,9 +1428,9 @@ Beckhoff support is not found
         output_files.update(ifa_produce(OUTPUT_DIR, output_files["IFA"], "", beckhoff))
 
     if eee:
-        create_eee(glob.modulename)
+        create_eee(glob.modulename, glob.snippet)
     if e3:
-        create_e3(glob.modulename)
+        create_e3(glob.modulename, glob.snippet)
 
     if args.zipit is not None:
         create_zipfile(args.zipit)

@@ -37,6 +37,11 @@ def e3_modulename():
     return plcf_glob.modulename
 
 
+def snippet():
+    return plcf_glob.snippet
+
+
+
 class PVLengthException(PLCFExtException):
     pass
 

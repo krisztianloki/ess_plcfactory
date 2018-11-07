@@ -14,4 +14,7 @@ ccdb                   = None
 root_installation_slot = None
 
 # the name of the EEE module
-modulename             = ""
+modulename             = None
+
+# the name of the snippet
+snippet                = None
