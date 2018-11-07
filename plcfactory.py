@@ -963,6 +963,10 @@ def check_for_updates():
         print("Could not check for updates")
         return False
 
+    # Check if we have remote ref. True means we are most probably ahead of origin; ignore remote ref then
+    if git.has_commit(remote_ref):
+        remote_ref = local_ref
+
     updates = (check_time, remote_ref)
     try:
         with open(os.path.join(create_data_dir(), "updates"), "w") as u:

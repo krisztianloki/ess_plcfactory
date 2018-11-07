@@ -27,6 +27,14 @@ def get_remote_ref(branch = "master"):
         return None
 
 
+def has_commit(commit):
+    try:
+        subprocess.check_call(shlex_split("git cat-file -e {}^{{commit}}".format(commit)))
+        return True
+    except subprocess.CalledProcessError:
+        return False
+
+
 
 
 if __name__ == "__main__":
