@@ -30,7 +30,9 @@ inpv_template  = """record({recordtype}, "{pv_name}")
 """
 test_inpv_template  = """record({recordtype}, "{pv_name}")
 {{{alias}
-	{pv_extra}
+	field(DISS, "INVALID")
+	field(DISV, "0")
+	field(SDIS, "[PLCF#ROOT_INSTALLATION_SLOT]:PLCHashCorrectR CP"){pv_extra}
 }}
 
 """
@@ -48,7 +50,9 @@ outpv_template = """record({recordtype}, "{pv_name}")
 """
 test_outpv_template = """record({recordtype}, "{pv_name}")
 {{{alias}
-	{pv_extra}
+	field(DISS, "INVALID")
+	field(DISV, "0")
+	field(SDIS, "[PLCF#ROOT_INSTALLATION_SLOT]:PLCHashCorrectR CP"){pv_extra}
 }}
 
 """

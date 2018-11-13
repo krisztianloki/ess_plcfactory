@@ -478,7 +478,8 @@ record(ao, "{root_inst_slot}:HeartbeatToPLCS") {{
 record(ai, "{root_inst_slot}:CommsHashFromPLCR") {{
 	field(DESC,	"Comms hash from PLC")
 	field(SCAN,	"1 second")
-	field(INP,	"{root_inst_slot}:iCommsHashToPLC")
+	field(PINI,	"YES")
+	field(VAL,	"#HASH")
 	field(FLNK,	"{root_inst_slot}:iCheckHash")
 }}
 record(ai, "{root_inst_slot}:HeartbeatFromPLCR") {{
@@ -487,6 +488,26 @@ record(ai, "{root_inst_slot}:HeartbeatFromPLCR") {{
 	field(FLNK,	"{root_inst_slot}:iGotHeartbeat")
 }}
 
+########################################################
+################# Test management data #################
+########################################################
+record(ao, "{root_inst_slot}:FixHashS") {{
+	field(DESC,	"Make HASH correct")
+	field(OMSL,	"closed_loop")
+	field(DOL,	"{root_inst_slot}:iCommsHashToPLC")
+	field(OUT,	"{root_inst_slot}:CommsHashFromPLCR PP")
+}}
+
+record(bo, "{root_inst_slot}:RuinHashS") {{
+	field(DESC,	"Make HASH incorrect")
+	field(FLNK,	"{root_inst_slot}:iRuinHash")
+}}
+record(calcout, "{root_inst_slot}:iRuinHash") {{
+	field(DESC,	"Make HASH incorrect")
+	field(INPA,	"{root_inst_slot}:iCommsHashToPLC")
+	field(CALC,	"A * -1")
+	field(OUT,	"{root_inst_slot}:CommsHashFromPLCR PP")
+}}
 """.format(root_inst_slot = self.root_inst_slot(),
            plcf_commit    = keyword_params.get("COMMIT_ID", "N/A"),
            plcf_commit_39 = keyword_params.get("COMMIT_ID", "N/A")[:39])
