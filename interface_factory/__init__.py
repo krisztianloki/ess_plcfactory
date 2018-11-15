@@ -13,9 +13,15 @@ class IFA(object):
     valid_device_entries.update(mandatory_device_properties)
     valid_device_entries.update(valid_variable_entries)
 
-    mandatory_ifa_properties = set([ 'HASH', 'MAX_IO_DEVICES', 'MAX_LOCAL_MODULES', 'MAX_MODULES_IN_IO_DEVICE', 'PLC_TYPE', 'TOTALEPICSTOPLCLENGTH', 'TOTALPLCTOEPICSLENGTH' ])
+    mandatory_ifa_properties = dict(HASH                     = str,
+                                    MAX_IO_DEVICES           = int,
+                                    MAX_LOCAL_MODULES        = int,
+                                    MAX_MODULES_IN_IO_DEVICE = int,
+                                    PLC_TYPE                 = str,
+                                    TOTALEPICSTOPLCLENGTH    = int,
+                                    TOTALPLCTOEPICSLENGTH    = int)
 
-    valid_line_types = set(mandatory_ifa_properties)
+    valid_line_types = set(mandatory_ifa_properties.keys())
     valid_line_types.update(valid_device_entries)
 
     valid_var_types = set([ 'BOOL', 'BYTE', 'CHAR', 'WORD', 'DWORD', 'INT', 'DINT', 'REAL', 'SSTIME', 'TIME', 'LTIME', 'DATE', 'TIME_OF_DAY', 'STRING',
@@ -207,13 +213,6 @@ class IFA(object):
     def __init__(self, IfaPath):
         self.properties               = dict()
         self.IfaPath                  = IfaPath
-        self.HASH                     = None
-        self.MAX_IO_DEVICES           = 0
-        self.MAX_LOCAL_MODULES        = 0
-        self.MAX_MODULES_IN_IO_DEVICE = 0
-        self.PLC_type                 = ""
-        self.TOTALEPICSTOPLCLENGTH    = 0
-        self.TOTALPLCTOEPICSLENGTH    = 0
         self.Devices                  = []
 
         self.PreParse()
@@ -253,37 +252,10 @@ Pre-parsing .ifa file...""".format(self.IfaPath))
 
                 try:
                     if linetype in IFA.mandatory_ifa_properties:
-                        if linetype == "HASH":
-                            self.HASH = line
-
-                        elif linetype == "MAX_IO_DEVICES":
-                            line = int(line)
-                            if line <= 0:
-                                line = 1
-                            self.MAX_IO_DEVICES = line
-
-                        elif linetype == "MAX_LOCAL_MODULES":
-                            line = int(line)
-                            if line <= 0:
-                                line = 1
-                            self.MAX_LOCAL_MODULES = line
-
-                        elif linetype == "MAX_MODULES_IN_IO_DEVICE":
-                            line = int(line)
-                            if line <= 0:
-                                line = 1
-                            self.MAX_MODULES_IN_IO_DEVICE = line
-
-                        elif linetype == "PLC_TYPE":
-                            self.PLC_type = line
-
-                        elif linetype == "TOTALEPICSTOPLCLENGTH":
-                            line = int(line)
-                            self.TOTALEPICSTOPLCLENGTH = line
-
-                        elif linetype == "TOTALPLCTOEPICSLENGTH":
-                            line = int(line)
-                            self.TOTALPLCTOEPICSLENGTH = line
+                        try:
+                            setattr(self, linetype, IFA.mandatory_ifa_properties[linetype](line))
+                        except (ValueError, TypeError):
+                            raise IFA.FatalException("IFA keyword type mismatch: {keyword} should be {type}".format(keyword = linetype, type = IFA.mandatory_ifa_properties[linetype].__name__))
 
                         self.properties[linetype] = line
                         continue
@@ -355,8 +327,17 @@ After pre-processing the .IFA file there were no DEVICES inside!
 
 
     def Check(self):
-        if not IFA.mandatory_ifa_properties <= set(self.properties.keys()):
-            raise IFA.FatalException("Missing IFA properties", IFA.mandatory_ifa_properties - set(self.properties.keys()))
+        if not set(IFA.mandatory_ifa_properties.keys()) <= set(self.properties.keys()):
+            raise IFA.FatalException("Missing IFA properties", set(IFA.mandatory_ifa_properties.keys()) - set(self.properties.keys()))
+
+        if self.MAX_IO_DEVICES <= 0:
+            self.MAX_IO_DEVICES = 1
+
+        if self.MAX_LOCAL_MODULES <= 0:
+            self.MAX_LOCAL_MODULES = 1
+
+        if self.MAX_MODULES_IN_IO_DEVICE <= 0:
+            self.MAX_MODULES_IN_IO_DEVICE = 1
 
         for device in self.Devices:
             device.check()
@@ -376,13 +357,13 @@ def produce(OutputDir, IfaPath, **kwargs):
         return dict()
 
     factory = None
-    if ifa.PLC_type == "SIEMENS":
+    if ifa.PLC_TYPE == "SIEMENS":
         from .InterfaceFactorySiemens import produce
         factory = produce
-    elif ifa.PLC_type == "BECKHOFF":
+    elif ifa.PLC_TYPE == "BECKHOFF":
         from .InterfaceFactoryBeckhoff import produce
         factory = produce
     else:
-        raise IFA.FatalException("Unsupported PLC_type", ifa.PLC_type)
+        raise IFA.FatalException("Unsupported PLC_TYPE", ifa.PLC_TYPE)
 
     return factory(OutputDir, ifa, **kwargs)
