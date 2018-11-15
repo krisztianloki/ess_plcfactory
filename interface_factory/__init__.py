@@ -27,7 +27,13 @@ class IFA(object):
                                     MAX_IO_DEVICES           = int,
                                     MAX_LOCAL_MODULES        = int,
                                     MAX_MODULES_IN_IO_DEVICE = int,
+                                    PLC                      = str,
                                     PLC_TYPE                 = str,
+                                    INTERFACE_ID             = str,
+                                    S7_CONNECTION_ID         = str,
+                                    MODBUS_CONNECTION_ID     = str,
+                                    S7_PORT                  = int,
+                                    MODBUS_PORT              = int,
                                     TOTALEPICSTOPLCLENGTH    = int,
                                     TOTALPLCTOEPICSLENGTH    = int)
 

@@ -102,8 +102,7 @@ VERSION : 0.1
                                         PLCToEPICSDataBlock        := "PLCToEPICS"."Word");
 #COUNTER {cmd_cnt} = [PLCF# {cmd_cnt} + {epicstoplclength}];
 #COUNTER {status_cnt} = [PLCF# {status_cnt} + {plctoepicslength}];
-""".format(inst_slot          = self.inst_slot(),
-           epicstoplclength   = if_def.to_plc_words_length(),
+""".format(epicstoplclength   = if_def.to_plc_words_length(),
            cmd_cnt            = CMD_BLOCK.counter_keyword(),
            plctoepicslength   = if_def.from_plc_words_length(),
            status_cnt         = STATUS_BLOCK.counter_keyword(),
