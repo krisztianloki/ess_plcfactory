@@ -7,7 +7,7 @@ class IFA(object):
     valid_variable_entries = set([ 'BEAST', 'ARCHIVE' ])
     valid_variable_entries.update(mandatory_variable_properties)
 
-    mandatory_device_properties = set([ 'DEVICE', 'DEVICE_TYPE', 'EPICSTOPLCPARAMETERSSTART', 'EPICSTOPLCLENGTH', 'EPICSTOPLCDATABLOCKOFFSET', 'PLCTOEPICSDATABLOCKOFFSET' ])
+    mandatory_device_properties = set([ 'DEVICE', 'DEVICE_TYPE', 'EPICSTOPLCPARAMETERSSTART', 'EPICSTOPLCLENGTH', 'EPICSTOPLCDATABLOCKOFFSET', 'PLCTOEPICSLENGTH', 'PLCTOEPICSDATABLOCKOFFSET' ])
 
     valid_device_entries   = set([ 'BLOCK', 'DEFINE_ARRAY', 'END_ARRAY' ])
     valid_device_entries.update(mandatory_device_properties)

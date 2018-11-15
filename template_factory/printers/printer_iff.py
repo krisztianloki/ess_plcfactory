@@ -98,6 +98,8 @@ DEVICE_TYPE
 {type}
 EPICSTOPLCLENGTH
 {epicstoplclength}
+PLCTOEPICSLENGTH
+{plctoepicslength}
 EPICSTOPLCDATABLOCKOFFSET
 {epicstoplcdatablockoffset}
 EPICSTOPLCPARAMETERSSTART
