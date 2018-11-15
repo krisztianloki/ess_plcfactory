@@ -2,15 +2,25 @@ from __future__ import print_function
 from __future__ import absolute_import
 
 class IFA(object):
-    mandatory_variable_properties = set([ 'VARIABLE', 'EPICS', 'TYPE', 'ARRAY_INDEX', 'BIT_NUMBER' ])
+    mandatory_variable_properties = dict(VARIABLE    = str,
+                                         EPICS       = str,
+                                         TYPE        = str,
+                                         ARRAY_INDEX = int,
+                                         BIT_NUMBER  = int)
 
     valid_variable_entries = set([ 'BEAST', 'ARCHIVE' ])
-    valid_variable_entries.update(mandatory_variable_properties)
+    valid_variable_entries.update(set(mandatory_variable_properties.keys()))
 
-    mandatory_device_properties = set([ 'DEVICE', 'DEVICE_TYPE', 'EPICSTOPLCPARAMETERSSTART', 'EPICSTOPLCLENGTH', 'EPICSTOPLCDATABLOCKOFFSET', 'PLCTOEPICSLENGTH', 'PLCTOEPICSDATABLOCKOFFSET' ])
+    mandatory_device_properties = dict(DEVICE                    = str,
+                                       DEVICE_TYPE               = str,
+                                       EPICSTOPLCPARAMETERSSTART = int,
+                                       EPICSTOPLCLENGTH          = int,
+                                       EPICSTOPLCDATABLOCKOFFSET = int,
+                                       PLCTOEPICSLENGTH          = int,
+                                       PLCTOEPICSDATABLOCKOFFSET = int)
 
     valid_device_entries   = set([ 'BLOCK', 'DEFINE_ARRAY', 'END_ARRAY' ])
-    valid_device_entries.update(mandatory_device_properties)
+    valid_device_entries.update(set(mandatory_device_properties.keys()))
     valid_device_entries.update(valid_variable_entries)
 
     mandatory_ifa_properties = dict(HASH                     = str,
@@ -86,8 +96,16 @@ class IFA(object):
 
 
         def check(self):
-            if not IFA.mandatory_device_properties <= set(self.properties.keys()):
-                raise IFA.FatalException("Missing DEVICE properties", IFA.mandatory_device_properties - set(self.properties.keys()))
+            if not set(IFA.mandatory_device_properties.keys()) <= set(self.properties.keys()):
+                raise IFA.FatalException("Missing DEVICE properties", set(IFA.mandatory_device_properties.keys()) - set(self.properties.keys()))
+
+            for (keyword, value) in self.properties.iteritems():
+                try:
+                    IFA.mandatory_device_properties[keyword](value)
+                except (ValueError, TypeError):
+                    raise IFA.FatalException("Device keyword type mismatch: {keyword} should be {type}".format(keyword = keyword, type = IFA.mandatory_device_properties[keyword].__name__))
+                except KeyError:
+                    pass
 
 
 
@@ -167,8 +185,17 @@ class IFA(object):
 
 
         def check(self):
-            if not IFA.mandatory_variable_properties <= set(self.properties.keys()):
-                raise IFA.FatalException("Missing VARIABLE properties", IFA.mandatory_variable_properties - set(self.properties.keys()))
+            if not set(IFA.mandatory_variable_properties.keys()) <= set(self.properties.keys()):
+                raise IFA.FatalException("Missing VARIABLE properties", set(IFA.mandatory_variable_properties.keys()) - set(self.properties.keys()))
+
+            for (keyword, value) in self.properties.iteritems():
+                try:
+                    IFA.mandatory_variable_properties[keyword](value)
+                except (ValueError, TypeError):
+                    raise IFA.FatalException("Variable keyword type mismatch: {keyword} should be {type}".format(keyword = keyword, type = IFA.mandatory_variable_properties[keyword].__name__))
+                except KeyError:
+                    pass
+
             if self.properties["TYPE"] not in IFA.valid_var_types:
                 raise IFA.FatalException("Unsupported PLC type", self.properties["TYPE"])
 
