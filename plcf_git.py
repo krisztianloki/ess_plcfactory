@@ -29,7 +29,8 @@ def get_remote_ref(branch = "master"):
 
 def has_commit(commit):
     try:
-        subprocess.check_call(shlex_split("git cat-file -e {}^{{commit}}".format(commit)))
+        # Cannot use check_call; have to redirect stderr...
+        subprocess.check_output(shlex_split("git cat-file -e {}^{{commit}}".format(commit)), stderr = subprocess.STDOUT)
         return True
     except subprocess.CalledProcessError:
         return False
