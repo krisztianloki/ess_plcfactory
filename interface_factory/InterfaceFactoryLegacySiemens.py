@@ -35,7 +35,6 @@ ActualDeviceName = ""
 ActualDeviceNameWhite = ""
 ActualDeviceType = ""
 EPICSTOPLCLENGTH = ""
-PLCTOEPICSLENGTH = ""
 EPICSTOPLCDATABLOCKOFFSET = ""
 EPICSTOPLCPARAMETERSSTART = ""
 PLCTOEPICSDATABLOCKOFFSET = ""
@@ -128,17 +127,17 @@ def AddBOOL(variable, InArrayName, InArrayNum, StartingRegister):
 		if ActVariableBitNumber < 8:
 			DevTypeBODY_CODE.append("       #MyBoolsinWord[" + str((int(ActVariableBitNumber)+8)) + "] := #\""+ ActVariablePLCName +"\";    //EPICSName: "+ActVariableEPICSName)
 			IsDouble = False
-			EndString = "\"PLCToEPICS\".\"Word\"[#PLCToEPICSDataBlockOffset + "+str(ActVariableArrayIndex) +"] := #MyWord;"
+			EndString = "#StatusReg["+str(ActVariableArrayIndex) +"] := #MyWord;"
 		else:
 			DevTypeBODY_CODE.append("       #MyBoolsinWord[" + str((int(ActVariableBitNumber)-8)) + "] := #\""+ ActVariablePLCName +"\";    //EPICSName: "+ActVariableEPICSName)
 			IsDouble = False
-			EndString = "\"PLCToEPICS\".\"Word\"[#PLCToEPICSDataBlockOffset + "+str(ActVariableArrayIndex) +"] := #MyWord;"
+			EndString = "#StatusReg["+str(ActVariableArrayIndex) +"] := #MyWord;"
 	if variable.is_parameter() or variable.is_command():
 		if StartingRegister != ActVariableArrayIndex:
 			CloseLastVariable()
 			StartingRegister = ActVariableArrayIndex
 			DevTypeBODY_CODE.append("")
-			DevTypeBODY_CODE.append("       #MyWord := \"EPICSToPLC\".\"Word\"[#EPICSToPLCDataBlockOffset + "+str(ActVariableArrayIndex) +"];")
+			DevTypeBODY_CODE.append("       #MyWord := #CommandReg["+str(ActVariableArrayIndex) +"];")
 		if ActVariableBitNumber < 8:
 			DevTypeBODY_CODE.append("       #\""+ ActVariablePLCName +"\" := #MyBoolsinWord[" + str((int(ActVariableBitNumber)+8)) + "];    //EPICSName: "+ActVariableEPICSName)
 			IsDouble = False
@@ -177,17 +176,17 @@ def AddBYTE(variable, InArrayName, InArrayNum, StartingRegister):
 		if ActVariableBitNumber == 0:
 			DevTypeBODY_CODE.append("       #MyBytesinWord[0] := #\""+ ActVariablePLCName +"\";    //EPICSName: "+ActVariableEPICSName)
 			IsDouble = False
-			EndString = "\"PLCToEPICS\".\"Word\"[#PLCToEPICSDataBlockOffset + "+str(ActVariableArrayIndex) +"] := #MyWord;"
+			EndString = "#StatusReg["+str(ActVariableArrayIndex) +"] := #MyWord;"
 		else:
 			DevTypeBODY_CODE.append("       #MyBytesinWord[1] := #\""+ ActVariablePLCName +"\";    //EPICSName: "+ActVariableEPICSName)
 			IsDouble = False
-			EndString = "\"PLCToEPICS\".\"Word\"[#PLCToEPICSDataBlockOffset + "+str(ActVariableArrayIndex) +"] := #MyWord;"
+			EndString = "#StatusReg["+str(ActVariableArrayIndex) +"] := #MyWord;"
 	if variable.is_parameter() or variable.is_command():
 		if StartingRegister != ActVariableArrayIndex:
 			CloseLastVariable()
 			StartingRegister = ActVariableArrayIndex
 			DevTypeBODY_CODE.append("")
-			DevTypeBODY_CODE.append("       #MyWord := \"EPICSToPLC\".\"Word\"[#EPICSToPLCDataBlockOffset + "+str(ActVariableArrayIndex) +"];")
+			DevTypeBODY_CODE.append("       #MyWord := #CommandReg["+str(ActVariableArrayIndex) +"];")
 		if ActVariableBitNumber == 0:
 			DevTypeBODY_CODE.append("       #\""+ ActVariablePLCName +"\" := #MyBytesinWord[1];    //EPICSName: "+ActVariableEPICSName)
 			IsDouble = False
@@ -225,13 +224,13 @@ def AddINT(variable, InArrayName, InArrayNum, StartingRegister):
 			DevTypeBODY_CODE.append("       #MyInt := #\""+ ActVariablePLCName +"\";    //EPICSName: "+ActVariableEPICSName)
 		if ActVariableBitNumber == 0:
 			IsDouble = False
-			EndString = "\"PLCToEPICS\".\"Word\"[#PLCToEPICSDataBlockOffset + "+str(ActVariableArrayIndex) +"] := #MyWordinInt;"
+			EndString = "#StatusReg["+str(ActVariableArrayIndex) +"] := #MyWordinInt;"
 	if variable.is_parameter() or variable.is_command():
 		if StartingRegister != ActVariableArrayIndex:
 			CloseLastVariable()
 			StartingRegister = ActVariableArrayIndex
 			DevTypeBODY_CODE.append("")
-			DevTypeBODY_CODE.append("       #MyWordinInt := \"EPICSToPLC\".\"Word\"[#EPICSToPLCDataBlockOffset + "+str(ActVariableArrayIndex) +"];")
+			DevTypeBODY_CODE.append("       #MyWordinInt := #CommandReg["+str(ActVariableArrayIndex) +"];")
 			DevTypeBODY_CODE.append("       #\""+ ActVariablePLCName +"\" := #MyInt;    //EPICSName: "+ActVariableEPICSName)
 			IsDouble = False
 			EndString = ""
@@ -264,13 +263,13 @@ def AddWORD(variable, InArrayName, InArrayNum, StartingRegister):
 			DevTypeBODY_CODE.append("       #MyWord := #\""+ ActVariablePLCName +"\";    //EPICSName: "+ActVariableEPICSName)
 		if ActVariableBitNumber == 0:
 			IsDouble = False
-			EndString = "\"PLCToEPICS\".\"Word\"[#PLCToEPICSDataBlockOffset + "+str(ActVariableArrayIndex) +"] := #MyWord;"
+			EndString = "#StatusReg["+str(ActVariableArrayIndex) +"] := #MyWord;"
 	if variable.is_parameter() or variable.is_command():
 		if StartingRegister != ActVariableArrayIndex:
 			CloseLastVariable()
 			StartingRegister = ActVariableArrayIndex
 			DevTypeBODY_CODE.append("")
-			DevTypeBODY_CODE.append("       #\""+ ActVariablePLCName +"\" := \"EPICSToPLC\".\"Word\"[#EPICSToPLCDataBlockOffset + "+str(ActVariableArrayIndex) +"];    //EPICSName: "+ActVariableEPICSName)
+			DevTypeBODY_CODE.append("       #\""+ ActVariablePLCName +"\" := #CommandReg["+str(ActVariableArrayIndex) +"];    //EPICSName: "+ActVariableEPICSName)
 			IsDouble = False
 			EndString = ""
 
@@ -302,16 +301,16 @@ def AddDINT(variable, InArrayName, InArrayNum, StartingRegister):
 			DevTypeBODY_CODE.append("       #MyDInt := #\""+ ActVariablePLCName +"\";    //EPICSName: "+ActVariableEPICSName)
 		if ActVariableBitNumber == 0:
 			IsDouble = True
-			EndString  = "\"PLCToEPICS\".\"Word\"[#PLCToEPICSDataBlockOffset + "+str(ActVariableArrayIndex) +"] := #MyWordsinDint[0];"
-			EndString2 = "\"PLCToEPICS\".\"Word\"[#PLCToEPICSDataBlockOffset + "+str(ActVariableArrayIndex+1) +"] := #MyWordsinDint[1];"
+			EndString  = "#StatusReg["+str(ActVariableArrayIndex) +"] := #MyWordsinDint[0];"
+			EndString2 = "#StatusReg["+str(ActVariableArrayIndex+1) +"] := #MyWordsinDint[1];"
 	if variable.is_parameter() or variable.is_command():
 		if StartingRegister != ActVariableArrayIndex:
 			CloseLastVariable()
 			StartingRegister = ActVariableArrayIndex
 			DevTypeBODY_CODE.append("")
 			DevTypeBODY_CODE.append("       #MyDInt	:= 0;")
-			DevTypeBODY_CODE.append("       #MyWordsinDint[0]	:= \"EPICSToPLC\".\"Word\"[#EPICSToPLCDataBlockOffset + "+str(ActVariableArrayIndex) +"];")
-			DevTypeBODY_CODE.append("       #MyWordsinDint[1]	:= \"EPICSToPLC\".\"Word\"[#EPICSToPLCDataBlockOffset + "+str(ActVariableArrayIndex+1) +"];")
+			DevTypeBODY_CODE.append("       #MyWordsinDint[0]	:= #CommandReg["+str(ActVariableArrayIndex) +"];")
+			DevTypeBODY_CODE.append("       #MyWordsinDint[1]	:= #CommandReg["+str(ActVariableArrayIndex+1) +"];")
 			DevTypeBODY_CODE.append("       #\""+ ActVariablePLCName +"\" := #MyDInt;    //EPICSName: "+ActVariableEPICSName)
 			IsDouble = True
 			EndString = ""
@@ -344,8 +343,8 @@ def AddDWORD(variable, InArrayName, InArrayNum, StartingRegister):
 			DevTypeBODY_CODE.append("       #MyDWord := #\""+ ActVariablePLCName +"\";    //EPICSName: "+ActVariableEPICSName)
 		if ActVariableBitNumber == 0:
 			IsDouble = True
-			EndString  = "\"PLCToEPICS\".\"Word\"[#PLCToEPICSDataBlockOffset + "+str(ActVariableArrayIndex) +"] := #MyWordsinDWord[0];"
-			EndString2 = "\"PLCToEPICS\".\"Word\"[#PLCToEPICSDataBlockOffset + "+str(ActVariableArrayIndex+1) +"] := #MyWordsinDWord[1];"
+			EndString  = "#StatusReg["+str(ActVariableArrayIndex) +"] := #MyWordsinDWord[0];"
+			EndString2 = "#StatusReg["+str(ActVariableArrayIndex+1) +"] := #MyWordsinDWord[1];"
 	if variable.is_parameter() or variable.is_command():
 		print("DWORD is not supported for ModbusTCP")
 
@@ -377,16 +376,16 @@ def AddREAL(variable, InArrayName, InArrayNum, StartingRegister):
 			DevTypeBODY_CODE.append("       #MyReal := #\""+ ActVariablePLCName +"\";    //EPICSName: "+ActVariableEPICSName)
 		if ActVariableBitNumber == 0:
 			IsDouble = True
-			EndString  = "\"PLCToEPICS\".\"Word\"[#PLCToEPICSDataBlockOffset + "+str(ActVariableArrayIndex) +"] := #MyWordsinReal[0];"
-			EndString2 = "\"PLCToEPICS\".\"Word\"[#PLCToEPICSDataBlockOffset + "+str(ActVariableArrayIndex+1) +"] := #MyWordsinReal[1];"
+			EndString  = "#StatusReg["+str(ActVariableArrayIndex) +"] := #MyWordsinReal[0];"
+			EndString2 = "#StatusReg["+str(ActVariableArrayIndex+1) +"] := #MyWordsinReal[1];"
 	if variable.is_parameter() or variable.is_command():
 		if StartingRegister != ActVariableArrayIndex:
 			CloseLastVariable()
 			StartingRegister = ActVariableArrayIndex
 			DevTypeBODY_CODE.append("")
 			DevTypeBODY_CODE.append("       #MyReal	:= 0.0;")
-			DevTypeBODY_CODE.append("       #MyWordsinReal[0]	:= \"EPICSToPLC\".\"Word\"[#EPICSToPLCDataBlockOffset + "+str(ActVariableArrayIndex) +"];")
-			DevTypeBODY_CODE.append("       #MyWordsinReal[1]	:= \"EPICSToPLC\".\"Word\"[#EPICSToPLCDataBlockOffset + "+str(ActVariableArrayIndex+1) +"];")
+			DevTypeBODY_CODE.append("       #MyWordsinReal[0]	:= #CommandReg["+str(ActVariableArrayIndex) +"];")
+			DevTypeBODY_CODE.append("       #MyWordsinReal[1]	:= #CommandReg["+str(ActVariableArrayIndex+1) +"];")
 			DevTypeBODY_CODE.append("       #\""+ ActVariablePLCName +"\" := #MyReal;    //EPICSName: "+ActVariableEPICSName)
 			IsDouble = True
 			EndString = ""
@@ -419,16 +418,16 @@ def AddTIME(variable, InArrayName, InArrayNum, StartingRegister):
 			DevTypeBODY_CODE.append("       #MyTime := #\""+ ActVariablePLCName +"\";    //EPICSName: "+ActVariableEPICSName)
 		if ActVariableBitNumber == 0:
 			IsDouble = True
-			EndString  = "\"PLCToEPICS\".\"Word\"[#PLCToEPICSDataBlockOffset + "+str(ActVariableArrayIndex) +"] := #MyWordsinTime[0];"
-			EndString2 = "\"PLCToEPICS\".\"Word\"[#PLCToEPICSDataBlockOffset + "+str(ActVariableArrayIndex+1) +"] := #MyWordsinTime[1];"
+			EndString  = "#StatusReg["+str(ActVariableArrayIndex) +"] := #MyWordsinTime[0];"
+			EndString2 = "#StatusReg["+str(ActVariableArrayIndex+1) +"] := #MyWordsinTime[1];"
 	if variable.is_parameter() or variable.is_command():
 		if StartingRegister != ActVariableArrayIndex:
 			CloseLastVariable()
 			StartingRegister = ActVariableArrayIndex
 			DevTypeBODY_CODE.append("")
 			DevTypeBODY_CODE.append("       #MyDInt	:= 0;")
-			DevTypeBODY_CODE.append("       #MyWordsinDint[0]	:= \"EPICSToPLC\".\"Word\"[#EPICSToPLCDataBlockOffset + "+str(ActVariableArrayIndex) +"];")
-			DevTypeBODY_CODE.append("       #MyWordsinDint[1]	:= \"EPICSToPLC\".\"Word\"[#EPICSToPLCDataBlockOffset + "+str(ActVariableArrayIndex+1) +"];")
+			DevTypeBODY_CODE.append("       #MyWordsinDint[0]	:= #CommandReg["+str(ActVariableArrayIndex) +"];")
+			DevTypeBODY_CODE.append("       #MyWordsinDint[1]	:= #CommandReg["+str(ActVariableArrayIndex+1) +"];")
 			DevTypeBODY_CODE.append("       #\""+ ActVariablePLCName +"\" := #MyDInt;    //EPICSName: "+ActVariableEPICSName)
 			IsDouble = True
 			EndString = ""
@@ -457,11 +456,6 @@ def WriteDevType():
 
 	ExternalSourceFile.append("   VAR_INPUT")
 	ExternalSourceFile.extend(DevTypeVAR_INPUT)
-	ExternalSourceFile.append("   EPICSToPLCLength { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Int;   // Length of device command register array (in words)")
-	ExternalSourceFile.append("   EPICSToPLCDataBlockOffset { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Int;   // Offset in EPICS->PLC comms block where this device data resides (in words)")
-	ExternalSourceFile.append("   EPICSToPLCParametersStart { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Int;   // The border offset between the Command and the Parameter area")
-	ExternalSourceFile.append("   PLCToEPICSLength { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Int;   // Length of device status register array (in words)")
-	ExternalSourceFile.append("   PLCToEPICSDataBlockOffset { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Int;   // Offset in PLC->EPICS comms block where this device data resides (in words)")
 	ExternalSourceFile.append("   END_VAR")
 
 	ExternalSourceFile.append("   VAR_OUTPUT")
@@ -471,6 +465,12 @@ def WriteDevType():
 
 	ExternalSourceFile.append("   VAR_IN_OUT")
 	ExternalSourceFile.extend(DevTypeVAR_INOUT)
+	ExternalSourceFile.append("   END_VAR")
+
+
+	ExternalSourceFile.append("   VAR")
+	ExternalSourceFile.append("      StatusReg { S7_HMI_Accessible := 'False'; S7_HMI_Visible := 'False'} : Array[0.."+ str(MaxStatusReg) +"] of Word;")
+	ExternalSourceFile.append("      CommandReg { S7_HMI_Accessible := 'False'; S7_HMI_Visible := 'False'} : Array[0.."+ str(MaxCommandReg) +"] of Word;")
 	ExternalSourceFile.append("   END_VAR")
 
 	ExternalSourceFile.extend(DevTypeDB_SPEC)
@@ -2210,7 +2210,115 @@ def WriteStandardPLCCode(TIAVersion):
 	ExternalSourceFile.append("")
 	ExternalSourceFile.append("END_DATA_BLOCK")
 
+	ExternalSourceFile.append("FUNCTION \"_CommsEPICSDataMappingFBFactory\" : Void")
+	ExternalSourceFile.append("{ S7_Optimized_Access := 'TRUE' }")
+	ExternalSourceFile.append("VERSION : 0.1")
+	ExternalSourceFile.append("//This blocks maps data to/from PLC/EPICS data exchange block")
+	ExternalSourceFile.append("   VAR_INPUT ")
+	ExternalSourceFile.append("      EPICSToPLCLength : Int;   // Length of device command register array (in words)")
+	ExternalSourceFile.append("      EPICSToPLCDataBlockOffset : Int;   // Offset in EPICS->PLC comms block where this device data resides (in words)")
+	ExternalSourceFile.append("      EPICSToPLCParametersStart : Int;   // The border offset between the Command and the Parameter area")
+	ExternalSourceFile.append("      PLCToEPICSLength : Int;   // Length of device status register array (in words)")
+	ExternalSourceFile.append("      PLCToEPICSDataBlockOffset : Int;   // Offset in PLC->EPICS comms block where this device data resides (in words)")
+	ExternalSourceFile.append("   END_VAR")
+	ExternalSourceFile.append("")
+	ExternalSourceFile.append("   VAR_IN_OUT ")
+	ExternalSourceFile.append("      EPICSToPLCCommandRegisters : Variant;   // Pointer to device command registers (header of the array of words)")
+	ExternalSourceFile.append("      PLCToEPICSStatusRegisters : Variant;   // Pointer to device status registers (header of the array of words)")
+	ExternalSourceFile.append("      EPICSToPLCDataBlock : Variant;   // Pointer to EPICS->PLC data exchange block (header of the array of words)")
+	ExternalSourceFile.append("      PLCToEPICSDataBlock : Variant;   // Pointer to PLC->EPICS data exchange block (header of the array of words)")
+	ExternalSourceFile.append("   END_VAR")
+	ExternalSourceFile.append("")
+	ExternalSourceFile.append("   VAR_TEMP ")
+	ExternalSourceFile.append("      temp : Int;")
+	ExternalSourceFile.append("      ZeroWord : Word;")
+	ExternalSourceFile.append("      LoopCounter : Int;")
+	ExternalSourceFile.append("   END_VAR")
+	ExternalSourceFile.append("")
+	ExternalSourceFile.append("BEGIN")
+	ExternalSourceFile.append("	(*")
+	ExternalSourceFile.append("	  Author:       Nick Levchenko")
+	ExternalSourceFile.append("	  Modified:     Miklos Boros")
+	ExternalSourceFile.append("	  ")
+	ExternalSourceFile.append("	  Description:  This function maps the the data between any device and PLC/EPICS communication blocks.")
+	ExternalSourceFile.append("	                Every device data that needs to be communicated to EPICS needs to have so called \"communication registers\".")
+	ExternalSourceFile.append("	                They should be implemented inside the device FB as:")
+	ExternalSourceFile.append("	                CommandReg  Array [0..x] of Word")
+	ExternalSourceFile.append("	                StatusReg   Array [0..x] of Word")
+	ExternalSourceFile.append("	                Parameters  Array [0..x] of Word")
+	ExternalSourceFile.append("	                To map device data to PLC/EPICS data exchange blocks call this function and provide pointers to device communication registers,")
+	ExternalSourceFile.append("	                their lengths, pointers to PLC/EPICS data exchange blocks and offsets in those block where this device data should go.")
+	ExternalSourceFile.append("	                ")
+	ExternalSourceFile.append("	                Status registers are simply copied from device to data exchange block.")
+	ExternalSourceFile.append("	                Command registers are copied from data exchange blocks to device and CLEARED. This is to accept commands only once. ")
+	ExternalSourceFile.append("	                Parameter registers are copied from data exchange blocks to device WITHOUT clearing. This means this are can be used for SetPoints and other parameters.")
+	ExternalSourceFile.append("	*)")
+	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("	// Map command/parameter registers")
+	ExternalSourceFile.append("	IF #EPICSToPLCLength > 0 THEN")
+	ExternalSourceFile.append("	    ")
+	ExternalSourceFile.append("	    #temp := MOVE_BLK_VARIANT(")
+	ExternalSourceFile.append("	                              SRC := #EPICSToPLCDataBlock,")
+	ExternalSourceFile.append("	                              COUNT := INT_TO_UDINT(#EPICSToPLCLength),")
+	ExternalSourceFile.append("	                              SRC_INDEX := #EPICSToPLCDataBlockOffset,")
+	ExternalSourceFile.append("	                              DEST_INDEX := 0,")
+	ExternalSourceFile.append("	                              DEST => #EPICSToPLCCommandRegisters);")
+	ExternalSourceFile.append("	    ")
+	ExternalSourceFile.append("	    IF (NOT \"Utilities\".TestInProgress) THEN")
+	ExternalSourceFile.append("	    ")
+	ExternalSourceFile.append("	        //Clear commands, but leave parameters unchanged (loop through all command registers AND write 0 TO them)    ")
+	ExternalSourceFile.append("	        #ZeroWord := 0;")
+	ExternalSourceFile.append("	        IF (#EPICSToPLCParametersStart = #EPICSToPLCLength) THEN")
+	ExternalSourceFile.append("	            FOR #LoopCounter := 0 TO (#EPICSToPLCLength - 1) DO")
+	ExternalSourceFile.append("	                ")
+	ExternalSourceFile.append("	                #temp := MOVE_BLK_VARIANT(SRC := #ZeroWord,")
+	ExternalSourceFile.append("	                                          COUNT := 1,")
+	ExternalSourceFile.append("	                                          SRC_INDEX := 0,")
+	ExternalSourceFile.append("	                                          DEST_INDEX := #EPICSToPLCDataBlockOffset + #LoopCounter,")
+	ExternalSourceFile.append("	                                          DEST => #EPICSToPLCDataBlock);")
+	ExternalSourceFile.append("	            END_FOR;")
+	ExternalSourceFile.append("	        ELSE")
+	ExternalSourceFile.append("	            IF (#EPICSToPLCParametersStart > 0) THEN")
+	ExternalSourceFile.append("	                FOR #LoopCounter := 0 TO (#EPICSToPLCParametersStart - 1) DO")
+	ExternalSourceFile.append("	                    ")
+	ExternalSourceFile.append("	                    #temp := MOVE_BLK_VARIANT(SRC := #ZeroWord,")
+	ExternalSourceFile.append("	                                              COUNT := 1,")
+	ExternalSourceFile.append("	                                              SRC_INDEX := 0,")
+	ExternalSourceFile.append("	                                              DEST_INDEX := #EPICSToPLCDataBlockOffset + #LoopCounter,")
+	ExternalSourceFile.append("	                                              DEST => #EPICSToPLCDataBlock);")
+	ExternalSourceFile.append("	                END_FOR;")
+	ExternalSourceFile.append("	            END_IF;")
+	ExternalSourceFile.append("	        END_IF;")
+	ExternalSourceFile.append("	    END_IF;")
+	ExternalSourceFile.append("	END_IF;")
+	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("	// Map status registers")
+	ExternalSourceFile.append("	IF #PLCToEPICSLength > 0 THEN")
+	ExternalSourceFile.append("	    #temp := MOVE_BLK_VARIANT(")
+	ExternalSourceFile.append("	                              SRC := #PLCToEPICSStatusRegisters,")
+	ExternalSourceFile.append("	                              COUNT := INT_TO_UDINT(#PLCToEPICSLength),")
+	ExternalSourceFile.append("	                              SRC_INDEX := 0,")
+	ExternalSourceFile.append("	                              DEST_INDEX := #PLCToEPICSDataBlockOffset,")
+	ExternalSourceFile.append("	                              DEST => #PLCToEPICSDataBlock);")
+	ExternalSourceFile.append("	END_IF;")
+	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("END_FUNCTION")
 
+	ExternalSourceFile.append("	FUNCTION \"_CommsEPICSDataMap\" : Void")
+	ExternalSourceFile.append("{ S7_Optimized_Access := 'TRUE' }")
+	ExternalSourceFile.append("VERSION : 0.1")
+	ExternalSourceFile.append("   VAR_TEMP ")
+	ExternalSourceFile.append("      Hash : DInt;")
+	ExternalSourceFile.append("   END_VAR")
+	ExternalSourceFile.append("")
+	ExternalSourceFile.append("BEGIN")
+	ExternalSourceFile.append("	        //Comms data generation hash")
+	ExternalSourceFile.append("	        #Hash := DInt#104734097;")
+	ExternalSourceFile.append("	        \"PLCToEPICS\".\"Word\"[1] := DINT_TO_WORD(#Hash);")
+	ExternalSourceFile.append("	        \"PLCToEPICS\".\"Word\"[0] := DINT_TO_WORD(SHR(IN := #Hash, N := 16));")
+	ExternalSourceFile.append("	        ")
+	ExternalSourceFile.append("END_FUNCTION")
 
 	ExternalSourceFile.append("FUNCTION_BLOCK \"_CommsPLC_EPICS\"")
 	ExternalSourceFile.append("{ S7_Optimized_Access := 'TRUE' }")
@@ -2337,6 +2445,9 @@ def WriteStandardPLCCode(TIAVersion):
 	ExternalSourceFile.append("	                     EPICSToPLCData := \"EPICSToPLC\".\"Word\");")
 	ExternalSourceFile.append("	")
 	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("	//Map all devices command and status registers to EPICS->PLC and PLC->EPICS data exchange blocks")
+	ExternalSourceFile.append("	\"_CommsEPICSDataMap\"();")
+	ExternalSourceFile.append("	")
 	ExternalSourceFile.append("END_FUNCTION")
 
 	ExternalSourceFile.append("FUNCTION \"_Comms\" : Void")
@@ -2374,7 +2485,6 @@ def ProcessIFADevTypes(OutputDir, TIAVersion):
 	global ActualDeviceNameWhite
 	global ActualDeviceType
 	global EPICSTOPLCLENGTH
-	global PLCTOEPICSLENGTH
 	global EPICSTOPLCDATABLOCKOFFSET
 	global EPICSTOPLCPARAMETERSSTART
 	global PLCTOEPICSDATABLOCKOFFSET
@@ -2438,7 +2548,6 @@ def ProcessIFADevTypes(OutputDir, TIAVersion):
 
 		ActualDeviceName = device.properties["DEVICE"]
 		ActualDeviceType = device.properties["DEVICE_TYPE"]
-		PLCTOEPICSLENGTH = device.properties["PLCTOEPICSLENGTH"]
 		EPICSTOPLCLENGTH = device.properties["EPICSTOPLCLENGTH"]
 		EPICSTOPLCDATABLOCKOFFSET = device.properties["EPICSTOPLCDATABLOCKOFFSET"]
 		EPICSTOPLCPARAMETERSSTART = device.properties["EPICSTOPLCPARAMETERSSTART"]
@@ -2484,11 +2593,7 @@ def ProcessIFADevTypes(OutputDir, TIAVersion):
 		EPICS_device_calls_body.append("        // Device type: "+ActualDeviceType)
 		EPICS_device_calls_body.append("        //********************************************")
 		EPICS_device_calls_body.append("")
-		EPICS_device_calls_body.append("      \"DEV_"+ActualDeviceName+"_iDB\" (EPICSToPLCLength:="+EPICSTOPLCLENGTH+",")
-		EPICS_device_calls_body.append("      EPICSToPLCDataBlockOffset:="+EPICSTOPLCDATABLOCKOFFSET+"+10,")
-		EPICS_device_calls_body.append("      EPICSToPLCParametersStart:="+EPICSTOPLCPARAMETERSSTART+",")
-		EPICS_device_calls_body.append("      PLCToEPICSLength:="+PLCTOEPICSLENGTH+",")
-		EPICS_device_calls_body.append("      PLCToEPICSDataBlockOffset:="+PLCTOEPICSDATABLOCKOFFSET+"+10);")
+		EPICS_device_calls_body.append("      \"DEV_"+ActualDeviceName+"_iDB\" ();")
 
 		EndDeviceString = ActualDeviceName
 		EPICS_device_calls_test_body.append("")
@@ -2497,11 +2602,8 @@ def ProcessIFADevTypes(OutputDir, TIAVersion):
 		EPICS_device_calls_test_body.append("      // Device type: "+ActualDeviceType)
 		EPICS_device_calls_test_body.append("      //********************************************")
 		EPICS_device_calls_test_body.append("")
-		EPICS_device_calls_test_body.append("      \"DEV_"+ActualDeviceName+"_iDB\" (EPICSToPLCLength:="+EPICSTOPLCLENGTH+",")
-		EPICS_device_calls_test_body.append("      EPICSToPLCDataBlockOffset:="+EPICSTOPLCDATABLOCKOFFSET+"+10,")
-		EPICS_device_calls_test_body.append("      EPICSToPLCParametersStart:="+EPICSTOPLCPARAMETERSSTART+",")
-		EPICS_device_calls_test_body.append("      PLCToEPICSLength:="+PLCTOEPICSLENGTH+",")
-		EPICS_device_calls_test_body.append("      PLCToEPICSDataBlockOffset:="+PLCTOEPICSDATABLOCKOFFSET+"+10,")
+		EPICS_device_calls_test_body.append("      \"DEV_"+ActualDeviceName+"_iDB\" (")
+
 
 		#Check if DeviceType is already generated
 		if ActualDeviceType not in DeviceTypeList:
@@ -2763,8 +2865,8 @@ def produce(OutputDir, _ifa, **kwargs):
 	onlydiag   = kwargs.get('onlydiag', False)
 	nodiag     = kwargs.get('nodiag', False)
 	Direct     = kwargs.get('direct', False)
-	if Direct:
-		raise IFA.FatalException("Direct mode is only supported in the InterfaceFactoryLegacySiemens module")
+	if not Direct:
+		raise IFA.FatalException("Non-direct mode is not supported in the InterfaceFactoryLegacySiemens module")
 
 	if not onlydiag:
 		#WriteStandardPLCCode
