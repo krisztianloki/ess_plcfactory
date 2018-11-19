@@ -616,6 +616,7 @@ class IF_DEF_INTERFACE_FUNC(object):
         var._hashed  = is_hashed
 
 
+#This only relevant for classes that do not override hash_message()
 def hashed_interface(func):
     def hashed_interface_func(*args, **kwargs):
         return ifdef_interface(func)(*args, _hashed_interface = True, **kwargs)
@@ -903,7 +904,7 @@ class IF_DEF(object):
         return self._add_source()
 
 
-    @hashed_interface
+    @ifdef_interface
     def define_status_block(self):
         if self._STATUS is not None:
             raise IfDefSyntaxError("Block redefinition is not possible!")
@@ -912,7 +913,7 @@ class IF_DEF(object):
         return self._add(self._STATUS)
 
 
-    @hashed_interface
+    @ifdef_interface
     def define_command_block(self):
         if self._CMD is not None:
             raise IfDefSyntaxError("Block redefinition is not possible!")
@@ -921,7 +922,7 @@ class IF_DEF(object):
         return self._add(self._CMD)
 
 
-    @hashed_interface
+    @ifdef_interface
     def define_parameter_block(self):
         if self._PARAM is not None:
             raise IfDefSyntaxError("Block redefinition is not possible!")
@@ -930,7 +931,7 @@ class IF_DEF(object):
         return self._add(self._PARAM)
 
 
-    @hashed_interface
+    @ifdef_interface
     def define_overlap(self):
         if self._active_BLOCK is None:
             raise IfDefSyntaxError("Define block first")
@@ -941,7 +942,7 @@ class IF_DEF(object):
         return self._add_source()
 
 
-    @hashed_interface
+    @ifdef_interface
     def end_overlap(self):
         if self._overlap is None:
             raise IfDefSyntaxError("No overlap found")
@@ -951,7 +952,7 @@ class IF_DEF(object):
         return self._add_source()
 
 
-    @hashed_interface
+    @ifdef_interface
     def define_plc_array(self, name):
         if self._plc_array is not None:
             raise IfDefSyntaxError("Nesting of arrays is not possible")
@@ -965,7 +966,7 @@ class IF_DEF(object):
         return self._add(var)
 
 
-    @hashed_interface
+    @ifdef_interface
     def end_plc_array(self):
         if self._plc_array is None:
             raise IfDefSyntaxError("No array is defined yet")
@@ -1025,12 +1026,12 @@ class IF_DEF(object):
 
     # Accept None as alarm_message, so that we could display a meaningful
     #  error message in _add_alarm() if it is not provided
-    @hashed_interface
+    @ifdef_interface
     def add_minor_alarm(self, name, alarm_message = None, **keyword_params):
         return self._add_alarm(name, "MINOR", alarm_message, **keyword_params)
 
 
-    @hashed_interface
+    @ifdef_interface
     def add_major_alarm(self, name, alarm_message = None, **keyword_params):
         return self._add_alarm(name, "MAJOR", alarm_message, **keyword_params)
 
@@ -1062,12 +1063,12 @@ class IF_DEF(object):
         return self._add_source()
 
 
-    @hashed_interface
+    @ifdef_interface
     def add_float(self, name, plc_var_type, **keyword_params):
         return self.add_analog(name, plc_var_type, **keyword_params)
 
 
-    @hashed_interface
+    @ifdef_interface
     def add_analog(self, name, plc_var_type, **keyword_params):
         if not isinstance(name, str):
             raise IfDefSyntaxError("Name must be a string!")
@@ -1079,7 +1080,7 @@ class IF_DEF(object):
         return self._add(var)
 
 
-    @hashed_interface
+    @ifdef_interface
     def add_time(self, name, **keyword_params):
         if not isinstance(name, str):
             raise IfDefSyntaxError("Name must be a string!")
@@ -1088,7 +1089,7 @@ class IF_DEF(object):
         return self.add_analog(name, "TIME", **keyword_params)
 
 
-    @hashed_interface
+    @ifdef_interface
     def add_enum(self, name, plc_var_type, nobt = 16, shift = 0, **keyword_params):
         if not isinstance(name, str):
             raise IfDefSyntaxError("Name must be a string!")
@@ -1103,7 +1104,7 @@ class IF_DEF(object):
         return self._add(var)
 
 
-    @hashed_interface
+    @ifdef_interface
     def add_bitmask(self, name, plc_var_type, nobt = 16, shift = 0, **keyword_params):
         if not isinstance(name, str):
             raise IfDefSyntaxError("Name must be a string!")
