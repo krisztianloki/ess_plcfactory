@@ -73,6 +73,8 @@ class IFF(PRINTER):
         PRINTER.header(self, output, **keyword_params).add_filename_header(output, extension = "ifa")
         self._append("""HASH
 #HASH
+PLC
+{inst_slot}
 PLC_TYPE
 {plc_type}
 MAX_IO_DEVICES
@@ -81,11 +83,26 @@ MAX_LOCAL_MODULES
 {max_local_modules}
 MAX_MODULES_IN_IO_DEVICE
 {max_modules_in_io_device}
+INTERFACE_ID
+{interfaceid}
+S7_CONNECTION_ID
+{s7connectionid}
+MODBUS_CONNECTION_ID
+{mbconnectionid}
+S7_PORT
+{s7port}
+MODBUS_PORT
+{mbport}
 """.format(inst_slot                = self.inst_slot(),
            plc_type                 = keyword_params.get("PLC_TYPE", "SIEMENS"),
            max_io_devices           = self.plcdiag_orzero("Max-IO-Devices"),
            max_local_modules        = self.plcdiag_orzero("Max-Local-Modules"),
-           max_modules_in_io_device = self.plcdiag_orzero("Max-Modules-In-IO-Device")), output)
+           max_modules_in_io_device = self.plcdiag_orzero("Max-Modules-In-IO-Device"),
+           interfaceid              = self.plcf("PLC-EPICS-COMMS: InterfaceID"),
+           s7connectionid           = self.plcf("PLC-EPICS-COMMS: S7ConnectionID"),
+           mbconnectionid           = self.plcf("PLC-EPICS-COMMS: MBConnectionID"),
+           s7port                   = self.plcf("PLC-EPICS-COMMS: S7Port"),
+           mbport                   = self.plcf("PLC-EPICS-COMMS: MBPort")), output)
 
 
     #
@@ -98,6 +115,8 @@ DEVICE_TYPE
 {type}
 EPICSTOPLCLENGTH
 {epicstoplclength}
+PLCTOEPICSLENGTH
+{plctoepicslength}
 EPICSTOPLCDATABLOCKOFFSET
 {epicstoplcdatablockoffset}
 EPICSTOPLCPARAMETERSSTART

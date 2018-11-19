@@ -23,15 +23,11 @@ def printer():
 
 class TIA_MAP_DIRECT(PRINTER):
     def __init__(self):
-        PRINTER.__init__(self, comments = False, preserve_empty_lines = False, show_origin = False)
+        super(TIA_MAP_DIRECT, self).__init__(comments = False, preserve_empty_lines = False, show_origin = False)
 
 
     def comment(self):
         return "//"
-
-
-    def _xReg(self):
-        return '"{inst_slot}"'.format(inst_slot = self.inst_slot())
 
 
     @staticmethod
@@ -43,7 +39,7 @@ class TIA_MAP_DIRECT(PRINTER):
     # HEADER
     #
     def header(self, output, **keyword_params):
-        PRINTER.header(self, output, **keyword_params).add_filename_header(output, template = "TIA-MAP", extension = "scl")
+        super(TIA_MAP_DIRECT, self).header(output, **keyword_params).add_filename_header(output, template = "TIA-MAP", extension = "scl")
 
         self._append("""
 #EOL "\\r\\n"
@@ -96,8 +92,8 @@ VERSION : 0.1
                                         EPICSToPLCParametersStart  := {commandwordslength},
                                         PLCToEPICSLength           := {plctoepicslength},
                                         PLCToEPICSDataBlockOffset  := [PLCF# ^(PLCToEPICSDataBlockStartOffset) + {status_cnt}],
-                                        EPICSToPLCCommandRegisters := {reg}.CommandReg,
-                                        PLCToEPICSStatusRegisters  := {reg}.StatusReg,
+                                        EPICSToPLCCommandRegisters := "{inst_slot}".CommandReg,
+                                        PLCToEPICSStatusRegisters  := "{inst_slot}".StatusReg,
                                         EPICSToPLCDataBlock        := "EPICSToPLC"."Word",
                                         PLCToEPICSDataBlock        := "PLCToEPICS"."Word");
 #COUNTER {cmd_cnt} = [PLCF# {cmd_cnt} + {epicstoplclength}];
@@ -108,7 +104,6 @@ VERSION : 0.1
            plctoepicslength   = if_def.from_plc_words_length(),
            status_cnt         = STATUS_BLOCK.counter_keyword(),
            commandwordslength = str(if_def.properties()[CMD_BLOCK.length_keyword()]),
-           reg                = self._xReg()
           ), output)
 
 
@@ -117,10 +112,9 @@ VERSION : 0.1
     # FOOTER
     #
     def footer(self, output):
-        PRINTER.footer(self, output)
+        super(TIA_MAP_DIRECT, self).footer(output)
 
         self._append("""
-
    END_IF;
 
 END_FUNCTION
@@ -192,15 +186,129 @@ END_FUNCTION
 
 
 
-class TIA_MAP_INTERFACE(TIA_MAP_DIRECT):
+class TIA_MAP_INTERFACE(PRINTER):
     def __init__(self):
-        TIA_MAP_DIRECT.__init__(self)
+        super(TIA_MAP_INTERFACE, self).__init__(comments = False, preserve_empty_lines = False, show_origin = False)
+        self._commit_id = "N/A"
 
 
-    def _xReg(self):
-        return '"DEV_{inst_slot}_iDB"'.format(inst_slot = self.inst_slot())
+    def comment(self):
+        return "//"
 
 
     @staticmethod
     def name():
         return "TIA-MAP-INTERFACE"
+
+
+    #
+    # HEADER
+    #
+    def header(self, output, **keyword_params):
+        super(TIA_MAP_INTERFACE, self).header(output, **keyword_params).add_filename_header(output, template = "TIA-MAP", extension = "scl")
+
+        self._commit_id = keyword_params.get("COMMIT_ID", "N/A")
+
+        self._append("""
+#EOL "\\r\\n"
+#COUNTER {cmd_cnt} = [PLCF# {cmd_cnt} + 10];
+#COUNTER {status_cnt} = [PLCF# {status_cnt} + 10];
+""".format(
+           cmd_cnt    = CMD_BLOCK.counter_keyword(),
+           status_cnt = STATUS_BLOCK.counter_keyword()), output)
+
+
+
+    #
+    # BODY
+    #
+    def _ifdef_body(self, if_def, output):
+        self._append("""#COUNTER {cmd_cnt} = [PLCF# {cmd_cnt} + {epicstoplclength}];
+#COUNTER {status_cnt} = [PLCF# {status_cnt} + {plctoepicslength}];
+""".format(epicstoplclength   = if_def.to_plc_words_length(),
+           cmd_cnt            = CMD_BLOCK.counter_keyword(),
+           plctoepicslength   = if_def.from_plc_words_length(),
+           status_cnt         = STATUS_BLOCK.counter_keyword(),
+          ), output)
+
+
+
+    #
+    # FOOTER
+    #
+    def footer(self, output):
+        super(TIA_MAP_INTERFACE, self).footer(output)
+
+        self._append("""
+//########## EPICS->PLC datablock ##########
+DATA_BLOCK "EPICSToPLC"
+{{ S7_Optimized_Access := 'FALSE' }}
+VERSION : 0.1
+   STRUCT
+      "Word" : Array[0..[PLCF# {cmd_cnt} - 1]] of Word;
+   END_STRUCT;
+
+
+BEGIN
+END_DATA_BLOCK
+
+//########## PLC->EPICS datablock ##########
+DATA_BLOCK "PLCToEPICS"
+{{ S7_Optimized_Access := 'FALSE' }}
+VERSION : 0.1
+NON_RETAIN
+   STRUCT
+      "Word" : Array[0..[PLCF# {status_cnt} - 1]] of Word;
+   END_STRUCT;
+
+
+BEGIN
+END_DATA_BLOCK
+
+FUNCTION "_CommsEPICS" : Void
+{{ S7_Optimized_Access := 'TRUE' }}
+VERSION : 0.1
+   VAR_TEMP
+       PLC_Hash : DInt;
+   END_VAR
+
+BEGIN
+	//Heartbeat PLC->EPICS
+	IF "Utilities".Pulse_1s THEN
+	    "PLCToEPICS"."Word"[2] := "PLCToEPICS"."Word"[2] + 1;
+	    IF "PLCToEPICS"."Word"[2] >= 32000 THEN
+	        "PLCToEPICS"."Word"[2] := 0;
+	    END_IF;
+	END_IF;
+
+	// PLC Factory commit ID: {commit_id}
+	// PLC Hash (Generated by PLC Factory)
+	#PLC_Hash := DINT##HASH;
+
+	// Send the PLC Hash to the EPICS IOC
+	"PLCToEPICS"."Word"[1] := DINT_TO_WORD(#PLC_Hash);
+	"PLCToEPICS"."Word"[0] := DINT_TO_WORD(SHR(IN := #PLC_Hash, N := 16));
+
+	// Call the comms block to provide PLC<->EPICS comms
+	"_CommsPLC_EPICS_DB"(Enable         := "Utilities".AlwaysOn,
+	                     SendTrigger    := "Utilities".Pulse_200ms,
+	                     BytesToSend    := {bytestosend},
+	                     InterfaceID    := {interfaceid},
+	                     S7ConnectionID := {s7connectionid},
+	                     MBConnectionID := {mbconnectionid},
+	                     S7Port         := {s7port},
+	                     MBPort         := {mbport},
+	                     PLCToEPICSData := "PLCToEPICS"."Word",
+	                     EPICSToPLCData := "EPICSToPLC"."Word");
+
+END_FUNCTION
+
+""".format(bytestosend    = self.plcf("2 * {status_cnt}".format(status_cnt = STATUS_BLOCK.counter_keyword())),
+           commit_id      = self._commit_id,
+           cmd_cnt        = CMD_BLOCK.counter_keyword(),
+           status_cnt     = STATUS_BLOCK.counter_keyword(),
+           interfaceid    = self.plcf("PLC-EPICS-COMMS: InterfaceID"),
+           s7connectionid = self.plcf("PLC-EPICS-COMMS: S7ConnectionID"),
+           mbconnectionid = self.plcf("PLC-EPICS-COMMS: MBConnectionID"),
+           s7port         = self.plcf("PLC-EPICS-COMMS: S7Port"),
+           mbport         = self.plcf("PLC-EPICS-COMMS: MBPort")), output)

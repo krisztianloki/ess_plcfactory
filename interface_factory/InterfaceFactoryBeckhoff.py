@@ -23,13 +23,16 @@ import sys
 import time
 import shutil
 
+# IFA modules
+from . import IFA
+
 # PLC Factory modules
 import helpers
 
 #Global variables
 timestamp = '{:%Y%m%d%H%M%S}'.format(datetime.datetime.now())
 
-OrderedLines = []
+ifa = None
 
 FC_EPICS_DEVICE_CALLS_HEADER = []
 FC_EPICS_DEVICE_CALLS_BODY = []
@@ -54,8 +57,6 @@ U_TIME_UINT = []
 EPICS_PLC_TesterDB = []
 
 
-DeviceNum = 0
-HASH = ""
 ActualDeviceName = ""
 ActualDeviceNameWhite = ""
 ActualDeviceType = ""
@@ -85,120 +86,13 @@ OutputDirectory = ""
 GlobalIDCounter = 0
 
 
-def Pre_ProcessIFA(IfaPath):
-	print("""
-
-*******************************************
-*                                         *
-*   Generating Beckhoff PLC source code   *
-*                                         *
-*******************************************
-
-PLCFactory file location: {}
-Pre-processing .ifa file...""".format(IfaPath))
-	#Pre process IFA to have Status, Command, Parameter order
-
-	global DeviceNum
-	DeviceNum = 0
-	global OrderedLines
-	OrderedLines = []
-	global HASH
-	HASH = ""
-	global MAX_IO_DEVICES
-	MAX_IO_DEVICES = 0
-	global MAX_LOCAL_MODULES
-	MAX_LOCAL_MODULES = 0
-	global MAX_MODULES_IN_IO_DEVICE
-	MAX_MODULES_IN_IO_DEVICE = 0
-
-
-	StatusArea = []
-	CommandArea = []
-	ParameterArea = []
-	Comments = []
-
-	InStatus = False
-	InCommand = False
-	InParameter = False
-
-	FirstDevice = True
-
-	with open(IfaPath) as f:
-		lines = f.readlines()
-		pos = 0
-		while pos < len(lines):
-			if lines[pos].rstrip() == "HASH":
-				HASH = lines[pos+1].rstrip()
-			if lines[pos].rstrip() == "MAX_IO_DEVICES":
-				MAX_IO_DEVICES = int(lines[pos+1].strip())
-				if MAX_IO_DEVICES <= 0:
-					MAX_IO_DEVICES = 1
-			if lines[pos].rstrip() == "MAX_LOCAL_MODULES":
-				MAX_LOCAL_MODULES = int(lines[pos+1].strip())
-				if MAX_LOCAL_MODULES <= 0:
-					MAX_LOCAL_MODULES = 1
-			if lines[pos].rstrip() == "MAX_MODULES_IN_IO_DEVICE":
-				MAX_MODULES_IN_IO_DEVICE = int(lines[pos+1].strip())
-				if MAX_MODULES_IN_IO_DEVICE <= 0:
-					MAX_MODULES_IN_IO_DEVICE = 1
-			if lines[pos].rstrip() == "DEVICE":
-				DeviceNum = DeviceNum + 1
-				InStatus = False
-				InCommand = False
-				InParameter = False
-				if FirstDevice == False:
-					for line in StatusArea:
-						OrderedLines.append(line)
-					for line in CommandArea:
-						OrderedLines.append(line)
-					for line in ParameterArea:
-						OrderedLines.append(line)
-				StatusArea = []
-				CommandArea = []
-				ParameterArea = []
-				FirstDevice = False
-			if pos+1 != len(lines):
-				if lines[pos].rstrip() == "STATUS":
-					InStatus = True
-					InCommand = False
-					InParameter = False
-				if lines[pos].rstrip() == "COMMAND":
-					InStatus = False
-					InCommand = True
-					InParameter = False
-				if lines[pos].rstrip() == "PARAMETER":
-					InStatus = False
-					InCommand = False
-					InParameter = True
-			if InStatus:
-				StatusArea.append(lines[pos])
-			if InCommand:
-				CommandArea.append(lines[pos])
-			if InParameter:
-				ParameterArea.append(lines[pos])
-
-			if not InStatus and not InCommand and not InParameter:
-				OrderedLines.append(lines[pos])
-			pos = pos + 1
-
-	for line in StatusArea:
-		OrderedLines.append(line)
-	for line in CommandArea:
-		OrderedLines.append(line)
-	for line in ParameterArea:
-		OrderedLines.append(line)
-
-
-	print("Total", str(DeviceNum), "device(s) pre-processed.\n")
-
 def WriteEPICS_PLC_TesterDB():
 
 	global EPICS_PLC_TesterDB
 	global ExternalSourceFile
 
 
-	for line in EPICS_PLC_TesterDB:
-		ExternalSourceFile.append(line)
+	ExternalSourceFile.extend(EPICS_PLC_TesterDB)
 
 
 	EPICS_PLC_TesterDB = []
@@ -777,15 +671,321 @@ def CloseLastVariable():
 			DevTypeBODY_CODE.append("       " + EndString)
 			EndString = ""
 
-def ProcessIFADevTypes(OutputDir, IfaPath):
+
+def AddBOOL(variable, InArrayName, InArrayNum, StartingRegister):
+	global DevTypeBODY_CODE
+	global DevTypeBODY_CODE_ARRAY
+	global EndString
+	global EndString2
+	global IsDouble
+
+	#====== BOOL TYPE ========
+	ActVariablePLCName    = variable.properties["VARIABLE"]
+	ActVariableEPICSName  = variable.properties["EPICS"]
+	ActVariableType       = variable.properties["TYPE"]
+	ActVariableArrayIndex = int(variable.properties["ARRAY_INDEX"])
+	ActVariableBitNumber  = int(variable.properties["BIT_NUMBER"])
+
+	if variable.is_status():
+		if StartingRegister != ActVariableArrayIndex:
+			CloseLastVariable()
+			StartingRegister = ActVariableArrayIndex
+			DevTypeBODY_CODE.append("")
+		if InArrayName is not None:
+			InArrayNum = InArrayNum + 1
+			DevTypeBODY_CODE.append("       nTempUINT." + str(ActVariableBitNumber)+ "           := "+ InArrayName + "[" +str(InArrayNum)+"];       //EPICSName: "+ActVariableEPICSName)
+		else:
+			DevTypeBODY_CODE.append("       nTempUINT." + str(ActVariableBitNumber)+ "           := "+ ActVariablePLCName + ";       //EPICSName: "+ActVariableEPICSName)
+		IsDouble = False
+		EndString = "EPICS_GVL.aDataS7[nOffsetStatus + "+str(ActVariableArrayIndex) +"]    := nTempUINT;"
+	if variable.is_parameter() or variable.is_command():
+		if StartingRegister != ActVariableArrayIndex:
+			CloseLastVariable()
+			StartingRegister = ActVariableArrayIndex
+			DevTypeBODY_CODE.append("")
+			DevTypeBODY_CODE.append("       nTempUINT			:= EPICS_GVL.aDataModbus[nOffsetCmd + "+str(ActVariableArrayIndex)+"];")
+		DevTypeBODY_CODE.append("       "+ActVariablePLCName+"             :=     nTempUINT." + str(ActVariableBitNumber)+ ";       //EPICSName: "+ActVariableEPICSName)
+		EndString = "if (EPICS_GVL.EasyTester <> 2) THEN EPICS_GVL.aDataModbus[nOffsetCmd + " + str(ActVariableArrayIndex)+ "]:=0; END_IF"
+		IsDouble = False
+
+	return (InArrayNum, StartingRegister)
+
+
+def AddBYTE(variable, InArrayName, InArrayNum, StartingRegister):
+	global DevTypeBODY_CODE
+	global DevTypeBODY_CODE_ARRAY
+	global EndString
+	global EndString2
+	global IsDouble
+
+	#====== BYTE TYPE ========
+	ActVariablePLCName    = variable.properties["VARIABLE"]
+	ActVariableEPICSName  = variable.properties["EPICS"]
+	ActVariableType       = variable.properties["TYPE"]
+	ActVariableArrayIndex = int(variable.properties["ARRAY_INDEX"])
+	ActVariableBitNumber  = int(variable.properties["BIT_NUMBER"])
+
+	if variable.is_status():
+		if StartingRegister != ActVariableArrayIndex:
+			CloseLastVariable()
+			StartingRegister = ActVariableArrayIndex
+			DevTypeBODY_CODE.append("")
+		if InArrayName is not None:
+			InArrayNum = InArrayNum + 1
+			DevTypeBODY_CODE.append("       EPICS_GVL.aDataS7[nOffsetStatus + " + str(ActVariableArrayIndex)+ "]           := BYTE_TO_UINT("+ InArrayName + "[" +str(InArrayNum)+"]);       //EPICSName: "+ActVariableEPICSName)
+		else:
+			DevTypeBODY_CODE.append("       EPICS_GVL.aDataS7[nOffsetStatus + " + str(ActVariableArrayIndex)+ "]           := BYTE_TO_UINT("+ ActVariablePLCName + ");       //EPICSName: "+ActVariableEPICSName)
+		IsDouble = False
+		EndString = ""
+	if variable.is_parameter() or variable.is_command():
+		if StartingRegister != ActVariableArrayIndex:
+			CloseLastVariable()
+			StartingRegister = ActVariableArrayIndex
+			DevTypeBODY_CODE.append("")
+		DevTypeBODY_CODE.append("       "+ActVariablePLCName+"             := UINT_TO_BYTE(EPICS_GVL.aDataModbus[nOffsetCmd + " + str(ActVariableArrayIndex)+ "]);       //EPICSName: "+ActVariableEPICSName)
+		EndString = ""
+		IsDouble = False
+
+	return (InArrayNum, StartingRegister)
+
+
+def AddINT(variable, InArrayName, InArrayNum, StartingRegister):
+	global DevTypeBODY_CODE
+	global DevTypeBODY_CODE_ARRAY
+	global EndString
+	global EndString2
+	global IsDouble
+
+	#====== INT TYPE ========
+	ActVariablePLCName    = variable.properties["VARIABLE"]
+	ActVariableEPICSName  = variable.properties["EPICS"]
+	ActVariableType       = variable.properties["TYPE"]
+	ActVariableArrayIndex = int(variable.properties["ARRAY_INDEX"])
+	ActVariableBitNumber  = int(variable.properties["BIT_NUMBER"])
+
+	if variable.is_status():
+		if StartingRegister != ActVariableArrayIndex:
+			CloseLastVariable()
+			StartingRegister = ActVariableArrayIndex
+			DevTypeBODY_CODE.append("")
+		if InArrayName is not None:
+			InArrayNum = InArrayNum + 1
+			DevTypeBODY_CODE.append("       EPICS_GVL.aDataS7[nOffsetStatus + " + str(ActVariableArrayIndex)+ "]           := INT_TO_UINT("+ InArrayName + "[" +str(InArrayNum)+"]);       //EPICSName: "+ActVariableEPICSName)
+		else:
+			DevTypeBODY_CODE.append("       EPICS_GVL.aDataS7[nOffsetStatus + " + str(ActVariableArrayIndex)+ "]           := INT_TO_UINT("+ ActVariablePLCName + ");       //EPICSName: "+ActVariableEPICSName)
+		IsDouble = False
+		EndString = ""
+	if variable.is_parameter() or variable.is_command():
+		if StartingRegister != ActVariableArrayIndex:
+			CloseLastVariable()
+			StartingRegister = ActVariableArrayIndex
+			DevTypeBODY_CODE.append("")
+		DevTypeBODY_CODE.append("       "+ActVariablePLCName+"             := UINT_TO_INT(EPICS_GVL.aDataModbus[nOffsetCmd + " + str(ActVariableArrayIndex)+ "]);       //EPICSName: "+ActVariableEPICSName)
+		EndString = ""
+		IsDouble = False
+
+	return (InArrayNum, StartingRegister)
+
+				#====== WORD TYPE ========
+def AddWORD(variable, InArrayName, InArrayNum, StartingRegister):
+	global DevTypeBODY_CODE
+	global DevTypeBODY_CODE_ARRAY
+	global EndString
+	global EndString2
+	global IsDouble
+
+	#====== WORD TYPE ========
+	ActVariablePLCName    = variable.properties["VARIABLE"]
+	ActVariableEPICSName  = variable.properties["EPICS"]
+	ActVariableType       = variable.properties["TYPE"]
+	ActVariableArrayIndex = int(variable.properties["ARRAY_INDEX"])
+	ActVariableBitNumber  = int(variable.properties["BIT_NUMBER"])
+
+	if variable.is_status():
+		if StartingRegister != ActVariableArrayIndex:
+			CloseLastVariable()
+			StartingRegister = ActVariableArrayIndex
+			DevTypeBODY_CODE.append("")
+		if InArrayName is not None:
+			InArrayNum = InArrayNum + 1
+			DevTypeBODY_CODE.append("       EPICS_GVL.aDataS7[nOffsetStatus + " + str(ActVariableArrayIndex)+ "]           := WORD_TO_UINT("+ InArrayName + "[" +str(InArrayNum)+"]);       //EPICSName: "+ActVariableEPICSName)
+		else:
+			DevTypeBODY_CODE.append("       EPICS_GVL.aDataS7[nOffsetStatus + " + str(ActVariableArrayIndex)+ "]           := WORD_TO_UINT("+ ActVariablePLCName + ");       //EPICSName: "+ActVariableEPICSName)
+		IsDouble = False
+		EndString = ""
+	if variable.is_parameter() or variable.is_command():
+		if StartingRegister != ActVariableArrayIndex:
+			CloseLastVariable()
+			StartingRegister = ActVariableArrayIndex
+			DevTypeBODY_CODE.append("")
+		DevTypeBODY_CODE.append("       "+ActVariablePLCName+"             := UINT_TO_WORD(EPICS_GVL.aDataModbus[nOffsetCmd + " + str(ActVariableArrayIndex)+ "]);       //EPICSName: "+ActVariableEPICSName)
+		EndString = ""
+		IsDouble = False
+
+	return (InArrayNum, StartingRegister)
+
+
+def AddDINT(variable, InArrayName, InArrayNum, StartingRegister):
+	global DevTypeBODY_CODE
+	global DevTypeBODY_CODE_ARRAY
+	global EndString
+	global EndString2
+	global IsDouble
+
+	#====== DINT TYPE ========
+	ActVariablePLCName    = variable.properties["VARIABLE"]
+	ActVariableEPICSName  = variable.properties["EPICS"]
+	ActVariableType       = variable.properties["TYPE"]
+	ActVariableArrayIndex = int(variable.properties["ARRAY_INDEX"])
+	ActVariableBitNumber  = int(variable.properties["BIT_NUMBER"])
+
+	if variable.is_status():
+		if InArrayName is not None:
+			InArrayNum = InArrayNum + 1
+		if StartingRegister != ActVariableArrayIndex:
+			CloseLastVariable()
+			StartingRegister = ActVariableArrayIndex
+			DevTypeBODY_CODE.append("")
+			DevTypeBODY_CODE.append("       uDINT2UINTs.nValue :="+ ActVariablePLCName + ";")
+		DevTypeBODY_CODE.append("       EPICS_GVL.aDataS7[nOffsetStatus + " + str(ActVariableArrayIndex)+ "]           := uDINT2UINTs.stLowHigh.nLow;       //EPICSName: "+ActVariableEPICSName)
+		DevTypeBODY_CODE.append("       EPICS_GVL.aDataS7[nOffsetStatus + " + str(int(ActVariableArrayIndex)+1)+ "]           := uDINT2UINTs.stLowHigh.nHigh;       //EPICSName: "+ActVariableEPICSName)
+		IsDouble = False
+		EndString = ""
+	if variable.is_parameter() or variable.is_command():
+		if StartingRegister != ActVariableArrayIndex:
+			CloseLastVariable()
+			StartingRegister = ActVariableArrayIndex
+			DevTypeBODY_CODE.append("")
+		DevTypeBODY_CODE.append("       uUINTs2DINT.stLowHigh.nLow             := EPICS_GVL.aDataModbus[nOffsetCmd + " + str(ActVariableArrayIndex)+ "];       //EPICSName: "+ActVariableEPICSName)
+		DevTypeBODY_CODE.append("       uUINTs2DINT.stLowHigh.nHigh             := EPICS_GVL.aDataModbus[nOffsetCmd + " + str(int(ActVariableArrayIndex)+1)+ "];       //EPICSName: "+ActVariableEPICSName)
+		EndString =  ActVariablePLCName + "				:= uUINTs2DINT.nValue;"
+		IsDouble = False
+
+	return (InArrayNum, StartingRegister)
+
+
+def AddDWORD(variable, InArrayName, InArrayNum, StartingRegister):
+	global DevTypeBODY_CODE
+	global DevTypeBODY_CODE_ARRAY
+	global EndString
+	global EndString2
+	global IsDouble
+
+	#====== DWORD TYPE ========
+	ActVariablePLCName    = variable.properties["VARIABLE"]
+	ActVariableEPICSName  = variable.properties["EPICS"]
+	ActVariableType       = variable.properties["TYPE"]
+	ActVariableArrayIndex = int(variable.properties["ARRAY_INDEX"])
+	ActVariableBitNumber  = int(variable.properties["BIT_NUMBER"])
+
+	if variable.is_status():
+		if InArrayName is not None:
+			InArrayNum = InArrayNum + 1
+		if StartingRegister != ActVariableArrayIndex:
+			CloseLastVariable()
+			StartingRegister = ActVariableArrayIndex
+			DevTypeBODY_CODE.append("")
+		DevTypeBODY_CODE.append("       EPICS_GVL.aDataS7[nOffsetStatus + " + str(ActVariableArrayIndex)+ "]           := DWORD_TO_UINT("+ ActVariablePLCName + ");       //EPICSName: "+ActVariableEPICSName)
+		DevTypeBODY_CODE.append("       EPICS_GVL.aDataS7[nOffsetStatus + " + str(int(ActVariableArrayIndex)+1)+ "]           := DWORD_TO_UINT(SHR("+ ActVariablePLCName + ",16));       //EPICSName: "+ActVariableEPICSName)
+		IsDouble = False
+		EndString = ""
+	if variable.is_parameter() or variable.is_command():
+		if StartingRegister != ActVariableArrayIndex:
+			CloseLastVariable()
+			StartingRegister = ActVariableArrayIndex
+			DevTypeBODY_CODE.append("")
+		DevTypeBODY_CODE.append("       DWORD for Modbus is not supported")
+		EndString = ""
+		IsDouble = False
+
+	return (InArrayNum, StartingRegister)
+
+
+def AddREAL(variable, InArrayName, InArrayNum, StartingRegister):
+	global DevTypeBODY_CODE
+	global DevTypeBODY_CODE_ARRAY
+	global EndString
+	global EndString2
+	global IsDouble
+
+	#====== REAL TYPE ========
+	ActVariablePLCName    = variable.properties["VARIABLE"]
+	ActVariableEPICSName  = variable.properties["EPICS"]
+	ActVariableType       = variable.properties["TYPE"]
+	ActVariableArrayIndex = int(variable.properties["ARRAY_INDEX"])
+	ActVariableBitNumber  = int(variable.properties["BIT_NUMBER"])
+
+	if variable.is_status():
+		if InArrayName is not None:
+			InArrayNum = InArrayNum + 1
+		if StartingRegister != ActVariableArrayIndex:
+			CloseLastVariable()
+			StartingRegister = ActVariableArrayIndex
+			DevTypeBODY_CODE.append("")
+			DevTypeBODY_CODE.append("       uREAL2UINTs.fValue :="+ ActVariablePLCName + ";")
+		DevTypeBODY_CODE.append("       EPICS_GVL.aDataS7[nOffsetStatus + " + str(ActVariableArrayIndex)+ "]           := uREAL2UINTs.stLowHigh.nLow;       //EPICSName: "+ActVariableEPICSName)
+		DevTypeBODY_CODE.append("       EPICS_GVL.aDataS7[nOffsetStatus + " + str(int(ActVariableArrayIndex)+1)+ "]           := uREAL2UINTs.stLowHigh.nHigh;       //EPICSName: "+ActVariableEPICSName)
+		IsDouble = False
+		EndString = ""
+	if variable.is_parameter() or variable.is_command():
+		if StartingRegister != ActVariableArrayIndex:
+			CloseLastVariable()
+			StartingRegister = ActVariableArrayIndex
+			DevTypeBODY_CODE.append("")
+		DevTypeBODY_CODE.append("       uUINTs2REAL.stLowHigh.nLow             := EPICS_GVL.aDataModbus[nOffsetCmd + " + str(ActVariableArrayIndex)+ "];       //EPICSName: "+ActVariableEPICSName)
+		DevTypeBODY_CODE.append("       uUINTs2REAL.stLowHigh.nHigh             := EPICS_GVL.aDataModbus[nOffsetCmd + " + str(int(ActVariableArrayIndex)+1)+ "];       //EPICSName: "+ActVariableEPICSName)
+		EndString =  ActVariablePLCName + "				:= uUINTs2REAL.fValue;"
+		IsDouble = False
+
+	return (InArrayNum, StartingRegister)
+
+
+def AddTIME(variable, InArrayName, InArrayNum, StartingRegister):
+	global DevTypeBODY_CODE
+	global DevTypeBODY_CODE_ARRAY
+	global EndString
+	global EndString2
+	global IsDouble
+
+	#====== TIME TYPE ========
+	ActVariablePLCName    = variable.properties["VARIABLE"]
+	ActVariableEPICSName  = variable.properties["EPICS"]
+	ActVariableType       = variable.properties["TYPE"]
+	ActVariableArrayIndex = int(variable.properties["ARRAY_INDEX"])
+	ActVariableBitNumber  = int(variable.properties["BIT_NUMBER"])
+
+	if variable.is_status():
+		if InArrayName is not None:
+			InArrayNum = InArrayNum + 1
+		if StartingRegister != ActVariableArrayIndex:
+			CloseLastVariable()
+			StartingRegister = ActVariableArrayIndex
+			DevTypeBODY_CODE.append("")
+			DevTypeBODY_CODE.append("       uTIME2UINTs.tValue :="+ ActVariablePLCName + ";")
+		DevTypeBODY_CODE.append("       EPICS_GVL.aDataS7[nOffsetStatus + " + str(ActVariableArrayIndex)+ "]           := uTIME2UINTs.stLowHigh.nLow;       //EPICSName: "+ActVariableEPICSName)
+		DevTypeBODY_CODE.append("       EPICS_GVL.aDataS7[nOffsetStatus + " + str(int(ActVariableArrayIndex)+1)+ "]           := uTIME2UINTs.stLowHigh.nHigh;       //EPICSName: "+ActVariableEPICSName)
+		IsDouble = False
+		EndString = ""
+	if variable.is_parameter() or variable.is_command():
+		if StartingRegister != ActVariableArrayIndex:
+			CloseLastVariable()
+			StartingRegister = ActVariableArrayIndex
+			DevTypeBODY_CODE.append("")
+		DevTypeBODY_CODE.append("       uUINTs2TIME.stLowHigh.nLow             := EPICS_GVL.aDataModbus[nOffsetCmd + " + str(ActVariableArrayIndex)+ "];       //EPICSName: "+ActVariableEPICSName)
+		DevTypeBODY_CODE.append("       uUINTs2TIME.stLowHigh.nHigh             := EPICS_GVL.aDataModbus[nOffsetCmd + " + str(int(ActVariableArrayIndex)+1)+ "];       //EPICSName: "+ActVariableEPICSName)
+		EndString =  ActVariablePLCName + "				:= uUINTs2TIME.tValue;"
+		IsDouble = False
+
+	return (InArrayNum, StartingRegister)
+
+
+def ProcessIFADevTypes(OutputDir):
 
 	#Process IFA devices
 	print("Processing .ifa file...")
 
 	ProcessedDeviceNum = 0
 
-	global OrderedLines
-	global HASH
 	global ActualDeviceName
 	global ActualDeviceNameWhite
 	global ActualDeviceType
@@ -814,10 +1014,6 @@ def ProcessIFADevTypes(OutputDir, IfaPath):
 	global EndString2
 	global IsDouble
 
-	InStatus = False
-	InCommand = False
-	InParameter = False
-	FirstDevice = True
 	StartingRegister = -1
 
 	ActVariablePLCName = ""
@@ -842,11 +1038,8 @@ def ProcessIFADevTypes(OutputDir, IfaPath):
 	TotalStatusReg = 0;
 	TotalCommandReg = 0;
 
-	InArray = False
-	InArrayName = ""
-	InArrayNum = 0
-
-	pos = 0
+	InArrayName = None
+	InArrayNum  = None
 
 
 	EPICS_GVL.append("<?xml version=\"1.0\" encoding=\"utf-8\"?>");
@@ -874,468 +1067,278 @@ def ProcessIFADevTypes(OutputDir, IfaPath):
 	EPICS_GVL.append("");
 	EPICS_GVL.append("//Global Variables used in EPICS<-->Beckhoff communication at ESS. ");
 
+	FC_EPICS_DEVICE_CALLS_HEADER.append("<?xml version=\"1.0\" encoding=\"utf-8\"?>");
+	FC_EPICS_DEVICE_CALLS_HEADER.append("<TcPlcObject ");
+	FC_EPICS_DEVICE_CALLS_HEADER.append("Version=\"1.1.0.1\" ProductVersion=\"3.1.4022.10\">");
+	FC_EPICS_DEVICE_CALLS_HEADER.append("<POU ");
+	GlobalIDCounter = GlobalIDCounter + 1
+	FC_EPICS_DEVICE_CALLS_HEADER.append("Name=\"FC_EPICS_DEVICE_CALLS\" Id=\"{5bb54db1-6fe3-4b17-2b0f-"+str(GlobalIDCounter).zfill(12)+"}\" SpecialFunc=\"None\">");
+	FC_EPICS_DEVICE_CALLS_HEADER.append("");
+	FC_EPICS_DEVICE_CALLS_HEADER.append("<Declaration>");
+	FC_EPICS_DEVICE_CALLS_HEADER.append("<![CDATA[");
+	FC_EPICS_DEVICE_CALLS_HEADER.append("FUNCTION FC_EPICS_DEVICE_CALLS : BOOL");
+	FC_EPICS_DEVICE_CALLS_HEADER.append("VAR_INPUT");
+	FC_EPICS_DEVICE_CALLS_HEADER.append("END_VAR");
+	FC_EPICS_DEVICE_CALLS_HEADER.append("VAR");
+	FC_EPICS_DEVICE_CALLS_HEADER.append("END_VAR");
+	FC_EPICS_DEVICE_CALLS_HEADER.append("]]>");
+	FC_EPICS_DEVICE_CALLS_HEADER.append("</Declaration>");
+	FC_EPICS_DEVICE_CALLS_HEADER.append("<Implementation>");
+	FC_EPICS_DEVICE_CALLS_HEADER.append("<ST>");
+	FC_EPICS_DEVICE_CALLS_HEADER.append("<![CDATA[");
+	FC_EPICS_DEVICE_CALLS_HEADER.append("EPICS_GVL.FB_EPICS_S7_Comm(")
+	FC_EPICS_DEVICE_CALLS_HEADER.append("    bConnect:=TRUE ,")
+	FC_EPICS_DEVICE_CALLS_HEADER.append("    nS7Port:=2000 ,")
+	FC_EPICS_DEVICE_CALLS_HEADER.append("    nPLC_Hash:="+ifa.HASH+" ,")
+	FC_EPICS_DEVICE_CALLS_HEADER.append("    tSendTrig:=T#200MS ,")
+	FC_EPICS_DEVICE_CALLS_HEADER.append("    nCase=> ,")
+	FC_EPICS_DEVICE_CALLS_HEADER.append("    bConnected=> ,")
+	FC_EPICS_DEVICE_CALLS_HEADER.append("    bError=> );")
+
+	FC_EPICS_DEVICE_CALLS_FOOTER.append("]]>");
+	FC_EPICS_DEVICE_CALLS_FOOTER.append("</ST>");
+	FC_EPICS_DEVICE_CALLS_FOOTER.append("</Implementation>");
+	FC_EPICS_DEVICE_CALLS_FOOTER.append("</POU>");
+	FC_EPICS_DEVICE_CALLS_FOOTER.append("</TcPlcObject>");
 
 
-	while pos < len(OrderedLines)-1:
-		if OrderedLines[pos].rstrip() == "TOTALEPICSTOPLCLENGTH":
-			TotalCommandReg = int(OrderedLines[pos + 1].rstrip())
-		if OrderedLines[pos].rstrip() == "TOTALPLCTOEPICSLENGTH":
-			TotalStatusReg = int(OrderedLines[pos + 1].rstrip())
-		if OrderedLines[pos].rstrip() == "DEVICE":
-			ProcessedDeviceNum = ProcessedDeviceNum + 1
-			InStatus = False
-			InCommand = False
-			InParameter = False
-			if FirstDevice == False:
-				CloseLastVariable()
-				if NewDeviceType == True:
-					Write_DevType()
+	TotalCommandReg = ifa.TOTALEPICSTOPLCLENGTH
+	TotalStatusReg  = ifa.TOTALPLCTOEPICSLENGTH
+	for device in ifa.Devices:
+		ProcessedDeviceNum = ProcessedDeviceNum + 1
 
+		ActualDeviceName = device.properties["DEVICE"]
+		ActualDeviceType = device.properties["DEVICE_TYPE"]
+		EPICSTOPLCLENGTH = device.properties["EPICSTOPLCLENGTH"]
+		EPICSTOPLCDATABLOCKOFFSET = device.properties["EPICSTOPLCDATABLOCKOFFSET"]
+		EPICSTOPLCPARAMETERSSTART = device.properties["EPICSTOPLCPARAMETERSSTART"]
+		PLCTOEPICSDATABLOCKOFFSET = device.properties["PLCTOEPICSDATABLOCKOFFSET"]
+		ActualDeviceNameWhite = ActualDeviceName
+
+		Text = "Device: "+ ActualDeviceName + " Type: "+ ActualDeviceType
+		print("    ", "-" * len(Text), sep='')
+		print("    ", Text, sep='')
+		print("    ", "-" * len(Text), sep='')
+
+		ActualDeviceNameWhite = ActualDeviceNameWhite.replace(":","_")
+		ActualDeviceNameWhite = ActualDeviceNameWhite.replace("/","")
+		ActualDeviceNameWhite = ActualDeviceNameWhite.replace("\\","")
+		ActualDeviceNameWhite = ActualDeviceNameWhite.replace("?","")
+		ActualDeviceNameWhite = ActualDeviceNameWhite.replace("*","")
+		ActualDeviceNameWhite = ActualDeviceNameWhite.replace("[","")
+		ActualDeviceNameWhite = ActualDeviceNameWhite.replace("]","")
+		ActualDeviceNameWhite = ActualDeviceNameWhite.replace(".","")
+		ActualDeviceNameWhite = ActualDeviceNameWhite.replace("-","_")
+		ActualDeviceType = ActualDeviceType.replace("-","_")
+
+		if (int(EPICSTOPLCDATABLOCKOFFSET)<12288):
+			print("ERROR:")
+			print("The PLCs modbus offset held by the property: PLCF#EPICSToPLCDataBlockStartOffset in CCDB is less then 12288! \n")
+			print("Make sure your PLC in CCDB is PLC_BECKHOFF type instead of PLC! \n")
+			print("--- %.1f seconds ---\n" % (time.time() - start_time))
+			sys.exit()
+
+
+		FC_EPICS_DEVICE_CALLS_BODY.append("")
+		FC_EPICS_DEVICE_CALLS_BODY.append("//********************************************")
+		FC_EPICS_DEVICE_CALLS_BODY.append("// Device name: "+ActualDeviceName)
+		FC_EPICS_DEVICE_CALLS_BODY.append("// Device type: "+ActualDeviceType)
+		FC_EPICS_DEVICE_CALLS_BODY.append("//********************************************")
+		FC_EPICS_DEVICE_CALLS_BODY.append("");
+		FC_EPICS_DEVICE_CALLS_BODY.append("EPICS_GVL.FB_DEV_"+ActualDeviceNameWhite+"(")
+		FC_EPICS_DEVICE_CALLS_BODY.append("       nOffsetStatus:= "+str(int(PLCTOEPICSDATABLOCKOFFSET)+10)+",")
+		FC_EPICS_DEVICE_CALLS_BODY.append("       nOffsetCmd:="+str(int(EPICSTOPLCDATABLOCKOFFSET)-12288+10)+",")
+		FC_EPICS_DEVICE_CALLS_BODY.append("       nOffsetPar:="+str(int(EPICSTOPLCDATABLOCKOFFSET)-12288+10+int(EPICSTOPLCPARAMETERSSTART))+");")
+
+		EPICS_GVL.append("	FB_DEV_"+ActualDeviceNameWhite+"	:FB_DEVTYPE_"+ActualDeviceType+";					//Device instance("+ActualDeviceName+")");
+
+		#Check if DeviceType is already generated
+		if ActualDeviceType not in DeviceTypeList:
+
+			MaxStatusReg = 0;
+			MaxCommandReg = 0;
+
+			NewDeviceType = True
+			DeviceTypeList.append(ActualDeviceType)
+			print("    ->  New device type found. [", ActualDeviceType, "] Creating source code...", sep='')
+
+			DevTypeHeader.append("<?xml version=\"1.0\" encoding=\"utf-8\"?>")
+			DevTypeHeader.append("<TcPlcObject ")
+			DevTypeHeader.append("Version=\"1.1.0.1\" ProductVersion=\"3.1.4022.10\">")
+			DevTypeHeader.append("<POU ")
+			GlobalIDCounter = GlobalIDCounter + 1
+			DevTypeHeader.append("Name=\"FB_DEVTYPE_"+ActualDeviceType+"\" Id=\"{5bb54db1-6fe3-4b17-2b0f-"+str(GlobalIDCounter).zfill(12)+"}\" SpecialFunc=\"None\">")
+			DevTypeHeader.append("<Declaration>")
+			DevTypeHeader.append("<![CDATA[")
+			DevTypeHeader.append("FUNCTION_BLOCK FB_DEVTYPE_"+ActualDeviceType+"")
+
+			DevTypeVAR_TEMP.append("VAR")
+			DevTypeVAR_TEMP.append("	nTempUINT		:UINT;")
+			DevTypeVAR_TEMP.append("	sTempHStr		:T_MaxString;")
+			DevTypeVAR_TEMP.append("")
+			DevTypeVAR_TEMP.append("	uREAL2UINTs	:U_REAL_UINTs;")
+			DevTypeVAR_TEMP.append("	uUINTs2REAL	:U_REAL_UINTs;")
+			DevTypeVAR_TEMP.append("	uTIME2UINTs	:U_TIME_UINTs;")
+			DevTypeVAR_TEMP.append("	uUINTs2TIME	:U_TIME_UINTs;")
+			DevTypeVAR_TEMP.append("	uDINT2UINTs	:U_DINT_UINTs;")
+			DevTypeVAR_TEMP.append("	uUINTs2DINT	:U_DINT_UINTs;")
+			DevTypeVAR_TEMP.append("	fValue: INT;")
+			DevTypeVAR_TEMP.append("END_VAR")
+
+			DevTypeBODY_HEADER.append("")
+			DevTypeBODY_HEADER.append("]]>")
+			DevTypeBODY_HEADER.append("</Declaration>")
+			DevTypeBODY_HEADER.append("<Implementation>")
+			DevTypeBODY_HEADER.append("<ST>")
+			DevTypeBODY_HEADER.append("<![CDATA[")
+			DevTypeBODY_HEADER.append("(*")
+			DevTypeBODY_HEADER.append("**********************EPICS<-->Beckhoff integration at ESS in Lund, Sweden*******************************")
+			DevTypeBODY_HEADER.append("Data types handler for TCP/IP communication EPICS<--Beckhoff at ESS. Lund, Sweden.")
+			DevTypeBODY_HEADER.append("Created by: Andres Quintanilla (andres.quintanilla@esss.se)")
+			DevTypeBODY_HEADER.append("            Miklos Boros (miklos.boros@esss.se)")
+			DevTypeBODY_HEADER.append("Notes: Converts different types of data into UINT. Adds the converted data into the array to be sent to EPICS.")
+			DevTypeBODY_HEADER.append("The first 10 spaces of the array are reserved. nOffset input is used for that. ")
+			DevTypeBODY_HEADER.append("Code must not be changed manually. Code is generated and handled by PLC factory at ESS.")
+			DevTypeBODY_HEADER.append("Versions:")
+			DevTypeBODY_HEADER.append("Version 1: 06/04/2018. Communication stablished and stable")
+			DevTypeBODY_HEADER.append("**********************************************************************************************************")
+			DevTypeBODY_HEADER.append("*)")
+
+
+			DevTypeBODY_FOOTER.append("")
+			DevTypeBODY_FOOTER.append("]]>")
+			DevTypeBODY_FOOTER.append("</ST>")
+			DevTypeBODY_FOOTER.append("</Implementation>")
+			DevTypeBODY_FOOTER.append("</POU>")
+			DevTypeBODY_FOOTER.append("</TcPlcObject>")
+		else:
+			NewDeviceType = False
+
+#		for line in device.comments:
+#			DevTypeBODY_CODE.append("       " + line)
+
+		for item in device:
+			if item.is_wrapper_array():
+				if item.is_start():
+					InArrayName = item.name()
+					InArrayNum  = 0
 				else:
-					DevTypeHeader = []
-					DevTypeVAR_INPUT = []
-					DevTypeVAR_OUTPUT = []
-					DevTypeVAR_TEMP = []
-					DevTypeBODY_HEADER = []
-					DevTypeBODY_CODE = []
-					DevTypeBODY_FOOTER = []
-			else:
-				FC_EPICS_DEVICE_CALLS_HEADER.append("<?xml version=\"1.0\" encoding=\"utf-8\"?>");
-				FC_EPICS_DEVICE_CALLS_HEADER.append("<TcPlcObject ");
-				FC_EPICS_DEVICE_CALLS_HEADER.append("Version=\"1.1.0.1\" ProductVersion=\"3.1.4022.10\">");
-				FC_EPICS_DEVICE_CALLS_HEADER.append("<POU ");
-				GlobalIDCounter = GlobalIDCounter + 1
-				FC_EPICS_DEVICE_CALLS_HEADER.append("Name=\"FC_EPICS_DEVICE_CALLS\" Id=\"{5bb54db1-6fe3-4b17-2b0f-"+str(GlobalIDCounter).zfill(12)+"}\" SpecialFunc=\"None\">");
-				FC_EPICS_DEVICE_CALLS_HEADER.append("");
-				FC_EPICS_DEVICE_CALLS_HEADER.append("<Declaration>");
-				FC_EPICS_DEVICE_CALLS_HEADER.append("<![CDATA[");
-				FC_EPICS_DEVICE_CALLS_HEADER.append("FUNCTION FC_EPICS_DEVICE_CALLS : BOOL");
-				FC_EPICS_DEVICE_CALLS_HEADER.append("VAR_INPUT");
-				FC_EPICS_DEVICE_CALLS_HEADER.append("END_VAR");
-				FC_EPICS_DEVICE_CALLS_HEADER.append("VAR");
-				FC_EPICS_DEVICE_CALLS_HEADER.append("END_VAR");
-				FC_EPICS_DEVICE_CALLS_HEADER.append("]]>");
-				FC_EPICS_DEVICE_CALLS_HEADER.append("</Declaration>");
-				FC_EPICS_DEVICE_CALLS_HEADER.append("<Implementation>");
-				FC_EPICS_DEVICE_CALLS_HEADER.append("<ST>");
-				FC_EPICS_DEVICE_CALLS_HEADER.append("<![CDATA[");
-				FC_EPICS_DEVICE_CALLS_HEADER.append("EPICS_GVL.FB_EPICS_S7_Comm(")
-				FC_EPICS_DEVICE_CALLS_HEADER.append("    bConnect:=TRUE ,")
-				FC_EPICS_DEVICE_CALLS_HEADER.append("    nS7Port:=2000 ,")
-				FC_EPICS_DEVICE_CALLS_HEADER.append("    nPLC_Hash:="+HASH+" ,")
-				FC_EPICS_DEVICE_CALLS_HEADER.append("    tSendTrig:=T#200MS ,")
-				FC_EPICS_DEVICE_CALLS_HEADER.append("    nCase=> ,")
-				FC_EPICS_DEVICE_CALLS_HEADER.append("    bConnected=> ,")
-				FC_EPICS_DEVICE_CALLS_HEADER.append("    bError=> );")
+					DevTypeVAR_INPUT.append("      " + InArrayName + " : Array[1.."+ str(InArrayNum) +"] OF "+ ActVariableType+";   //EPICS Status variables defined in an array")
+					InArrayName = None
+					InArrayNum  = None
 
-				FC_EPICS_DEVICE_CALLS_FOOTER.append("]]>");
-				FC_EPICS_DEVICE_CALLS_FOOTER.append("</ST>");
-				FC_EPICS_DEVICE_CALLS_FOOTER.append("</Implementation>");
-				FC_EPICS_DEVICE_CALLS_FOOTER.append("</POU>");
-				FC_EPICS_DEVICE_CALLS_FOOTER.append("</TcPlcObject>");
-
-			FirstDevice = False
-			if (OrderedLines[pos + 2].rstrip() != "DEVICE_TYPE") or (OrderedLines[pos + 4].rstrip() != "EPICSTOPLCLENGTH") or (OrderedLines[pos + 6].rstrip() != "EPICSTOPLCDATABLOCKOFFSET") or (OrderedLines[pos + 8].rstrip() != "EPICSTOPLCPARAMETERSSTART") or (OrderedLines[pos + 10].rstrip() != "PLCTOEPICSDATABLOCKOFFSET"):
-				print("ERROR:")
-				print("The .ifa file has a bad DEVICE format! Exiting PLCFactory...\n")
-				print("--- %.1f seconds ---\n" % (time.time() - start_time))
-				sys.exit()
-			ActualDeviceName = OrderedLines[pos+1].rstrip()
-			ActualDeviceType = OrderedLines[pos+3].rstrip()
-			EPICSTOPLCLENGTH = OrderedLines[pos+5].rstrip()
-			EPICSTOPLCDATABLOCKOFFSET = OrderedLines[pos+7].rstrip()
-			EPICSTOPLCPARAMETERSSTART = OrderedLines[pos+9].rstrip()
-			PLCTOEPICSDATABLOCKOFFSET = OrderedLines[pos+11].rstrip()
-			ActualDeviceNameWhite = ActualDeviceName
-
-			Text = "Device: "+ ActualDeviceName + " Type: "+ ActualDeviceType
-			print("    ", "-" * len(Text), sep='')
-			print("    ", Text, sep='')
-			print("    ", "-" * len(Text), sep='')
-
-			ActualDeviceNameWhite = ActualDeviceNameWhite.replace(":","_")
-			ActualDeviceNameWhite = ActualDeviceNameWhite.replace("/","")
-			ActualDeviceNameWhite = ActualDeviceNameWhite.replace("\\","")
-			ActualDeviceNameWhite = ActualDeviceNameWhite.replace("?","")
-			ActualDeviceNameWhite = ActualDeviceNameWhite.replace("*","")
-			ActualDeviceNameWhite = ActualDeviceNameWhite.replace("[","")
-			ActualDeviceNameWhite = ActualDeviceNameWhite.replace("]","")
-			ActualDeviceNameWhite = ActualDeviceNameWhite.replace(".","")
-			ActualDeviceNameWhite = ActualDeviceNameWhite.replace("-","_")
-			ActualDeviceType = ActualDeviceType.replace("-","_")
-
-			if (int(EPICSTOPLCDATABLOCKOFFSET)<12288):
-				print("ERROR:")
-				print("The PLCs modbus offset held by the property: PLCF#EPICSToPLCDataBlockStartOffset in CCDB is less then 12288! \n")
-				print("Make sure your PLC in CCDB is PLC_BECKHOFF type instead of PLC! \n")
-				print("--- %.1f seconds ---\n" % (time.time() - start_time))
-				sys.exit()
-
-
-			FC_EPICS_DEVICE_CALLS_BODY.append("")
-			FC_EPICS_DEVICE_CALLS_BODY.append("//********************************************")
-			FC_EPICS_DEVICE_CALLS_BODY.append("// Device name: "+ActualDeviceName)
-			FC_EPICS_DEVICE_CALLS_BODY.append("// Device type: "+ActualDeviceType)
-			FC_EPICS_DEVICE_CALLS_BODY.append("//********************************************")
-			FC_EPICS_DEVICE_CALLS_BODY.append("");
-			FC_EPICS_DEVICE_CALLS_BODY.append("EPICS_GVL.FB_DEV_"+ActualDeviceNameWhite+"(")
-			FC_EPICS_DEVICE_CALLS_BODY.append("       nOffsetStatus:= "+str(int(PLCTOEPICSDATABLOCKOFFSET)+10)+",")
-			FC_EPICS_DEVICE_CALLS_BODY.append("       nOffsetCmd:="+str(int(EPICSTOPLCDATABLOCKOFFSET)-12288+10)+",")
-			FC_EPICS_DEVICE_CALLS_BODY.append("       nOffsetPar:="+str(int(EPICSTOPLCDATABLOCKOFFSET)-12288+10+int(EPICSTOPLCPARAMETERSSTART))+");")
-
-			EPICS_GVL.append("	FB_DEV_"+ActualDeviceNameWhite+"	:FB_DEVTYPE_"+ActualDeviceType+";					//Device instance("+ActualDeviceName+")");
-
-			#Check if DeviceType is already generated
-			if ActualDeviceType not in DeviceTypeList:
-
-				MaxStatusReg = 0;
-				MaxCommandReg = 0;
-
-				NewDeviceType = True
-				DeviceTypeList.append(ActualDeviceType)
-				print("    ->  New device type found. [", ActualDeviceType, "] Creating source code...", sep='')
-
-				DevTypeHeader.append("<?xml version=\"1.0\" encoding=\"utf-8\"?>")
-				DevTypeHeader.append("<TcPlcObject ")
-				DevTypeHeader.append("Version=\"1.1.0.1\" ProductVersion=\"3.1.4022.10\">")
-				DevTypeHeader.append("<POU ")
-				GlobalIDCounter = GlobalIDCounter + 1
-				DevTypeHeader.append("Name=\"FB_DEVTYPE_"+ActualDeviceType+"\" Id=\"{5bb54db1-6fe3-4b17-2b0f-"+str(GlobalIDCounter).zfill(12)+"}\" SpecialFunc=\"None\">")
-				DevTypeHeader.append("<Declaration>")
-				DevTypeHeader.append("<![CDATA[")
-				DevTypeHeader.append("FUNCTION_BLOCK FB_DEVTYPE_"+ActualDeviceType+"")
-
-				DevTypeVAR_TEMP.append("VAR")
-				DevTypeVAR_TEMP.append("	nTempUINT		:UINT;")
-				DevTypeVAR_TEMP.append("	sTempHStr		:T_MaxString;")
-				DevTypeVAR_TEMP.append("")
-				DevTypeVAR_TEMP.append("	uREAL2UINTs	:U_REAL_UINTs;")
-				DevTypeVAR_TEMP.append("	uUINTs2REAL	:U_REAL_UINTs;")
-				DevTypeVAR_TEMP.append("	uTIME2UINTs	:U_TIME_UINTs;")
-				DevTypeVAR_TEMP.append("	uUINTs2TIME	:U_TIME_UINTs;")
-				DevTypeVAR_TEMP.append("	uDINT2UINTs	:U_DINT_UINTs;")
-				DevTypeVAR_TEMP.append("	uUINTs2DINT	:U_DINT_UINTs;")
-				DevTypeVAR_TEMP.append("	fValue: INT;")
-				DevTypeVAR_TEMP.append("END_VAR")
-
-				DevTypeBODY_HEADER.append("")
-				DevTypeBODY_HEADER.append("]]>")
-				DevTypeBODY_HEADER.append("</Declaration>")
-				DevTypeBODY_HEADER.append("<Implementation>")
-				DevTypeBODY_HEADER.append("<ST>")
-				DevTypeBODY_HEADER.append("<![CDATA[")
-				DevTypeBODY_HEADER.append("(*")
-				DevTypeBODY_HEADER.append("**********************EPICS<-->Beckhoff integration at ESS in Lund, Sweden*******************************")
-				DevTypeBODY_HEADER.append("Data types handler for TCP/IP communication EPICS<--Beckhoff at ESS. Lund, Sweden.")
-				DevTypeBODY_HEADER.append("Created by: Andres Quintanilla (andres.quintanilla@esss.se)")
-				DevTypeBODY_HEADER.append("            Miklos Boros (miklos.boros@esss.se)")
-				DevTypeBODY_HEADER.append("Notes: Converts different types of data into UINT. Adds the converted data into the array to be sent to EPICS.")
-				DevTypeBODY_HEADER.append("The first 10 spaces of the array are reserved. nOffset input is used for that. ")
-				DevTypeBODY_HEADER.append("Code must not be changed manually. Code is generated and handled by PLC factory at ESS.")
-				DevTypeBODY_HEADER.append("Versions:")
-				DevTypeBODY_HEADER.append("Version 1: 06/04/2018. Communication stablished and stable")
-				DevTypeBODY_HEADER.append("**********************************************************************************************************")
-				DevTypeBODY_HEADER.append("*)")
-
-
-				DevTypeBODY_FOOTER.append("")
-				DevTypeBODY_FOOTER.append("]]>")
-				DevTypeBODY_FOOTER.append("</ST>")
-				DevTypeBODY_FOOTER.append("</Implementation>")
-				DevTypeBODY_FOOTER.append("</POU>")
-				DevTypeBODY_FOOTER.append("</TcPlcObject>")
-			else:
-				NewDeviceType = False
-
-		if OrderedLines[pos].rstrip() == "DEFINE_ARRAY":
-			InArray = True
-			InArrayName = OrderedLines[pos+1].rstrip()
-			InArrayNum = 0
-		if OrderedLines[pos].rstrip() == "END_ARRAY":
-			InArray = False
-			DevTypeVAR_INPUT.append("      " + InArrayName + " : Array[1.."+ str(InArrayNum) +"] OF "+ ActVariableType+";   //EPICS Status variables defined in an array")
-			InArrayName = ""
-
-		if OrderedLines[pos].rstrip() == "STATUS":
-			CloseLastVariable()
-			DevTypeBODY_CODE.append("")
-			DevTypeBODY_CODE.append("    //********************************************")
-			DevTypeBODY_CODE.append("    //*************STATUS VARIABLES***************")
-			DevTypeBODY_CODE.append("    //********************************************")
-			DevTypeBODY_CODE.append("")
-			InStatus = True
-			InCommand = False
-			InParameter = False
-			StartingRegister = -1
-		if OrderedLines[pos].rstrip() == "COMMAND":
-			CloseLastVariable()
-			DevTypeBODY_CODE.append("")
-			DevTypeBODY_CODE.append("    //********************************************")
-			DevTypeBODY_CODE.append("    //*************COMMAND VARIABLES**************")
-			DevTypeBODY_CODE.append("    //********************************************")
-			DevTypeBODY_CODE.append("")
-			InStatus = False
-			InCommand = True
-			InParameter = False
-			StartingRegister = -1
-		if OrderedLines[pos].rstrip() == "PARAMETER":
-			CloseLastVariable()
-			DevTypeBODY_CODE.append("")
-			DevTypeBODY_CODE.append("    //********************************************")
-			DevTypeBODY_CODE.append("    //************PARAMETER VARIABLES*************")
-			DevTypeBODY_CODE.append("    //********************************************")
-			DevTypeBODY_CODE.append("")
-			InStatus = False
-			InCommand = False
-			InParameter = True
-			StartingRegister = -1
-		pos = pos + 1
-		# if OrderedLines[pos].rstrip().startswith("//"):
-			# DevTypeBODY_CODE.append("       "+OrderedLines[pos].rstrip())
-		if OrderedLines[pos].rstrip() == "VARIABLE":
-			if (OrderedLines[pos + 2].rstrip() != "EPICS") or (OrderedLines[pos + 4].rstrip() != "TYPE") or	(OrderedLines[pos + 6].rstrip() != "ARRAY_INDEX") or (OrderedLines[pos + 8].rstrip() != "BIT_NUMBER"):
-				print("ERROR:")
-				print("The .ifa file has a bad VARIABLE format! Exiting PLCFactory...\n")
-				print("--- %.1f seconds ---\n" % (time.time() - start_time))
-				sys.exit()
-
-			ActVariablePLCName = OrderedLines[pos + 1].rstrip()
-			ActVariableEPICSName = OrderedLines[pos + 3].rstrip()
-			ActVariableType = OrderedLines[pos + 5].rstrip()
-			ActVariableArrayIndex = int(OrderedLines[pos + 7].rstrip())
-			ActVariableBitNumber = int(OrderedLines[pos + 9].rstrip())
-
-			#Close the last variable if there is a new variable
-			if 	LastVariableType != ActVariableType:
-				LastVariableType = ActVariableType
+			elif item.is_block():
 				CloseLastVariable()
+				StartingRegister = -1
+				if item.is_status():
+					DevTypeBODY_CODE.append("")
+					DevTypeBODY_CODE.append("    //********************************************")
+					DevTypeBODY_CODE.append("    //*************STATUS VARIABLES***************")
+					DevTypeBODY_CODE.append("    //********************************************")
+					DevTypeBODY_CODE.append("")
+				if item.is_command():
+					DevTypeBODY_CODE.append("")
+					DevTypeBODY_CODE.append("    //********************************************")
+					DevTypeBODY_CODE.append("    //*************COMMAND VARIABLES**************")
+					DevTypeBODY_CODE.append("    //********************************************")
+					DevTypeBODY_CODE.append("")
+				if item.is_parameter():
+					DevTypeBODY_CODE.append("")
+					DevTypeBODY_CODE.append("    //********************************************")
+					DevTypeBODY_CODE.append("    //************PARAMETER VARIABLES*************")
+					DevTypeBODY_CODE.append("    //********************************************")
+					DevTypeBODY_CODE.append("")
 
-			if InStatus:
-				if not InArray:
-					DevTypeVAR_INPUT.append("      " + ActVariablePLCName +"  :"+ ActVariableType+";        //EPICS Status variable: "+ActVariableEPICSName)
+			elif item.is_variable():
+				ActVariablePLCName    = item.properties["VARIABLE"]
+				ActVariableEPICSName  = item.properties["EPICS"]
+				ActVariableType       = item.properties["TYPE"]
+				ActVariableArrayIndex = int(item.properties["ARRAY_INDEX"])
+				ActVariableBitNumber  = int(item.properties["BIT_NUMBER"])
 
-			if InCommand:
-				DevTypeVAR_OUTPUT.append("      " + ActVariablePLCName +"  :"+ ActVariableType+";        //EPICS Command variable: "+ActVariableEPICSName)
+				#Close the last variable if there is a new variable
+				if 	LastVariableType != ActVariableType:
+					LastVariableType = ActVariableType
+					CloseLastVariable()
 
-			if InParameter:
-				DevTypeVAR_OUTPUT.append("      " + ActVariablePLCName +"  :"+ ActVariableType+";        //EPICS Parameter variable: "+ActVariableEPICSName)
+				if item.is_status():
+					if InArrayName is None:
+						DevTypeVAR_INPUT.append("      " + ActVariablePLCName +"  :"+ ActVariableType+";        //EPICS Status variable: "+ActVariableEPICSName)
 
-			#SUPPORTED TYPES
-			#PLC_types = {'BOOL', 'BYTE', 'WORD', 'DWORD', 'INT', 'DINT', 'REAL', 'TIME' }
+				if item.is_command():
+					DevTypeVAR_OUTPUT.append("      " + ActVariablePLCName +"  :"+ ActVariableType+";        //EPICS Command variable: "+ActVariableEPICSName)
 
-			#====== BOOL TYPE ========
-			if ActVariableType == "BOOL":
-				if InStatus:
-					if StartingRegister != ActVariableArrayIndex:
-						CloseLastVariable()
-						StartingRegister = ActVariableArrayIndex
-						DevTypeBODY_CODE.append("")
-					if InArray:
-						InArrayNum = InArrayNum + 1
-						DevTypeBODY_CODE.append("       nTempUINT." + str(ActVariableBitNumber)+ "           := "+ InArrayName + "[" +str(InArrayNum)+"];       //EPICSName: "+ActVariableEPICSName)
-					else:
-						DevTypeBODY_CODE.append("       nTempUINT." + str(ActVariableBitNumber)+ "           := "+ ActVariablePLCName + ";       //EPICSName: "+ActVariableEPICSName)
-					IsDouble = False
-					EndString = "EPICS_GVL.aDataS7[nOffsetStatus + "+str(ActVariableArrayIndex) +"]    := nTempUINT;"
-				if InParameter or InCommand:
-					if StartingRegister != ActVariableArrayIndex:
-						CloseLastVariable()
-						StartingRegister = ActVariableArrayIndex
-						DevTypeBODY_CODE.append("")
-						DevTypeBODY_CODE.append("       nTempUINT			:= EPICS_GVL.aDataModbus[nOffsetCmd + "+str(ActVariableArrayIndex)+"];")
-					DevTypeBODY_CODE.append("       "+ActVariablePLCName+"             :=     nTempUINT." + str(ActVariableBitNumber)+ ";       //EPICSName: "+ActVariableEPICSName)
-					EndString = "if (EPICS_GVL.EasyTester <> 2) THEN EPICS_GVL.aDataModbus[nOffsetCmd + " + str(ActVariableArrayIndex)+ "]:=0; END_IF"
-					IsDouble = False
-			#==========================
-			#====== BYTE TYPE ========
-			if ActVariableType == "BYTE":
-				if InStatus:
-					if StartingRegister != ActVariableArrayIndex:
-						CloseLastVariable()
-						StartingRegister = ActVariableArrayIndex
-						DevTypeBODY_CODE.append("")
-					if InArray:
-						InArrayNum = InArrayNum + 1
-						DevTypeBODY_CODE.append("       EPICS_GVL.aDataS7[nOffsetStatus + " + str(ActVariableArrayIndex)+ "]           := BYTE_TO_UINT("+ InArrayName + "[" +str(InArrayNum)+"]);       //EPICSName: "+ActVariableEPICSName)
-					else:
-						DevTypeBODY_CODE.append("       EPICS_GVL.aDataS7[nOffsetStatus + " + str(ActVariableArrayIndex)+ "]           := BYTE_TO_UINT("+ ActVariablePLCName + ");       //EPICSName: "+ActVariableEPICSName)
-					IsDouble = False
-					EndString = ""
-				if InParameter or InCommand:
-					if StartingRegister != ActVariableArrayIndex:
-						CloseLastVariable()
-						StartingRegister = ActVariableArrayIndex
-						DevTypeBODY_CODE.append("")
-					DevTypeBODY_CODE.append("       "+ActVariablePLCName+"             := UINT_TO_BYTE(EPICS_GVL.aDataModbus[nOffsetCmd + " + str(ActVariableArrayIndex)+ "]);       //EPICSName: "+ActVariableEPICSName)
-					EndString = ""
-					IsDouble = False
-			#==========================
-			#====== INT TYPE ========
-			if ActVariableType == "INT":
-				if InStatus:
-					if StartingRegister != ActVariableArrayIndex:
-						CloseLastVariable()
-						StartingRegister = ActVariableArrayIndex
-						DevTypeBODY_CODE.append("")
-					if InArray:
-						InArrayNum = InArrayNum + 1
-						DevTypeBODY_CODE.append("       EPICS_GVL.aDataS7[nOffsetStatus + " + str(ActVariableArrayIndex)+ "]           := INT_TO_UINT("+ InArrayName + "[" +str(InArrayNum)+"]);       //EPICSName: "+ActVariableEPICSName)
-					else:
-						DevTypeBODY_CODE.append("       EPICS_GVL.aDataS7[nOffsetStatus + " + str(ActVariableArrayIndex)+ "]           := INT_TO_UINT("+ ActVariablePLCName + ");       //EPICSName: "+ActVariableEPICSName)
-					IsDouble = False
-					EndString = ""
-				if InParameter or InCommand:
-					if StartingRegister != ActVariableArrayIndex:
-						CloseLastVariable()
-						StartingRegister = ActVariableArrayIndex
-						DevTypeBODY_CODE.append("")
-					DevTypeBODY_CODE.append("       "+ActVariablePLCName+"             := UINT_TO_INT(EPICS_GVL.aDataModbus[nOffsetCmd + " + str(ActVariableArrayIndex)+ "]);       //EPICSName: "+ActVariableEPICSName)
-					EndString = ""
-					IsDouble = False
-			#==========================
-			#====== WORD TYPE ========
-			if ActVariableType == "WORD":
-				if InStatus:
-					if StartingRegister != ActVariableArrayIndex:
-						CloseLastVariable()
-						StartingRegister = ActVariableArrayIndex
-						DevTypeBODY_CODE.append("")
-					if InArray:
-						InArrayNum = InArrayNum + 1
-						DevTypeBODY_CODE.append("       EPICS_GVL.aDataS7[nOffsetStatus + " + str(ActVariableArrayIndex)+ "]           := WORD_TO_UINT("+ InArrayName + "[" +str(InArrayNum)+"]);       //EPICSName: "+ActVariableEPICSName)
-					else:
-						DevTypeBODY_CODE.append("       EPICS_GVL.aDataS7[nOffsetStatus + " + str(ActVariableArrayIndex)+ "]           := WORD_TO_UINT("+ ActVariablePLCName + ");       //EPICSName: "+ActVariableEPICSName)
-					IsDouble = False
-					EndString = ""
-				if InParameter or InCommand:
-					if StartingRegister != ActVariableArrayIndex:
-						CloseLastVariable()
-						StartingRegister = ActVariableArrayIndex
-						DevTypeBODY_CODE.append("")
-					DevTypeBODY_CODE.append("       "+ActVariablePLCName+"             := UINT_TO_WORD(EPICS_GVL.aDataModbus[nOffsetCmd + " + str(ActVariableArrayIndex)+ "]);       //EPICSName: "+ActVariableEPICSName)
-					EndString = ""
-					IsDouble = False
-			#==========================
-			#====== DWORD TYPE ========
-			if ActVariableType == "DWORD":
-				if InStatus:
-					if InArray:
-						InArrayNum = InArrayNum + 1
-					if StartingRegister != ActVariableArrayIndex:
-						CloseLastVariable()
-						StartingRegister = ActVariableArrayIndex
-						DevTypeBODY_CODE.append("")
-					DevTypeBODY_CODE.append("       EPICS_GVL.aDataS7[nOffsetStatus + " + str(ActVariableArrayIndex)+ "]           := DWORD_TO_UINT("+ ActVariablePLCName + ");       //EPICSName: "+ActVariableEPICSName)
-					DevTypeBODY_CODE.append("       EPICS_GVL.aDataS7[nOffsetStatus + " + str(int(ActVariableArrayIndex)+1)+ "]           := DWORD_TO_UINT(SHR("+ ActVariablePLCName + ",16));       //EPICSName: "+ActVariableEPICSName)
-					IsDouble = False
-					EndString = ""
-				if InParameter or InCommand:
-					if StartingRegister != ActVariableArrayIndex:
-						CloseLastVariable()
-						StartingRegister = ActVariableArrayIndex
-						DevTypeBODY_CODE.append("")
-					DevTypeBODY_CODE.append("       DWORD for Modbus is not supported")
-					EndString = ""
-					IsDouble = False
-			#==========================
-			#====== REAL TYPE ========
-			if ActVariableType == "REAL":
-				if InStatus:
-					if InArray:
-						InArrayNum = InArrayNum + 1
-					if StartingRegister != ActVariableArrayIndex:
-						CloseLastVariable()
-						StartingRegister = ActVariableArrayIndex
-						DevTypeBODY_CODE.append("")
-						DevTypeBODY_CODE.append("       uREAL2UINTs.fValue :="+ ActVariablePLCName + ";")
-					DevTypeBODY_CODE.append("       EPICS_GVL.aDataS7[nOffsetStatus + " + str(ActVariableArrayIndex)+ "]           := uREAL2UINTs.stLowHigh.nLow;       //EPICSName: "+ActVariableEPICSName)
-					DevTypeBODY_CODE.append("       EPICS_GVL.aDataS7[nOffsetStatus + " + str(int(ActVariableArrayIndex)+1)+ "]           := uREAL2UINTs.stLowHigh.nHigh;       //EPICSName: "+ActVariableEPICSName)
-					IsDouble = False
-					EndString = ""
-				if InParameter or InCommand:
-					if StartingRegister != ActVariableArrayIndex:
-						CloseLastVariable()
-						StartingRegister = ActVariableArrayIndex
-						DevTypeBODY_CODE.append("")
-					DevTypeBODY_CODE.append("       uUINTs2REAL.stLowHigh.nLow             := EPICS_GVL.aDataModbus[nOffsetCmd + " + str(ActVariableArrayIndex)+ "];       //EPICSName: "+ActVariableEPICSName)
-					DevTypeBODY_CODE.append("       uUINTs2REAL.stLowHigh.nHigh             := EPICS_GVL.aDataModbus[nOffsetCmd + " + str(int(ActVariableArrayIndex)+1)+ "];       //EPICSName: "+ActVariableEPICSName)
-					EndString =  ActVariablePLCName + "				:= uUINTs2REAL.fValue;"
-					IsDouble = False
-			#==========================
-			#====== DINT TYPE ========
-			if ActVariableType == "DINT":
-				if InStatus:
-					if InArray:
-						InArrayNum = InArrayNum + 1
-					if StartingRegister != ActVariableArrayIndex:
-						CloseLastVariable()
-						StartingRegister = ActVariableArrayIndex
-						DevTypeBODY_CODE.append("")
-						DevTypeBODY_CODE.append("       uDINT2UINTs.nValue :="+ ActVariablePLCName + ";")
-					DevTypeBODY_CODE.append("       EPICS_GVL.aDataS7[nOffsetStatus + " + str(ActVariableArrayIndex)+ "]           := uDINT2UINTs.stLowHigh.nLow;       //EPICSName: "+ActVariableEPICSName)
-					DevTypeBODY_CODE.append("       EPICS_GVL.aDataS7[nOffsetStatus + " + str(int(ActVariableArrayIndex)+1)+ "]           := uDINT2UINTs.stLowHigh.nHigh;       //EPICSName: "+ActVariableEPICSName)
-					IsDouble = False
-					EndString = ""
-				if InParameter or InCommand:
-					if StartingRegister != ActVariableArrayIndex:
-						CloseLastVariable()
-						StartingRegister = ActVariableArrayIndex
-						DevTypeBODY_CODE.append("")
-					DevTypeBODY_CODE.append("       uUINTs2DINT.stLowHigh.nLow             := EPICS_GVL.aDataModbus[nOffsetCmd + " + str(ActVariableArrayIndex)+ "];       //EPICSName: "+ActVariableEPICSName)
-					DevTypeBODY_CODE.append("       uUINTs2DINT.stLowHigh.nHigh             := EPICS_GVL.aDataModbus[nOffsetCmd + " + str(int(ActVariableArrayIndex)+1)+ "];       //EPICSName: "+ActVariableEPICSName)
-					EndString =  ActVariablePLCName + "				:= uUINTs2DINT.nValue;"
-					IsDouble = False
-			#==========================
-			#====== TIME TYPE ========
-			if ActVariableType == "TIME":
-				if InStatus:
-					if InArray:
-						InArrayNum = InArrayNum + 1
-					if StartingRegister != ActVariableArrayIndex:
-						CloseLastVariable()
-						StartingRegister = ActVariableArrayIndex
-						DevTypeBODY_CODE.append("")
-						DevTypeBODY_CODE.append("       uTIME2UINTs.tValue :="+ ActVariablePLCName + ";")
-					DevTypeBODY_CODE.append("       EPICS_GVL.aDataS7[nOffsetStatus + " + str(ActVariableArrayIndex)+ "]           := uTIME2UINTs.stLowHigh.nLow;       //EPICSName: "+ActVariableEPICSName)
-					DevTypeBODY_CODE.append("       EPICS_GVL.aDataS7[nOffsetStatus + " + str(int(ActVariableArrayIndex)+1)+ "]           := uTIME2UINTs.stLowHigh.nHigh;       //EPICSName: "+ActVariableEPICSName)
-					IsDouble = False
-					EndString = ""
-				if InParameter or InCommand:
-					if StartingRegister != ActVariableArrayIndex:
-						CloseLastVariable()
-						StartingRegister = ActVariableArrayIndex
-						DevTypeBODY_CODE.append("")
-					DevTypeBODY_CODE.append("       uUINTs2TIME.stLowHigh.nLow             := EPICS_GVL.aDataModbus[nOffsetCmd + " + str(ActVariableArrayIndex)+ "];       //EPICSName: "+ActVariableEPICSName)
-					DevTypeBODY_CODE.append("       uUINTs2TIME.stLowHigh.nHigh             := EPICS_GVL.aDataModbus[nOffsetCmd + " + str(int(ActVariableArrayIndex)+1)+ "];       //EPICSName: "+ActVariableEPICSName)
-					EndString =  ActVariablePLCName + "				:= uUINTs2TIME.tValue;"
-					IsDouble = False
-			#==========================
-			if InStatus:
-				if ActVariableArrayIndex >= MaxStatusReg:
-					if IsDouble:
-						MaxStatusReg = ActVariableArrayIndex + 1
-					else:
-						MaxStatusReg = ActVariableArrayIndex
+				if item.is_parameter():
+					DevTypeVAR_OUTPUT.append("      " + ActVariablePLCName +"  :"+ ActVariableType+";        //EPICS Parameter variable: "+ActVariableEPICSName)
 
-			if InParameter or InCommand:
-				if ActVariableArrayIndex >= MaxCommandReg:
-					if IsDouble:
-						MaxCommandReg = ActVariableArrayIndex + 1
-					else:
-						MaxCommandReg = ActVariableArrayIndex
+				#SUPPORTED TYPES
+				#PLC_types = {'BOOL', 'BYTE', 'WORD', 'DWORD', 'INT', 'DINT', 'REAL', 'TIME' }
 
-	CloseLastVariable()
-	#Constuct the output source file
-	if NewDeviceType == True:
-		Write_DevType()
-	else:
-		DevTypeHeader = []
-		DevTypeVAR_INPUT = []
-		DevTypeVAR_OUTPUT = []
-		DevTypeVAR_TEMP = []
-		DevTypeBODY_HEADER = []
-		DevTypeBODY_CODE = []
-		DevTypeBODY_FOOTER = []
+				#====== BOOL TYPE ========
+				if ActVariableType == "BOOL":
+					InArrayNum, StartingRegister = AddBOOL(item, InArrayName, InArrayNum, StartingRegister)
+				#==========================
+				#====== BYTE TYPE ========
+				elif ActVariableType == "BYTE":
+					InArrayNum, StartingRegister = AddBYTE(item, InArrayName, InArrayNum, StartingRegister)
+				#==========================
+				#====== INT TYPE ========
+				elif ActVariableType == "INT":
+					InArrayNum, StartingRegister = AddINT(item, InArrayName, InArrayNum, StartingRegister)
+				#==========================
+				#====== WORD TYPE ========
+				elif ActVariableType == "WORD":
+					InArrayNum, StartingRegister = AddWORD(item, InArrayName, InArrayNum, StartingRegister)
+				#==========================
+				#====== DWORD TYPE ========
+				elif ActVariableType == "DWORD":
+					InArrayNum, StartingRegister = AddDWORD(item, InArrayName, InArrayNum, StartingRegister)
+				#==========================
+				#====== REAL TYPE ========
+				elif ActVariableType == "REAL":
+					InArrayNum, StartingRegister = AddREAL(item, InArrayName, InArrayNum, StartingRegister)
+				#==========================
+				#====== DINT TYPE ========
+				elif ActVariableType == "DINT":
+					InArrayNum, StartingRegister = AddDINT(item, InArrayName, InArrayNum, StartingRegister)
+				#==========================
+				#====== TIME TYPE ========
+				elif ActVariableType == "TIME":
+					InArrayNum, StartingRegister = AddTIME(item, InArrayName, InArrayNum, StartingRegister)
+				#==========================
+				#=== not supported TYPE ===
+				else:
+					if not Direct:
+						raise IFA.FatalException("Unsupported variable type", ActVariableType)
+				#==========================
+				if item.is_status():
+					if ActVariableArrayIndex >= MaxStatusReg:
+						if IsDouble:
+							MaxStatusReg = ActVariableArrayIndex + 1
+						else:
+							MaxStatusReg = ActVariableArrayIndex
+
+				if item.is_parameter() or item.is_command():
+					if ActVariableArrayIndex >= MaxCommandReg:
+						if IsDouble:
+							MaxCommandReg = ActVariableArrayIndex + 1
+						else:
+							MaxCommandReg = ActVariableArrayIndex
+
+		# Processed all items in a device, let's close the last variable
+		CloseLastVariable()
+
+		# Device is done, let's do some housekeeping
+		if NewDeviceType == True:
+			Write_DevType()
+		else:
+			DevTypeHeader = []
+			DevTypeVAR_INPUT = []
+			DevTypeVAR_OUTPUT = []
+			DevTypeVAR_TEMP = []
+			DevTypeBODY_HEADER = []
+			DevTypeBODY_CODE = []
+			DevTypeBODY_FOOTER = []
 
 	print("\nTotal", str(ProcessedDeviceNum), "device(s) processed.")
 	if not Direct:
@@ -1344,63 +1347,58 @@ def ProcessIFADevTypes(OutputDir, IfaPath):
 		print("Device types are not being generated. (Direct mode)\n")
 
 
-def produce(OutputDir, IfaPath, SclPath, TIAVersion, **kwargs):
+def produce(OutputDir, _ifa, **kwargs):
 
 	global MakeOutputFile
 	global OutputDirectory
 	global TotalStatusReg
 	global TotalCommandReg
 	global start_time
+	global ifa
+
+	print("""
+*******************************************
+*                                         *
+*   Generating Beckhoff PLC source code   *
+*                                         *
+*******************************************
+""")
 
 	start_time      = time.time()
 	OutputDirectory = OutputDir
 
 	generated_files = dict()
 
-	#Pre-processing of the IFA file
-	Pre_ProcessIFA(IfaPath)
+	ifa = _ifa
 
-	if HASH != "" and DeviceNum != 0:
+	helpers.makedirs(os.path.join(OutputDirectory, "BECKHOFF", "EPICS", "EPICS types"))
+	helpers.makedirs(os.path.join(OutputDirectory, "BECKHOFF", "EPICS", "EPICS calls"))
+	helpers.makedirs(os.path.join(OutputDirectory, "BECKHOFF", "EPICS", "ESS standard PLC code"))
 
-		helpers.makedirs(os.path.join(OutputDirectory,"BECKHOFF","EPICS","EPICS types"))
-		helpers.makedirs(os.path.join(OutputDirectory,"BECKHOFF","EPICS","EPICS calls"))
-		helpers.makedirs(os.path.join(OutputDirectory,"BECKHOFF","EPICS","ESS standard PLC code"))
+	#Process devices/device types
+	ProcessIFADevTypes(OutputDir)
 
-		#Process devices/device types
-		ProcessIFADevTypes(OutputDir, IfaPath)
+	#Generate FC_EPICS_DEVICE_CALLS.TcPOU
+	Write_EPICS_device_calls();
 
-		#Generate FC_EPICS_DEVICE_CALLS.TcPOU
-		Write_EPICS_device_calls();
+	#Generate ST_2_UINT.TcDUT
+	#Generate U_DINT_UINTs.TcDUT
+	#Generate U_REAL_UINTs.TcDUT
+	#Generate U_TIME_UINTs.TcDUT
+	Write_Structs_and_Unions();
 
-		#Generate ST_2_UINT.TcDUT
-		#Generate U_DINT_UINTs.TcDUT
-		#Generate U_REAL_UINTs.TcDUT
-		#Generate U_TIME_UINTs.TcDUT
-		Write_Structs_and_Unions();
+	#Generate FB_EPICS_S7_Comm.TcPOU
+	Write_FB_EPICS_S7_Comm()
 
-		#Generate FB_EPICS_S7_Comm.TcPOU
-		Write_FB_EPICS_S7_Comm()
+	#Generate FB_Pulse.TcPOU
+	Write_FB_Pulse()
 
-		#Generate FB_Pulse.TcPOU
-		Write_FB_Pulse()
+	#Generate EPICS_GVL.TcGVL
+	Write_EPICS_GVL()
 
-		#Generate EPICS_GVL.TcGVL
-		Write_EPICS_GVL()
+	generated_files['BECKHOFF'] = shutil.make_archive(os.path.join(OutputDirectory,"PLCFactory_external_source_Beckhoff"), 'zip', os.path.join(OutputDirectory,"BECKHOFF"))
 
-		generated_files['BECKHOFF'] = shutil.make_archive(os.path.join(OutputDirectory,"PLCFactory_external_source_Beckhoff"), 'zip', os.path.join(OutputDirectory,"BECKHOFF"))
-
-		return generated_files
-
-
-	else:
-		if HASH == "":
-			print("ERROR:")
-			print("After pre-processing the .IFA file there was no HASH code inside!\n")
-			return generated_files
-		if DeviceNum == 0:
-			print("ERROR:")
-			print("After pre-processing the .IFA file there were no DEVICES inside!\n")
-			return generated_files
+	return generated_files
 
 
 def main(argv):
