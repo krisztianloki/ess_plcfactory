@@ -74,15 +74,17 @@ FOOTER_TAG     = "FOOTER"
 IFDEF_TAG      = ".def"
 hashobj        = hashlib.sha256()
 ifdefs         = dict()
+ifdef_params   = dict(PLC_TYPE = "SIEMENS")
 output_files   = dict()
 previous_files = dict()
-plc_type       = "SIEMENS"
 last_updated   = None
 device_tag     = None
 hashes         = dict()
 prev_hashes    = None
 branch         = git.get_current_branch()
 commit_id      = git.get_local_ref(branch)
+if commit_id is not None:
+    ifdef_params["COMMIT_ID"] = commit_id
 
 
 class PLCFactoryException(Exception):
@@ -378,7 +380,7 @@ def getHeaderFooter(device, templateID):
     if templatePrinter is not None:
         print("Using built-in template header/footer")
         header = []
-        templatePrinter.header(header, PLC_TYPE = plc_type, COMMIT_ID = commit_id)
+        templatePrinter.header(header, **ifdef_params)
         footer = []
         templatePrinter.footer(footer)
     else:
@@ -1308,8 +1310,7 @@ def main(argv):
 
     if beckhoff:
         default_printers.update( [ "EPICS-DB", "IFA" ] )
-        global plc_type
-        plc_type = "BECKHOFF"
+        ifdef_params["PLC_TYPE"] = "BECKHOFF"
 
     if eee:
         default_printers.update( [ "EPICS-DB", "AUTOSAVE-ST-CMD", "AUTOSAVE" ] )
