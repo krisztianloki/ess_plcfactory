@@ -27,6 +27,7 @@ import errno
 import sys
 import time
 import hashlib
+import zlib
 from shutil import copy2, copyfileobj
 
 # Template Factory
@@ -110,8 +111,39 @@ The following exception occured during the processing of template '{template}' o
 
 
 
-def initializeHash():
-    return hashlib.sha256()
+class Hasher(object):
+    def __init__(self, hash_base = None):
+        self._hashobj = hashlib.sha256(hash_base)
+
+
+    def update(self, string):
+        try:
+            self._hashobj.update(string.encode())
+        except UnicodeDecodeError:
+            # Happens on Py2 with strings containing unicode characters
+            self._hashobj.update(string)
+
+
+    def _crc32(self):
+        return zlib.crc32(self._hashobj.hexdigest().encode())
+
+
+    def getHash(self):
+        return self._hashobj.hexdigest()
+
+
+    def getCRC32(self):
+        crc32 = self._crc32()
+        # Python3 returns an UNSIGNED integer. But we need a signed integer
+        if crc32 > 0x7FFFFFFF:
+            return str(crc32 - 0x100000000)
+
+        return str(crc32)
+
+
+
+def initializeHash(hash_base = None):
+    return Hasher(hash_base)
 
 
 def openTemplate(device, tag, templateID):
@@ -233,7 +265,7 @@ def processHash(header):
     if pos == -1:
         return header
 
-    hashSum     = glob.ccdb.getHash(hashobj)
+    hashSum     = hashobj.getCRC32()
     line        = header[pos]
     tagPos      = line.find(tag)
     line        = line[:tagPos] + hashSum + line[tagPos + len(tag):]
@@ -499,6 +531,9 @@ def processTemplateID(templateID, devices):
 
     print("\n")
 
+    if not def_seen:
+        glob.ccdb.computeHash(hashobj)
+
     # process #HASH keyword in header and footer
     header      = processHash(header)
     footer      = processHash(footer)
@@ -548,7 +583,7 @@ def processTemplateID(templateID, devices):
     output_files[templateID] = outputFile
 
     print("Output file written:", outputFile)
-    print("Hash sum:", glob.ccdb.getHash(hashobj))
+    print("Hash sum:", hashobj.getCRC32())
     print("--- %s %.1f seconds ---\n" % (tagged_templateID, time.time() - start_time))
 
 
@@ -578,18 +613,23 @@ def processDevice(deviceName, templateIDs):
         else:
             glob.snippet = glob.modulename
 
+    hash_base = """EPICSToPLCDataBlockStartOffset: [PLCF#EPICSToPLCDataBlockStartOffset]
+PLCToEPICSDataBlockStartOffset: [PLCF#PLCToEPICSDataBlockStartOffset]
+PLC-EPICS-COMMS:Endianness: [PLCF#PLC-EPICS-COMMS:Endianness]"""
+    hash_base = "\n".join(pt.process(device, hash_base.splitlines()))
+
     # create a stable list of controlled devices
     devices = [ device ]
     devices.extend(buildControlsList(device))
 
     for templateID in templateIDs:
         global hashobj
-        hashobj = initializeHash()
+        hashobj = initializeHash(hash_base)
 
         processTemplateID(templateID, devices)
 
     global hashes
-    hashes[device.name()] = glob.ccdb.getHash(hashobj)
+    hashes[device.name()] = hashobj.getCRC32()
 
     return device
 

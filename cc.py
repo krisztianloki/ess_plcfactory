@@ -10,7 +10,6 @@ __license__    = "GPLv3"
 
 # Python libraries
 from   os import path     as os_path
-import zlib
 try:
     from   urlparse import urlsplit
 except ImportError:
@@ -460,56 +459,7 @@ class CC(object):
                   count        += 1
 
 
-    def getHash(self, hashobj = None):
-        if self._hashSum is not None:
-            if self._hashSum[0] == hashobj:
-                return self._hashSum[1]
-
-        class Hasher(object):
-            class CRC32(object):
-                def __init__(self):
-                    self._crc32 = 0
-
-
-                def update(self, string):
-                    self._crc32 = zlib.crc32(string, self._crc32)
-
-
-
-            def __init__(self, hashobj):
-                if hashobj is not None:
-                    assert "update" in dir(hashobj) and callable(hashobj.update) and "hexdigest" in dir(hashobj) and callable(hashobj.hexdigest)
-                else:
-                   hashobj = Hasher.CRC32()
-
-                self._hashobj = hashobj
-
-
-            def update(self, string):
-                try:
-                    self._hashobj.update(string.encode())
-                except UnicodeDecodeError:
-                    # Happens on Py2 with strings containing unicode characters
-                    self._hashobj.update(string)
-
-
-            def _crc32(self):
-                if isinstance(self._hashobj, Hasher.CRC32):
-                    return self._hashobj._crc32
-
-                return zlib.crc32(hashobj.hexdigest().encode())
-
-
-            def get(self):
-                crc32 = self._crc32()
-                # Python3 returns an UNSIGNED integer. But we need a signed integer
-                if crc32 > 0x7FFFFFFF:
-                    return str(crc32 - 0x100000000)
-
-                return str(crc32)
-
-
-
+    def computeHash(self, hashobj):
         # compute checksum and hash
         # from all keys and their corresponding values in order, e.g.
         # key_1, value_1, key_2, value_2, ... key_n, value_n
@@ -517,26 +467,21 @@ class CC(object):
         # get all devices
         deviceNames = self._devices.keys()
 
-        hasher = Hasher(hashobj)
         # now the same for each device in alphabetical order:
         for deviceName in sorted(deviceNames):
-            device     = self._devices[deviceName]
+            device = self._devices[deviceName]
 
             # Make sure that only controlled devices are hashed
             if not device.isInControlledTree():
                 continue
 
-            hasher.update(deviceName)
+            hashobj.update(deviceName)
 
             for k in sorted(device.keys()):
                 tmp = self._getOrderedString([device[k]])
 
-                hasher.update(k)
-                hasher.update(tmp)
-
-        self._hashSum = (hashobj, hasher.get())
-
-        return self._hashSum[1]
+                hashobj.update(k)
+                hashobj.update(tmp)
 
 
     # recursively process input in order to create an "ordered"
