@@ -441,6 +441,10 @@ def processTemplateID(templateID, devices):
 
     print("Processing entire tree of controls-relationships:\n")
 
+    can_combine   = tf.is_combinable(templateID)
+    def_seen      = None
+    template_seen = None
+
     # for each device, find corresponding template and process it
     output     = []
     for device in devices:
@@ -458,6 +462,7 @@ def processTemplateID(templateID, devices):
         if templatePrinter is not None:
             ifdef = getIfDef(device)
             if ifdef is not None:
+                def_seen = True
                 print("Generating template from Definition File...")
                 ifdef.calculate_hash(hashobj)
                 template = []
@@ -466,6 +471,11 @@ def processTemplateID(templateID, devices):
         # Try to download template from artifact
         if template is None:
             template = downloadTemplate(device, tagged_templateID)
+            if template is not None:
+                template_seen = True
+
+        if def_seen and template_seen and not can_combine:
+            raise RuntimeError("Cannot combine Interface Definitions and ordinary templates with {}".format(templateID))
 
         # Try to check if we have a default template printer implementation
         if template is None and templatePrinter is not None and not templatePrinter.needs_ifdef():

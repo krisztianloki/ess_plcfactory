@@ -9,7 +9,7 @@ __license__    = "GPLv3"
 
 
 from tf_ifdef import IF_DEF, IfDefException
-from printers import get_printer, available_printers
+from printers import get_printer, available_printers, is_combinable
 
 OPTIMIZE_S7DB = False
 

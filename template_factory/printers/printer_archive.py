@@ -27,12 +27,17 @@ class ARCHIVE(PRINTER):
                "MONITOR" : "MONITOR"}
 
     def __init__(self):
-        PRINTER.__init__(self)
+        super(ARCHIVE, self).__init__()
 
 
     @staticmethod
     def name():
         return "ARCHIVE"
+
+
+    @staticmethod
+    def combinable():
+        return True
 
 
     #
@@ -42,7 +47,7 @@ class ARCHIVE(PRINTER):
         #
         # No need to initialize anything
         #
-        PRINTER.header(self, output, **keyword_params).add_filename_header(output, extension = "archive")
+        super(ARCHIVE, self).header(output, **keyword_params).add_filename_header(output, extension = "archive")
 
 
     #

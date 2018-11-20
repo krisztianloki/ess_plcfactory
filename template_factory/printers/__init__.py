@@ -1,3 +1,4 @@
+from __future__ import print_function
 from __future__ import absolute_import
 
 import glob
@@ -20,6 +21,10 @@ def available_printers():
         printers.append(n)
 
     return printers
+
+
+def is_combinable(printer):
+    return printer in _combinable_printers
 
 
 
@@ -114,7 +119,19 @@ class PRINTER(object):
 
     @staticmethod
     def name():
+        """Return the *globally unique* name of the printer."""
         return ""
+
+
+    @staticmethod
+    def combinable():
+        """Return if the printer can be used with DEFs and ordinary templates.
+
+           A printer is combinable if the result can be the combination of processing DEFs
+           and ordinary templates. Most printers are non-combinable.
+
+        """
+        return False
 
 
     def write(self, fname, output):
@@ -217,7 +234,8 @@ class PRINTER(object):
 
 
 
-_available_printers = []
+_available_printers  = []
+_combinable_printers = set()
 for printer in glob.iglob(os.path.dirname(__file__) + "/printer_*.py"):
     mod = os.path.splitext(os.path.basename(printer))[0]
     importlib.import_module(__name__ + "." + mod)
@@ -226,8 +244,13 @@ for printer in glob.iglob(os.path.dirname(__file__) + "/printer_*.py"):
         prn_tpl = eval(mod + ".printer()")
         if type(prn_tpl) is list:
             _available_printers.extend(prn_tpl)
+            for (n, c) in prn_tpl:
+                if c.combinable():
+                    _combinable_printers.add(n)
         else:
             _available_printers.append(prn_tpl)
+            if prn_tpl[1].combinable():
+                _combinable_printers.add(prn_tpl[0])
     except NotImplementedError:
         pass
 
