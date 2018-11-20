@@ -629,7 +629,16 @@ PLC-EPICS-COMMS:Endianness: [PLCF#PLC-EPICS-COMMS:Endianness]"""
         processTemplateID(templateID, devices)
 
     global hashes
-    hashes[device.name()] = hashobj.getCRC32()
+    cur_hash = (hashobj.getHash(), hashobj.getCRC32())
+    hashes[device.name()] = cur_hash
+
+    try:
+        prev_hash = prev_hashes[device.name()]
+        # Check if CRC32 is the same but the actual hash is different
+        if prev_hash[0] is not None and prev_hash[0] != cur_hash[0] and prev_hash[1] == cur_hash[1]:
+            raise RuntimeError("CRC32 collision detected. Please file a bug report")
+    except (KeyError, TypeError):
+        pass
 
     return device
 
@@ -814,7 +823,11 @@ def read_data_files():
     from ast import literal_eval as ast_literal_eval
     prev_hashes = ast_literal_eval(raw_hashes)
     import copy
-    hashes = copy.deepcopy(prev_hashes)
+    for (k, v) in prev_hashes.iteritems():
+        if isinstance(v, tuple):
+            hashes[k] = copy.deepcopy(v)
+        else:
+            hashes[k] = (None, copy.deepcopy(v))
     del ast_literal_eval
 
 
@@ -1486,7 +1499,7 @@ def main(argv):
         print("\nTemplates were reused\n")
 
     try:
-        if prev_hashes is not None and prev_hashes[root_device.name()] != hashes[root_device.name()]:
+        if prev_hashes is not None and prev_hashes[root_device.name()][1] != hashes[root_device.name()][1]:
             print("""
 +++++++++++++++++++++++++++++++++++++++++++++++++++++
 + Be aware:                                         +
