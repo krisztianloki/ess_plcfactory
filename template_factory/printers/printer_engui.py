@@ -23,7 +23,7 @@ def printer():
 
 class ENGUI(PRINTER):
     def __init__(self):
-        PRINTER.__init__(self)
+        super(ENGUI, self).__init__()
         self._iformatstring = "engui {cmd} \"{pvname}\" '${{DEVICE}}:{pvname}'	|| return 1 2>/dev/null || exit 1\n"
         self._oformatstring = "engui {cmd} \"{pvname}\" '${{DEVICE}}:{pvname}' '${{DEVICE}}:{pvname}'	|| return 1 2>/dev/null || exit 1\n"
 
@@ -37,7 +37,7 @@ class ENGUI(PRINTER):
     # HEADER
     #
     def header(self, output, **keyword_params):
-        PRINTER.header(self, output, **keyword_params)
+        super(ENGUI, self).header(output, **keyword_params)
 
         self._append("""#FILENAME [PLCF#INSTALLATION_SLOT]-[PLCF#TEMPLATE]-[PLCF#TIMESTAMP].scl
 #!/bin/bash
@@ -54,7 +54,7 @@ engui opi_begin || return 1 2>/dev/null || exit 1
     #
     # BODY
     #
-    def _ifdef_body(self, if_def, output):
+    def _ifdef_body(self, if_def, output, **keyword_params):
         for src in if_def.interfaces():
             if isinstance(src, BASE_TYPE):
                 if src.is_status():
@@ -66,8 +66,8 @@ engui opi_begin || return 1 2>/dev/null || exit 1
     #
     # FOOTER
     #
-    def footer(self, output):
-        PRINTER.footer(self, output)
+    def footer(self, output, **keyword_params):
+        super(ENGUI, self).footer(output, **keyword_params)
 
         self._append("""
 engui opi_end

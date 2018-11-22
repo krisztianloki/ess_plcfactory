@@ -155,24 +155,24 @@ class PRINTER(object):
         return self
 
 
-    def body(self, if_def, output):
+    def body(self, if_def, output, **keyword_params):
         self._check_if_list(output)
 
         if isinstance(if_def, IF_DEF):
-            self._ifdef_body(if_def, output)
+            self._ifdef_body(if_def, output, **keyword_params)
         else:
-            self._any_body(output)
+            self._any_body(output, **keyword_params)
 
 
-    def _ifdef_body(self, if_def, output):
+    def _ifdef_body(self, if_def, output, **keyword_params):
         pass
 
 
-    def _any_body(self, output):
+    def _any_body(self, output, **keyword_params):
         pass
 
 
-    def footer(self, output):
+    def footer(self, output, **keyword_params):
         self._check_if_list(output)
 
         return self

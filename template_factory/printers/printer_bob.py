@@ -121,7 +121,7 @@ class BOB(PRINTER):
 """
 
     def __init__(self):
-        PRINTER.__init__(self, comments = False, preserve_empty_lines = False, show_origin = False)
+        super(BOB, self).__init__(comments = False, preserve_empty_lines = False, show_origin = False)
         self._x      = 0
         self._y      = 0
 
@@ -135,7 +135,7 @@ class BOB(PRINTER):
     # HEADER
     #
     def header(self, output, **keyword_params):
-        PRINTER.header(self, output, **keyword_params)
+        super(BOB, self).header(output, **keyword_params)
         self.add_filename_header(output, extension = "bob")
         self._append("""<?xml version="1.0" encoding="UTF-8"?>
 <display version="2.0.0">
@@ -145,7 +145,7 @@ class BOB(PRINTER):
     #
     # BODY
     #
-    def _ifdef_body(self, if_def, output):
+    def _ifdef_body(self, if_def, output, **keyword_params):
         x                = 0
         y                = 0
         group_width      = BOB.GROUP_WIDTH;
@@ -228,8 +228,8 @@ class BOB(PRINTER):
     #
     # FOOTER
     #
-    def footer(self, output):
-        PRINTER.footer(self, output)
+    def footer(self, output, **keyword_params):
+        super(BOB, self).footer(output, **keyword_params)
         self._append("""<height>{height}</height>
 </display>
 """.format(height = self._y), output)

@@ -21,7 +21,7 @@ def printer():
 
 class DUMMY(PRINTER):
     def __init__(self):
-        PRINTER.__init__(self, comments = False, preserve_empty_lines = False, show_origin = False)
+        super(DUMMY, self).__init__(comments = False, preserve_empty_lines = False, show_origin = False)
 
 
     @staticmethod
@@ -34,22 +34,22 @@ class DUMMY(PRINTER):
     # HEADER
     #
     def header(self, output, **keyword_params):
-        PRINTER.header(self, output, **keyword_params)
+        super(DUMMY, self).header(output, **keyword_params)
 
 
     #
     # BODY
     #
-    def _ifdef_body(self, if_def, output):
+    def _ifdef_body(self, if_def, output, **keyword_params):
         pass
 
 
-    def _any_body(self, output):
+    def _any_body(self, output, **keyword_params):
         pass
 
 
     #
     # FOOTER
     #
-    def footer(self, output):
-        PRINTER.footer(self, output)
+    def footer(self, output, **keyword_params):
+        super(DUMMY, self).footer(self, output, **keyword_params)

@@ -47,7 +47,7 @@ ARCHIVE
 #
 class IFF(PRINTER):
     def __init__(self):
-        PRINTER.__init__(self, comments = True, preserve_empty_lines = False, show_origin = False)
+        super(IFF, self).__init__(comments = True, preserve_empty_lines = False, show_origin = False)
 
 
     def comment(self):
@@ -70,7 +70,7 @@ class IFF(PRINTER):
         #
         # No need to initialize counters to 10, IFA does not need it
         #
-        PRINTER.header(self, output, **keyword_params).add_filename_header(output, extension = "ifa")
+        super(IFF, self).header(output, **keyword_params).add_filename_header(output, extension = "ifa")
 
         if keyword_params.get("PLC_TYPE", "SIEMENS") == "SIEMENS":
             plcpulse = self.plcf("PLC-EPICS-COMMS: PLCPulse")
@@ -117,7 +117,7 @@ PLC_PULSE
     #
     # BODY
     #
-    def _ifdef_body(self, if_def, output):
+    def _ifdef_body(self, if_def, output, **keyword_params):
         self._append("""DEVICE
 {inst_slot}
 DEVICE_TYPE
@@ -197,8 +197,8 @@ PLCTOEPICSDATABLOCKOFFSET
     #
     # FOOTER
     #
-    def footer(self, output):
-        PRINTER.footer(self, output)
+    def footer(self, output, **keyword_params):
+        super(IFF, self).footer(output, **keyword_params)
 
         self._append("""TOTALEPICSTOPLCLENGTH
 {totalepicstoplclength}

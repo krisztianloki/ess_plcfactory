@@ -19,7 +19,7 @@ def printer():
 
 class DEVLIST(PRINTER):
     def __init__(self):
-        PRINTER.__init__(self, comments = False, preserve_empty_lines = False, show_origin = False)
+        super(DEVLIST, self).__init__(comments = False, preserve_empty_lines = False, show_origin = False)
 
 
     @staticmethod
@@ -31,23 +31,16 @@ class DEVLIST(PRINTER):
     # HEADER
     #
     def header(self, output, **keyword_params):
-        PRINTER.header(self, output, **keyword_params)
+        super(DEVLIST, self).header(output, **keyword_params)
         self.add_filename_header(output)
 
 
     #
     # BODY
     #
-    def _ifdef_body(self, if_def, output):
-        self._any_body(output)
+    def _ifdef_body(self, if_def, output, **keyword_params):
+        self._any_body(output, **keyword_params)
 
 
-    def _any_body(self, output):
+    def _any_body(self, output, **keyword_params):
         self._append(self.inst_slot(), output)
-
-
-    #
-    # FOOTER
-    #
-    def footer(self, output):
-        PRINTER.footer(self, output)

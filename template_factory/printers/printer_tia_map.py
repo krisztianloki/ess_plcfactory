@@ -85,7 +85,7 @@ VERSION : 0.1
     #
     # BODY
     #
-    def _ifdef_body(self, if_def, output):
+    def _ifdef_body(self, if_def, output, **keyword_params):
         self._append("""
       "_CommsEPICSDataMappingFBFactory"(EPICSToPLCLength           := {epicstoplclength},
                                         EPICSToPLCDataBlockOffset  := [PLCF# ^(EPICSToPLCDataBlockStartOffset) + {cmd_cnt}],
@@ -111,8 +111,8 @@ VERSION : 0.1
     #
     # FOOTER
     #
-    def footer(self, output):
-        super(TIA_MAP_DIRECT, self).footer(output)
+    def footer(self, output, **keyword_params):
+        super(TIA_MAP_DIRECT, self).footer(output, **keyword_params)
 
         self._append("""
    END_IF;

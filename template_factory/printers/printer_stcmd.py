@@ -103,7 +103,7 @@ class ST_CMD(eee, PRINTER):
     #
     # BODY
     #
-    def _ifdef_body(self, if_def, output):
+    def _ifdef_body(self, if_def, output, **keyword_parameters):
         status = if_def._status_block()
         if status is not None:
             self._append("#COUNTER {status_cnt} = [PLCF# {status_cnt} + {db_length}]".format(status_cnt = STATUS_BLOCK.counter_keyword(),
@@ -113,17 +113,17 @@ class ST_CMD(eee, PRINTER):
     #
     # FOOTER
     #
-    def footer(self, output):
+    def footer(self, output, **keyword_parameters):
         if self._opc:
-            self._opc_footer(output)
+            self._opc_footer(output, **keyword_parameters)
         else:
-            self._s7_footer(output)
+            self._s7_footer(output, **keyword_parameters)
 
     #
     # S7 + MODBUS FOOTER
     #
-    def _s7_footer(self, output):
-        super(ST_CMD, self).footer(output)
+    def _s7_footer(self, output, **keyword_parameters):
+        super(ST_CMD, self).footer(output, **keyword_parameters)
 
         st_cmd_footer = """
 # S7 port           : {s7drvport}
@@ -161,8 +161,8 @@ dbLoadRecords("{modulename}.db", "PLCNAME={modulename}, MODVERSION=$({modversion
     #
     # OPC-UA FOOTER
     #
-    def _opc_footer(self, output):
-        super(ST_CMD, self).footer(output)
+    def _opc_footer(self, output, **keyword_parameters):
+        super(ST_CMD, self).footer(output, **keyword_parameters)
 
         st_cmd_footer = """
 # Session name : {modulename}-session
@@ -228,8 +228,8 @@ class ST_TEST_CMD(eee, PRINTER):
     #
     # FOOTER
     #
-    def footer(self, output):
-        super(ST_TEST_CMD, self).footer(output)
+    def footer(self, output, **keyword_parameters):
+        super(ST_TEST_CMD, self).footer(output, **keyword_parameters)
 
         st_cmd_footer = """
 # Load plc interface database
@@ -310,8 +310,8 @@ class AUTOSAVE_ST_CMD(ST_CMD):
     #
     # BODY
     #
-    def _ifdef_body(self, if_def, output):
-        super(AUTOSAVE_ST_CMD, self)._ifdef_body(if_def, output)
+    def _ifdef_body(self, if_def, output, **keyword_parameters):
+        super(AUTOSAVE_ST_CMD, self)._ifdef_body(if_def, output, **keyword_parameters)
 
         if not self._has_params:
             for src in if_def.interfaces():
@@ -323,8 +323,8 @@ class AUTOSAVE_ST_CMD(ST_CMD):
     #
     # FOOTER
     #
-    def footer(self, output):
-        super(AUTOSAVE_ST_CMD, self).footer(output)
+    def footer(self, output, **keyword_parameters):
+        super(AUTOSAVE_ST_CMD, self).footer(output, **keyword_parameters)
 
         if self._has_params:
             self._append(autosave_footer(self), output)
@@ -354,7 +354,7 @@ class AUTOSAVE_ST_TEST_CMD(ST_TEST_CMD):
     #
     # FOOTER
     #
-    def footer(self, output):
-        super(AUTOSAVE_ST_TEST_CMD, self).footer(output)
+    def footer(self, output, **keyword_parameters):
+        super(AUTOSAVE_ST_TEST_CMD, self).footer(output, **keyword_parameters)
 
         self._append(autosave_footer(self), output)

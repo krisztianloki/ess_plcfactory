@@ -50,7 +50,7 @@ class ARCHIVE(PRINTER):
     #
     # BODY
     #
-    def _ifdef_body(self, if_def, output):
+    def _ifdef_body(self, if_def, output, **keyword_params):
         inst_slot = self.inst_slot()
         self._append("#" * 60, output)
         for var in if_def.interfaces():

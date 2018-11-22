@@ -204,7 +204,7 @@ class EPICS(EPICS_BASE):
     # HEADER
     #
     def header(self, output, **keyword_params):
-        PRINTER.header(self, output, **keyword_params).add_filename_header(output, extension = "db")
+        super(EPICS, self).header(output, **keyword_params).add_filename_header(output, extension = "db")
         epics_db_header = """
 record(stringin, "{root_inst_slot}:ModVersionR") {{
 	field(DISP,	"1")
@@ -367,7 +367,7 @@ record(ai, "{root_inst_slot}:HeartbeatFromPLCR") {{
     #
     # BODY
     #
-    def _ifdef_body(self, if_def, output):
+    def _ifdef_body(self, if_def, output, **keyword_params):
         self._if_def = if_def
         self._output = output
 
@@ -435,7 +435,7 @@ record(ai, "{root_inst_slot}:HeartbeatFromPLCR") {{
 
 class EPICS_TEST(EPICS):
     def __init__(self):
-        EPICS.__init__(self, test = True)
+        super(EPICS_TEST, self).__init__(test = True)
 
 
     @staticmethod
@@ -447,6 +447,7 @@ class EPICS_TEST(EPICS):
     # HEADER
     #
     def header(self, output, **keyword_params):
+        #Have to call PRINTER.header explicitly
         PRINTER.header(self, output, **keyword_params).add_filename_header(output, extension = "db")
         epics_db_header = """
 record(stringin, "{root_inst_slot}:ModVersionR") {{
@@ -609,7 +610,7 @@ record(calcout, "{root_inst_slot}:iRuinHash") {{
 
 class UPLOAD_PARAMS(PRINTER):
     def __init__(self):
-        PRINTER.__init__(self)
+        super(UPLOAD_PARAMS, self).__init__()
 
         self._fo_name = '_UploadParamS{foc}-FO'
         self._foc = 0
@@ -625,7 +626,7 @@ class UPLOAD_PARAMS(PRINTER):
     # HEADER
     #
     def header(self, output, **keyword_params):
-        PRINTER.header(self, output, **keyword_params).add_filename_header(output, extension = "db")
+        super(UPLOAD_PARAMS, self).header(output, **keyword_params).add_filename_header(output, extension = "db")
         epics_db_header = """
 record(fanout, "{root_inst_slot}:UploadParametersS") {{
 """.format(root_inst_slot = self.root_inst_slot())
@@ -637,7 +638,7 @@ record(fanout, "{root_inst_slot}:UploadParametersS") {{
     #
     # BODY
     #
-    def _ifdef_body(self, if_def, output):
+    def _ifdef_body(self, if_def, output, **keyword_params):
         self._output = output
 
         self._params = []
@@ -671,8 +672,8 @@ record(fanout, "{root_inst_slot}:UploadParametersS") {{
     #
     # FOOTER
     #
-    def footer(self, output):
-        PRINTER.footer(self, output)
+    def footer(self, output, **keyword_params):
+        super(UPLOAD_PARAMS, self).footer(output, **keyword_params)
         self._append("}", output)
 
 
@@ -773,7 +774,7 @@ record(ao, "{root_inst_slot}:CommsHashToPLCS") {{
     #
     # BODY
     #
-    def _ifdef_body(self, if_def, output):
+    def _ifdef_body(self, if_def, output, **keyword_params):
         self._if_def = if_def
         self._output = output
 

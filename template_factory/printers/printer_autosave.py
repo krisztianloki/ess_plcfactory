@@ -21,7 +21,7 @@ def printer():
 
 class AUTOSAVE(PRINTER):
     def __init__(self):
-        PRINTER.__init__(self, comments = False, preserve_empty_lines = False, show_origin = False)
+        super(AUTOSAVE, self).__init__(comments = False, preserve_empty_lines = False, show_origin = False)
 
 
     @staticmethod
@@ -33,7 +33,7 @@ class AUTOSAVE(PRINTER):
     # HEADER
     #
     def header(self, output, **keyword_params):
-        PRINTER.header(self, output, **keyword_params).add_filename_header(output, extension = "req")
+        super(AUTOSAVE, self).header(output, **keyword_params).add_filename_header(output, extension = "req")
 
         return self
 
@@ -41,7 +41,7 @@ class AUTOSAVE(PRINTER):
     #
     # BODY
     #
-    def _ifdef_body(self, if_def, output):
+    def _ifdef_body(self, if_def, output, **keyword_params):
         self._output = output
 
         for src in if_def.interfaces():
@@ -51,9 +51,9 @@ class AUTOSAVE(PRINTER):
 
 
 
-class AUTOSAVE_TEST(AUTOSAVE):
+class AUTOSAVE_TEST(PRINTER):
     def __init__(self):
-        AUTOSAVE.__init__(self)
+        super(AUTOSAVE_TEST, self).__init__(comments = False, preserve_empty_lines = False, show_origin = False)
 
 
     @staticmethod
@@ -65,7 +65,7 @@ class AUTOSAVE_TEST(AUTOSAVE):
     # HEADER
     #
     def header(self, output, **keyword_params):
-        PRINTER.header(self, output, **keyword_params).add_filename_header(output, custom = "{inst_slot}-[PLCF#TEMPLATE]-[PLCF#TIMESTAMP]-test.req".format(inst_slot = self.inst_slot()))
+        super(AUTOSAVE_TEST, self).header(output, **keyword_params).add_filename_header(output, custom = "{inst_slot}-[PLCF#TEMPLATE]-[PLCF#TIMESTAMP]-test.req".format(inst_slot = self.inst_slot()))
 
         return self
 
@@ -73,7 +73,7 @@ class AUTOSAVE_TEST(AUTOSAVE):
     #
     # BODY
     #
-    def _ifdef_body(self, if_def, output):
+    def _ifdef_body(self, if_def, output, **keyword_params):
         self._output = output
 
         for src in if_def.interfaces():
