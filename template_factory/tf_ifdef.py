@@ -17,7 +17,7 @@ from collections import OrderedDict
 
 
 # Data types for S7 PLCs
-PLC_types = { 'BOOL', 'BYTE', 'WORD', 'DWORD', 'INT', 'DINT', 'REAL', 'SSTIME', 'TIME', 'LTIME', 'DATE', 'TIME_OF_DAY', 'CHAR' }
+PLC_types = { 'BOOL', 'BYTE', 'CHAR', 'WORD', 'DWORD', 'INT', 'DINT', 'REAL', 'SSTIME', 'TIME', 'LTIME', 'DATE', 'TIME_OF_DAY', 'STRING' }
 
 # New data types for S7-1200/1500
 PLC_types.update({ 'USINT', 'SINT', 'UINT', 'UDINT' })
@@ -27,8 +27,7 @@ bits_in_type_map = { 'UINT8'   :  8, 'INT8'   :  8, 'UNSIGN8' :  8, 'BYTE'      
                      'UINT16'  : 16, 'INT16'  : 16, 'SHORT'   : 16, 'UNSIGN16'   : 16, 'WORD'       : 16, 'INT16SM'  : 16, 'BCD_UNSIGNED' : 16, 'BCD_SIGNED' : 16, 'INT'  : 16, 'UINT'  : 16,
                      'UINT32'  : 32, 'INT32'  : 32, 'LONG'    : 32, 'UNSIGN32'   : 32, 'DWORD'      : 32, 'INT32_LE' : 32, 'INT32_BE'     : 32, 'DINT'       : 32, 'TIME' : 32, 'UDINT' : 32,
                      'FLOAT32' : 32, 'REAL32' : 32, 'FLOAT'   : 32, 'FLOAT32_LE' : 32, 'FLOAT32_BE' : 32, 'REAL'     : 32,
-                     'FLOAT64' : 64, 'REAL64' : 64, 'DOUBLE'  : 64, 'FLOAT64_LE' : 64, 'FLOAT64_BE' : 64,
-                     'STRING'  : 40 * 8 }
+                     'FLOAT64' : 64, 'REAL64' : 64, 'DOUBLE'  : 64, 'FLOAT64_LE' : 64, 'FLOAT64_BE' : 64 }
 
 
 class IfDefException(Exception):
@@ -340,7 +339,7 @@ class BLOCK(SOURCE):
         if isinstance(num_bytes, int):
             self._block_offset += num_bytes
         else:
-            raise IfDefSyntaxError("Unknown type: " + str(num_bytes))
+            raise IfDefSyntaxError("Cannot compute width, unknown type: " + str(num_bytes))
 
 
     def register_printer(self, printer):
@@ -366,17 +365,18 @@ class STATUS_BLOCK(BLOCK):
 
     @staticmethod
     def valid_type_pairs():
-        return dict(BYTE  = [ "UINT8",   "UNSIGN8", "BYTE", "CHAR" ],
-                    USINT = [ "UINT8",   "UNSIGN8", "BYTE", "CHAR" ],
-                    SINT  = [ "INT8" ],
-                    WORD  = [ "UINT16",  "UNSIGN16", "WORD" ],
-                    UINT  = [ "UINT16",  "UNSIGN16", "WORD" ],
-                    INT   = [ "INT16",   "SHORT" ],
-                    DWORD = [ "UINT32",  "UNSIGN32", "DWORD" ],
-                    UDINT = [ "UINT32",  "UNSIGN32", "DWORD" ],
-                    DINT  = [ "INT32",   "LONG" ],
-                    REAL  = [ "FLOAT32", "REAL32",   "FLOAT" ],
-                    TIME  = [ "INT32",   "LONG" ])
+        return dict(BYTE   = [ "UINT8",   "UNSIGN8", "BYTE", "CHAR" ],
+                    USINT  = [ "UINT8",   "UNSIGN8", "BYTE", "CHAR" ],
+                    SINT   = [ "INT8" ],
+                    WORD   = [ "UINT16",  "UNSIGN16", "WORD" ],
+                    UINT   = [ "UINT16",  "UNSIGN16", "WORD" ],
+                    INT    = [ "INT16",   "SHORT" ],
+                    DWORD  = [ "UINT32",  "UNSIGN32", "DWORD" ],
+                    UDINT  = [ "UINT32",  "UNSIGN32", "DWORD" ],
+                    DINT   = [ "INT32",   "LONG" ],
+                    REAL   = [ "FLOAT32", "REAL32",   "FLOAT" ],
+                    TIME   = [ "INT32",   "LONG" ],
+                    STRING = [ "STRING" ])
 
 
     @staticmethod
@@ -1134,6 +1134,20 @@ class IF_DEF(object):
 
 
     @ifdef_interface
+    def add_string(self, name, max_len = None, **keyword_params):
+        keyword_params = self._handle_extra_params(keyword_params)
+
+        if not isinstance(name, str):
+            raise IfDefSyntaxError("Name must be a string!")
+        if max_len is not None and not isinstance(max_len, int):
+            raise IfDefSyntaxError("max_len must be an integer!")
+
+        block = self._active_block()
+        var   = STRING(self._source, block, name, max_len, keyword_params)
+        return self._add(var)
+
+
+    @ifdef_interface
     def add_verbatim(self, verbatim):
         if not isinstance(verbatim, str):
             raise IfDefSyntaxError("Only strings can be copied verbatim!")
@@ -1248,7 +1262,7 @@ class BASE_TYPE(SOURCE):
         self._block          = block
         self._name           = name
         self._datablock_name = self._keyword_params["DATABLOCK"]
-        self._width          = _bytes_in_type(self._plc_type)
+        self._width          = self._calc_width_in_bytes()
 
         # Has to be after _width is initialized
         self._end_bits()
@@ -1286,6 +1300,10 @@ class BASE_TYPE(SOURCE):
             raise IfDefSyntaxError("Template is already defined: " + name)
 
         BASE_TYPE.templates[name] = template
+
+
+    def _calc_width_in_bytes(self):
+        return _bytes_in_type(self._plc_type)
 
 
     def _expand_templates(self):
@@ -1348,6 +1366,7 @@ class BASE_TYPE(SOURCE):
             - DWORD
             - REAL
             - TIME
+            - STRING
         """
         return self._plc_type
 
@@ -1366,6 +1385,10 @@ class BASE_TYPE(SOURCE):
 
     def inp_out(self, **keyword_params):
         return self._block.inp_out(**keyword_params)
+
+
+    def dimension(self):
+        return 1
 
 
     def adjust_parameter(self, cmd_length):
@@ -1779,6 +1802,53 @@ class BITMASK(BASE_TYPE):
 
 
 
+class STRING(BASE_TYPE):
+    def __init__(self, source, block, name, max_len, keyword_params):
+        if not block.is_status_block():
+            raise IfDefSyntaxError("Strings are only supported in status blocks")
+        if max_len is not None:
+            if max_len < 1:
+                raise IfDefSyntaxError("String length has to be greater than 0")
+            if max_len > STRING.default_len():
+                raise IfDefSyntaxError("Strings cannot be longer than {} characters".format(STRING.default_len()))
+        else:
+            max_len = STRING.default_len()
+
+        self._max_dim = max_len + 1
+        super(STRING, self).__init__(source, block, name, "STRING", keyword_params)
+
+
+    @staticmethod
+    def default_len():
+        return STRING.default_dim() - 1
+
+
+    @staticmethod
+    def default_dim():
+        return 40
+
+
+    def dimension(self):
+        return self._max_dim
+
+
+    def _calc_width_in_bytes(self):
+        return self.dimension()
+
+
+    def pv_type(self):
+        return "stringin"
+
+
+    def hash_message(self):
+        return "{}, {}".format(super(STRING, self).hash_message(), self.dimension())
+
+
+    def link_extra(self):
+        return " L={}".format(self.dimension())
+
+
+
 
 
 #
@@ -1804,7 +1874,7 @@ def _bits_in_type(var_type):
     try:
         return bits_in_type_map[var_type]
     except KeyError:
-        raise IfDefSyntaxError("Unknown type: " + var_type)
+        raise IfDefSyntaxError("Cannot calculate number of bits, unknown type: " + var_type)
 
 
 def _bytes_in_type(var_type):

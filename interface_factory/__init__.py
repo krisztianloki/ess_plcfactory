@@ -176,7 +176,8 @@ class IFA(object):
     class Variable(Block):
         def __init__(self, name, block):
             super(IFA.Variable, self).__init__(block)
-            self.properties = { "VARIABLE": name }
+            self.properties  = { "VARIABLE": name }
+            self.__dimension = 1
 
 
         def __repr__(self):
@@ -191,9 +192,20 @@ class IFA(object):
             return True
 
 
+        def dimension(self):
+            return self.__dimension
+
+
         def check(self):
             if not set(IFA.mandatory_variable_properties.keys()) <= set(self.properties.keys()):
                 raise IFA.FatalException("Missing VARIABLE properties", set(IFA.mandatory_variable_properties.keys()) - set(self.properties.keys()))
+
+            type_split = self.properties["TYPE"].split('[')
+            if len(type_split) > 1:
+                self.properties["TYPE"] = type_split[0]
+                self.__dimension = int(type_split[1][:-1])
+                if self.__dimension <= 1:
+                    raise IFA.FatalException("Array dimension must be greater than 1")
 
             for (keyword, value) in self.properties.iteritems():
                 try:

@@ -173,7 +173,7 @@ PLCTOEPICSDATABLOCKOFFSET
 
         ifa = _iff_template.format(name        = var.name(),
                                    epics       = var.pv_name(),
-                                   type        = var.plc_type(),
+                                   type        = var.plc_type() if var.dimension() == 1 else "{}[{}]".format(var.plc_type(), var.dimension()),
                                    array_index = str(var.offset() // 2),
                                    bit_number  = bit_number)
 
