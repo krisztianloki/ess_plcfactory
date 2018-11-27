@@ -1210,7 +1210,7 @@ def main(argv):
         args.plc_interface = False
     elif args.plc_interface is not None:
         tia_version        = args.plc_interface.lower()
-        tia_map            = "TIA-MAP-INTERFACE"
+        tia_map            = None
         args.plc_interface = True
         args.plc_direct    = False
     else:
@@ -1373,7 +1373,7 @@ def main(argv):
     default_printers = set(["DEVICE-LIST"])
 
     if args.plc_interface:
-        default_printers.update( [ "EPICS-DB", "IFA", tia_map ] )
+        default_printers.update( [ "EPICS-DB", "IFA" ] )
 
     if args.plc_direct:
         tf.optimize_s7db(True)
@@ -1406,10 +1406,6 @@ def main(argv):
         if args.plc_no_diag == False and not args.plc_direct:
             args.plc_only_diag =  True
             tia_version        =  14
-
-        # TIA-MAP-DIRECT and TIA-MAP-INTERFACE are incompatible
-        if "TIA-MAP-INTERFACE" in templateIDs:
-            raise PLCFArgumentError("Cannot use TIA-MAP-DIRECT and TIA-MAP-INTERFACE at the same time. They are incompatible.")
 
     if args.plc_only_diag and tia_version is None:
         raise PLCFArgumentError('--plc-only-diag requires --plc-direct or --plc-interface')
