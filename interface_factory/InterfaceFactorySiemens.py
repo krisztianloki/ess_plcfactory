@@ -358,7 +358,7 @@ def AddDWORD(variable, InArrayName, InArrayNum, StartingRegister):
 			EndString  = "\"PLCToEPICS\".\"Word\"[#PLCToEPICSDataBlockOffset + "+str(ActVariableArrayIndex) +"] := #MyWordsinDWord[0];"
 			EndString2 = "\"PLCToEPICS\".\"Word\"[#PLCToEPICSDataBlockOffset + "+str(ActVariableArrayIndex+1) +"] := #MyWordsinDWord[1];"
 	if variable.is_parameter() or variable.is_command():
-		print("DWORD is not supported for ModbusTCP")
+		raise IFA.FatalException("DWORD is not supported for ModbusTCP")
 
 	return (InArrayNum, StartingRegister)
 
@@ -446,6 +446,46 @@ def AddTIME(variable, InArrayName, InArrayNum, StartingRegister):
 			DevTypeBODY_CODE.append("       #\""+ ActVariablePLCName +"\" := #MyDInt;    //EPICSName: "+ActVariableEPICSName)
 			IsDouble = True
 			EndString = ""
+
+	return (InArrayNum, StartingRegister)
+
+
+def AddSTRING(variable, InArrayName, InArrayNum, StartingRegister):
+	global DevTypeBODY_CODE
+	global DevTypeBODY_CODE_ARRAY
+	global EndString
+	global EndString2
+	global IsDouble
+
+	#====== STRING TYPE ========
+	ActVariablePLCName    = variable.properties["VARIABLE"]
+	ActVariableEPICSName  = variable.properties["EPICS"]
+	ActVariableType       = variable.properties["TYPE"]
+	ActVariableArrayIndex = int(variable.properties["ARRAY_INDEX"])
+	ActVariableBitNumber  = int(variable.properties["BIT_NUMBER"])
+	ActStringLength       = variable.dimension() / 2 + (variable.dimension() % 2)
+
+	if variable.is_status():
+		if StartingRegister != ActVariableArrayIndex:
+			CloseLastVariable()
+			StartingRegister = ActVariableArrayIndex
+			DevTypeBODY_CODE.append("")
+			DevTypeBODY_CODE.append("       // Clear the buffer of any residual data, but skip the first word as that is the actual and maximum length")
+			DevTypeBODY_CODE.append("       FOR #i:=1 TO 20 DO")
+			DevTypeBODY_CODE.append("            #MyWordsinString[#i] := 0;")
+			DevTypeBODY_CODE.append("       END_FOR;			")
+			DevTypeBODY_CODE.append("       #MyString := #" + ActVariablePLCName + ";  //EPICSName: " + ActVariableEPICSName)
+			if ActStringLength > 1:
+				DevTypeBODY_CODE.append("       FOR #i:=0 TO " + str(ActStringLength - 2) + " DO")
+				DevTypeBODY_CODE.append("            \"PLCToEPICS\".\"Word\"[#PLCToEPICSDataBlockOffset + " + str(ActVariableArrayIndex) + " + #i] := #MyWordsinString[#i + 1];")
+				DevTypeBODY_CODE.append("       END_FOR;")
+			DevTypeBODY_CODE.append("       // Terminate C-string")
+			if variable.dimension() % 2:
+				DevTypeBODY_CODE.append("       \"PLCToEPICS\".\"Word\"[#PLCToEPICSDataBlockOffset + " + str(ActVariableArrayIndex) + " + " + str(ActStringLength - 1) + "] := 0;")
+			else:
+				DevTypeBODY_CODE.append("       \"PLCToEPICS\".\"Word\"[#PLCToEPICSDataBlockOffset + " + str(ActVariableArrayIndex) + " + " + str(ActStringLength - 1) + "] := #MyWordsinString[" + str(ActStringLength) + "] & 16#FF00;")
+	if variable.is_parameter() or variable.is_command():
+		raise IFA.FatalException("STRING is not supported for ModbusTCP")
 
 	return (InArrayNum, StartingRegister)
 
@@ -2604,12 +2644,15 @@ def ProcessIFADevTypes(OutputDir, TIAVersion):
 				DevTypeDB_SPEC.append("      MyWordsinDWord { S7_HMI_Accessible := 'False'; S7_HMI_Visible := 'False'} AT MyDWord : Array[0..1] of Word;")
 				DevTypeDB_SPEC.append("      MyTime { S7_HMI_Accessible := 'False'; S7_HMI_Visible := 'False'} : Time;")
 				DevTypeDB_SPEC.append("      MyWordsinTime { S7_HMI_Accessible := 'False'; S7_HMI_Visible := 'False'} AT MyTime : Array[0..1] of Word;")
+				DevTypeDB_SPEC.append("      MyString { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : String[40];")
+				DevTypeDB_SPEC.append("      MyWordsinString { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} AT MyString : Array[0..20] of Word;")
 				DevTypeDB_SPEC.append("   END_VAR")
 
 				DevTypeVAR_TEMP.append("   VAR_TEMP")
 				DevTypeVAR_TEMP.append("      HashModbus : DInt;")
 				DevTypeVAR_TEMP.append("      HashIFA : DInt;")
 				DevTypeVAR_TEMP.append("      HashTIAMap : DInt;")
+				DevTypeVAR_TEMP.append("      i : Int;")
 				DevTypeVAR_TEMP.append("   END_VAR")
 
 				DevTypeBODY_HEADER.append("    //Author: Miklos Boros (miklos.boros@esss.se), Copyrigth 2017-2018 by European Spallation Source, Lund")
@@ -2749,6 +2792,10 @@ def ProcessIFADevTypes(OutputDir, TIAVersion):
 				#====== TIME TYPE ========
 				elif ActVariableType == "TIME":
 					InArrayNum, StartingRegister = AddTIME(item, InArrayName, InArrayNum, StartingRegister)
+				#==========================
+				#====== STRING TYPE ========
+				elif ActVariableType == "STRING":
+					InArrayNum, StartingRegister = AddSTRING(item, InArrayName, InArrayNum, StartingRegister)
 				#==========================
 				#=== not supported TYPE ===
 				else:
