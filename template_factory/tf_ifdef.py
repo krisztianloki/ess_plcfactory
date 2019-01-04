@@ -92,12 +92,17 @@ class IfDefException(Exception):
 
 class IfDefSyntaxError(IfDefException):
     def __init__(self, *args):
-        IfDefException.__init__(self, "Syntax error", *args)
+        super(IfDefSyntaxError, self).__init__("Syntax error", *args)
 
 
 class IfDefInternalError(IfDefException):
     def __init__(self, *args):
-        IfDefException.__init__(self, "Internal error", *args)
+        super(IfDefInternalError, self).__init__("Internal error", *args)
+
+
+class IfDefFeatureMissingError(IfDefException):
+    def __init__(self, feature):
+        super(IfDefFeatureMissingError, self).__init__("Required feature '{}' is not supported in this version".format(feature))
 
 
 
@@ -667,6 +672,8 @@ class IF_DEF(object):
         self._filename              = keyword_params.get('FILENAME')
         self._inst_slot             = "[PLCF#INSTALLATION_SLOT]"
 
+        self._features              = [ "STABLE-HASH" ]
+
         self._properties[CMD_BLOCK.length_keyword()]    = 0
         self._properties[PARAM_BLOCK.length_keyword()]  = 0
         self._properties[STATUS_BLOCK.length_keyword()] = 0
@@ -887,6 +894,21 @@ class IF_DEF(object):
             return
 
         self._eval(source, stripped_source, linenum)
+
+
+    @ifdef_interface
+    def require_feature(self, *features):
+        if len(features) == 0:
+            raise IfDefSyntaxError("Must specify at least one required feature")
+
+        for feature in features:
+            if not isinstance(feature, str):
+                raise IfDefSyntaxError("Features must be strings")
+
+            if feature.upper() not in self._features:
+                raise IfDefFeatureMissingError(feature)
+
+        return SOURCE(self._source)
 
 
     @ifdef_interface
