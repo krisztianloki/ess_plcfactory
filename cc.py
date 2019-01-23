@@ -314,6 +314,63 @@ class CC(object):
             return artifacts[0].downloadExternalLink(self.defaultFilename(extension), extension, filetype = filetype)
 
 
+        # returns a stable list of controlled devices
+        # Returns: []
+        def buildControlsList(self, include_self = False, verbose = False):
+            self.putInControlledTree()
+
+            # find devices this device _directly_ controls
+            pool = self.controls()
+
+            # find all devices that are directly or indirectly controlled by 'device'
+            controlled_devices = set(pool)
+            while pool:
+                dev = pool.pop()
+
+                cdevs = dev.controls()
+                for cdev in cdevs:
+                    if cdev not in controlled_devices:
+                        controlled_devices.add(cdev)
+                        pool.append(cdev)
+
+            # group them by device type
+            pool = list(controlled_devices)
+            controlled_devices = dict()
+            for dev in pool:
+                device_type = dev.deviceType()
+                try:
+                    controlled_devices[device_type].append(dev)
+                except KeyError:
+                    controlled_devices[device_type] = [ dev ]
+
+            if verbose:
+                print("\r" + "#" * 60)
+                print("Device at root: " + self.name() + "\n")
+                print(self.name() + " controls: ")
+
+            # sort items into a list
+            def sortkey(device):
+                return device.name()
+            pool = list()
+            for device_type in sorted(controlled_devices):
+                if verbose:
+                    print("\t- " + device_type)
+
+                for dev in sorted(controlled_devices[device_type], key=sortkey):
+                    pool.append(dev)
+                    dev.putInControlledTree()
+                    if verbose:
+                        print("\t\t-- " + dev.name())
+
+            if verbose:
+                print("\n")
+
+            if include_self:
+                pool.insert(0, self)
+
+            return pool
+
+
 
     def __init__(self, clear_templates = True):
         # all devices; key, Device pairs

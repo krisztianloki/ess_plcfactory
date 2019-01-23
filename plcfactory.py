@@ -314,54 +314,6 @@ def getIfDef(device):
     return ifdef
 
 
-def buildControlsList(device):
-    device.putInControlledTree()
-
-    # find devices this device _directly_ controls
-    pool = device.controls()
-
-    # find all devices that are directly or indirectly controlled by 'device'
-    controlled_devices = set(pool)
-    while pool:
-        dev = pool.pop()
-
-        cdevs = dev.controls()
-        for cdev in cdevs:
-            if cdev not in controlled_devices:
-                controlled_devices.add(cdev)
-                pool.append(cdev)
-
-    # group them by device type
-    pool = list(controlled_devices)
-    controlled_devices = dict()
-    for dev in pool:
-        device_type = dev.deviceType()
-        try:
-            controlled_devices[device_type].append(dev)
-        except KeyError:
-            controlled_devices[device_type] = [ dev ]
-
-    print("\r" + "#" * 60)
-    print("Device at root: " + device.name() + "\n")
-    print(device.name() + " controls: ")
-
-    # sort items into a list
-    def sortkey(device):
-        return device.name()
-    pool = list()
-    for device_type in sorted(controlled_devices):
-        print("\t- " + device_type)
-
-        for dev in sorted(controlled_devices[device_type], key=sortkey):
-            pool.append(dev)
-            dev.putInControlledTree()
-            print("\t\t-- " + dev.name())
-
-    print("\n")
-
-    return pool
-
-
 def getHeaderFooter(device, templateID):
     assert isinstance(templateID, str)
 
@@ -569,8 +521,7 @@ PLC-EPICS-COMMS:Endianness: [PLCF#PLC-EPICS-COMMS:Endianness]"""
     hash_base = "\n".join(pt.process(device, hash_base.splitlines()))
 
     # create a stable list of controlled devices
-    devices = [ device ]
-    devices.extend(buildControlsList(device))
+    devices = device.buildControlsList(include_self = True, verbose = True)
 
     for templateID in templateIDs:
         global hashobj
