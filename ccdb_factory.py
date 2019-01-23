@@ -96,11 +96,14 @@ class CCDB_Factory(CC):
             self._slot["properties"].append({"name": key, "value": str(value)})
 
 
-        def addArtifact(self, name):
+        def addArtifact(self, name, local_file = None):
+            if local_file is None:
+                local_file = name
+
             artifactDict = dict(CCDB_Factory.default_artifact_dict)
             artifactDict["kind"]      = "SLOT"
-            artifactDict["full_path"] = name
             artifactDict["name"]      = os_path.basename(name)
+            artifactDict["full_path"] = local_file
 
             try:
                 self._slot["artifacts"].append(artifactDict)
@@ -125,8 +128,8 @@ class CCDB_Factory(CC):
 
 
 
-    def __init__(self):
-        super(CCDB_Factory, self).__init__()
+    def __init__(self, user = None):
+        super(CCDB_Factory, self).__init__(user)
         CCDB_Factory.Device.ccdb = self
         self._artifacts = dict()
 
@@ -196,10 +199,12 @@ class CCDB_Factory(CC):
         return device
 
 
-    def addArtifact(self, deviceType, name):
+    def addArtifact(self, deviceType, name, local_file = None):
+        if local_file is None:
+            local_file = name
         artifactDict = dict(CCDB_Factory.default_artifact_dict)
-        artifactDict["full_path"] = name
         artifactDict["name"]      = os_path.basename(name)
+        artifactDict["full_path"] = local_file
 
         try:
             self._artifacts[deviceType].append(artifactDict)
