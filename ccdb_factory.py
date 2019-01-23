@@ -66,6 +66,12 @@ class CCDB_Factory(CC):
                 name = self.name()
                 if name.startswith("EPI"):
                     extension = ".def"
+                elif name.startswith("BEAST TREE"):
+                    extension = ".alarm-tree"
+                elif name.startswith("BEAST TEMPLATE"):
+                    extension = ".alarms-template"
+                elif name.startswith("BEAST"):
+                    extension = ".alarms"
                 else:
                     raise RuntimeError("Unable to auto-detect extension for {}".format(name))
 

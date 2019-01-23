@@ -67,3 +67,15 @@ def create_data_dir(product):
     makedirs(dname)
 
     return dname
+
+
+def tounicode(string):
+    try:
+        # Python2 shortcut
+        if isinstance(string, unicode):
+            return string
+    except NameError:
+        # Python3, it is already unicode
+        return string
+
+    return string.decode("utf-8")
