@@ -31,6 +31,32 @@ class CCDB_Factory(CC):
                              "uri":  None,
                              "name": None}
 
+    default_prop_dict     = {"dataType": "String",
+                             "value": None,
+                             "kind": "TYPE",
+                             "name": None,
+                             "unit": None}
+
+
+    @staticmethod
+    def toDatatype(value, dataType = None):
+        if dataType is not None:
+            return dataType
+
+        if isinstance(value, str):
+            dataType = "String"
+        elif isinstance(value, int):
+            dataType = "Integer"
+        elif isinstance(value, list):
+            if isinstance(value[0], str):
+                dataType = "Strings List"
+
+        if dataType is None:
+            raise RuntimeError("Unable to auto-detect dataType for {}".format(value))
+
+        return dataType
+
+
 
     class Artifact(CCDB.Artifact):
         def _download(self, save_as, url = None):
@@ -87,13 +113,13 @@ class CCDB_Factory(CC):
                     device._slot["controlledBy"] = [ self.name() ]
 
 
-        def setProperty(self, key, value):
+        def setProperty(self, key, value, dataType = None):
             for prop in self._slot["properties"]:
                 if prop["name"] == key:
                     prop["value"] = str(value)
                     return
 
-            self._slot["properties"].append({"name": key, "value": str(value)})
+            self._slot["properties"].append({"name": key, "value": str(value), "dataType": CCDB_Factory.toDatatype(value, dataType)})
 
 
         def addArtifact(self, name, local_file = None):
@@ -131,7 +157,8 @@ class CCDB_Factory(CC):
     def __init__(self, user = None):
         super(CCDB_Factory, self).__init__(user)
         CCDB_Factory.Device.ccdb = self
-        self._artifacts = dict()
+        self._artifacts  = dict()
+        self._properties = dict()
 
 
     def addPLC(self, deviceName):
@@ -189,6 +216,17 @@ class CCDB_Factory(CC):
                 # No artifact for this deviceType
                 pass
 
+            try:
+                properties = self._properties[deviceType]
+                try:
+                    device._slot["properties"].append(properties)
+                except AttributeError:
+                    # Handle 'properties' is None case
+                    device._slot["properties"] = list(properties)
+            except KeyError:
+                # No properties for this deviceType
+                pass
+
 
         return device
 
@@ -223,6 +261,19 @@ class CCDB_Factory(CC):
             self._artifacts[deviceType].append(artifactDict)
         except KeyError:
             self._artifacts[deviceType] = [ artifactDict ]
+
+
+    def setProperty(self, deviceType, key, value, dataType = None):
+        propDict = dict(CCDB_Factory.default_prop_dict)
+        propDict["name"]  = key
+        propDict["value"] = value
+
+        propDict["dataType"] = self.toDatatype(value, dataType)
+
+        try:
+            self._properties[deviceType].append(propDict)
+        except KeyError:
+            self._properties[deviceType] = [ propDict ]
 
 
     def dump(self, filename, *pargs, **kwargs):

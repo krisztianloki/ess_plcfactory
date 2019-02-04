@@ -187,7 +187,7 @@ class CC(object):
             return filter(lambda d: d.isInControlledTree(), ctrldBy)
 
 
-        # Returns: []
+        # Returns: {}
         def properties(self):
             return self._ensure(self._properties(), [])
 
