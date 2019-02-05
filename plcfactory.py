@@ -304,10 +304,12 @@ def getIfDefFromURL(device, artifact, epi):
         if not filename.endswith(IFDEF_TAG):
             filename += IFDEF_TAG
 
-    url = "/".join([ "raw/master", filename ])
+    git_tag = device.properties().get(epi + " VERSION", "master")
+    url     = "/".join([ "raw/{}".format(git_tag), filename ])
 
-    print("Downloading Interface Definition file {filename} from {url}".format(filename = filename,
-                                                                               url      = artifact.uri()))
+    print("Downloading Interface Definition file {filename} (version {version}) from {url}".format(filename = filename,
+                                                                                                   url      = artifact.uri(),
+                                                                                                   version  = git_tag))
 
     return artifact.download(extra_url = url)
 

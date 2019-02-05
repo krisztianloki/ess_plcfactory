@@ -136,3 +136,4 @@ Assigning Interface Definitions happens on the _device type_-level in CCDB. Ever
     *    appends **.def**
 
     It is possible to explicitly specify the filename in square brackets after _EPI_; **EPI[file-to-download]**. The file must still have a **.def** extension (although it is automatically appended if not already specified). This technique can be used to share the same Interface Definition across device types.
+    It is possible to specify a version of the .def file to use other than _master_ with the **EPI VERSION** property (either on _slot_ or _device type_ level)
