@@ -100,9 +100,13 @@ PLC Factory is capable of integrating (and generating code for) the following PL
     *   \[OPTIONAL\]
     *   Generate the EPICS db, the communication and data (de)serialization PLC code for TwinCAT 3 (Diagnostics is not yet supported)
     *   `--plc-beckhoff`
+*   **--plc-diag**
+    *   \[OPTIONAL\]
+    *   Generate diagnostics PLC code
+    *   `--plc-diag`
 *   **--plc-no-diag**
     *   \[OPTIONAL\]
-    *   Do not generate diagnostics PLC code
+    *   Do not generate diagnostics PLC code. This is the default
     *   `--plc-no-diag`
 *   **--plc-only-diag**
     *   \[OPTIONAL\]

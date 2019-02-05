@@ -1137,8 +1137,16 @@ def main(argv):
         diag_args.add_argument(
                                '--plc-no-diag',
                                dest     = "plc_no_diag",
-                               help     = 'do not generate PLC diagnostics code (if used with --plc-x)',
+                               help     = 'do not generate PLC diagnostics code (if used with --plc-x). This is the default',
                                action   = 'store_true',
+                               default  = True,
+                               required = False)
+
+        diag_args.add_argument(
+                               '--plc-diag',
+                               dest     = "plc_no_diag",
+                               help     = 'generate PLC diagnostics code (if used with --plc-x)',
+                               action   = 'store_false',
                                required = False)
 
         diag_args.add_argument(
@@ -1409,10 +1417,10 @@ def main(argv):
             args.plc_only_diag =  True
             tia_version        =  14
 
-    if args.plc_only_diag and tia_version is None:
+    if (args.plc_only_diag or args.plc_no_diag == False) and tia_version is None:
         raise PLCFArgumentError('--plc-only-diag requires --plc-direct or --plc-interface')
 
-    if args.plc_only_diag and beckhoff:
+    if (args.plc_only_diag or args.plc_no_diag == False) and beckhoff:
         raise PLCFArgumentError('PLCFactory cannot (yet?) generate diagnostics code for Beckhoff PLCs')
 
     if beckhoff and ( "TIA-MAP-DIRECT" in templateIDs or "TIA-MAP-INTERFACE" in templateIDs ):
