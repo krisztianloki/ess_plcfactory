@@ -16,51 +16,6 @@ from collections import OrderedDict
 
 
 
-inpv_template  = """record({recordtype}, "{pv_name}")
-{{{alias}
-	field(SCAN, "I/O Intr")
-	field(DTYP, "{dtyp}")
-	field({inp_out})
-	field(DISS, "INVALID")
-	field(DISV, "0")
-	field(SDIS, "[PLCF#ROOT_INSTALLATION_SLOT]:PLCHashCorrectR"){pv_extra}
-}}
-
-"""
-test_inpv_template  = """record({recordtype}, "{pv_name}")
-{{{alias}
-	field(DISS, "INVALID")
-	field(DISV, "0")
-	field(SDIS, "[PLCF#ROOT_INSTALLATION_SLOT]:PLCHashCorrectR CP"){pv_extra}
-}}
-
-"""
-
-
-outpv_template = """record({recordtype}, "{pv_name}")
-{{{alias}
-	field(DTYP, "{dtyp}")
-	field({inp_out})
-	field(DISS, "INVALID")
-	field(DISV, "0")
-	field(SDIS, "[PLCF#ROOT_INSTALLATION_SLOT]:PLCHashCorrectR"){pv_extra}
-}}
-
-"""
-test_outpv_template = """record({recordtype}, "{pv_name}")
-{{{alias}
-	field(DISS, "INVALID")
-	field(DISV, "0")
-	field(SDIS, "[PLCF#ROOT_INSTALLATION_SLOT]:PLCHashCorrectR CP"){pv_extra}
-}}
-
-"""
-
-
-
-
-
-
 # Data types for S7 PLCs
 PLC_types = { 'BOOL', 'BYTE', 'WORD', 'DWORD', 'INT', 'DINT', 'REAL', 'SSTIME', 'TIME', 'LTIME', 'DATE', 'TIME_OF_DAY', 'CHAR' }
 
@@ -269,6 +224,7 @@ class BLOCK(SOURCE):
         self._block_offset  = 0
         self._length        = 0
         self._optimize_s7db = optimize
+        self._block_printer = None
 
 
     def _is_alignment_needed(self, width):
@@ -387,6 +343,10 @@ class BLOCK(SOURCE):
             raise IfDefSyntaxError("Unknown type: " + str(num_bytes))
 
 
+    def register_printer(self, printer):
+        self._block_printer = printer
+
+
 
 class STATUS_BLOCK(BLOCK):
     @staticmethod
@@ -429,12 +389,8 @@ class STATUS_BLOCK(BLOCK):
         return "$(PLCNAME)"
 
 
-    @staticmethod
-    def inp_out(inst_io, offset, var_type, link_extra):
-        return 'INP,  "@{inst_io}/{offset} T={var_type}{link_extra}"'.format(inst_io    = inst_io,
-                                                                             offset     = offset,
-                                                                             var_type   = var_type,
-                                                                             link_extra = link_extra)
+    def inp_out(self, **keyword_params):
+        return 'INP,  "{}"'.format(self._block_printer.field_inp(**keyword_params))
 
 
     def __init__(self, source, optimize):
@@ -446,11 +402,8 @@ class STATUS_BLOCK(BLOCK):
         return offset_template.format(root = self.root_of_db(), counter = self.counter_keyword(), offset = var.offset())
 
 
-    def pv_template(self, test = False):
-        if test:
-            return test_inpv_template
-        else:
-            return inpv_template
+    def pv_template(self, **keyword_params):
+        return self._block_printer.inpv_template(**keyword_params)
 
 
 
@@ -509,12 +462,8 @@ class MODBUS(object):
         return "asyn"
 
 
-    @staticmethod
-    def inp_out(inst_io, offset, var_type, link_extra):
-        return 'OUT,  "@{inst_io}($(PLCNAME)write, {offset}, {link_extra}){var_type}"'.format(inst_io    = inst_io,
-                                                                                              offset     = offset,
-                                                                                              var_type   = var_type,
-                                                                                              link_extra = link_extra)
+    def inp_out(self, **keyword_params):
+        return 'OUT,  "{}"'.format(self._block_printer.field_out(**keyword_params))
 
 
     def endian_correct_epics_type(self, epics_type):
@@ -529,11 +478,8 @@ class MODBUS(object):
         return offset_template.format(root = self.root_of_db(), counter = self.counter_keyword(), offset = var.offset() // 2)
 
 
-    def pv_template(self, test = False):
-        if test:
-            return test_outpv_template
-        else:
-            return outpv_template
+    def pv_template(self, **keyword_params):
+        return self._block_printer.outpv_template(**keyword_params)
 
 
 
@@ -1383,8 +1329,8 @@ class BASE_TYPE(SOURCE):
         return self._block.inst_io()
 
 
-    def inp_out(self):
-        return self._block.inp_out(self.inst_io(), self.link_offset(), self.endian_correct_var_type(), self.link_extra() + self._get_user_link_extra())
+    def inp_out(self, **keyword_params):
+        return self._block.inp_out(**keyword_params)
 
 
     def adjust_parameter(self, cmd_length):
@@ -1535,8 +1481,8 @@ class BASE_TYPE(SOURCE):
         return self._block.link_offset(self)
 
 
-    def pv_template(self, test = False):
-        return self._block.pv_template(test = test)
+    def pv_template(self, **keyword_params):
+        return self._block.pv_template(**keyword_params)
 
 
     def link_extra(self):

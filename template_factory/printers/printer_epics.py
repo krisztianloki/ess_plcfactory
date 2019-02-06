@@ -24,13 +24,50 @@ def printer():
 
 
 
-#
-# EPICS output
-#
-class EPICS(PRINTER):
-    def __init__(self, test = False):
-        super(EPICS, self).__init__(comments = True, show_origin = True, preserve_empty_lines = True)
-        self._test   = test
+class EPICS_BASE(PRINTER):
+    INPV_TEMPLATE  = """record({recordtype}, "{pv_name}")
+{{{alias}
+	field(SCAN, "I/O Intr")
+	field(DTYP, "{dtyp}")
+	field({inp_out})
+	field(DISS, "INVALID")
+	field(DISV, "0")
+	field(SDIS, "[PLCF#ROOT_INSTALLATION_SLOT]:PLCHashCorrectR"){pv_extra}
+}}
+
+"""
+    TEST_INPV_TEMPLATE  = """record({recordtype}, "{pv_name}")
+{{{alias}
+	field(DISS, "INVALID")
+	field(DISV, "0")
+	field(SDIS, "[PLCF#ROOT_INSTALLATION_SLOT]:PLCHashCorrectR CP"){pv_extra}
+}}
+
+"""
+
+
+    OUTPV_TEMPLATE = """record({recordtype}, "{pv_name}")
+{{{alias}
+	field(DTYP, "{dtyp}")
+	field({inp_out})
+	field(DISS, "INVALID")
+	field(DISV, "0")
+	field(SDIS, "[PLCF#ROOT_INSTALLATION_SLOT]:PLCHashCorrectR"){pv_extra}
+}}
+
+"""
+    TEST_OUTPV_TEMPLATE = """record({recordtype}, "{pv_name}")
+{{{alias}
+	field(DISS, "INVALID")
+	field(DISV, "0")
+	field(SDIS, "[PLCF#ROOT_INSTALLATION_SLOT]:PLCHashCorrectR CP"){pv_extra}
+}}
+
+"""
+
+
+    def __init__(self):
+        super(EPICS_BASE, self).__init__(comments = True, show_origin = True, preserve_empty_lines = True)
         self._if_def = None
 
 
@@ -38,9 +75,115 @@ class EPICS(PRINTER):
         return "#"
 
 
+    def inpv_template(self, test = False):
+        if test:
+            return self.TEST_INPV_TEMPLATE
+        return self.INPV_TEMPLATE
+
+
+    def outpv_template(self, test = False):
+        if test:
+            return self.TEST_OUTPV_TEMPLATE
+        return self.OUTPV_TEMPLATE
+
+
+    def _body_register_block_printer(self, block):
+        if block is None:
+            return
+
+        block.register_printer(self)
+
+
+    def _body_block(self, block, output):
+        if block.is_status_block():
+            comment = "PLC   -> EPICS status  "
+        elif block.is_cmd_block():
+            comment = "EPICS -> PLC commands  "
+        elif block.is_param_block():
+            comment = "EPICS -> PLC parameters"
+        else:
+            raise IfDefInternalError("Unsupported block type: " + block.type())
+
+        self._append((block.source(), """
+##########
+########## {inst_slot} {dir} ##########
+##########
+""".format(inst_slot = self.inst_slot(),
+           dir = comment)))
+
+
+    def _body_var(self, var, output):
+        self._append(self._toEPICS(var))
+        if not var.is_parameter():
+            return
+
+        self._params.extend([ var ])
+
+
+    def _body_source(self, var, output):
+        self._append(var)
+
+
+    def _body_end_param(self, if_def, output):
+        if len(self._params) == 0:
+            return
+
+        fo_name = '_UploadParamS{foc}-FO'
+        foc = 0
+        lnk = 1
+        for param in self._params:
+            if lnk == 6:
+                foc += 1
+                self._append("""	field(LNK{lnk}, "{inst_slot}:{upload}")
+}}
+""".format(lnk       = str(lnk),
+           inst_slot = self.inst_slot(),
+           upload    = fo_name.format(foc = str(foc))), output)
+                lnk = 1
+
+            if lnk == 1:
+                self._append("""record(fanout, "{inst_slot}:{upload}") {{
+""".format(inst_slot = self.inst_slot(),
+           upload    = 'UploadParametersS' if foc == 0 else fo_name.format(foc = str(foc))), output)
+
+            self._append("""	field(LNK{lnk}, "{inst_slot}:{param}")
+""".format(lnk       = str(lnk),
+           inst_slot = self.inst_slot(),
+           param     = param.pv_name()), output)
+
+            lnk += 1
+
+        self._append("}", output)
+
+
+
+
+#
+# EPICS output
+#
+class EPICS(EPICS_BASE):
+    def __init__(self, test = False):
+        super(EPICS, self).__init__()
+        self._test   = test
+
+
     @staticmethod
     def name():
         return "EPICS-DB"
+
+
+    def field_inp(self, inst_io, offset, var_type, link_extra):
+        return '@{inst_io}/{offset} T={var_type}{link_extra}'.format(inst_io    = inst_io,
+                                                                     offset     = offset,
+                                                                     var_type   = var_type,
+                                                                     link_extra = link_extra)
+
+
+    def field_out(self, inst_io, offset, var_type, link_extra):
+        return '@{inst_io}($(PLCNAME)write, {offset}, {link_extra}){var_type}'.format(inst_io    = inst_io,
+                                                                                      offset     = offset,
+                                                                                      var_type   = var_type,
+                                                                                      link_extra = link_extra)
 
 
     def _toEPICS(self, var, inst_slot = "[PLCF#INSTALLATION_SLOT]", test = False):
@@ -49,7 +192,10 @@ class EPICS(PRINTER):
                                                           pv_name    = var._build_pv_name(self._if_def.inst_slot()),
                                                           alias      = var._build_pv_alias(self._if_def.inst_slot()),
                                                           dtyp       = var.dtyp(),
-                                                          inp_out    = var.inp_out(),
+                                                          inp_out    = var.inp_out(inst_io    = var.inst_io(),
+                                                                                   offset     = var.link_offset(),
+                                                                                   var_type   = var.endian_correct_var_type(),
+                                                                                   link_extra = var.link_extra() + var._get_user_link_extra()),
                                                           pv_extra   = var._build_pv_extra()))
 
 
@@ -222,6 +368,10 @@ record(ai, "{root_inst_slot}:HeartbeatFromPLCR") {{
         self._if_def = if_def
         self._output = output
 
+        self._body_register_block_printer(if_def._cmd_block())
+        self._body_register_block_printer(if_def._param_block())
+        self._body_register_block_printer(if_def._status_block())
+
         self._append("""
 ##########
 ########## {inst_slot} ##########
@@ -252,68 +402,6 @@ record(ai, "{root_inst_slot}:HeartbeatFromPLCR") {{
         self._append("\n\n")
         self._body_end_cmd(if_def, output)
         self._body_end_status(if_def, output)
-
-
-    def _body_block(self, block, output):
-        if block.is_status_block():
-            comment = "PLC   -> EPICS status  "
-        elif block.is_cmd_block():
-            comment = "EPICS -> PLC commands  "
-        elif block.is_param_block():
-            comment = "EPICS -> PLC parameters"
-        else:
-            raise IfDefInternalError("Unsupported block type: " + block.type())
-
-        self._append((block.source(), """
-##########
-########## {inst_slot} {dir} ##########
-##########
-""".format(inst_slot = self.inst_slot(),
-           dir = comment)))
-
-
-    def _body_var(self, var, output):
-        self._append(self._toEPICS(var))
-        if not var.is_parameter():
-            return
-
-        self._params.extend([ var ])
-
-
-    def _body_source(self, var, output):
-        self._append(var)
-
-
-    def _body_end_param(self, if_def, output):
-        if len(self._params) == 0:
-            return
-
-        fo_name = '_UploadParamS{foc}-FO'
-        foc = 0
-        lnk = 1
-        for param in self._params:
-            if lnk == 6:
-                foc += 1
-                self._append("""	field(LNK{lnk}, "{inst_slot}:{upload}")
-}}
-""".format(lnk       = str(lnk),
-           inst_slot = self.inst_slot(),
-           upload    = fo_name.format(foc = str(foc))), output)
-                lnk = 1
-
-            if lnk == 1:
-                self._append("""record(fanout, "{inst_slot}:{upload}") {{
-""".format(inst_slot = self.inst_slot(),
-           upload    = 'UploadParametersS' if foc == 0 else fo_name.format(foc = str(foc))), output)
-
-            self._append("""	field(LNK{lnk}, "{inst_slot}:{param}")
-""".format(lnk       = str(lnk),
-           inst_slot = self.inst_slot(),
-           param     = param.pv_name()), output)
-
-            lnk += 1
-
-        self._append("}", output)
 
 
     def _body_end_cmd(self, if_def, output):
