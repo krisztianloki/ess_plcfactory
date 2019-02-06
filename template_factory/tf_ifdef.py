@@ -20,7 +20,7 @@ inpv_template  = """record({recordtype}, "{pv_name}")
 {{{alias}
 	field(SCAN, "I/O Intr")
 	field(DTYP, "{dtyp}")
-	field(INP,  "@{inst_io}/{offset} T={var_type}{link_extra}")
+	field({inp_out})
 	field(DISS, "INVALID")
 	field(DISV, "0")
 	field(SDIS, "[PLCF#ROOT_INSTALLATION_SLOT]:PLCHashCorrectR"){pv_extra}
@@ -40,7 +40,7 @@ test_inpv_template  = """record({recordtype}, "{pv_name}")
 outpv_template = """record({recordtype}, "{pv_name}")
 {{{alias}
 	field(DTYP, "{dtyp}")
-	field(OUT,  "@{inst_io}($(PLCNAME)write, {offset}, {link_extra}){var_type}")
+	field({inp_out})
 	field(DISS, "INVALID")
 	field(DISV, "0")
 	field(SDIS, "[PLCF#ROOT_INSTALLATION_SLOT]:PLCHashCorrectR"){pv_extra}
@@ -429,6 +429,14 @@ class STATUS_BLOCK(BLOCK):
         return "$(PLCNAME)"
 
 
+    @staticmethod
+    def inp_out(inst_io, offset, var_type, link_extra):
+        return 'INP,  "@{inst_io}/{offset} T={var_type}{link_extra}"'.format(inst_io    = inst_io,
+                                                                             offset     = offset,
+                                                                             var_type   = var_type,
+                                                                             link_extra = link_extra)
+
+
     def __init__(self, source, optimize):
         BLOCK.__init__(self, source, BLOCK.STATUS, optimize)
 
@@ -499,6 +507,14 @@ class MODBUS(object):
     @staticmethod
     def inst_io():
         return "asyn"
+
+
+    @staticmethod
+    def inp_out(inst_io, offset, var_type, link_extra):
+        return 'OUT,  "@{inst_io}($(PLCNAME)write, {offset}, {link_extra}){var_type}"'.format(inst_io    = inst_io,
+                                                                                              offset     = offset,
+                                                                                              var_type   = var_type,
+                                                                                              link_extra = link_extra)
 
 
     def endian_correct_epics_type(self, epics_type):
@@ -1365,6 +1381,10 @@ class BASE_TYPE(SOURCE):
 
     def inst_io(self):
         return self._block.inst_io()
+
+
+    def inp_out(self):
+        return self._block.inp_out(self.inst_io(), self.link_offset(), self.endian_correct_var_type(), self.link_extra() + self._get_user_link_extra())
 
 
     def adjust_parameter(self, cmd_length):

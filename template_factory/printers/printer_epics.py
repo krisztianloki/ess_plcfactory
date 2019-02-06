@@ -49,10 +49,7 @@ class EPICS(PRINTER):
                                                           pv_name    = var._build_pv_name(self._if_def.inst_slot()),
                                                           alias      = var._build_pv_alias(self._if_def.inst_slot()),
                                                           dtyp       = var.dtyp(),
-                                                          inst_io    = var.inst_io(),
-                                                          offset     = var.link_offset(),
-                                                          var_type   = var.endian_correct_var_type(),
-                                                          link_extra = var.link_extra() + var._get_user_link_extra(),
+                                                          inp_out    = var.inp_out(),
                                                           pv_extra   = var._build_pv_extra()))
 
 
