@@ -68,7 +68,7 @@ import plcf_git as git
 
 # global variables
 OUTPUT_DIR     = "output"
-MODULES_DIR    = "module_templates"
+MODULES_DIR    = os.path.join(os.path.dirname(__file__), "module_templates")
 TEMPLATE_TAG   = "TEMPLATE"
 HEADER_TAG     = "HEADER"
 FOOTER_TAG     = "FOOTER"
