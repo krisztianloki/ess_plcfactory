@@ -350,12 +350,6 @@ Pre-parsing .ifa file...""".format(self.IfaPath))
 """.format(type = linetype,
            line = line))
 
-        if not self.Devices:
-            raise IFA.Warning("""
-Warning:
-After pre-processing the .IFA file there were no DEVICES inside!
-""")
-
         print("Total", str(len(self.Devices)), "device(s) pre-processed.")
 
 
@@ -378,16 +372,17 @@ After pre-processing the .IFA file there were no DEVICES inside!
             for item in device:
                 item.check()
 
+        if not self.Devices:
+            print("""
+Warning:
+After pre-processing the .IFA file there were no DEVICES inside!
+""")
+
 
 
 
 def produce(OutputDir, IfaPath, **kwargs):
-    ifa = None
-    try:
-        ifa = IFA(IfaPath)
-    except IFA.Warning as e:
-        print(e)
-        return dict()
+    ifa = IFA(IfaPath)
 
     factory = None
     if ifa.PLC_TYPE == "SIEMENS":
