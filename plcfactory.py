@@ -720,7 +720,7 @@ def create_eee(modulename, snippet):
     # Copy files
     #
     with open(os.path.join(makedir("db"), modulename + ".db"), "w") as dbfile:
-        for parts in [ output_files['EPICS-DB'], output_files['UPLOAD-PARAMS'] ]:
+        for parts in [ output_files.get('EPICS-DB', output_files.get('EPICS-OPC-DB')), output_files['UPLOAD-PARAMS'] ]:
             with open(parts) as partfile:
                 copyfileobj(partfile, dbfile)
         output_files['EEE-DB'] = dbfile.name
@@ -777,9 +777,15 @@ def create_eee(modulename, snippet):
     #
     # Modify Makefile if needed
     #
-    if req_files:
+    opc = 'OPC' in ifdef_params['PLC_TYPE']
+    if opc or req_files:
         with open(os.path.join(out_mdir, "Makefile"), "a") as makefile:
-            print("""
+            if opc:
+                print("""
+USR_DEPENDENCIES += opcua,krisztianloki""", file = makefile)
+
+            if req_files:
+                print("""
 USR_DEPENDENCIES += autosave
 USR_DEPENDENCIES += synappsstd
 MISCS += $(wildcard misc/*.req)""", file = makefile)
@@ -790,8 +796,12 @@ MISCS += $(wildcard misc/*.req)""", file = makefile)
     # Create script to run module with 'safe' defaults
     #
     with open(os.path.join(OUTPUT_DIR, "run_module"), "w") as run:
-        print("""iocsh -r {modulename},local -c 'requireSnippet({snippet}.cmd, "IPADDR=127.0.0.1, RECVTIMEOUT=3000")'""".format(modulename = modulename,
-                                                                                                                                snippet    = snippet), file = run)
+        if 'OPC' in ifdef_params['PLC_TYPE']:
+            print("""iocsh -r {modulename},local -c 'requireSnippet({snippet}.cmd, "IPADDR=127.0.0.1, PORT=4840, PUBLISHING_INTERVAL=200")'""".format(modulename = modulename,
+                                                                                                                                                      snippet    = snippet), file = run)
+        else:
+            print("""iocsh -r {modulename},local -c 'requireSnippet({snippet}.cmd, "IPADDR=127.0.0.1, RECVTIMEOUT=3000")'""".format(modulename = modulename,
+                                                                                                                                    snippet    = snippet), file = run)
 
     if test_cmd:
         #
@@ -857,7 +867,7 @@ def create_e3(modulename, snippet):
     # Copy files
     #
     with open(os.path.join(makedir("db"), modulename + ".db"), "w") as dbfile:
-        for parts in [ output_files['EPICS-DB'], output_files['UPLOAD-PARAMS'] ]:
+        for parts in [ output_files.get('EPICS-DB', output_files.get('EPICS-OPC-DB')), output_files['UPLOAD-PARAMS'] ]:
             with open(parts) as partfile:
                 copyfileobj(partfile, dbfile)
         output_files['E3-DB'] = dbfile.name
@@ -1106,7 +1116,7 @@ def main(argv):
         plc_args.add_argument(
                               '--plc-interface',
                               dest    = "plc_interface",
-                              help    = 'use the default templates for PLCs and generate interface PLC comms and diagnostics code',
+                              help    = 'use the default templates for PLCs and generate interface PLC comms. The default TIA version is TIAv14',
                               metavar = 'TIA-Portal-version',
                               nargs   = "?",
                               const   = 'TIAv14',
@@ -1116,7 +1126,7 @@ def main(argv):
         plc_args.add_argument(
                               '--plc-direct',
                               dest    = "plc_direct",
-                              help    = 'use the default templates for PLCs and generate direct PLC comms and diagnostics code',
+                              help    = 'use the default templates for PLCs and generate direct PLC comms. The default TIA version is TIAv14',
                               metavar = 'TIA-Portal-version',
                               nargs   = "?",
                               const   = 'TIAv14',
@@ -1126,11 +1136,18 @@ def main(argv):
         plc_args.add_argument(
                               '--plc-beckhoff',
                               dest    = "beckhoff",
-                              help    = 'use the default templates for Beckhoff PLCs and generate interface Beckhoff PLC comms',
+                              help    = "use the default templates for Beckhoff PLCs and generate interface Beckhoff PLC comms. 'Beckhoff-version' is not used right now",
                               metavar = 'Beckhoff-version',
                               nargs   = "?",
                               const   = 'not-used',
                               type    = str
+                             )
+
+        plc_args.add_argument(
+                              '--plc-opc',
+                              dest    = "opc",
+                              help    = "use the default templates for OPC-UA. No PLC code is generated!",
+                              action  = "store_true",
                              )
 
         diag_args = plc_group.add_mutually_exclusive_group()
@@ -1213,6 +1230,20 @@ def main(argv):
         print(tf.available_printers())
         return
 
+    def consolidate_tia_version(tia_version):
+        if tia_version is not None and isinstance(tia_version, str):
+            tia13 = set({"13", "v13", "tia13", "tiav13"})
+            tia14 = set({"14", "v14", "tia14", "tiav14"})
+
+            if tia_version in tia13:
+                tia_version = 13
+            elif tia_version in tia14:
+                tia_version = 14
+            else:
+                raise PLCFArgumentError(1, "Invalid TIA version: " + tia_version)
+
+        return tia_version
+
     if args.plc_direct is not None:
         tia_version        = args.plc_direct.lower()
         tia_map            = "TIA-MAP-DIRECT"
@@ -1229,16 +1260,9 @@ def main(argv):
 
     beckhoff = args.beckhoff
 
-    if tia_version is not None:
-        tia13 = set({"13", "v13", "tia13", "tiav13"})
-        tia14 = set({"14", "v14", "tia14", "tiav14"})
+    opc = args.opc
 
-        if tia_version in tia13:
-            tia_version = 13
-        elif tia_version in tia14:
-            tia_version = 14
-        else:
-            raise PLCFArgumentError(1, "Invalid TIA version: " + tia_version)
+    tia_version = consolidate_tia_version(tia_version)
 
     # Second pass
     #  get EEE and E3
@@ -1364,7 +1388,7 @@ def main(argv):
                         nargs    = '+',
                         type     = str,
                         default  = [],
-                        required = not (tia_version or eee or e3 or beckhoff))
+                        required = not (tia_version or eee or e3 or beckhoff or opc))
 
     # retrieve parameters
     args       = parser.parse_args(argv)
@@ -1392,6 +1416,11 @@ def main(argv):
     if beckhoff:
         default_printers.update( [ "EPICS-DB", "IFA" ] )
         ifdef_params["PLC_TYPE"] = "BECKHOFF"
+
+    if opc:
+        # EPICS-DB will be deleted later, but we add it here so that it is enough to check for EPICS-DB
+        default_printers.update( [ "EPICS-DB", "EPICS-OPC-DB" ] )
+        ifdef_params["PLC_TYPE"] = "OPC"
 
     if eee:
         default_printers.update( [ "EPICS-DB", "AUTOSAVE-ST-CMD", "AUTOSAVE" ] )
@@ -1441,6 +1470,10 @@ def main(argv):
 
     if "ST-TEST-CMD" in templateIDs and "AUTOSAVE-ST-TEST-CMD" in templateIDs:
         templateIDs.remove("ST-TEST-CMD")
+
+    if "EPICS-DB" in templateIDs and opc:
+        templateIDs.add("EPICS-OPC-DB")
+        templateIDs.remove("EPICS-DB")
 
     os.system('clear')
 
