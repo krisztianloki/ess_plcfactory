@@ -19,7 +19,10 @@ from tf_ifdef import IfDefInternalError, SOURCE, VERBATIM, BLOCK, CMD_BLOCK, STA
 
 
 def printer():
-    return [(EPICS.name(), EPICS), (EPICS_TEST.name(), EPICS_TEST), (UPLOAD_PARAMS.name(), UPLOAD_PARAMS)]
+    return [ (EPICS.name(), EPICS),
+             (EPICS_TEST.name(), EPICS_TEST),
+             (UPLOAD_PARAMS.name(), UPLOAD_PARAMS),
+             (EPICS_OPC.name(), EPICS_OPC) ]
 
 
 
@@ -657,3 +660,129 @@ record(fanout, "{root_inst_slot}:UploadParametersS") {{
     def footer(self, output):
         PRINTER.footer(self, output)
         self._append("}", output)
+
+
+
+
+#
+# OPC-UA EPICS output
+#
+class EPICS_OPC(EPICS_BASE):
+    def __init__(self):
+        super(EPICS_OPC, self).__init__()
+
+
+    @staticmethod
+    def name():
+        return "EPICS-OPC-DB"
+
+
+    def field_inp(self, inst_io, datablock, var_name, **keyword_params):
+        return '@{inst_io} ns=3;s=\\"{datablock}\\".\\"{var_name}\\"'.format(inst_io    = inst_io,
+                                                                             datablock  = datablock,
+                                                                             var_name   = var_name)
+
+
+    def field_out(self, inst_io, datablock, var_name, monitor = " monitor=n"):
+        return '@{inst_io} ns=3;s=\\"{datablock}\\".\\"{var_name}\\"{monitor}'.format(inst_io    = inst_io,
+                                                                                      datablock  = datablock,
+                                                                                      var_name   = var_name,
+                                                                                      monitor    = monitor)
+
+
+    def _toEPICS(self, var, inst_slot = "[PLCF#INSTALLATION_SLOT]", test = False):
+        return (var.source(),
+                var.pv_template().format(recordtype = var.pv_type(),
+                                         pv_name    = var._build_pv_name(self._if_def.inst_slot()),
+                                         alias      = var._build_pv_alias(self._if_def.inst_slot()),
+                                         dtyp       = "OPCUA",
+                                         inp_out    = var.inp_out(inst_io   = '$(SUBSCRIPTION)',
+                                                                  datablock = var.datablock_name(),
+                                                                  var_name  = var.name()),
+                                         pv_extra   = var._build_pv_extra()))
+
+
+    #
+    # HEADER
+    #
+    def header(self, output, **keyword_params):
+        PRINTER.header(self, output, **keyword_params).add_filename_header(output, extension = "db")
+        epics_db_header = """
+record(stringin, "{root_inst_slot}:ModVersionR") {{
+	field(DISP,	"1")
+	field(VAL,	"$(MODVERSION=N/A)")
+	field(PINI,	"YES")
+}}
+
+record(stringin, "{root_inst_slot}:PLCFCommitR") {{
+	field(DISP,	"1")
+#{plcf_commit}
+	field(VAL,	"{plcf_commit_39}")
+	field(PINI,	"YES")
+}}
+
+record(mbbi, "{root_inst_slot}:OPCStateR") {{
+	field(DTYP, "OPCUA")
+	field(INP, "@$(SUBSCRIPTION) i=2259")
+	field(ZRST, "Running")
+	field(ONST, "Failed")
+	field(TWST, "NoConfiguration")
+	field(THST, "Suspended")
+	field(FRST, "Shutdown")
+	field(FVST, "Test")
+	field(SXST, "CommunicationFault")
+	field(SVST, "Unknown")
+}}
+
+record(ao, "{root_inst_slot}:iCommsHashToPLC") {{
+	field(DISP,	"1")
+	field(PINI,	"YES")
+	field(VAL,	"#HASH")
+}}
+record(ao, "{root_inst_slot}:CommsHashToPLCS") {{
+	field(DESC,	"Sends comms hash to PLC")
+#	field(SCAN,	"1 second")
+	field(OMSL,	"closed_loop")
+	field(DOL,	"{root_inst_slot}:iCommsHashToPLC")
+}}
+""".format(root_inst_slot  = self.root_inst_slot(),
+           plcf_commit     = keyword_params.get("COMMIT_ID", "N/A"),
+           plcf_commit_39  = keyword_params.get("COMMIT_ID", "N/A")[:39])
+
+        self._append(epics_db_header, output)
+        return self
+
+
+    #
+    # BODY
+    #
+    def _ifdef_body(self, if_def, output):
+        self._if_def = if_def
+        self._output = output
+
+        self._body_register_block_printer(if_def._cmd_block())
+        self._body_register_block_printer(if_def._param_block())
+        self._body_register_block_printer(if_def._status_block())
+
+        self._append("""
+##########
+########## {inst_slot} ##########
+##########
+
+""".format(inst_slot = self.inst_slot()))
+
+        self._params = []
+        for src in if_def.interfaces():
+            if isinstance(src, BLOCK):
+                self._body_block(src, output)
+            elif isinstance(src, BASE_TYPE):
+                self._body_var(src, output)
+            elif isinstance(src, VERBATIM):
+                self._append((src.source(), str(src)))
+            elif isinstance(src, SOURCE):
+                self._body_source(src, output)
+            else:
+                self._append(self._toEPICS(src))
+
+        self._body_end_param(if_def, output)
+        self._append("\n\n")

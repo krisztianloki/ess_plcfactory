@@ -15,7 +15,12 @@ from tf_ifdef import STATUS_BLOCK
 
 
 def printer():
-    return [ (ST_CMD.name(), ST_CMD), (IOCSH.name(), IOCSH), (AUTOSAVE_ST_CMD.name(), AUTOSAVE_ST_CMD), (ST_TEST_CMD.name(), ST_TEST_CMD), (TEST_IOCSH.name(), TEST_IOCSH), (AUTOSAVE_ST_TEST_CMD.name(), AUTOSAVE_ST_TEST_CMD) ]
+    return [ (ST_CMD.name(), ST_CMD),
+             (IOCSH.name(), IOCSH),
+             (AUTOSAVE_ST_CMD.name(), AUTOSAVE_ST_CMD),
+             (ST_TEST_CMD.name(), ST_TEST_CMD),
+             (TEST_IOCSH.name(), TEST_IOCSH),
+             (AUTOSAVE_ST_TEST_CMD.name(), AUTOSAVE_ST_TEST_CMD) ]
 
 
 
@@ -47,6 +52,7 @@ class e3(object):
 class ST_CMD(eee, PRINTER):
     def __init__(self):
         super(ST_CMD, self).__init__()
+        self._opc = False
 
 
     @staticmethod
@@ -64,22 +70,36 @@ class ST_CMD(eee, PRINTER):
     #
     def header(self, output, **keyword_parameters):
         super(ST_CMD, self).header(output, **keyword_parameters).add_filename_header(output, inst_slot = self.snippet(), template = False, extension = self._extension())
+        self._opc = True if 'OPC' in keyword_parameters.get('PLC_TYPE', '') else False
+        if self._opc:
+            self.footer = self._opc_footer
+        else:
+            self.footer = self._s7_footer
 
         st_cmd_header = """
 # @field IPADDR
 # @type STRING
 # PLC IP address
-
-# @field RECVTIMEOUT
-# @type INTEGER
-# PLC->EPICS receive timeout (ms), should be longer than frequency of PLC SND block trigger (REQ input)
-
+{optional}
 # @field {modversion}
 # @runtime YES
 #COUNTER {status_cnt} = [PLCF#{status_cnt} + 10 * 2]
 
 """.format(modversion = self._modversion(),
-           status_cnt = STATUS_BLOCK.counter_keyword())
+           status_cnt = STATUS_BLOCK.counter_keyword(),
+           optional   = """
+# @field RECVTIMEOUT
+# @type INTEGER
+# PLC->EPICS receive timeout (ms), should be longer than frequency of PLC SND block trigger (REQ input)
+""" if not self._opc else """
+# @field PORT
+# @type INTEGER
+# PLC OPC-UA port
+
+# @field PUBLISHING_INTERVAL
+# @type INTEGER
+# The OPC-UA publishing interval
+""")
 
         self._append(st_cmd_header, output)
 
@@ -95,9 +115,9 @@ class ST_CMD(eee, PRINTER):
 
 
     #
-    # FOOTER
+    # S7 + MODBUS FOOTER
     #
-    def footer(self, output):
+    def _s7_footer(self, output):
         super(ST_CMD, self).footer(output)
 
         st_cmd_footer = """
@@ -127,6 +147,29 @@ dbLoadRecords("{modulename}.db", "PLCNAME={modulename}, MODVERSION=$({modversion
            endianness    = self.plcf("PLC-EPICS-COMMS:Endianness"),
            bigendian     = self.plcf("1 if 'PLC-EPICS-COMMS:Endianness' == 'BigEndian' else 0"),
            modulename    = self.modulename(),
+           modversion    = self._modversion()
+          )
+
+        self._append(st_cmd_footer, output)
+
+
+    #
+    # OPC-UA FOOTER
+    #
+    def _opc_footer(self, output):
+        super(ST_CMD, self).footer(output)
+
+        st_cmd_footer = """
+# Session name : {modulename}-session
+opcuaCreateSession("{modulename}-session", "opc.tcp://$(IPADDR):$(PORT)")
+
+# Subscription       : {modulename}
+# Publising interval : $(PUBLISHING_INTERVAL)
+opcuaCreateSubscription("{modulename}", "{modulename}-session", $(PUBLISHING_INTERVAL))
+
+# Load plc interface database
+dbLoadRecords("{modulename}.db", "SUBSCRIPTION={modulename}, MODVERSION=$({modversion})")
+""".format(modulename    = self.modulename(),
            modversion    = self._modversion()
           )
 

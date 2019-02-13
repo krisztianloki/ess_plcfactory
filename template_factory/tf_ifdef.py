@@ -612,6 +612,9 @@ def ifdef_interface(func):
 
 
 class IF_DEF(object):
+    DEFAULT_DATABLOCK_NAME = "DEV_[PLCF#INSTALLATION_SLOT]_iDB"
+
+
     def __init__(self, OPTIMIZE = False, **keyword_params):
         assert isinstance(OPTIMIZE, bool)
 
@@ -633,8 +636,9 @@ class IF_DEF(object):
         self._plc_array             = None
         self._filename              = keyword_params.get('FILENAME')
         self._inst_slot             = "[PLCF#INSTALLATION_SLOT]"
+        self._datablock_name        = IF_DEF.DEFAULT_DATABLOCK_NAME
 
-        self._features              = [ "STABLE-HASH" ]
+        self._features              = [ "STABLE-HASH", "OPC", "OPC-UA" ]
 
         self._properties[CMD_BLOCK.length_keyword()]    = 0
         self._properties[PARAM_BLOCK.length_keyword()]  = 0
@@ -773,6 +777,12 @@ class IF_DEF(object):
         hashobj.update(block.hash_message().encode())
         for var in block.interfaces():
             hashobj.update(var.hash_message().encode())
+
+
+    def _handle_extra_params(self, keyword_params):
+        keyword_params["DATABLOCK"] = self._datablock_name
+
+        return keyword_params
 
 
     def calculate_hash(self, hashobj):
@@ -937,6 +947,16 @@ class IF_DEF(object):
 
 
     @ifdef_interface
+    def define_datablock(self, name):
+        if name is None:
+            name = IF_DEF.DEFAULT_DATABLOCK_NAME
+
+        self._datablock_name = name
+
+        return self._add_source()
+
+
+    @ifdef_interface
     def define_plc_array(self, name):
         if self._plc_array is not None:
             raise IfDefSyntaxError("Nesting of arrays is not possible")
@@ -989,6 +1009,8 @@ class IF_DEF(object):
 
             return self.skip_digitals(keyword_params["SKIP_BITS"])
         else:
+            keyword_params = self._handle_extra_params(keyword_params)
+
             bit_def = self._active_bit_def()
 
             var = BIT(self._source, bit_def, name, keyword_params)
@@ -996,6 +1018,8 @@ class IF_DEF(object):
 
 
     def _add_alarm(self, name, sevr, alarm_message, **keyword_params):
+        keyword_params = self._handle_extra_params(keyword_params)
+
         if not sevr in [ "MINOR", "MAJOR" ]:
             raise IfDefSyntaxError("Invalid alarm severity: " + sevr)
         if not isinstance(alarm_message, str):
@@ -1054,6 +1078,8 @@ class IF_DEF(object):
 
     @ifdef_interface
     def add_analog(self, name, plc_var_type, **keyword_params):
+        keyword_params = self._handle_extra_params(keyword_params)
+
         if not isinstance(name, str):
             raise IfDefSyntaxError("Name must be a string!")
         if not isinstance(plc_var_type, str):
@@ -1075,6 +1101,8 @@ class IF_DEF(object):
 
     @ifdef_interface
     def add_enum(self, name, plc_var_type, nobt = 16, shift = 0, **keyword_params):
+        keyword_params = self._handle_extra_params(keyword_params)
+
         if not isinstance(name, str):
             raise IfDefSyntaxError("Name must be a string!")
         if not isinstance(plc_var_type, str):
@@ -1090,6 +1118,8 @@ class IF_DEF(object):
 
     @ifdef_interface
     def add_bitmask(self, name, plc_var_type, nobt = 16, shift = 0, **keyword_params):
+        keyword_params = self._handle_extra_params(keyword_params)
+
         if not isinstance(name, str):
             raise IfDefSyntaxError("Name must be a string!")
         if not isinstance(plc_var_type, str):
@@ -1217,6 +1247,7 @@ class BASE_TYPE(SOURCE):
 
         self._block          = block
         self._name           = name
+        self._datablock_name = self._keyword_params["DATABLOCK"]
         self._width          = _bytes_in_type(self._plc_type)
 
         # Has to be after _width is initialized
@@ -1300,6 +1331,10 @@ class BASE_TYPE(SOURCE):
 
     def endian_correct_var_type(self):
         return self._block.endian_correct_epics_type(self.var_type())
+
+
+    def datablock_name(self):
+        return self._datablock_name
 
 
     def plc_type(self):
