@@ -113,6 +113,8 @@ MODBUS_PORT
 {inst_slot}
 DEVICE_TYPE
 {type}
+DATABLOCK
+{datablock}
 EPICSTOPLCLENGTH
 {epicstoplclength}
 PLCTOEPICSLENGTH
@@ -127,6 +129,7 @@ PLCTOEPICSDATABLOCKOFFSET
 #COUNTER {status_cnt} = [PLCF# {status_cnt} + {plctoepicslength}];
 """.format(inst_slot                 = self.inst_slot(),
            type                      = self.plcf("DEVICE_TYPE"),
+           datablock                 = if_def.DEFAULT_DATABLOCK_NAME,
            epicstoplcdatablockoffset = self.plcf("^(EPICSToPLCDataBlockStartOffset) + {cmd_cnt}".format(cmd_cnt = CMD_BLOCK.counter_keyword())),
            plctoepicsdatablockoffset = self.plcf("^(PLCToEPICSDataBlockStartOffset) + {status_cnt}".format(status_cnt = STATUS_BLOCK.counter_keyword())),
            epicstoplcparametersstart = self.plcf(str(if_def.properties()[CMD_BLOCK.length_keyword()])),

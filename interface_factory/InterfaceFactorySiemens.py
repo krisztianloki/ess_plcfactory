@@ -32,7 +32,6 @@ ifa = None
 ExternalSourceFile = []
 
 ActualDeviceName = ""
-ActualDeviceNameWhite = ""
 ActualDeviceType = ""
 EPICSTOPLCLENGTH = ""
 PLCTOEPICSLENGTH = ""
@@ -2456,7 +2455,6 @@ def ProcessIFADevTypes(OutputDir, TIAVersion):
 
 	global ExternalSourceFile
 	global ActualDeviceName
-	global ActualDeviceNameWhite
 	global ActualDeviceType
 	global EPICSTOPLCLENGTH
 	global PLCTOEPICSLENGTH
@@ -2522,24 +2520,16 @@ def ProcessIFADevTypes(OutputDir, TIAVersion):
 
 		ActualDeviceName = device.properties["DEVICE"]
 		ActualDeviceType = device.properties["DEVICE_TYPE"]
+		ActualDataBlock  = '"{}"'.format(device.properties["DATABLOCK"])
 		PLCTOEPICSLENGTH = device.properties["PLCTOEPICSLENGTH"]
 		EPICSTOPLCLENGTH = device.properties["EPICSTOPLCLENGTH"]
 		EPICSTOPLCDATABLOCKOFFSET = device.properties["EPICSTOPLCDATABLOCKOFFSET"]
 		EPICSTOPLCPARAMETERSSTART = device.properties["EPICSTOPLCPARAMETERSSTART"]
 		PLCTOEPICSDATABLOCKOFFSET = device.properties["PLCTOEPICSDATABLOCKOFFSET"]
-		ActualDeviceNameWhite = ActualDeviceName
 		Text = "Device: "+ ActualDeviceName + " Type: "+ ActualDeviceType
 		print("    ", "-" * len(Text), sep='')
 		print("    ", Text, sep='')
 		print("    ", "-" * len(Text), sep='')
-		ActualDeviceNameWhite = ActualDeviceNameWhite.replace(":","")
-		ActualDeviceNameWhite = ActualDeviceNameWhite.replace("/","")
-		ActualDeviceNameWhite = ActualDeviceNameWhite.replace("\\","")
-		ActualDeviceNameWhite = ActualDeviceNameWhite.replace("?","")
-		ActualDeviceNameWhite = ActualDeviceNameWhite.replace("*","")
-		ActualDeviceNameWhite = ActualDeviceNameWhite.replace("[","")
-		ActualDeviceNameWhite = ActualDeviceNameWhite.replace("]","")
-		ActualDeviceNameWhite = ActualDeviceNameWhite.replace(".","")
 
 		#Device Instance
 		if not Direct:
@@ -2554,7 +2544,7 @@ def ProcessIFADevTypes(OutputDir, TIAVersion):
 			DeviceInstance.append("")
 		else:
 			DeviceInstance.append("")
-			DeviceInstance.append("DATA_BLOCK \"DEV_" +ActualDeviceName+ "_iDB\"")
+			DeviceInstance.append("DATA_BLOCK " +ActualDataBlock)
 			DeviceInstance.append("{ S7_Optimized_Access := 'TRUE' }")
 			DeviceInstance.append("VERSION : 1.0")
 			DeviceInstance.append("NON_RETAIN")
@@ -2568,7 +2558,7 @@ def ProcessIFADevTypes(OutputDir, TIAVersion):
 		EPICS_device_calls_body.append("        // Device type: "+ActualDeviceType)
 		EPICS_device_calls_body.append("        //********************************************")
 		EPICS_device_calls_body.append("")
-		EPICS_device_calls_body.append("      \"DEV_"+ActualDeviceName+"_iDB\" (EPICSToPLCLength:="+EPICSTOPLCLENGTH+",")
+		EPICS_device_calls_body.append("      "+ActualDataBlock+" (EPICSToPLCLength:="+EPICSTOPLCLENGTH+",")
 		EPICS_device_calls_body.append("      EPICSToPLCDataBlockOffset:="+EPICSTOPLCDATABLOCKOFFSET+"+10,")
 		EPICS_device_calls_body.append("      EPICSToPLCParametersStart:="+EPICSTOPLCPARAMETERSSTART+",")
 		EPICS_device_calls_body.append("      PLCToEPICSLength:="+PLCTOEPICSLENGTH+",")
@@ -2581,7 +2571,7 @@ def ProcessIFADevTypes(OutputDir, TIAVersion):
 		EPICS_device_calls_test_body.append("      // Device type: "+ActualDeviceType)
 		EPICS_device_calls_test_body.append("      //********************************************")
 		EPICS_device_calls_test_body.append("")
-		EPICS_device_calls_test_body.append("      \"DEV_"+ActualDeviceName+"_iDB\" (EPICSToPLCLength:="+EPICSTOPLCLENGTH+",")
+		EPICS_device_calls_test_body.append("      "+ActualDataBlock+" (EPICSToPLCLength:="+EPICSTOPLCLENGTH+",")
 		EPICS_device_calls_test_body.append("      EPICSToPLCDataBlockOffset:="+EPICSTOPLCDATABLOCKOFFSET+"+10,")
 		EPICS_device_calls_test_body.append("      EPICSToPLCParametersStart:="+EPICSTOPLCPARAMETERSSTART+",")
 		EPICS_device_calls_test_body.append("      PLCToEPICSLength:="+PLCTOEPICSLENGTH+",")

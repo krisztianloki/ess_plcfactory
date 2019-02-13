@@ -13,6 +13,7 @@ class IFA(object):
 
     mandatory_device_properties = dict(DEVICE                    = str,
                                        DEVICE_TYPE               = str,
+                                       DATABLOCK                 = str,
                                        EPICSTOPLCPARAMETERSSTART = int,
                                        EPICSTOPLCLENGTH          = int,
                                        EPICSTOPLCDATABLOCKOFFSET = int,
