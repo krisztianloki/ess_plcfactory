@@ -25,50 +25,38 @@ def printer():
 
 
 class EPICS_BASE(PRINTER):
+    DISABLE_TEMPLATE = """
+	field(DISS, "INVALID")
+	field(DISV, "0")
+	field(SDIS, "[PLCF#ROOT_INSTALLATION_SLOT]:PLCHashCorrectR{CP}")"""
+
     INPV_TEMPLATE  = """record({recordtype}, "{pv_name}")
 {{{alias}
 	field(SCAN, "I/O Intr")
 	field(DTYP, "{dtyp}")
-	field({inp_out})
-	field(DISS, "INVALID")
-	field(DISV, "0")
-	field(SDIS, "[PLCF#ROOT_INSTALLATION_SLOT]:PLCHashCorrectR"){pv_extra}
+	field({inp_out}){pv_extra}
 }}
 
 """
-    TEST_INPV_TEMPLATE  = """record({recordtype}, "{pv_name}")
-{{{alias}
-	field(DISS, "INVALID")
-	field(DISV, "0")
-	field(SDIS, "[PLCF#ROOT_INSTALLATION_SLOT]:PLCHashCorrectR CP"){pv_extra}
-}}
-
-"""
-
 
     OUTPV_TEMPLATE = """record({recordtype}, "{pv_name}")
 {{{alias}
 	field(DTYP, "{dtyp}")
-	field({inp_out})
-	field(DISS, "INVALID")
-	field(DISV, "0")
-	field(SDIS, "[PLCF#ROOT_INSTALLATION_SLOT]:PLCHashCorrectR"){pv_extra}
+	field({inp_out}){pv_extra}
 }}
 
 """
-    TEST_OUTPV_TEMPLATE = """record({recordtype}, "{pv_name}")
-{{{alias}
-	field(DISS, "INVALID")
-	field(DISV, "0")
-	field(SDIS, "[PLCF#ROOT_INSTALLATION_SLOT]:PLCHashCorrectR CP"){pv_extra}
+    TEST_PV_TEMPLATE = """record({recordtype}, "{pv_name}")
+{{{alias}{pv_extra}
 }}
 
 """
 
 
-    def __init__(self):
+    def __init__(self, test = False):
         super(EPICS_BASE, self).__init__(comments = True, show_origin = True, preserve_empty_lines = True)
         self._if_def = None
+        self.DISABLE_TEMPLATE = self.DISABLE_TEMPLATE.format(CP = " CP" if test else "")
 
 
     def comment(self):
@@ -77,13 +65,13 @@ class EPICS_BASE(PRINTER):
 
     def inpv_template(self, test = False):
         if test:
-            return self.TEST_INPV_TEMPLATE
+            return self.TEST_PV_TEMPLATE
         return self.INPV_TEMPLATE
 
 
     def outpv_template(self, test = False):
         if test:
-            return self.TEST_OUTPV_TEMPLATE
+            return self.TEST_PV_TEMPLATE
         return self.OUTPV_TEMPLATE
 
 
@@ -163,7 +151,7 @@ class EPICS_BASE(PRINTER):
 #
 class EPICS(EPICS_BASE):
     def __init__(self, test = False):
-        super(EPICS, self).__init__()
+        super(EPICS, self).__init__(test)
         self._test   = test
 
 
@@ -196,7 +184,7 @@ class EPICS(EPICS_BASE):
                                                                                    offset     = var.link_offset(),
                                                                                    var_type   = var.endian_correct_var_type(),
                                                                                    link_extra = var.link_extra() + var._get_user_link_extra()),
-                                                          pv_extra   = var._build_pv_extra()))
+                                                          pv_extra   = self.DISABLE_TEMPLATE + var._build_pv_extra()))
 
 
     #
