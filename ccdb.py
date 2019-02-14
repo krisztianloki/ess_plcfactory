@@ -16,26 +16,6 @@ from ast import literal_eval as ast_literal_eval
 from   cc import CC
 import levenshtein
 
-try:
-    import requests
-except ImportError:
-    from os  import path as os_path
-    from sys import path as sys_path
-    # add directory for third-party libraries to module search path
-    parent_dir = os_path.abspath(os_path.dirname(__file__))
-    lib_dir    = os_path.join(parent_dir, 'libs')
-    sys_path.append(lib_dir)
-    del parent_dir
-    del lib_dir
-
-    # third-party libraries, stored in folder 'libs'
-    import requests
-
-
-# disable printing of unsigned SSH connection warnings to console
-#from requests.packages.urllib3.exceptions import InsecureRequestWarning
-#requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
-
 
 
 class CCDB(CC):
@@ -302,7 +282,7 @@ Most similar device names in CCDB in chosen slot (max. 10):""".format(deviceName
 
 
     def _get(self, url):
-        return requests.get(url, headers = { 'Accept' : 'application/json' }, verify = self._verify_ssl_cert)
+        return CC.get(url, headers = { 'Accept' : 'application/json' }, verify = self._verify_ssl_cert)
 
 
 

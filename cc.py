@@ -31,14 +31,20 @@ except ImportError:
     import requests
 
 
+# disable printing of unsigned SSH connection warnings to console
+#from requests.packages.urllib3.exceptions import InsecureRequestWarning
+#requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+
+
 # PLC Factory modules
 import helpers
 
 
 
 class CC(object):
-    TEMPLATE_DIR = "templates"
-    paths_cached = dict()
+    TEMPLATE_DIR    = "templates"
+    paths_cached    = dict()
+    sessions_cached = dict()
 
 
     class Exception(Exception):
@@ -317,8 +323,21 @@ class CC(object):
 
 
     @staticmethod
+    def get(url, **keyword_params):
+        netloc = urlsplit(url).netloc
+
+        try:
+            session = CC.sessions_cached[netloc]
+        except KeyError:
+            session = requests.session()
+            CC.sessions_cached[netloc] = session
+
+        return session.get(url, **keyword_params)
+
+
+    @staticmethod
     def download(url, save_as, verify_ssl_cert = True):
-        result = requests.get(url, verify = verify_ssl_cert)
+        result = CC.get(url, verify = verify_ssl_cert)
 
         if result.status_code != 200:
             raise CC.DownloadException(url = url, code = result.status_code)
