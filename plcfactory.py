@@ -1499,6 +1499,10 @@ def main(argv):
 
     read_last_update()
     read_data_files()
+    if args.verify:
+        # Remove commit-id when verifying
+        ifdef_params.pop("COMMIT_ID", commit_id)
+
     root_device = processDevice(device, list(templateIDs))
 
     # Verify created files: they should be the same as the ones from the last run
