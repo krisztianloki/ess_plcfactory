@@ -29,6 +29,7 @@ import time
 import hashlib
 import zlib
 from shutil import copy2, copyfileobj
+from ast    import literal_eval as ast_literal_eval
 
 # Template Factory
 parent_dir = os.path.abspath(os.path.dirname(__file__))
@@ -77,8 +78,7 @@ hashobj        = None
 ifdefs         = dict()
 ifdef_params   = dict(PLC_TYPE = "SIEMENS")
 output_files   = dict()
-previous_files = dict()
-last_updated   = None
+previous_files = None
 device_tag     = None
 hashes         = dict()
 prev_hashes    = None
@@ -464,9 +464,6 @@ def processTemplateID(templateID, devices):
     # there are some special tags that are only valid in the header
     outputFile = os.path.join(OUTPUT_DIR, createFilename(header, rootDevice, templateID))
 
-    if last_updated is not None:
-        previous_files[templateID] = os.path.join(OUTPUT_DIR, createFilename(header, rootDevice, templateID, TIMESTAMP = last_updated))
-
     if header:
         header = pt.process(rootDevice, header)
 
@@ -832,7 +829,6 @@ def read_data_files():
     except:
         return
 
-    from ast import literal_eval as ast_literal_eval
     prev_hashes = ast_literal_eval(raw_hashes)
     import copy
     for (k, v) in prev_hashes.iteritems():
@@ -840,7 +836,6 @@ def read_data_files():
             hashes[k] = copy.deepcopy(v)
         else:
             hashes[k] = (None, copy.deepcopy(v))
-    del ast_literal_eval
 
 
 def create_e3(modulename, snippet):
@@ -938,29 +933,32 @@ def write_data_files():
 
 
 
-def read_last_update():
-    global last_updated
+def obtain_previous_files():
+    global previous_files
 
-    fname = os.path.join(OUTPUT_DIR, ".last_updated")
+    fname = os.path.join(OUTPUT_DIR, ".previous-files")
     try:
-        with open(fname, 'r') as lu:
-            last_updated = lu.read(14)
-    except IOError as e:
-        if e.errno == 2:
-            return
-        raise
+        with open(fname, "r") as lf:
+            raw_hash       = lf.readline()
+            previous_files = ast_literal_eval(raw_hash)
+    except:
+        return
 
 
-def create_last_update():
-    fname = os.path.join(OUTPUT_DIR, ".last_updated")
-    with open(fname, 'w') as lu:
-        print(glob.timestamp, file = lu)
-        output_files["LAST_UPDATE"] = fname
+def create_previous_files():
+    fname = os.path.join(OUTPUT_DIR, ".previous-files")
+    with open(fname, 'w') as lf:
+        print(output_files, file = lf)
+        output_files["PREVIOUS_FILES"] = fname
 
 
 def verify_output(strictness):
-    if strictness == 0 or (last_updated is None and strictness < 3):
+    if strictness == 0 or (previous_files is None and strictness < 3):
         return
+
+    ignored_templates = [ 'PREVIOUS_FILES', 'CREATOR', 'CCDB-DUMP' ]
+    for template in ignored_templates:
+        previous_files.pop(template, None)
 
     import filecmp
     # Compare files in output_files to those in previous_files
@@ -968,6 +966,9 @@ def verify_output(strictness):
     # not_checked will contain files that are not found / not generated
     not_checked = dict()
     for (template, output) in output_files.iteritems():
+        if template in ignored_templates:
+            continue
+
         try:
             prev = previous_files[template]
         except KeyError:
@@ -996,9 +997,6 @@ THE FOLLOWING FILES WERE CHANGED:
 
         exit(1)
 
-    # Record last update; even if strict checking was requested
-    create_last_update()
-
     if not_checked:
         print("\n" + "=*" * 40)
         print("""
@@ -1009,6 +1007,9 @@ THE FOLLOWING FILES WERE NOT CHECKED:
         print("\n" + "=*" * 40)
 
         if strictness > 1:
+            # Record last update; even if strict checking was requested
+            create_previous_files()
+
             exit(1)
 
 
@@ -1049,7 +1050,6 @@ def check_for_updates():
     try:
         with open(os.path.join(create_data_dir(), "updates")) as u:
             raw_updates = u.readline()
-        from ast import literal_eval as ast_literal_eval
         updates = ast_literal_eval(raw_updates)
         if updates[0] + 600 > check_time:
             if local_ref != updates[1]:
@@ -1497,9 +1497,9 @@ def main(argv):
         OUTPUT_DIR = os.path.join(OUTPUT_DIR, helpers.sanitizeFilename("__".join([ "", "tag", device_tag ])))
     helpers.makedirs(OUTPUT_DIR)
 
-    read_last_update()
     read_data_files()
     if args.verify:
+        obtain_previous_files()
         # Remove commit-id when verifying
         ifdef_params.pop("COMMIT_ID", commit_id)
 
@@ -1508,7 +1508,8 @@ def main(argv):
     # Verify created files: they should be the same as the ones from the last run
     if args.verify:
         verify_output(args.verify)
-    create_last_update()
+
+    create_previous_files()
     write_data_files()
 
     # create a dump of CCDB
