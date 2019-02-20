@@ -43,6 +43,7 @@ import helpers
 
 class CC(object):
     TEMPLATE_DIR    = "templates"
+    TAG_SEPARATOR   = "__"
     paths_cached    = dict()
     sessions_cached = dict()
 
@@ -117,6 +118,42 @@ class CC(object):
 
 
         # Returns: ""
+        # filename is the default filename to use if not specified with '[]' notation
+        def downloadExternalLink(self, filename, extension = None, git_tag = None, filetype = "External Link"):
+            linkfile  = self.name()
+
+            open_bra = linkfile.find('[')
+            if open_bra != -1:
+                base = linkfile[:open_bra]
+
+                if linkfile[-1] != ']':
+                    raise CC.ArtifactException("Invalid name format in External Link for {device}: {name}".format(device = self._device.name(), name = linkfile))
+
+                filename = linkfile[open_bra + 1 : -1]
+                if extension is not None:
+                    if not extension.startswith('.'):
+                        extension = '.{}'.format(extension)
+                    if not filename.endswith(extension):
+                        filename += extension
+
+                if filename != helpers.sanitizeFilename(filename):
+                    raise CC.ArtifactException("Invalid filename in External Link for {device}: {name}".format(device = self._device.name(), name = filename))
+            else:
+                base = linkfile
+
+            if git_tag is None:
+                git_tag = self._device.properties().get(base + " VERSION", "master")
+            url = "/".join([ "raw/{}".format(git_tag), filename ])
+
+            print("Downloading {filetype} file {filename} (version {version}) from {url}".format(filetype = filetype,
+                                                                                                 filename = filename,
+                                                                                                 url      = self.uri(),
+                                                                                                 version  = git_tag))
+
+            return self.download(extra_url = url)
+
+
+        # Returns: "", the downloaded filename
         def download(self, extra_url = ""):
             # NOTE: we _must not_ use CC.TEMPLATE_DIR here,
             # CCDB_Dump relies on creating an instance variant of TEMPLATE_DIR to point it to its own templates directory
@@ -226,6 +263,55 @@ class CC(object):
         # Returns: ""
         def backtrack(self, prop):
             return self._ensure(self._backtrack(prop), "")
+
+
+        def defaultFilename(self, extension):
+            if not extension.startswith('.'):
+                extension = '.{}'.format(extension)
+
+            return helpers.sanitizeFilename(self.deviceType().upper() + extension)
+
+
+        # Returns the filename or None
+        def downloadArtifact(self, extension, device_tag = None, filetype = ''):
+            if not extension.startswith('.'):
+                extension = '.{}'.format(extension)
+
+            if device_tag:
+                # whatever__devicetag.extension
+                suffix = "".join([ CC.TAG_SEPARATOR, device_tag, extension ])
+            else:
+                suffix = extension
+
+            defs = filter(lambda a: a.is_file() and a.filename().endswith(suffix), self.artifacts())
+
+            if len(defs) > 1:
+                raise CC.ArtifactException("More than one {filetype} Artifacts were found for {device}: {defs}".format(filetype = filetype, device = self.name(), defs = defs))
+
+            if defs:
+                return defs[0].download()
+
+            return None
+
+
+        # Returns the filename or None
+        def downloadExternalLink(self, base, extension, device_tag = None, filetype = 'External Link'):
+            if device_tag:
+                # base__devicetag
+                base = CC.TAG_SEPARATOR.join([ base, device_tag ])
+
+            fqbase = base + "["
+            artifacts = filter(lambda u: u.is_uri() and (u.name() == base or u.name().startswith(fqbase)), self.artifacts())
+            if not artifacts:
+                return None
+
+            if len(artifacts) > 1:
+                raise CC.ArtifactException("More than one {filetype} External Links were found for {device}: {urls}".format(filetype = filetype, device = device.name(), urls = map(lambda u: u.uri(), artifacts)))
+
+            if not extension.startswith('.'):
+                extension = '.{}'.format(extension)
+
+            return artifacts[0].downloadExternalLink(self.defaultFilename(extension), extension, filetype = filetype)
 
 
 

@@ -59,6 +59,19 @@ class CCDB_Factory(CC):
 
 
     class Artifact(CCDB.Artifact):
+        def dump(self):
+            if self.is_file():
+                self.download()
+            else:
+                name = self.name()
+                if name.startswith("EPI"):
+                    extension = ".def"
+                else:
+                    raise RuntimeError("Unable to auto-detect extension for {}".format(name))
+
+                self.downloadExternalLink(self._device.defaultFilename(extension), extension)
+
+
         def _download(self, save_as, url = None):
             if self.is_file():
                 copy2(self._artifact["full_path"], save_as)
@@ -94,6 +107,11 @@ class CCDB_Factory(CC):
 
         def _artifact(self, a):
             return CCDB_Factory.Artifact(self, a)
+
+
+        def dump(self):
+            for artifact in self.artifacts():
+                artifact.dump()
 
 
         def setControls(self, value):
@@ -277,23 +295,8 @@ class CCDB_Factory(CC):
 
 
     def dump(self, filename, *pargs, **kwargs):
-        from plcfactory import getIfDefFromURL as plcfactory_getIfDefFromURL
-
         for device in self._devices.itervalues():
-            for artifact in device.artifacts():
-                if artifact.is_file():
-                    artifact.download()
-                else:
-                    epi = artifact.name()
-                    if not epi.startswith("EPI"):
-                        continue
-
-                    try:
-                        # Get the filename specified in [...]
-                        epi = epi[0:epi.index("[")]
-                    except ValueError:
-                        pass
-                    plcfactory_getIfDefFromURL(device, artifact, epi)
+            device.dump()
 
         return super(CCDB_Factory, self).dump(filename, *pargs, **kwargs)
 
@@ -309,8 +312,8 @@ if __name__ == "__main__":
     factory.addArtifact("VACUUM_VAC-VVS", "filename")
 
     # Add deviceType external links
-    factory.addLink("VACUUM_VAC-VVS", "EPI",                   "https://bitbucket.org/europeanspallationsource/repository", "link_filename")
-    factory.addLink("VACUUM_VAC-VVS", "EPI_tag[tag_filename]", "https://bitbucket.org/europeanspallationsource/repository", "link_filename")
+    factory.addLink("VACUUM_VAC-VVS", "EPI",                    "https://bitbucket.org/europeanspallationsource/repository", "local_filename")
+    factory.addLink("VACUUM_VAC-VVS", "EPI__tag[tag_filename]", "https://bitbucket.org/europeanspallationsource/repository")
 
     valves = ["LEBT-010:Vac-VVS-20000", "LEBT-010:Vac-VVS-40000"]
 
@@ -331,7 +334,7 @@ if __name__ == "__main__":
         factory.addDevice("VACUUM_VAC-VVS", valve)
 
     # Add slot link to device
-    factory.device("LEBT-010:Vac-VVS-20000").addLink("EPI_tag", "https://bitbucket.org/europeanspallationsource/repository2", "link_filename")
+    factory.device("LEBT-010:Vac-VVS-20000").addLink("EPI__tag", "https://bitbucket.org/europeanspallationsource/repository2", "local_filename2")
     factory.device("LEBT-010:Vac-VVS-20000").addArtifact("slot_filename")
 
     # Dump our CCDB

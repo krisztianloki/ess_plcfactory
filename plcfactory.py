@@ -68,22 +68,22 @@ import plcf_git as git
 
 
 # global variables
-OUTPUT_DIR     = "output"
-MODULES_DIR    = os.path.join(os.path.dirname(__file__), "module_templates")
-TEMPLATE_TAG   = "TEMPLATE"
-HEADER_TAG     = "HEADER"
-FOOTER_TAG     = "FOOTER"
-IFDEF_TAG      = ".def"
-hashobj        = None
-ifdefs         = dict()
-ifdef_params   = dict(PLC_TYPE = "SIEMENS")
-output_files   = dict()
-previous_files = None
-device_tag     = None
-hashes         = dict()
-prev_hashes    = None
-branch         = git.get_current_branch()
-commit_id      = git.get_local_ref(branch)
+OUTPUT_DIR      = "output"
+MODULES_DIR     = os.path.join(os.path.dirname(__file__), "module_templates")
+TEMPLATE_TAG    = "TEMPLATE"
+HEADER_TAG      = "HEADER"
+FOOTER_TAG      = "FOOTER"
+IFDEF_EXTENSION = ".def"
+hashobj         = None
+ifdefs          = dict()
+ifdef_params    = dict(PLC_TYPE = "SIEMENS")
+output_files    = dict()
+previous_files  = None
+device_tag      = None
+hashes          = dict()
+prev_hashes     = None
+branch          = git.get_current_branch()
+commit_id       = git.get_local_ref(branch)
 if commit_id is not None:
     ifdef_params["COMMIT_ID"] = commit_id
 
@@ -289,31 +289,6 @@ def getEOL(header):
     return header[tagPos][len(tag):].strip().replace('\\n', '\n').replace('\\r', '\r').strip('"').strip("'")
 
 
-def getIfDefFromURL(device, artifact, epi):
-    if artifact.name() == epi:
-        filename = helpers.sanitizeFilename(device.deviceType().upper() + IFDEF_TAG)
-    else:
-        filename = artifact.name()
-        if filename[len(epi)] != '[' or filename[-1] != ']':
-            raise RuntimeError("Invalid name format in Interface Definition URL for {device}: {name}".format(device = device.name(), name = filename))
-
-        filename = filename[len(epi) + 1 : -1]
-        if filename != helpers.sanitizeFilename(filename):
-            raise RuntimeError("Invalid filename in Interface Definition URL for {device}: {name}".format(device = device.name(), name = filename))
-
-        if not filename.endswith(IFDEF_TAG):
-            filename += IFDEF_TAG
-
-    git_tag = device.properties().get(epi + " VERSION", "master")
-    url     = "/".join([ "raw/{}".format(git_tag), filename ])
-
-    print("Downloading Interface Definition file {filename} (version {version}) from {url}".format(filename = filename,
-                                                                                                   url      = artifact.uri(),
-                                                                                                   version  = git_tag))
-
-    return artifact.download(extra_url = url)
-
-
 #
 # Returns an interface definition object
 #
@@ -323,34 +298,10 @@ def getIfDef(device):
     if deviceType in ifdefs:
         return ifdefs[deviceType]
 
-    if device_tag:
-        ifdef_tag = "".join([ "_", device_tag, IFDEF_TAG ])
-    else:
-        ifdef_tag = IFDEF_TAG
-
-    defs = filter(lambda a: a.is_file() and a.filename().endswith(ifdef_tag), device.artifacts())
-
-    if len(defs) > 1:
-        raise RuntimeError("More than one Interface Definiton files were found for {device}: {defs}".format(device = device.name(), defs = defs))
-
-    if defs:
-        filename = defs[0].download()
-    else:
+    filename = device.downloadArtifact(IFDEF_EXTENSION, device_tag, filetype = "Interface Definition")
+    if filename is None:
         # No 'file' artifact found, let's see if there is a URL
-        if device_tag:
-            epi = "_".join([ "EPI", device_tag ])
-        else:
-            epi = "EPI"
-
-        fqepi = epi + "["
-        artifacts = filter(lambda u: u.is_uri() and (u.name() == epi or u.name().startswith(fqepi)), device.artifacts())
-        if not artifacts:
-            return None
-
-        if len(artifacts) > 1:
-            raise RuntimeError("More than one Interface Definition URLs were found for {device}: {urls}".format(device = device.name(), urls = map(lambda u: u.uri(), artifacts)))
-
-        filename = getIfDefFromURL(device, artifacts[0], epi)
+        filename = device.downloadExternalLink("EPI", IFDEF_EXTENSION, device_tag, "Interface Definition")
         if filename is None:
             return None
 
@@ -501,7 +452,7 @@ def processTemplateID(templateID, devices):
 
         # Try to download template from artifact
         if template is None:
-            template = downloadTemplate(device, tagged_templateID)
+            template = downloadTemplate(device, "_" + tagged_templateID if device_tag else tagged_templateID)
             if template is not None:
                 template_seen = True
 
@@ -1494,7 +1445,7 @@ def main(argv):
     global OUTPUT_DIR
     OUTPUT_DIR = os.path.join(OUTPUT_DIR, helpers.sanitizeFilename(device.lower()))
     if device_tag:
-        OUTPUT_DIR = os.path.join(OUTPUT_DIR, helpers.sanitizeFilename("__".join([ "", "tag", device_tag ])))
+        OUTPUT_DIR = os.path.join(OUTPUT_DIR, helpers.sanitizeFilename(CCDB.TAG_SEPARATOR.join([ "", "tag", device_tag ])))
     helpers.makedirs(OUTPUT_DIR)
 
     read_data_files()
