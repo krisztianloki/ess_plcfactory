@@ -298,4 +298,4 @@ class CCDB_TEST(CCDB):
 class CCDB_DEVEL(CCDB):
     def __init__(self, **kwargs):
         kwargs["verify_ssl_cert"] = False
-        CCDB.__init__(self, "https://icsvd-app01.esss.lu.se/ccdb-test/rest/", **kwargs)
+        CCDB.__init__(self, "https://icsvd-app01.esss.lu.se:8443/ccdb-test/rest/", **kwargs)
