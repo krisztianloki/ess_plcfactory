@@ -62,4 +62,8 @@ def sanitizeFilename(filename):
     return "".join(result)
 
 
+def create_data_dir(product):
+    dname = os.path.join(os.path.expanduser("~"), ".local", "share", product)
+    makedirs(dname)
 
+    return dname

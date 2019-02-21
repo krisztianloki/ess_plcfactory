@@ -18,6 +18,7 @@ __maintainer__ = "Gregor Ulm"
 __email__      = "gregor.ulm@esss.se"
 __status__     = "Production"
 __env__        = "Python version 2.7"
+__product__    = "ics_plc_factory"
 
 # Python libraries
 import argparse
@@ -714,19 +715,12 @@ MISCS += $(wildcard misc/*.req)""", file = makefile)
     return out_mdir
 
 
-def create_data_dir():
-    dname = os.path.join(os.path.expanduser("~"), ".local/share/ics_plc_factory")
-    helpers.makedirs(dname)
-
-    return dname
-
-
 def read_data_files():
     global hashes
     global prev_hashes
 
     try:
-        with open(os.path.join(create_data_dir(), "hashes")) as h:
+        with open(os.path.join(helpers.create_data_dir(__product__), "hashes")) as h:
             raw_hashes = h.readline()
     except:
         return
@@ -827,7 +821,7 @@ def create_e3(modulename, snippet):
 
 def write_data_files():
     try:
-        with open(os.path.join(create_data_dir(), "hashes"), 'w') as h:
+        with open(os.path.join(helpers.create_data_dir(__product__), "hashes"), 'w') as h:
             print(str(hashes), file = h)
     except:
         print("Was not able to save data files")
@@ -938,54 +932,6 @@ def banner():
     print("                                                     __/ | ")
     print("European Spallation Source, Lund                    |___/ \n")
 
-
-
-def check_for_updates():
-    local_ref = git.get_local_ref()
-
-    if local_ref is None:
-        print("Could not check local version")
-        return False
-
-    check_time = time.time()
-
-    try:
-        with open(os.path.join(create_data_dir(), "updates")) as u:
-            raw_updates = u.readline()
-        updates = ast_literal_eval(raw_updates)
-        if updates[0] + 600 > check_time:
-            if local_ref != updates[1]:
-                print("An update is available")
-            return False
-    except:
-        pass
-
-    print("Checking for updates...")
-    remote_ref = git.get_remote_ref()
-    if remote_ref is None:
-        print("Could not check for updates")
-        return False
-
-    # Check if we have remote ref. True means we are most probably ahead of origin; ignore remote ref then
-    if git.has_commit(remote_ref):
-        remote_ref = local_ref
-
-    updates = (check_time, remote_ref)
-    try:
-        with open(os.path.join(create_data_dir(), "updates"), "w") as u:
-            print(updates, file = u)
-    except:
-        pass
-
-    if remote_ref != local_ref:
-        print("""
-An update to PLC Factory is available.
-
-Please run `git pull`
-""")
-        return True
-
-    return False
 
 
 class PLCFArgumentError(Exception):
@@ -1109,7 +1055,7 @@ def main(argv):
         return parser
 
 
-    if check_for_updates():
+    if git.check_for_updates(helpers.create_data_dir(__product__), "PLC Factory"):
         return
 
     parser = argparse.ArgumentParser(add_help = False)
