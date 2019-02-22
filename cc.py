@@ -395,6 +395,53 @@ class CC(object):
 
 
     @staticmethod
+    def addArgs(parser):
+        import argparse
+
+        ccdb_args = parser.add_argument_group("CCDB related options").add_mutually_exclusive_group()
+        ccdb_args.add_argument(
+                               '--ccdb-test',
+                               dest     = "ccdb_test",
+                               help     = 'select CCDB test database',
+                               action   = 'store_true',
+                               required = False)
+
+        ccdb_args.add_argument(
+                               '--ccdb-devel',
+                               dest     = "ccdb_devel",
+                               help     = argparse.SUPPRESS, #selects CCDB development database
+                               action   = 'store_true',
+                               required = False)
+
+        # this argument is just for show as the corresponding value is
+        # set to True by default
+        ccdb_args.add_argument(
+                               '--ccdb-production',
+                               dest     = "ccdb_production",
+                               help     = 'select production CCDB database',
+                               action   = 'store_true',
+                               required = False)
+
+        ccdb_args.add_argument(
+                               '--ccdb',
+                               dest     = "ccdb",
+                               help     = 'use a CCDB dump as backend',
+                               metavar  = 'directory-to-CCDB-dump / name-of-.ccdb.zip',
+                               type     = str,
+                               required = False)
+
+        parser.add_argument(
+                            '--cached',
+                            dest     = "clear_ccdb_cache",
+                            help     = 'do not clear "templates" folder; use the templates downloaded by a previous run',
+                            # be aware of the inverse logic between the meaning of the option and the meaning of the variable
+                            default  = True,
+                            action   = 'store_false')
+
+        return parser
+
+
+    @staticmethod
     def urlComps(url):
         url_comps = urlsplit(url)
 

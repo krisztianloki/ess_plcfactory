@@ -1173,47 +1173,7 @@ def main(argv):
                         type    = str
                        )
 
-    ccdb_args = parser.add_argument_group("CCDB related options").add_mutually_exclusive_group()
-    ccdb_args.add_argument(
-                           '--ccdb-test',
-                           '--test',
-                           dest     = "ccdb_test",
-                           help     = 'select CCDB test database',
-                           action   = 'store_true',
-                           required = False)
-
-    ccdb_args.add_argument(
-                           '--ccdb-devel',
-                           dest     = "ccdb_devel",
-                           help     = argparse.SUPPRESS, #selects CCDB development database
-                           action   = 'store_true',
-                           required = False)
-
-    # this argument is just for show as the corresponding value is
-    # set to True by default                        
-    ccdb_args.add_argument(
-                           '--ccdb-production',
-                           '--production',
-                           dest     = "ccdb_production",
-                           help     = 'select production CCDB database',
-                           action   = 'store_true',
-                           required = False)
-
-    ccdb_args.add_argument(
-                           '--ccdb',
-                           dest     = "ccdb",
-                           help     = 'use a CCDB dump as backend',
-                           metavar  = 'directory-to-CCDB-dump / name-of-.ccdb.zip',
-                           type     = str,
-                           required = False)
-
-    parser.add_argument(
-                        '--cached',
-                        dest     = "clear_templates",
-                        help     = 'do not clear "templates" folder; use the templates downloaded by a previous run',
-                        # be aware of the inverse logic between the meaning of the option and the meaning of the variable
-                        default  = True,
-                        action   = 'store_false')
+    CCDB.addArgs(parser)
 
     parser.add_argument(
                         '--verify',
@@ -1332,12 +1292,12 @@ def main(argv):
         glob.ccdb = CC.load(args.ccdb)
     elif args.ccdb_test:
         from ccdb import CCDB_TEST
-        glob.ccdb = CCDB_TEST(clear_templates = args.clear_templates)
+        glob.ccdb = CCDB_TEST(clear_templates = args.clear_ccdb_cache)
     elif args.ccdb_devel:
         from ccdb import CCDB_DEVEL
-        glob.ccdb = CCDB_DEVEL(clear_templates = args.clear_templates)
+        glob.ccdb = CCDB_DEVEL(clear_templates = args.clear_ccdb_cache)
     else:
-        glob.ccdb = CCDB(clear_templates = args.clear_templates)
+        glob.ccdb = CCDB(clear_templates = args.clear_ccdb_cache)
 
     global OUTPUT_DIR
     OUTPUT_DIR = os.path.join(OUTPUT_DIR, helpers.sanitizeFilename(device.lower()))
@@ -1387,7 +1347,7 @@ def main(argv):
                 print("\nThe following warnings were detected:\n", file = sys.stderr)
             print(warn, file = sys.stderr)
 
-    if not args.clear_templates:
+    if not args.clear_ccdb_cache:
         print("\nTemplates were reused\n")
 
     try:
