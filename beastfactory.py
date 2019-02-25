@@ -142,15 +142,15 @@ class BEASTFactory(object):
 
 
     def parseAlarms(self, device):
+        alarm_list = device.downloadExternalLink("BEAST TEMPLATE", ".alarms-template", filetype = "Alarm definition template", device_tag = self._device_tag)
+        if alarm_list:
+            print("Parsing {} of {}".format(alarm_list, device.name()))
+            self._beast_def.parse(alarm_list, device = device)
+
         alarm_list = device.downloadExternalLink("BEAST", ".alarms", filetype = "Alarm definition", device_tag = self._device_tag)
-
-        if alarm_list is None:
-            alarm_list = device.downloadExternalLink("BEAST TEMPLATE", ".alarms-template", filetype = "Alarm definition template", device_tag = self._device_tag)
-            if alarm_list is None:
-                return None
-
-        print("Parsing {} of {}".format(alarm_list, device.name()))
-        self._beast_def.parse(alarm_list, device = device)
+        if alarm_list:
+            print("Parsing {} of {}".format(alarm_list, device.name()))
+            self._beast_def.parse(alarm_list, device = device)
 
 
     def _process_component(self, components):
@@ -186,7 +186,7 @@ class BEASTFactory(object):
 
         for device in devices:
             # parse alarm list
-            alarms = self.parseAlarms(device)
+            self.parseAlarms(device)
 
         if self._beast_def:
             self._process_component(self._beast_def.components())
