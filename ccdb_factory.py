@@ -154,8 +154,8 @@ class CCDB_Factory(CC):
 
 
 
-    def __init__(self, user = None):
-        super(CCDB_Factory, self).__init__(user)
+    def __init__(self):
+        super(CCDB_Factory, self).__init__()
         CCDB_Factory.Device.ccdb = self
         self._artifacts  = dict()
         self._properties = dict()
@@ -175,7 +175,7 @@ class CCDB_Factory(CC):
                                    {'dataType': 'Integer', 'value': '256', 'kind': 'SLOT', 'name': 'PLCF#PLC-EPICS-COMMS: S7ConnectionID', 'unit': None},
                                    {'dataType': 'Integer', 'value': '2000', 'kind': 'SLOT','name': 'PLCF#PLC-EPICS-COMMS: S7Port', 'unit': None},
                                    {'dataType': 'Endianness', 'value': 'BigEndian', 'kind': 'SLOT', 'name': 'PLCF#PLC-EPICS-COMMS:Endianness', 'unit': None},
-                                   {'dataType': 'String', 'value': '16#40', 'kind': 'SLOT', 'name': 'PLCF#PLC-EPICS-COMMS: InterfaceID', 'unit': None},
+                                   {'dataType': 'String', 'value': '64', 'kind': 'SLOT', 'name': 'PLCF#PLC-EPICS-COMMS: InterfaceID', 'unit': None},
                                    {'dataType': 'Integer', 'value': '1', 'kind': 'SLOT', 'name': 'PLCF#PLC-DIAG:Max-IO-Devices', 'unit': None},
                                    {'dataType': 'Integer', 'value': '10', 'kind': 'SLOT', 'name': 'PLCF#PLC-DIAG:Max-Local-Modules', 'unit': None},
                                    {'dataType': 'Integer', 'value': '10', 'kind': 'SLOT', 'name': 'PLCF#PLC-DIAG:Max-Modules-In-IO-Device', 'unit': None}]
