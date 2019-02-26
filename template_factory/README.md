@@ -35,13 +35,14 @@ The following types can be used to add a variable to an interface definition:
 *   **alarm**; a simple 1-bit information that generates an EPICS alarm if its value is 1\. Maps to the **_binary input_** record in EPICS and to the **_BOOL_** type in the PLC.
 *   **enum**; an enumeration. Maps to the **_multi-bit binary input/output_** record in EPICS and the **_user specified_** PLC type in the PLC
 *   **bitmask**; bits of a 16 bit integer. Maps to the **_multi-bit binary input/output direct_** record in EPICS and to the **_INT_** type in the PLC
+*   **string**; a maximum 39 character long string. Maps to the **_stringin_** record in EPICS and to the **_STRING_** type in the PLC
 
 ## PLC Types
 
 The following PLC types can be used to "back" the variables defined in the interface definition:
 
 *   **BOOL**; it is implicitly specified with the **digital** type
-*   **BYTE**;
+*   **BYTE**; 8-bit integer
 *   **USINT**; 8-bit unsigned integer
 *   **SINT;** 8-bit signed integer
 *   **WORD**; 16-bit unsigned integer
@@ -52,6 +53,7 @@ The following PLC types can be used to "back" the variables defined in the inter
 *   **UDINT**; 32-bit unsigned integer
 *   **REAL**; 32-bit floating point number
 *   **TIME**; it is implicitly specified with the **time** type
+*   **STRING**; it is implicitly specified with the **string** type
 
 ## Data Layout
 
@@ -125,13 +127,18 @@ Adding more than one spare bit:
 
 **`add_bitmask("<name>", "<plc_type">)`**
 
+### String variable
+
+**`add_string("<name>" [, length])`**
+
+The default length is the maximum allowed by EPICS; 39 characters
+
 ## Specifying archiving requirements
 
 If a variable has to be archived the **`ARCHIVE=<spec>`** construction can be used. <spec> can be one of the following:
 
-*   **`True`**; the variable will be archived with the default _sampling rate_ and _sampling method_ of Archiver Appliance
-*   **`<sampling rate>`**; the variable will be archived with the specified sampling rate and the default _sampling method_ of Archiver Appliance
-*   **`(<sampling_rate>, "<sampling_method>")`**; the variable will be archived with the specified sampling rate and sampling method. Sampling method can be **"SCAN"** or **"MONITOR"**
+*   **`True`**; the variable will be archived with the default _policy_ of Archiver Appliance
+*   **`"<policy>"`**; the variable will be archived with the specified policy of Archiver Appliance
 
 The specifications will be collected in a file ending with _.archive_. This file has to be uploaded to the relevant archiver configuration repository.
 
@@ -140,8 +147,6 @@ The specifications will be collected in a file ending with _.archive_. This file
 ### Archiving examples
 
 *   `add_digital("Error",`             **`ARCHIVE=True`**`)`
-    *   Archive with the default sampling rate and method
-*   `add_analog("ErrorCodeR", "INT",`  **`ARCHIVE=.1`**`)`
-    *   Archive with a sampling rate of 0.1 seconds and the default sampling method
-*   `add_analog("ErrorCodeR", "INT",`  **`ARCHIVE=(5, "SCAN")`**`)`
-    *   Archive with a sampling rate of 5 seconds and the **SCAN** sampling method. Note the **parentheses** and the **quotation marks** around _SCAN_
+    *   Archive with the default policy
+*   `add_analog("ErrorCodeR", "INT",`  **`ARCHIVE="1Hz"`**`)`
+    *   Archive with the 1Hz policy
