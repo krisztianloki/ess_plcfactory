@@ -20,7 +20,11 @@ from collections import OrderedDict
 PLC_types = { 'BOOL', 'BYTE', 'CHAR', 'WORD', 'DWORD', 'INT', 'DINT', 'REAL', 'SSTIME', 'TIME', 'LTIME', 'DATE', 'TIME_OF_DAY', 'STRING' }
 
 # New data types for S7-1200/1500
-PLC_types.update({ 'USINT', 'SINT', 'UINT', 'UDINT' })
+PLC_types.update({ 'USINT',    # Unsigned Short  INTeger
+                   'SINT',     # Signed   Short  INTeger
+                   'UINT',     # Unsigned        INTeger
+                   'UDINT'     # Unsigned Double INTeger
+                 })
 
 
 bits_in_type_map = { 'UINT8'   :  8, 'INT8'   :  8, 'UNSIGN8' :  8, 'BYTE'       :  8, 'CHAR'       :  8, 'USINT'    :  8, 'SINT'         :  8,

@@ -2766,7 +2766,7 @@ def ProcessIFADevTypes(OutputDir, TIAVersion):
 					InArrayNum, StartingRegister = AddBOOL(item, InArrayName, InArrayNum, StartingRegister)
 				#==========================
 				#====== BYTE TYPE ========
-				elif ActVariableType == "BYTE":
+				elif ActVariableType == "BYTE" or ActVariableType == "USINT" or ActVariableType == "SINT":
 					InArrayNum, StartingRegister = AddBYTE(item, InArrayName, InArrayNum, StartingRegister)
 				#==========================
 				#====== INT TYPE ========
@@ -2774,7 +2774,7 @@ def ProcessIFADevTypes(OutputDir, TIAVersion):
 					InArrayNum, StartingRegister = AddINT(item, InArrayName, InArrayNum, StartingRegister)
 				#==========================
 				#====== WORD TYPE ========
-				elif ActVariableType == "WORD":
+				elif ActVariableType == "WORD" or ActVariableType == "UINT":
 					InArrayNum, StartingRegister = AddWORD(item, InArrayName, InArrayNum, StartingRegister)
 				#==========================
 				#====== DINT TYPE ========
@@ -2782,7 +2782,7 @@ def ProcessIFADevTypes(OutputDir, TIAVersion):
 					InArrayNum, StartingRegister = AddDINT(item, InArrayName, InArrayNum, StartingRegister)
 				#==========================
 				#====== DWORD TYPE ========
-				elif ActVariableType == "DWORD":
+				elif ActVariableType == "DWORD" or ActVariableType == "UDINT":
 					InArrayNum, StartingRegister = AddDWORD(item, InArrayName, InArrayNum, StartingRegister)
 				#==========================
 				#====== REAL TYPE ========
