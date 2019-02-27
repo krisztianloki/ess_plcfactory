@@ -466,6 +466,11 @@ def AddSTRING(variable, InArrayName, InArrayNum, StartingRegister):
 	ActStringLength       = variable.dimension() / 2 + (variable.dimension() % 2)
 
 	if variable.is_status():
+		if InArrayName is not None:
+			raise IFA.FatalException("'Hybrid' PLC STRING arrays are not supported: " + InArrayName)
+			# The fact that ActVariablePLCName is IN_OUT (because of the TESTER) triggers an error because ActVariablePLCName is not specified in EPICS_device_calls
+			InArrayNum = InArrayNum + 1
+			DevTypeBODY_CODE_ARRAY.append("              #\""+ ActVariablePLCName +"\" := #"+InArrayName+"["+str(InArrayNum)+"];")
 		if StartingRegister != ActVariableArrayIndex:
 			CloseLastVariable()
 			StartingRegister = ActVariableArrayIndex
