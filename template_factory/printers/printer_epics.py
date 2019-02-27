@@ -187,7 +187,7 @@ class EPICS(EPICS_BASE):
                                                                                    offset     = var.link_offset(),
                                                                                    var_type   = var.endian_correct_var_type(),
                                                                                    link_extra = var.link_extra() + var._get_user_link_extra()),
-                                                          pv_extra   = self.DISABLE_TEMPLATE + var._build_pv_extra()))
+                                                          pv_extra   = self.DISABLE_TEMPLATE + var.build_pv_extra()))
 
 
     #
@@ -699,7 +699,7 @@ class EPICS_OPC(EPICS_BASE):
                                          inp_out    = var.inp_out(inst_io   = '$(SUBSCRIPTION)',
                                                                   datablock = var.datablock_name(),
                                                                   var_name  = var.name()),
-                                         pv_extra   = var._build_pv_extra()))
+                                         pv_extra   = var.build_pv_extra()))
 
 
     #

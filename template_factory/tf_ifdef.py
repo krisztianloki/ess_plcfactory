@@ -33,6 +33,37 @@ bits_in_type_map = { 'UINT8'   :  8, 'INT8'   :  8, 'UNSIGN8' :  8, 'BYTE'      
                      'FLOAT32' : 32, 'REAL32' : 32, 'FLOAT'   : 32, 'FLOAT32_LE' : 32, 'FLOAT32_BE' : 32, 'REAL'     : 32,
                      'FLOAT64' : 64, 'REAL64' : 64, 'DOUBLE'  : 64, 'FLOAT64_LE' : 64, 'FLOAT64_BE' : 64 }
 
+limits = { "u8"  : ( 0,                            int("0xFF", base = 0)),
+
+           "i8"  : ( int("-0x80", base = 0),       int("0x7F", base = 0)),
+
+           "u16" : ( 0,                            int("0xFFFF", base = 0)),
+
+           "i16" : ( int("-0x8000", base = 0),     int("0x7FFF", base = 0)),
+
+           "u32" : ( 0,                            int("0xFFFFFFFF", base = 0)),
+
+           "i32" : ( int("-0x80000000", base = 0), int("0x7FFFFFFF", base = 0))
+         }
+
+PLC_type_limits = { 'BYTE'  : limits["u8"],
+                    'CHAR'  : limits["u8"],
+                    'USINT' : limits["u8"],
+
+                    'SINT'  : limits["i8"],
+
+                    'WORD'  : limits["u16"],
+                    'UINT'  : limits["u16"],
+
+                    'INT'   : limits["i16"],
+
+                    'DWORD' : limits["u32"],
+                    'UDINT' : limits["u32"],
+
+                    'DINT'  : limits["i32"],
+                    'TIME'  : limits["i32"]
+                  }
+
 
 class IfDefException(Exception):
     def __init__(self, typemsg, *args):
@@ -1207,6 +1238,8 @@ class BASE_TYPE(SOURCE):
     PV_EGU         = PV_PREFIX + "EGU"
     PV_ONAM        = PV_PREFIX + "ONAM"
     PV_ZNAM        = PV_PREFIX + "ZNAM"
+    PV_DRVL        = PV_PREFIX + "DRVL"
+    PV_DRVH        = PV_PREFIX + "DRVH"
     ASYN_TIMEOUT   = "100"
     templates      = dict()
     pv_names       = set()
@@ -1464,7 +1497,7 @@ class BASE_TYPE(SOURCE):
             if not field.startswith(BASE_TYPE.PV_PREFIX):
                 continue
 
-            if not isinstance(value, str) and field != BASE_TYPE.PV_ALIAS:
+            if not isinstance(value, str) and not isinstance(value, int) and field != BASE_TYPE.PV_ALIAS:
                 raise IfDefSyntaxError("{field} can only be a string")
 
             try:
@@ -1480,7 +1513,7 @@ class BASE_TYPE(SOURCE):
                 pass
 
 
-    def _build_pv_extra(self):
+    def build_pv_extra(self):
         pv_field3 = "\tfield({key},  \"{value}\")\n"
         pv_field4 = "\tfield({key}, \"{value}\")\n"
 
@@ -1744,6 +1777,16 @@ class ANALOG(BASE_TYPE):
     pv_types = { BLOCK.CMD : "ao",   BLOCK.PARAM : "ao",   BLOCK.STATUS : "ai" }
 
     def __init__(self, source, block, name, plc_var_type, keyword_params):
+        if block.is_cmd_block() or block.is_param_block():
+            try:
+                limits = PLC_type_limits[plc_var_type]
+                if keyword_params.get(BASE_TYPE.PV_DRVL, limits[0]) <= limits[0]:
+                    keyword_params[BASE_TYPE.PV_DRVL] = limits[0]
+                if keyword_params.get(BASE_TYPE.PV_DRVH, limits[1]) >= limits[1]:
+                    keyword_params[BASE_TYPE.PV_DRVH] = limits[1]
+            except KeyError:
+                pass
+
         BASE_TYPE.__init__(self, source, block, name, plc_var_type, keyword_params)
 
 
