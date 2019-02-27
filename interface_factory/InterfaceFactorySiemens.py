@@ -474,7 +474,7 @@ def AddSTRING(variable, InArrayName, InArrayNum, StartingRegister):
 			DevTypeBODY_CODE.append("       FOR #i:=1 TO 20 DO")
 			DevTypeBODY_CODE.append("            #MyWordsinString[#i] := 0;")
 			DevTypeBODY_CODE.append("       END_FOR;			")
-			DevTypeBODY_CODE.append("       #MyString := #" + ActVariablePLCName + ";  //EPICSName: " + ActVariableEPICSName)
+			DevTypeBODY_CODE.append("       #MyString := #\"" + ActVariablePLCName + "\";  //EPICSName: " + ActVariableEPICSName)
 			if ActStringLength > 1:
 				DevTypeBODY_CODE.append("       FOR #i:=0 TO " + str(ActStringLength - 2) + " DO")
 				DevTypeBODY_CODE.append("            \"PLCToEPICS\".\"Word\"[#PLCToEPICSDataBlockOffset + " + str(ActVariableArrayIndex) + " + #i] := #MyWordsinString[#i + 1];")
