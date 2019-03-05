@@ -178,6 +178,11 @@ class EPICS(EPICS_BASE):
 
 
     def _toEPICS(self, var, inst_slot = "[PLCF#INSTALLATION_SLOT]", test = False):
+        pv_extra = self.DISABLE_TEMPLATE + var.build_pv_extra()
+        if var.is_parameter() or self._test:
+            pv_extra = pv_extra + """
+	info(autosaveFields_pass0, "VAL")"""
+
         return (var.source(),
                 var.pv_template(test = self._test).format(recordtype = var.pv_type(),
                                                           pv_name    = var._build_pv_name(self._if_def.inst_slot()),
@@ -187,7 +192,7 @@ class EPICS(EPICS_BASE):
                                                                                    offset     = var.link_offset(),
                                                                                    var_type   = var.endian_correct_var_type(),
                                                                                    link_extra = var.link_extra() + var._get_user_link_extra()),
-                                                          pv_extra   = self.DISABLE_TEMPLATE + var.build_pv_extra()))
+                                                          pv_extra   = pv_extra))
 
 
     #
