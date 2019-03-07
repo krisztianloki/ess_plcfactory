@@ -695,6 +695,13 @@ def m_copytree(src, dst):
     return copied
 
 
+def module_dir(module):
+    if 'OPC' in ifdef_params["PLC_TYPE"]:
+        return os.path.join(MODULES_DIR, "opc", module)
+
+    return os.path.join(MODULES_DIR, "s7plc", module)
+
+
 def create_eee(modulename, snippet):
     eee_files = []
     out_mdir  = os.path.join(OUTPUT_DIR, "modules", "-".join([ "m-epics", modulename ]))
@@ -711,7 +718,7 @@ def create_eee(modulename, snippet):
         copy2(f, of)
         eee_files.append(of)
 
-    eee_files.extend(m_copytree(os.path.join(MODULES_DIR, "eee"), out_mdir))
+    eee_files.extend(m_copytree(module_dir("eee"), out_mdir))
 
     #
     # Copy files
@@ -853,7 +860,7 @@ def create_e3(modulename, snippet):
         copy2(f, of)
         e3_files.append(of)
 
-    e3_files.extend(m_copytree(os.path.join(MODULES_DIR, "e3"), out_mdir))
+    e3_files.extend(m_copytree(module_dir("e3"), out_mdir))
 
     out_sdir = os.path.join(out_mdir, "-".join([ modulename, "loc" ]))
     helpers.makedirs(out_sdir)
