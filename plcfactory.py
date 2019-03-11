@@ -1175,6 +1175,22 @@ def main(argv):
                                action   = 'store_true',
                                required = False)
 
+        test_args = plc_group.add_mutually_exclusive_group()
+        test_args.add_argument(
+                               '--plc-no-test',
+                               dest     = "plc_test",
+                               help     = 'do not generate PLC comms testing code (if used with --plc-x). This is the default',
+                               action   = 'store_false',
+                               default  = False,
+                               required = False)
+
+        test_args.add_argument(
+                               '--plc-test',
+                               dest     = "plc_test",
+                               help     = 'generate PLC comms testing code (if used with --plc-x)',
+                               action   = 'store_true',
+                               required = False)
+
         parser.add_argument(
                             '--list-templates',
                             dest    = "list_templates",
@@ -1523,7 +1539,7 @@ def main(argv):
     if tia_version or args.plc_only_diag or beckhoff:
         from interface_factory import produce as ifa_produce
 
-        output_files.update(ifa_produce(OUTPUT_DIR, output_files["IFA"], SclPath = output_files.get(tia_map, ""), TIAVersion = tia_version, nodiag = args.plc_no_diag, onlydiag = args.plc_only_diag, direct = args.plc_direct))
+        output_files.update(ifa_produce(OUTPUT_DIR, output_files["IFA"], SclPath = output_files.get(tia_map, ""), TIAVersion = tia_version, nodiag = args.plc_no_diag, onlydiag = args.plc_only_diag, commstest = args.plc_test, direct = args.plc_direct))
 
     if eee:
         create_eee(glob.modulename, glob.snippet)

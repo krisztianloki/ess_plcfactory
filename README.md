@@ -112,6 +112,14 @@ PLC Factory is capable of integrating (and generating code for) the following PL
     *   \[OPTIONAL\]
     *   Only diagnostics PLC code is generated
     *   `--plc-only-diag`
+*   **--plc-test**
+    *   \[OPTIONAL\]
+    *   Generate PLC communication testing code
+    *   `--plc-test`
+*   **--plc-no-test**
+    *   \[OPTIONAL\]
+    *   Do not generate PLC communication testing code. This is the default
+    *   `--plc-no-test`
 *   **--eee**=<module_name>
     *   \[OPTIONAL\]
     *   Generate a proper EEE module. The default module name is derived from _device_ and of course prefixed with m-epics. Implicitly adds _EPICS-DB_, _AUTOSAVE-ST-CMD_, and _AUTOSAVE_ to the list of templates (which means you don't have to add any templates explicitly)

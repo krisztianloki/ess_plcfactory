@@ -2265,7 +2265,7 @@ def WriteStandardPLCCode(TIAVersion):
 	ExternalSourceFile.append("VERSION : 0.1")
 	ExternalSourceFile.append("NON_RETAIN")
 	ExternalSourceFile.append("//########## EPICS->PLC datablock ##########")
-	ExternalSourceFile.append("   STRUCT ")
+	ExternalSourceFile.append("   STRUCT")
 	ExternalSourceFile.append("      \"Word\" : Array[0..10] of Word;")
 	ExternalSourceFile.append("   END_STRUCT;")
 	ExternalSourceFile.append("")
@@ -2278,7 +2278,7 @@ def WriteStandardPLCCode(TIAVersion):
 	ExternalSourceFile.append("VERSION : 0.1")
 	ExternalSourceFile.append("NON_RETAIN")
 	ExternalSourceFile.append("//########## PLC->EPICS datablock ##########")
-	ExternalSourceFile.append("   STRUCT ")
+	ExternalSourceFile.append("   STRUCT")
 	ExternalSourceFile.append("      \"Word\" : Array[0..10] of Word;")
 	ExternalSourceFile.append("   END_STRUCT;")
 	ExternalSourceFile.append("")
@@ -2436,7 +2436,7 @@ def WriteCommsEpicsAndDbs():
 	ExternalSourceFile.append("{ S7_Optimized_Access := 'FALSE' }")
 	ExternalSourceFile.append("VERSION : 0.1")
 	ExternalSourceFile.append("//########## EPICS->PLC datablock ##########")
-	ExternalSourceFile.append("   STRUCT ")
+	ExternalSourceFile.append("   STRUCT")
 	ExternalSourceFile.append("      \"Word\" : Array[0.."+str(ifa.TOTALEPICSTOPLCLENGTH -1)+"] of Word;")
 	ExternalSourceFile.append("   END_STRUCT;")
 	ExternalSourceFile.append("")
@@ -2450,7 +2450,7 @@ def WriteCommsEpicsAndDbs():
 	ExternalSourceFile.append("VERSION : 0.1")
 	ExternalSourceFile.append("NON_RETAIN")
 	ExternalSourceFile.append("//########## PLC->EPICS datablock ##########")
-	ExternalSourceFile.append("   STRUCT ")
+	ExternalSourceFile.append("   STRUCT")
 	ExternalSourceFile.append("      \"Word\" : Array[0.."+str(ifa.TOTALPLCTOEPICSLENGTH -1)+"] of Word;")
 	ExternalSourceFile.append("   END_STRUCT;")
 	ExternalSourceFile.append("")
@@ -2508,7 +2508,7 @@ def QuoteVariableName(TIAVersion, variableName):
     return variableName
 
 
-def ProcessIFADevTypes(OutputDir, TIAVersion):
+def ProcessIFADevTypes(OutputDir, TIAVersion, CommsTest):
 
 	#Process IFA devices
 	print("Processing .ifa file...")
@@ -2870,9 +2870,11 @@ def ProcessIFADevTypes(OutputDir, TIAVersion):
 	#Constuct the output source file
 	if not Direct:
 		WriteDeviceInstances()
-		WriteEPICS_PLC_TesterDB()
+		if CommsTest:
+			WriteEPICS_PLC_TesterDB()
 		WriteEPICS_device_calls()
-		WriteEPICS_device_calls_test()
+		if CommsTest:
+			WriteEPICS_device_calls_test()
 
 	print("\nTotal", str(ProcessedDeviceNum), "device(s) processed.")
 	if not Direct:
@@ -2906,6 +2908,7 @@ def produce(OutputDir, _ifa, **kwargs):
 	onlydiag   = kwargs.get('onlydiag', False)
 	nodiag     = kwargs.get('nodiag', False)
 	Direct     = kwargs.get('direct', False)
+	CommsTest  = kwargs.get('commstest', False)
 	if Direct:
 		raise IFA.FatalException("Direct mode is only supported in the InterfaceFactoryLegacySiemens module")
 
@@ -2923,7 +2926,7 @@ def produce(OutputDir, _ifa, **kwargs):
 		ExternalSourceFile = []
 
 		#Process devices/device types
-		ProcessIFADevTypes(OutputDir, TIAVersion)
+		ProcessIFADevTypes(OutputDir, TIAVersion, CommsTest)
 
 	if not nodiag:
 		#WriteDiagnostics
