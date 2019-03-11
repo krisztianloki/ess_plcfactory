@@ -260,16 +260,11 @@ def processHash(header):
     for i in range(len(header)):
         if tag in header[i]:
             pos = i
-            break
-
-    if pos == -1:
-        return header
-
-    hashSum     = hashobj.getCRC32()
-    line        = header[pos]
-    tagPos      = line.find(tag)
-    line        = line[:tagPos] + hashSum + line[tagPos + len(tag):]
-    header[pos] = line
+            hashSum     = hashobj.getCRC32()
+            line        = header[pos]
+            tagPos      = line.find(tag)
+            line        = line[:tagPos] + hashSum + line[tagPos + len(tag):]
+            header[pos] = line
 
     return header
 
