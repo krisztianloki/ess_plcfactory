@@ -140,7 +140,9 @@ def AddBOOL(variable, InArrayName, InArrayNum, StartingRegister):
 			DevTypeBODY_CODE.append("")
 			DevTypeBODY_CODE.append("       #MyWord := \"EPICSToPLC\".\"Word\"[#EPICSToPLCDataBlockOffset + "+str(ActVariableArrayIndex) +"];")
 			if variable.is_command():
-				DevTypeBODY_CODE.append("       \"EPICSToPLC\".\"Word\"[#EPICSToPLCDataBlockOffset + "+str(ActVariableArrayIndex) +"] := 0;")
+				DevTypeBODY_CODE.append("       IF (NOT \"Utilities\".TestInProgress) THEN")
+				DevTypeBODY_CODE.append("       	\"EPICSToPLC\".\"Word\"[#EPICSToPLCDataBlockOffset + "+str(ActVariableArrayIndex) +"] := 0;")
+				DevTypeBODY_CODE.append("       END_IF;")
 		if ActVariableBitNumber < 8:
 			DevTypeBODY_CODE.append("       #\""+ ActVariablePLCName +"\" := #MyBoolsinWord[" + str((int(ActVariableBitNumber)+8)) + "];    //EPICSName: "+ActVariableEPICSName)
 			IsDouble = False
@@ -191,7 +193,9 @@ def AddBYTE(variable, InArrayName, InArrayNum, StartingRegister):
 			DevTypeBODY_CODE.append("")
 			DevTypeBODY_CODE.append("       #MyWord := \"EPICSToPLC\".\"Word\"[#EPICSToPLCDataBlockOffset + "+str(ActVariableArrayIndex) +"];")
 			if variable.is_command():
-				DevTypeBODY_CODE.append("       \"EPICSToPLC\".\"Word\"[#EPICSToPLCDataBlockOffset + "+str(ActVariableArrayIndex) +"] := 0;")
+				DevTypeBODY_CODE.append("       IF (NOT \"Utilities\".TestInProgress) THEN")
+				DevTypeBODY_CODE.append("       	\"EPICSToPLC\".\"Word\"[#EPICSToPLCDataBlockOffset + "+str(ActVariableArrayIndex) +"] := 0;")
+				DevTypeBODY_CODE.append("       END_IF;")
 		if ActVariableBitNumber == 0:
 			DevTypeBODY_CODE.append("       #\""+ ActVariablePLCName +"\" := #MyBytesinWord[1];    //EPICSName: "+ActVariableEPICSName)
 			IsDouble = False
@@ -237,7 +241,9 @@ def AddINT(variable, InArrayName, InArrayNum, StartingRegister):
 			DevTypeBODY_CODE.append("")
 			DevTypeBODY_CODE.append("       #MyWordinInt := \"EPICSToPLC\".\"Word\"[#EPICSToPLCDataBlockOffset + "+str(ActVariableArrayIndex) +"];")
 			if variable.is_command():
-				DevTypeBODY_CODE.append("       \"EPICSToPLC\".\"Word\"[#EPICSToPLCDataBlockOffset + "+str(ActVariableArrayIndex) +"] := 0;")
+				DevTypeBODY_CODE.append("       IF (NOT \"Utilities\".TestInProgress) THEN")
+				DevTypeBODY_CODE.append("       	\"EPICSToPLC\".\"Word\"[#EPICSToPLCDataBlockOffset + "+str(ActVariableArrayIndex) +"] := 0;")
+				DevTypeBODY_CODE.append("       END_IF;")
 			DevTypeBODY_CODE.append("       #\""+ ActVariablePLCName +"\" := #MyInt;    //EPICSName: "+ActVariableEPICSName)
 			IsDouble = False
 			EndString = ""
@@ -278,7 +284,9 @@ def AddWORD(variable, InArrayName, InArrayNum, StartingRegister):
 			DevTypeBODY_CODE.append("")
 			DevTypeBODY_CODE.append("       #\""+ ActVariablePLCName +"\" := \"EPICSToPLC\".\"Word\"[#EPICSToPLCDataBlockOffset + "+str(ActVariableArrayIndex) +"];    //EPICSName: "+ActVariableEPICSName)
 			if variable.is_command():
-				DevTypeBODY_CODE.append("        \"EPICSToPLC\".\"Word\"[#EPICSToPLCDataBlockOffset + "+str(ActVariableArrayIndex) +"] := 0;")
+				DevTypeBODY_CODE.append("       IF (NOT \"Utilities\".TestInProgress) THEN")
+				DevTypeBODY_CODE.append("        	\"EPICSToPLC\".\"Word\"[#EPICSToPLCDataBlockOffset + "+str(ActVariableArrayIndex) +"] := 0;")
+				DevTypeBODY_CODE.append("       END_IF;")
 			IsDouble = False
 			EndString = ""
 
@@ -321,8 +329,10 @@ def AddDINT(variable, InArrayName, InArrayNum, StartingRegister):
 			DevTypeBODY_CODE.append("       #MyWordsinDint[0]	:= \"EPICSToPLC\".\"Word\"[#EPICSToPLCDataBlockOffset + "+str(ActVariableArrayIndex) +"];")
 			DevTypeBODY_CODE.append("       #MyWordsinDint[1]	:= \"EPICSToPLC\".\"Word\"[#EPICSToPLCDataBlockOffset + "+str(ActVariableArrayIndex+1) +"];")
 			if variable.is_command():
-				DevTypeBODY_CODE.append("       \"EPICSToPLC\".\"Word\"[#EPICSToPLCDataBlockOffset + "+str(ActVariableArrayIndex) +"] := 0;")
-				DevTypeBODY_CODE.append("       \"EPICSToPLC\".\"Word\"[#EPICSToPLCDataBlockOffset + "+str(ActVariableArrayIndex+1) +"] := 0;")
+				DevTypeBODY_CODE.append("       IF (NOT \"Utilities\".TestInProgress) THEN")
+				DevTypeBODY_CODE.append("       	\"EPICSToPLC\".\"Word\"[#EPICSToPLCDataBlockOffset + "+str(ActVariableArrayIndex) +"] := 0;")
+				DevTypeBODY_CODE.append("       	\"EPICSToPLC\".\"Word\"[#EPICSToPLCDataBlockOffset + "+str(ActVariableArrayIndex+1) +"] := 0;")
+				DevTypeBODY_CODE.append("       END_IF;")
 			DevTypeBODY_CODE.append("       #\""+ ActVariablePLCName +"\" := #MyDInt;    //EPICSName: "+ActVariableEPICSName)
 			IsDouble = True
 			EndString = ""
@@ -399,8 +409,10 @@ def AddREAL(variable, InArrayName, InArrayNum, StartingRegister):
 			DevTypeBODY_CODE.append("       #MyWordsinReal[0]	:= \"EPICSToPLC\".\"Word\"[#EPICSToPLCDataBlockOffset + "+str(ActVariableArrayIndex) +"];")
 			DevTypeBODY_CODE.append("       #MyWordsinReal[1]	:= \"EPICSToPLC\".\"Word\"[#EPICSToPLCDataBlockOffset + "+str(ActVariableArrayIndex+1) +"];")
 			if variable.is_command():
-				DevTypeBODY_CODE.append("        \"EPICSToPLC\".\"Word\"[#EPICSToPLCDataBlockOffset + "+str(ActVariableArrayIndex) +"] := 0;")
-				DevTypeBODY_CODE.append("        \"EPICSToPLC\".\"Word\"[#EPICSToPLCDataBlockOffset + "+str(ActVariableArrayIndex+1) +"] := 0;")
+				DevTypeBODY_CODE.append("       IF (NOT \"Utilities\".TestInProgress) THEN")
+				DevTypeBODY_CODE.append("        	\"EPICSToPLC\".\"Word\"[#EPICSToPLCDataBlockOffset + "+str(ActVariableArrayIndex) +"] := 0;")
+				DevTypeBODY_CODE.append("        	\"EPICSToPLC\".\"Word\"[#EPICSToPLCDataBlockOffset + "+str(ActVariableArrayIndex+1) +"] := 0;")
+				DevTypeBODY_CODE.append("       END_IF;")
 			DevTypeBODY_CODE.append("       #\""+ ActVariablePLCName +"\" := #MyReal;    //EPICSName: "+ActVariableEPICSName)
 			IsDouble = True
 			EndString = ""
@@ -443,6 +455,11 @@ def AddTIME(variable, InArrayName, InArrayNum, StartingRegister):
 			DevTypeBODY_CODE.append("       #MyDInt	:= 0;")
 			DevTypeBODY_CODE.append("       #MyWordsinDint[0]	:= \"EPICSToPLC\".\"Word\"[#EPICSToPLCDataBlockOffset + "+str(ActVariableArrayIndex) +"];")
 			DevTypeBODY_CODE.append("       #MyWordsinDint[1]	:= \"EPICSToPLC\".\"Word\"[#EPICSToPLCDataBlockOffset + "+str(ActVariableArrayIndex+1) +"];")
+			if variable.is_command():
+				DevTypeBODY_CODE.append("       IF (NOT \"Utilities\".TestInProgress) THEN")
+				DevTypeBODY_CODE.append("        	\"EPICSToPLC\".\"Word\"[#EPICSToPLCDataBlockOffset + "+str(ActVariableArrayIndex) +"] := 0;")
+				DevTypeBODY_CODE.append("        	\"EPICSToPLC\".\"Word\"[#EPICSToPLCDataBlockOffset + "+str(ActVariableArrayIndex+1) +"] := 0;")
+				DevTypeBODY_CODE.append("       END_IF;")
 			DevTypeBODY_CODE.append("       #\""+ ActVariablePLCName +"\" := #MyDInt;    //EPICSName: "+ActVariableEPICSName)
 			IsDouble = True
 			EndString = ""
