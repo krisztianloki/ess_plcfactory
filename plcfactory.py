@@ -313,11 +313,6 @@ def getIfDefFromURL(device, artifact, epi):
 # Returns an interface definition object
 #
 def getIfDef(device):
-    deviceType = device.deviceType()
-
-    if deviceType in ifdefs:
-        return ifdefs[deviceType]
-
     if device_tag:
         ifdef_tag = "".join([ "_", device_tag, IFDEF_TAG ])
     else:
@@ -349,11 +344,19 @@ def getIfDef(device):
         if filename is None:
             return None
 
+    deviceType = device.deviceType()
+
+    if deviceType in ifdefs:
+        if ifdefs[deviceType][0] == filename:
+            return ifdefs[deviceType][1]
+
+        raise PLCFactoryException("Different Interface Definitions for the same device type: {devtype}!".format(devtype = deviceType))
+
     with open(filename) as f:
         ifdef = tf.processLines(f, FILENAME = filename)
 
     if ifdef is not None:
-        ifdefs[deviceType] = ifdef
+        ifdefs[deviceType] = (filename, ifdef)
 
     return ifdef
 
@@ -1550,7 +1553,7 @@ def main(argv):
         create_zipfile(args.zipit)
 
     has_warns = False
-    for ifdef in ifdefs.itervalues():
+    for (fname, ifdef) in ifdefs.itervalues():
         for warn in ifdef.warnings():
             if not has_warns:
                 has_warns = True
