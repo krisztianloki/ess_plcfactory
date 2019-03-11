@@ -71,6 +71,8 @@ class CCDB_Factory(CC):
 
 
     class Device(CCDB.Device):
+        # Leave everything (that is not a string) as None here
+        # Change the value after an instance has been created
         default_device_dict = {"slotType"     : "SLOT",
                                "name"         : None,
                                "deviceType"   : None,
@@ -114,6 +116,9 @@ class CCDB_Factory(CC):
 
 
         def setProperty(self, key, value, dataType = None):
+            if self._slot["properties"] is None:
+                self._slot["properties"] = []
+
             for prop in self._slot["properties"]:
                 if prop["name"] == key:
                     prop["value"] = str(value)
