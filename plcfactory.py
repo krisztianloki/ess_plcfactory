@@ -1428,14 +1428,14 @@ def main(argv):
     default_printers = set(["DEVICE-LIST"])
 
     if args.plc_interface:
-        default_printers.update( [ "EPICS-DB", "IFA" ] )
+        default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "IFA" ] )
 
     if args.plc_direct:
         tf.optimize_s7db(True)
-        default_printers.update( [ "EPICS-DB", "IFA", tia_map ] )
+        default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "IFA", tia_map ] )
 
     if beckhoff:
-        default_printers.update( [ "EPICS-DB", "IFA" ] )
+        default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "IFA" ] )
         ifdef_params["PLC_TYPE"] = "BECKHOFF"
 
     if opc:
@@ -1444,10 +1444,10 @@ def main(argv):
         ifdef_params["PLC_TYPE"] = "OPC"
 
     if eee:
-        default_printers.update( [ "EPICS-DB", "AUTOSAVE-ST-CMD", "AUTOSAVE" ] )
+        default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "AUTOSAVE-ST-CMD", "AUTOSAVE" ] )
 
     if e3:
-        default_printers.update( [ "EPICS-DB", "IOCSH", ] )
+        default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "IOCSH", ] )
 
     if default_printers:
         if not default_printers <= set(tf.available_printers()):
