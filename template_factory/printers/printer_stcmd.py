@@ -10,7 +10,7 @@ __license__    = "GPLv3"
 
 
 from . import PRINTER
-from tf_ifdef import STATUS_BLOCK
+from tf_ifdef import STATUS_BLOCK, BASE_TYPE
 
 
 
@@ -290,6 +290,7 @@ doAfterIocInit("create_monitor_set('{modulename}{flavor}.req', 1, '')")
 class AUTOSAVE_ST_CMD(ST_CMD):
     def __init__(self, **keyword_parameters):
         super(AUTOSAVE_ST_CMD, self).__init__(**keyword_parameters)
+        self._has_params = False
 
 
     @staticmethod
@@ -307,12 +308,26 @@ class AUTOSAVE_ST_CMD(ST_CMD):
 
 
     #
+    # BODY
+    #
+    def _ifdef_body(self, if_def, output):
+        super(AUTOSAVE_ST_CMD, self)._ifdef_body(if_def, output)
+
+        if not self._has_params:
+            for src in if_def.interfaces():
+                if isinstance(src, BASE_TYPE) and src.is_parameter():
+                    self._has_params = True
+                    break
+
+
+    #
     # FOOTER
     #
     def footer(self, output):
         super(AUTOSAVE_ST_CMD, self).footer(output)
 
-        self._append(autosave_footer(self), output)
+        if self._has_params:
+            self._append(autosave_footer(self), output)
 
 
 
