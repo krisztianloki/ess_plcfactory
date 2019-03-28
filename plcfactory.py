@@ -409,31 +409,34 @@ def buildControlsList(device):
     return pool
 
 
-def getHeaderFooter(device, templateID):
+def getHeader(device, templateID):
     assert isinstance(templateID, str)
 
     templatePrinter = tf.get_printer(templateID)
     if templatePrinter is not None:
-        print("Using built-in template header/footer")
+        print("Using built-in template header")
         header = []
         templatePrinter.header(header, **ifdef_params)
-        footer = []
-        templatePrinter.footer(footer)
     else:
         header = openTemplate(device, HEADER_TAG, templateID)
-        footer = openTemplate(device, FOOTER_TAG, templateID)
 
     if not header:
         print("No header found.\n")
     else:
         print("Header read.\n")
 
-    if not footer:
-        print("No footer found.\n")
-    else:
-        print("Footer read.\n")
+    return (header, templatePrinter)
 
-    return (header, footer, templatePrinter)
+
+def getFooter(device, templateID_or_printer):
+    if isinstance(templateID_or_printer, str):
+        footer = openTemplate(device, FOOTER_TAG, templateID_or_printer)
+    else:
+        print("Using built-in template footer")
+        footer = []
+        templateID_or_printer.footer(footer)
+
+    return footer
 
 
 def processTemplateID(templateID, devices):
@@ -456,17 +459,14 @@ def processTemplateID(templateID, devices):
     # collect lines to be written at the end
     output = []
 
-    # process header/footer
-    (header, footer, templatePrinter) = getHeaderFooter(rootDevice, templateID)
+    # process header
+    (header, templatePrinter) = getHeader(rootDevice, templateID)
     # has to acquire filename _before_ processing the header
     # there are some special tags that are only valid in the header
     outputFile = os.path.join(OUTPUT_DIR, createFilename(header, rootDevice, templateID))
 
     if header:
         header = pt.process(rootDevice, header)
-
-    if footer:
-        footer = pt.process(rootDevice, footer)
 
     print("Processing entire tree of controls-relationships:\n")
 
@@ -530,6 +530,10 @@ def processTemplateID(templateID, devices):
 
     if not def_seen:
         glob.ccdb.computeHash(hashobj)
+
+    footer = getFooter(rootDevice, templatePrinter if templatePrinter is not None else templateID)
+    if footer:
+        footer = pt.process(rootDevice, footer)
 
     # process #HASH keyword in header and footer
     header      = processHash(header)
