@@ -1594,8 +1594,14 @@ class BITS(object):
 
         BITS.end()
 
+        if block.optimize() and block._block_offset % 2:
+            # There is space for 8 bits only
+            self._max_num_bits = 8
+            self._var_type     = "UINT8"
+        else:
+            self._max_num_bits = 16
+            self._var_type     = "UINT16"
         self._num_bits     = 0
-        self._var_type     = "UINT16"
         self._started      = True
         self._block        = block
         self._offset       = -1
@@ -1609,22 +1615,21 @@ class BITS(object):
         if BITS.active_bits is None:
             return BITS(block)
 
-        if not block.optimize():
-            max_num_bits = 16
-        else:
-            if BITS.active_bits._block.length() % 2:
-                max_num_bits = 8
-            else:
-                max_num_bits = 16
+        active_bits = BITS.active_bits
 
-        if BITS.active_bits._num_bits >= max_num_bits:
-            excess_bits = BITS.active_bits._num_bits - max_num_bits
+        if not block == active_bits._block:
+            raise IfDefInternalError("Mixing BITS between BLOCKS")
+
+        # Check if we ran out of space because of skip_digitals()
+        if active_bits._num_bits >= active_bits._max_num_bits:
+            excess_bits = active_bits._num_bits - active_bits._max_num_bits
             bits = BITS(block)
             if excess_bits > 0:
+                # Carry over skipped digitals
                 bits.add_bit(excess_bits)
             return bits
 
-        return BITS.active_bits
+        return active_bits
 
 
     def add_bit(self, num):
@@ -1669,6 +1674,7 @@ class BITS(object):
         if self._started == False:
             return
 
+        # Optimize if bits fit into one byte and next var is a byte
         if self._block.optimize() and self._num_bits <= 8 and next_var_width is not None and next_var_width == 1:
             self._var_type = "UINT8"
 
