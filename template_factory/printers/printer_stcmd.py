@@ -71,10 +71,6 @@ class ST_CMD(eee, PRINTER):
     def header(self, output, **keyword_parameters):
         super(ST_CMD, self).header(output, **keyword_parameters).add_filename_header(output, inst_slot = self.snippet(), template = False, extension = self._extension())
         self._opc = True if 'OPC' in keyword_parameters.get('PLC_TYPE', '') else False
-        if self._opc:
-            self.footer = self._opc_footer
-        else:
-            self.footer = self._s7_footer
 
         st_cmd_header = """
 # @field IPADDR
@@ -113,6 +109,15 @@ class ST_CMD(eee, PRINTER):
             self._append("#COUNTER {status_cnt} = [PLCF# {status_cnt} + {db_length}]".format(status_cnt = STATUS_BLOCK.counter_keyword(),
                                                                                              db_length  = status.length()), output)
 
+
+    #
+    # FOOTER
+    #
+    def footer(self, output):
+        if self._opc:
+            self._opc_footer(output)
+        else:
+            self._s7_footer(output)
 
     #
     # S7 + MODBUS FOOTER
