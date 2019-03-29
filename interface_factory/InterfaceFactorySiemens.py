@@ -32,8 +32,10 @@ ifa = None
 ExternalSourceFile = []
 
 _NoExternal      = "ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False';"
+_ExternalRead    = "ExternalAccessible := 'True'; ExternalVisible := 'False'; ExternalWritable := 'False';"
 #_NoExternal      = "S7_HMI_Accessible := 'False'; S7_HMI_Visible := 'False';"
 NoExternal       = "{ " + _NoExternal + " }"
+ExternalRead     = "{ " + _ExternalRead + " }"
 ActualDeviceName = ""
 ActualDeviceType = ""
 EPICSTOPLCLENGTH = ""
@@ -2769,16 +2771,16 @@ def ProcessIFADevTypes(OutputDir, TIAVersion, CommsTest):
 						EPICS_PLC_TesterDB.append("      \"" + ActualDeviceName+"_" + ActVariablePLCName + "\" " + NoExternal + " : "+ ActVariableType+";   //EPICS Status variable: "+ActVariableEPICSName)
 						EPICS_device_calls_test_body.append("                                 "+TIAVariablePLCName+" := \"EPICS_PLC_Tester\".#\""+ ActualDeviceName+"_" + ActVariablePLCName + "\",")
 					else:
-						DevTypeVAR_INPUT.append("      \"" + ActVariablePLCName + "\" " + NoExternal + " : "+ ActVariableType+";   //EPICS Status variable: "+ActVariableEPICSName)
+						DevTypeVAR_INPUT.append("      \"" + ActVariablePLCName + "\" " + ExternalRead + " : "+ ActVariableType+";   //EPICS Status variable: "+ActVariableEPICSName)
 						EPICS_PLC_TesterDB.append("      \"" + ActualDeviceName+"_" + ActVariablePLCName + "\" " + NoExternal + " : "+ ActVariableType+";   //EPICS Status variable: "+ActVariableEPICSName)
 						EPICS_device_calls_test_body.append("                                 "+TIAVariablePLCName+" := \"EPICS_PLC_Tester\".#\""+ ActualDeviceName+"_" + ActVariablePLCName + "\",")
 
 				if item.is_command():
-					DevTypeVAR_OUTPUT.append("      \"" + ActVariablePLCName + "\" " + NoExternal + " : "+ ActVariableType+";   //EPICS Command variable: "+ActVariableEPICSName)
+					DevTypeVAR_OUTPUT.append("      \"" + ActVariablePLCName + "\" " + ExternalRead + " : "+ ActVariableType+";   //EPICS Command variable: "+ActVariableEPICSName)
 					EPICS_PLC_TesterDB.append("      \"" + ActualDeviceName+"_" + ActVariablePLCName + "\" " + NoExternal + " : "+ ActVariableType+";   //EPICS Command variable: "+ActVariableEPICSName)
 					EPICS_device_calls_test_body.append("                                 "+TIAVariablePLCName+" => \"EPICS_PLC_Tester\".#\""+ ActualDeviceName+"_" + ActVariablePLCName + "\",")
 				if item.is_parameter():
-					DevTypeVAR_OUTPUT.append("      \"" + ActVariablePLCName + "\" " + NoExternal + " : "+ ActVariableType+";   //EPICS Parameter variable: "+ActVariableEPICSName)
+					DevTypeVAR_OUTPUT.append("      \"" + ActVariablePLCName + "\" " + ExternalRead + " : "+ ActVariableType+";   //EPICS Parameter variable: "+ActVariableEPICSName)
 					EPICS_PLC_TesterDB.append("      \"" + ActualDeviceName+"_" + ActVariablePLCName + "\" " + NoExternal + " : "+ ActVariableType+";   //EPICS Parameter variable: "+ActVariableEPICSName)
 					EPICS_device_calls_test_body.append("                                 "+TIAVariablePLCName+" => \"EPICS_PLC_Tester\".#\""+ ActualDeviceName+"_" + ActVariablePLCName + "\",")
 
