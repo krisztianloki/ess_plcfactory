@@ -67,9 +67,9 @@ For further information, see the files in [doc](doc/).
     *   \[OPTIONAL\]
     *   Used to select the correct template if more than one template was found
     *   `--tag=mps` will match
-        *    template filenames like `*TEMPLATE_mps_<TEMPLATE-NAME>.txt`
-        *    Interface Definition filenames like `*_mps.def`
-        *    Interface Definition URLs with name `EPI_mps`
+        *    template filenames like `*TEMPLATE__mps_<TEMPLATE-NAME>.txt`
+        *    Interface Definition filenames like `*__mps.def`
+        *    Interface Definition URLs with name `EPI__mps`
 
 ## EPICS-PLC integration
 

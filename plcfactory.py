@@ -314,7 +314,7 @@ def getIfDefFromURL(device, artifact, epi):
 #
 def getIfDef(device):
     if device_tag:
-        ifdef_tag = "".join([ "_", device_tag, IFDEF_TAG ])
+        ifdef_tag = "".join([ "__", device_tag, IFDEF_TAG ])
     else:
         ifdef_tag = IFDEF_TAG
 
@@ -328,7 +328,7 @@ def getIfDef(device):
     else:
         # No 'file' artifact found, let's see if there is a URL
         if device_tag:
-            epi = "_".join([ "EPI", device_tag ])
+            epi = "__".join([ "EPI", device_tag ])
         else:
             epi = "EPI"
 
