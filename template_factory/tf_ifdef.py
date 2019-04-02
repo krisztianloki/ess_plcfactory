@@ -1240,6 +1240,24 @@ class BASE_TYPE(SOURCE):
     PV_ZNAM        = PV_PREFIX + "ZNAM"
     PV_DRVL        = PV_PREFIX + "DRVL"
     PV_DRVH        = PV_PREFIX + "DRVH"
+
+    PV_ZRST        = PV_PREFIX + "ZRST"
+    PV_ONST        = PV_PREFIX + "ONST"
+    PV_TWST        = PV_PREFIX + "TWST"
+    PV_THST        = PV_PREFIX + "THST"
+    PV_FRST        = PV_PREFIX + "FRST"
+    PV_FVST        = PV_PREFIX + "FVST"
+    PV_SXST        = PV_PREFIX + "SXST"
+    PV_SVST        = PV_PREFIX + "SVST"
+    PV_EIST        = PV_PREFIX + "EIST"
+    PV_NIST        = PV_PREFIX + "NIST"
+    PV_TEST        = PV_PREFIX + "TEST"
+    PV_ELST        = PV_PREFIX + "ELST"
+    PV_TVST        = PV_PREFIX + "TVST"
+    PV_TTST        = PV_PREFIX + "TTST"
+    PV_FTST        = PV_PREFIX + "FTST"
+    PV_FFST        = PV_PREFIX + "FFST"
+
     ASYN_TIMEOUT   = "100"
     templates      = dict()
     pv_names       = set()
@@ -1250,7 +1268,24 @@ class BASE_TYPE(SOURCE):
                        PV_DESC  : (40, True),
                        PV_EGU   : (15, True),
                        PV_ONAM  : (25, True),
-                       PV_ZNAM  : (25, True)
+                       PV_ZNAM  : (25, True),
+
+                       PV_ZRST  : (25, True),
+                       PV_ONST  : (25, True),
+                       PV_TWST  : (25, True),
+                       PV_THST  : (25, True),
+                       PV_FRST  : (25, True),
+                       PV_FVST  : (25, True),
+                       PV_SXST  : (25, True),
+                       PV_SVST  : (25, True),
+                       PV_EIST  : (25, True),
+                       PV_NIST  : (25, True),
+                       PV_TEST  : (25, True),
+                       PV_ELST  : (25, True),
+                       PV_TVST  : (25, True),
+                       PV_TTST  : (25, True),
+                       PV_FTST  : (25, True),
+                       PV_FFST  : (25, True)
                     }
 
 
