@@ -1259,11 +1259,14 @@ def main(argv):
         if tia_version is not None and isinstance(tia_version, str):
             tia13 = set({"13", "v13", "tia13", "tiav13"})
             tia14 = set({"14", "v14", "tia14", "tiav14"})
+            tia15 = set({"15", "v15", "tia15", "tiav15"})
 
             if tia_version in tia13:
                 tia_version = 13
             elif tia_version in tia14:
                 tia_version = 14
+            elif tia_version in tia15:
+                tia_version = 15
             else:
                 raise PLCFArgumentError(1, "Invalid TIA version: " + tia_version)
 

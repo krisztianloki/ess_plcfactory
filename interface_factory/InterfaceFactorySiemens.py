@@ -1625,9 +1625,9 @@ def WriteDiagnostics(TIAVersion):
 	ExternalSourceFile.append("{ S7_Optimized_Access := 'TRUE' }");
 	ExternalSourceFile.append("VERSION : 0.1");
 	ExternalSourceFile.append("   VAR_INPUT ");
-	if (TIAVersion == "13"):
+	if TIAVersion == 13:
 		ExternalSourceFile.append("      laddr : HW_IO;   // Hardware identifier")
-	if (TIAVersion == "14"):
+	else:
 		ExternalSourceFile.append("      laddr : HW_DEVICE;   // Hardware identifier")
 	ExternalSourceFile.append("      eventClass : Byte;   // Event class");
 	ExternalSourceFile.append("      faultId : Byte;   // Fault identifier");
@@ -2139,9 +2139,9 @@ def WriteStandardPLCCode(TIAVersion):
 	ExternalSourceFile.append("      AlwaysFalse " + NoExternal + " : Bool;   // Bit always FALSE")
 	ExternalSourceFile.append("      FirstScan " + NoExternal + " : Bool;   // Bit TRUE for only the first scan of the PLC")
 	ExternalSourceFile.append("      StartupDelayDn " + NoExternal + " : Bool;   // Bit initially FALSE, turning TRUE after preset delay")
-	if (TIAVersion == "13"):
+	if TIAVersion == 13:
 		ExternalSourceFile.append("      StartupDelayTmr {OriginalPartName := 'IEC_TIMER'; LibVersion := '1.0'} : TON_TIME;")
-	if (TIAVersion == "14"):
+	else:
 		ExternalSourceFile.append("      StartupDelayTmr { "+ _NoExternal +" OriginalPartName := 'IEC_TIMER'; LibVersion := '1.0'} : IEC_TIMER;")
 	ExternalSourceFile.append("      Square_100ms " + NoExternal + " : Bool;   // Bit FALSE/TRUE based on square wave (100 ms frequency)")
 	ExternalSourceFile.append("      Square_100msONS " + NoExternal + " : Bool;")
@@ -2198,11 +2198,11 @@ def WriteStandardPLCCode(TIAVersion):
 	ExternalSourceFile.append("	#AlwaysFalse := #CPUSytemMemoryBits.%X3;")
 	ExternalSourceFile.append("	")
 	ExternalSourceFile.append("	//Bit initially FALSE, turning TRUE after preset delay")
-	if (TIAVersion == "13"):
+	if TIAVersion == 13:
 		ExternalSourceFile.append("	#StartupDelayTmr(IN := #AlwaysTrue,")
 		ExternalSourceFile.append("	                 PT := #StartupDelaySP,")
 		ExternalSourceFile.append("	                 Q => #StartupDelayDn);")
-	if (TIAVersion == "14"):
+	else:
 		ExternalSourceFile.append("	#StartupDelayTmr.TON(IN := #AlwaysTrue,")
 		ExternalSourceFile.append("	                     PT := #StartupDelaySP,")
 		ExternalSourceFile.append("	                     Q => #StartupDelayDn);")
@@ -2508,7 +2508,7 @@ def WriteCommsEpicsAndDbs():
 ReservedChars = { ':', '/', '\\', '?', '*', '[', ']', '.', '-', '+', '=', '{', '}' }
 
 def QuoteVariableName(TIAVersion, variableName):
-    if TIAVersion == "14" or not set(variableName).isdisjoint(ReservedChars):
+    if TIAVersion >= 14 or not set(variableName).isdisjoint(ReservedChars):
         return '"{}"'.format(variableName)
 
     return variableName
@@ -2912,7 +2912,9 @@ def produce(OutputDir, _ifa, **kwargs):
 	ExternalSourceFile = []
 
 	SclPath    = kwargs['SclPath']
-	TIAVersion = str(kwargs.get('TIAVersion', 14))
+	TIAVersion = kwargs.get('TIAVersion', 14)
+	if TIAVersion not in [13, 14, 15]:
+		raise IFA.FatalException("Unsupported TIA-Portal version {}".format(TIAVersion))
 	onlydiag   = kwargs.get('onlydiag', False)
 	nodiag     = kwargs.get('nodiag', False)
 	Direct     = kwargs.get('direct', False)
