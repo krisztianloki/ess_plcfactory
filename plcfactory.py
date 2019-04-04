@@ -1533,6 +1533,11 @@ def main(argv):
 
     root_device = processDevice(device, list(templateIDs))
 
+    if tia_version or args.plc_only_diag or beckhoff:
+        from interface_factory import produce as ifa_produce
+
+        output_files.update(ifa_produce(OUTPUT_DIR, output_files["IFA"], SclPath = output_files.get(tia_map, ""), TIAVersion = tia_version, nodiag = args.plc_no_diag, onlydiag = args.plc_only_diag, commstest = args.plc_test, direct = args.plc_direct, verify = args.verify))
+
     # Verify created files: they should be the same as the ones from the last run
     if args.verify:
         verify_output(args.verify)
@@ -1545,11 +1550,6 @@ def main(argv):
 
     # record the arguments used to run this instance
     record_args(root_device)
-
-    if tia_version or args.plc_only_diag or beckhoff:
-        from interface_factory import produce as ifa_produce
-
-        output_files.update(ifa_produce(OUTPUT_DIR, output_files["IFA"], SclPath = output_files.get(tia_map, ""), TIAVersion = tia_version, nodiag = args.plc_no_diag, onlydiag = args.plc_only_diag, commstest = args.plc_test, direct = args.plc_direct))
 
     if eee:
         create_eee(glob.modulename, glob.snippet)

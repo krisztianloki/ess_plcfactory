@@ -28,11 +28,12 @@ from . import IFA
 
 # PLC Factory modules
 import helpers
+import plcf_glob as glob
 
 #Global variables
-timestamp = '{:%Y%m%d%H%M%S}'.format(datetime.datetime.now())
-
-ifa = None
+ifa     = None
+verify  = False
+basedir = None
 
 FC_EPICS_DEVICE_CALLS_HEADER = []
 FC_EPICS_DEVICE_CALLS_BODY = []
@@ -104,7 +105,7 @@ def Write_EPICS_device_calls():
 	global FC_EPICS_DEVICE_CALLS_BODY
 	global FC_EPICS_DEVICE_CALLS_FOOTER
 
-	externalPath = os.path.join(OutputDirectory,"BECKHOFF","EPICS","EPICS calls", "FC_EPICS_DEVICE_CALLS.TcPOU")
+	externalPath = os.path.join(OutputDirectory,basedir,"EPICS","EPICS calls", "FC_EPICS_DEVICE_CALLS.TcPOU")
 	with open(externalPath, 'wb') as externalScl:
 		for line in FC_EPICS_DEVICE_CALLS_HEADER:
 			externalScl.write((line + '\r\n').encode())
@@ -137,7 +138,7 @@ def Write_EPICS_GVL():
 	EPICS_GVL.append("</TcPlcObject>");
 	EPICS_GVL.append("");
 
-	externalPath = os.path.join(OutputDirectory,"BECKHOFF","EPICS","ESS standard PLC code", "EPICS_GVL.TcGVL")
+	externalPath = os.path.join(OutputDirectory,basedir,"EPICS","ESS standard PLC code", "EPICS_GVL.TcGVL")
 	with open(externalPath, 'wb') as externalScl:
 		for line in EPICS_GVL:
 			externalScl.write((line + '\r\n').encode())
@@ -172,7 +173,7 @@ def Write_Structs_and_Unions():
 	ST_2_UINT.append("</DUT>");
 	ST_2_UINT.append("</TcPlcObject>	");
 
-	externalPath = os.path.join(OutputDirectory,"BECKHOFF","EPICS","ESS standard PLC code", "ST_2_UINT.TcDUT")
+	externalPath = os.path.join(OutputDirectory,basedir,"EPICS","ESS standard PLC code", "ST_2_UINT.TcDUT")
 	with open(externalPath, 'wb') as externalScl:
 		for line in ST_2_UINT:
 			externalScl.write((line + '\r\n').encode())
@@ -196,7 +197,7 @@ def Write_Structs_and_Unions():
 	U_DINT_UINT.append("</DUT>");
 	U_DINT_UINT.append("</TcPlcObject>		");
 
-	externalPath = os.path.join(OutputDirectory,"BECKHOFF","EPICS","ESS standard PLC code", "U_DINT_UINTs.TcDUT")
+	externalPath = os.path.join(OutputDirectory,basedir,"EPICS","ESS standard PLC code", "U_DINT_UINTs.TcDUT")
 	with open(externalPath, 'wb') as externalScl:
 		for line in U_DINT_UINT:
 			externalScl.write((line + '\r\n').encode())
@@ -221,7 +222,7 @@ def Write_Structs_and_Unions():
 	U_REAL_UINT.append("</TcPlcObject>");
 	U_REAL_UINT.append("");
 
-	externalPath = os.path.join(OutputDirectory,"BECKHOFF","EPICS","ESS standard PLC code", "U_REAL_UINTs.TcDUT")
+	externalPath = os.path.join(OutputDirectory,basedir,"EPICS","ESS standard PLC code", "U_REAL_UINTs.TcDUT")
 	with open(externalPath, 'wb') as externalScl:
 		for line in U_REAL_UINT:
 			externalScl.write((line + '\r\n').encode())
@@ -245,7 +246,7 @@ def Write_Structs_and_Unions():
 	U_TIME_UINT.append("</TcPlcObject>");
 
 
-	externalPath = os.path.join(OutputDirectory,"BECKHOFF","EPICS","ESS standard PLC code", "U_TIME_UINTs.TcDUT")
+	externalPath = os.path.join(OutputDirectory,basedir,"EPICS","ESS standard PLC code", "U_TIME_UINTs.TcDUT")
 	with open(externalPath, 'wb') as externalScl:
 		for line in U_TIME_UINT:
 			externalScl.write((line + '\r\n').encode())
@@ -522,7 +523,7 @@ def Write_FB_EPICS_S7_Comm():
 	FB_EPICS_S7_Comm.append("</POU>");
 	FB_EPICS_S7_Comm.append("</TcPlcObject>");
 
-	externalPath = os.path.join(OutputDirectory,"BECKHOFF","EPICS","ESS standard PLC code", "FB_EPICS_S7_Comm.TcPOU")
+	externalPath = os.path.join(OutputDirectory,basedir,"EPICS","ESS standard PLC code", "FB_EPICS_S7_Comm.TcPOU")
 	with open(externalPath, 'wb') as externalScl:
 		for line in FB_EPICS_S7_Comm:
 			externalScl.write((line + '\r\n').encode())
@@ -593,7 +594,7 @@ def Write_FB_Pulse():
 	FB_Pulse.append("</POU>");
 	FB_Pulse.append("</TcPlcObject>");
 
-	externalPath = os.path.join(OutputDirectory,"BECKHOFF","EPICS","ESS standard PLC code", "FB_Pulse.TcPOU")
+	externalPath = os.path.join(OutputDirectory,basedir,"EPICS","ESS standard PLC code", "FB_Pulse.TcPOU")
 	with open(externalPath, 'wb') as externalScl:
 		for line in FB_Pulse:
 			externalScl.write((line + '\r\n').encode())
@@ -614,7 +615,7 @@ def Write_DevType():
 
 	global MaxStatusReg
 	global MaxCommandReg
-	externalPath = os.path.join(OutputDirectory,"BECKHOFF","EPICS","EPICS types", "FB_DEVTYPE_"+ActualDeviceType+".TcPOU")
+	externalPath = os.path.join(OutputDirectory,basedir,"EPICS","EPICS types", "FB_DEVTYPE_"+ActualDeviceType+".TcPOU")
 	with open(externalPath, 'wb') as externalScl:
 		#DevTypeHeader
 		for line in DevTypeHeader:
@@ -1355,6 +1356,8 @@ def produce(OutputDir, _ifa, **kwargs):
 	global TotalCommandReg
 	global start_time
 	global ifa
+	global verify
+	global basedir
 
 	print("""
 *******************************************
@@ -1366,14 +1369,19 @@ def produce(OutputDir, _ifa, **kwargs):
 
 	start_time      = time.time()
 	OutputDirectory = OutputDir
+	verify     = kwargs.get('verify', False)
 
 	generated_files = dict()
 
 	ifa = _ifa
 
-	helpers.makedirs(os.path.join(OutputDirectory, "BECKHOFF", "EPICS", "EPICS types"))
-	helpers.makedirs(os.path.join(OutputDirectory, "BECKHOFF", "EPICS", "EPICS calls"))
-	helpers.makedirs(os.path.join(OutputDirectory, "BECKHOFF", "EPICS", "ESS standard PLC code"))
+	if verify:
+		basedir = "BECKHOFF_{}".format(glob.timestamp)
+	else:
+		basedir = "BECKHOFF"
+	helpers.makedirs(os.path.join(OutputDirectory, basedir, "EPICS", "EPICS types"))
+	helpers.makedirs(os.path.join(OutputDirectory, basedir, "EPICS", "EPICS calls"))
+	helpers.makedirs(os.path.join(OutputDirectory, basedir, "EPICS", "ESS standard PLC code"))
 
 	#Process devices/device types
 	ProcessIFADevTypes(OutputDir)
@@ -1396,7 +1404,21 @@ def produce(OutputDir, _ifa, **kwargs):
 	#Generate EPICS_GVL.TcGVL
 	Write_EPICS_GVL()
 
-	generated_files['BECKHOFF'] = shutil.make_archive(os.path.join(OutputDirectory,"PLCFactory_external_source_Beckhoff"), 'zip', os.path.join(OutputDirectory,"BECKHOFF"))
+	if verify:
+		i = 0
+		def add_to_generated(directory, i, generated):
+			for f in os.listdir(directory):
+				f = os.path.join(directory, f)
+				if not os.path.isfile(f):
+					i = add_to_generated(f, i, generated)
+					continue
+				generated_files['BECKHOFF_{}'.format(i)] = f
+				i += 1
+			return i
+
+		add_to_generated(os.path.join(OutputDirectory, basedir), 0, generated_files)
+	else:
+		generated_files['BECKHOFF'] = shutil.make_archive(os.path.join(OutputDirectory, "PLCFactory_external_source_Beckhoff"), 'zip', os.path.join(OutputDirectory, basedir))
 
 	return generated_files
 
