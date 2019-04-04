@@ -672,6 +672,7 @@ class IF_DEF(object):
         self._filename              = keyword_params.get('FILENAME')
         self._inst_slot             = "[PLCF#INSTALLATION_SLOT]"
         self._datablock_name        = IF_DEF.DEFAULT_DATABLOCK_NAME
+        self._readonly              = keyword_params.get("PLC_READONLY", False)
 
         self._features              = [ "STABLE-HASH", "OPC", "OPC-UA" ]
 
@@ -944,6 +945,8 @@ class IF_DEF(object):
 
     @ifdef_interface
     def define_command_block(self):
+        if self._readonly:
+            raise IfDefException("Cannot declare command block when in read-only mode")
         if self._CMD is not None:
             raise IfDefSyntaxError("Block redefinition is not possible!")
 
@@ -953,6 +956,8 @@ class IF_DEF(object):
 
     @ifdef_interface
     def define_parameter_block(self):
+        if self._readonly:
+            raise IfDefException("Cannot declare parameter block when in read-only mode")
         if self._PARAM is not None:
             raise IfDefSyntaxError("Block redefinition is not possible!")
 

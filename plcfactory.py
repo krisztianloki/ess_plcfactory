@@ -353,7 +353,7 @@ def getIfDef(device):
         raise PLCFactoryException("Different Interface Definitions for the same device type: {devtype}!".format(devtype = deviceType))
 
     with open(filename) as f:
-        ifdef = tf.processLines(f, FILENAME = filename)
+        ifdef = tf.processLines(f, FILENAME = filename, **ifdef_params)
 
     if ifdef is not None:
         ifdefs[deviceType] = (filename, ifdef)
@@ -1198,6 +1198,13 @@ def main(argv):
                                action   = 'store_true',
                                required = False)
 
+        plc_group.add_argument(
+                               '--plc-readonly',
+                               dest     = "plc_readonly",
+                               help     = 'do not generate EPICS --> PLC communication code',
+                               action   = 'store_true',
+                               default  = False)
+
         parser.add_argument(
                             '--list-templates',
                             dest    = "list_templates",
@@ -1441,6 +1448,8 @@ def main(argv):
         tf.optimize_s7db(True)
         default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "IFA", tia_map ] )
 
+    ifdef_params["PLC_READONLY"] = args.plc_readonly
+
     if beckhoff:
         default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "IFA" ] )
         ifdef_params["PLC_TYPE"] = "BECKHOFF"
@@ -1539,7 +1548,7 @@ def main(argv):
     if tia_version or args.plc_only_diag or beckhoff:
         from interface_factory import produce as ifa_produce
 
-        output_files.update(ifa_produce(OUTPUT_DIR, output_files["IFA"], SclPath = output_files.get(tia_map, ""), TIAVersion = tia_version, nodiag = args.plc_no_diag, onlydiag = args.plc_only_diag, commstest = args.plc_test, direct = args.plc_direct, verify = args.verify))
+        output_files.update(ifa_produce(OUTPUT_DIR, output_files["IFA"], SclPath = output_files.get(tia_map, ""), TIAVersion = tia_version, nodiag = args.plc_no_diag, onlydiag = args.plc_only_diag, commstest = args.plc_test, direct = args.plc_direct, verify = args.verify, readonly = args.plc_readonly))
 
     # Verify created files: they should be the same as the ones from the last run
     if args.verify:
