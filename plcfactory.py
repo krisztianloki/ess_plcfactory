@@ -1463,13 +1463,16 @@ def main(argv):
         templateIDs = set(args.template)
 
     # Make sure that OPTIMIZE_S7DB is turned on if TIA-MAP-DIRECT is requested
-    if "TIA-MAP-DIRECT" in templateIDs:
+    if not args.plc_direct and "TIA-MAP-DIRECT" in templateIDs:
         tia_map = "TIA-MAP-DIRECT"
         tf.optimize_s7db(True)
         templateIDs.add("IFA")
         if args.plc_no_diag == False and not args.plc_direct:
             args.plc_only_diag =  True
             tia_version        =  14
+
+    if "TIA-MAP-DIRECT" in templateIDs and "TIA-MAP-INTERFACE" in templateIDs:
+        raise PLCFArgumentError("Cannot mix TIA-MAP-DIRECT with TIA-MAP-INTERFACE")
 
     if (args.plc_only_diag or args.plc_no_diag == False) and tia_version is None:
         raise PLCFArgumentError('--plc-only-diag requires --plc-direct or --plc-interface')
