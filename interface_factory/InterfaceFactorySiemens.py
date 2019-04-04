@@ -88,9 +88,6 @@ DEV_STATE_WAS_DISABLED = 14
 LAST_DEVICE = -1
 
 
-Direct = False
-
-
 def CloseLastVariable():
 	global DevTypeBODY_CODE
 	global EndString
@@ -607,7 +604,6 @@ def WriteDeviceInstances():
 
 	global DeviceInstance
 	global ExternalSourceFile
-	global Direct
 
 	ExternalSourceFile.extend(DeviceInstance)
 
@@ -2553,8 +2549,6 @@ def ProcessIFADevTypes(OutputDir, TIAVersion, CommsTest):
 	global EndString2
 	global IsDouble
 
-	global Direct
-
 	StartingRegister = -1
 
 	ActVariablePLCName = ""
@@ -2577,11 +2571,6 @@ def ProcessIFADevTypes(OutputDir, TIAVersion, CommsTest):
 	InArrayName = None
 	InArrayNum  = None
 
-	if Direct:
-		print()
-		print("***Note***: PLCFactory runs in direct mode. PLC type blocks will not be generated!")
-		print()
-
 
 	for device in ifa.Devices:
 		ProcessedDeviceNum = ProcessedDeviceNum + 1
@@ -2600,22 +2589,15 @@ def ProcessIFADevTypes(OutputDir, TIAVersion, CommsTest):
 		print("    ", "-" * len(Text), sep='')
 
 		#Device Instance
-		if not Direct:
-			DeviceInstance.append("")
-			DeviceInstance.append("DATA_BLOCK \"DEV_" +ActualDeviceName+ "_iDB\"")
-			DeviceInstance.append("{ S7_Optimized_Access := 'TRUE' }")
-			DeviceInstance.append("VERSION : 1.0")
-			DeviceInstance.append("NON_RETAIN")
-			DeviceInstance.append("\"DEVTYPE_"+ActualDeviceType+"\"")
-			DeviceInstance.append("BEGIN")
-			DeviceInstance.append("END_DATA_BLOCK")
-			DeviceInstance.append("")
-		else:
-			DeviceInstance.append("")
-			DeviceInstance.append("DATA_BLOCK " +ActualDataBlock)
-			DeviceInstance.append("{ S7_Optimized_Access := 'TRUE' }")
-			DeviceInstance.append("VERSION : 1.0")
-			DeviceInstance.append("NON_RETAIN")
+		DeviceInstance.append("")
+		DeviceInstance.append("DATA_BLOCK \"DEV_" +ActualDeviceName+ "_iDB\"")
+		DeviceInstance.append("{ S7_Optimized_Access := 'TRUE' }")
+		DeviceInstance.append("VERSION : 1.0")
+		DeviceInstance.append("NON_RETAIN")
+		DeviceInstance.append("\"DEVTYPE_"+ActualDeviceType+"\"")
+		DeviceInstance.append("BEGIN")
+		DeviceInstance.append("END_DATA_BLOCK")
+		DeviceInstance.append("")
 
 		EPICS_device_calls_header.append("      \""+ActualDeviceName+"\" : Bool;   // HASH codes are OK")
 		EPICS_device_calls_test_header.append("      \""+ActualDeviceName+"\" : Bool;   // HASH codes are OK")
@@ -2647,74 +2629,73 @@ def ProcessIFADevTypes(OutputDir, TIAVersion, CommsTest):
 
 		#Check if DeviceType is already generated
 		if ActualDeviceType not in DeviceTypeList:
-			if not Direct:
-				MaxStatusReg = 0;
-				MaxCommandReg = 0;
+			MaxStatusReg = 0;
+			MaxCommandReg = 0;
 
-				NewDeviceType = True
-				DeviceTypeList.append(ActualDeviceType)
-				print("    ->  New device type found. [", ActualDeviceType, "] Creating source code...", sep='')
-				DevTypeHeader.append("FUNCTION_BLOCK \"" + "DEVTYPE_" + ActualDeviceType+ "\"")
-				DevTypeHeader.append("{ S7_Optimized_Access := 'TRUE' }")
-				DevTypeHeader.append("VERSION : 1.0")
+			NewDeviceType = True
+			DeviceTypeList.append(ActualDeviceType)
+			print("    ->  New device type found. [", ActualDeviceType, "] Creating source code...", sep='')
+			DevTypeHeader.append("FUNCTION_BLOCK \"" + "DEVTYPE_" + ActualDeviceType+ "\"")
+			DevTypeHeader.append("{ S7_Optimized_Access := 'TRUE' }")
+			DevTypeHeader.append("VERSION : 1.0")
 
-				DevTypeDB_SPEC.append("   Var DB_SPECIFIC")
-				DevTypeDB_SPEC.append("      MyWord " + NoExternal + " : Word;")
-				DevTypeDB_SPEC.append("      MyBytesinWord " + NoExternal + " AT MyWord : Array[0..1] of Byte;")
-				DevTypeDB_SPEC.append("      MyBoolsinWord " + NoExternal + " AT MyWord : Array[0..15] of Bool;")
-				DevTypeDB_SPEC.append("      MyDInt " + NoExternal + " : DInt;")
-				DevTypeDB_SPEC.append("      MyWordsinDint " + NoExternal + " AT MyDInt : Array[0..1] of Word;")
-				DevTypeDB_SPEC.append("      MyReal " + NoExternal + " : Real;")
-				DevTypeDB_SPEC.append("      MyWordsinReal " + NoExternal + " AT MyReal : Array[0..1] of Word;")
-				DevTypeDB_SPEC.append("      MyInt " + NoExternal + " : Int;")
-				DevTypeDB_SPEC.append("      MyWordinInt " + NoExternal + " AT MyInt : Word;")
-				DevTypeDB_SPEC.append("      MyDWord " + NoExternal + " : DWord;")
-				DevTypeDB_SPEC.append("      MyWordsinDWord " + NoExternal + " AT MyDWord : Array[0..1] of Word;")
-				DevTypeDB_SPEC.append("      MyTime " + NoExternal + " : Time;")
-				DevTypeDB_SPEC.append("      MyWordsinTime " + NoExternal + " AT MyTime : Array[0..1] of Word;")
-				DevTypeDB_SPEC.append("      MyString " + NoExternal + " : String[40];")
-				DevTypeDB_SPEC.append("      MyWordsinString " + NoExternal + " AT MyString : Array[0..20] of Word;")
-				DevTypeDB_SPEC.append("   END_VAR")
+			DevTypeDB_SPEC.append("   Var DB_SPECIFIC")
+			DevTypeDB_SPEC.append("      MyWord " + NoExternal + " : Word;")
+			DevTypeDB_SPEC.append("      MyBytesinWord " + NoExternal + " AT MyWord : Array[0..1] of Byte;")
+			DevTypeDB_SPEC.append("      MyBoolsinWord " + NoExternal + " AT MyWord : Array[0..15] of Bool;")
+			DevTypeDB_SPEC.append("      MyDInt " + NoExternal + " : DInt;")
+			DevTypeDB_SPEC.append("      MyWordsinDint " + NoExternal + " AT MyDInt : Array[0..1] of Word;")
+			DevTypeDB_SPEC.append("      MyReal " + NoExternal + " : Real;")
+			DevTypeDB_SPEC.append("      MyWordsinReal " + NoExternal + " AT MyReal : Array[0..1] of Word;")
+			DevTypeDB_SPEC.append("      MyInt " + NoExternal + " : Int;")
+			DevTypeDB_SPEC.append("      MyWordinInt " + NoExternal + " AT MyInt : Word;")
+			DevTypeDB_SPEC.append("      MyDWord " + NoExternal + " : DWord;")
+			DevTypeDB_SPEC.append("      MyWordsinDWord " + NoExternal + " AT MyDWord : Array[0..1] of Word;")
+			DevTypeDB_SPEC.append("      MyTime " + NoExternal + " : Time;")
+			DevTypeDB_SPEC.append("      MyWordsinTime " + NoExternal + " AT MyTime : Array[0..1] of Word;")
+			DevTypeDB_SPEC.append("      MyString " + NoExternal + " : String[40];")
+			DevTypeDB_SPEC.append("      MyWordsinString " + NoExternal + " AT MyString : Array[0..20] of Word;")
+			DevTypeDB_SPEC.append("   END_VAR")
 
-				DevTypeVAR_TEMP.append("   VAR_TEMP")
-				DevTypeVAR_TEMP.append("      HashModbus : DInt;")
-				DevTypeVAR_TEMP.append("      HashIFA : DInt;")
-				DevTypeVAR_TEMP.append("      HashTIAMap : DInt;")
-				DevTypeVAR_TEMP.append("      i : Int;")
-				DevTypeVAR_TEMP.append("   END_VAR")
+			DevTypeVAR_TEMP.append("   VAR_TEMP")
+			DevTypeVAR_TEMP.append("      HashModbus : DInt;")
+			DevTypeVAR_TEMP.append("      HashIFA : DInt;")
+			DevTypeVAR_TEMP.append("      HashTIAMap : DInt;")
+			DevTypeVAR_TEMP.append("      i : Int;")
+			DevTypeVAR_TEMP.append("   END_VAR")
 
-				DevTypeBODY_HEADER.append("    //Author: Miklos Boros (miklos.boros@esss.se), Copyrigth 2017-2018 by European Spallation Source, Lund")
-				DevTypeBODY_HEADER.append("    //This block was generated by PLCFactory, please don't change it MANUALLY!")
-				if not verify:
-					DevTypeBODY_HEADER.append("    //Input File Name: " + os.path.basename(ifa.IfaPath))
-					DevTypeBODY_HEADER.append("    //Generated: "+glob.timestamp)
-				DevTypeBODY_HEADER.append("    //According to HASH: "+ifa.HASH)
-				DevTypeBODY_HEADER.append("    //Device type: "+ActualDeviceType)
-				DevTypeBODY_HEADER.append("    //Description: This function does the variable mapping for a device. All device-variable will be linked to an interface variable defined in this block.")
-				DevTypeBODY_HEADER.append("")
-				DevTypeBODY_HEADER.append("    //********************************************")
-				DevTypeBODY_HEADER.append("    //****************HASH check******************")
-				DevTypeBODY_HEADER.append("    //********************************************")
-				DevTypeBODY_HEADER.append("")
-				DevTypeBODY_HEADER.append("")
-				DevTypeBODY_HEADER.append("    #MyWordsinDint[0] := \"EPICSToPLC\".\"Word\"[0];")
-				DevTypeBODY_HEADER.append("    #MyWordsinDint[1] := \"EPICSToPLC\".\"Word\"[1];")
-				DevTypeBODY_HEADER.append("    #HashModbus := #MyDInt; //Hash from EPICS/ModbusTCP")
-				DevTypeBODY_HEADER.append("")
-				DevTypeBODY_HEADER.append("    #HashIFA := " + ifa.HASH + "; //Hash from Interface Factory as a constant")
-				DevTypeBODY_HEADER.append("")
-				DevTypeBODY_HEADER.append("    #MyWordsinDint[0] := \"PLCToEPICS\".\"Word\"[0];")
-				DevTypeBODY_HEADER.append("    #MyWordsinDint[1] := \"PLCToEPICS\".\"Word\"[1];")
-				DevTypeBODY_HEADER.append("    #HashTIAMap := #MyDInt; //Hash from PLCFactory TIA Map")
-				DevTypeBODY_HEADER.append("")
-				DevTypeBODY_HEADER.append("")
-				DevTypeBODY_HEADER.append("    IF ((#HashIFA = #HashModbus) AND (#HashModbus = #HashTIAMap)) THEN //Check CRCs")
-				DevTypeBODY_HEADER.append("        #DEVICE_PARAM_OK := TRUE;")
+			DevTypeBODY_HEADER.append("    //Author: Miklos Boros (miklos.boros@esss.se), Copyrigth 2017-2018 by European Spallation Source, Lund")
+			DevTypeBODY_HEADER.append("    //This block was generated by PLCFactory, please don't change it MANUALLY!")
+			if not verify:
+				DevTypeBODY_HEADER.append("    //Input File Name: " + os.path.basename(ifa.IfaPath))
+				DevTypeBODY_HEADER.append("    //Generated: "+glob.timestamp)
+			DevTypeBODY_HEADER.append("    //According to HASH: "+ifa.HASH)
+			DevTypeBODY_HEADER.append("    //Device type: "+ActualDeviceType)
+			DevTypeBODY_HEADER.append("    //Description: This function does the variable mapping for a device. All device-variable will be linked to an interface variable defined in this block.")
+			DevTypeBODY_HEADER.append("")
+			DevTypeBODY_HEADER.append("    //********************************************")
+			DevTypeBODY_HEADER.append("    //****************HASH check******************")
+			DevTypeBODY_HEADER.append("    //********************************************")
+			DevTypeBODY_HEADER.append("")
+			DevTypeBODY_HEADER.append("")
+			DevTypeBODY_HEADER.append("    #MyWordsinDint[0] := \"EPICSToPLC\".\"Word\"[0];")
+			DevTypeBODY_HEADER.append("    #MyWordsinDint[1] := \"EPICSToPLC\".\"Word\"[1];")
+			DevTypeBODY_HEADER.append("    #HashModbus := #MyDInt; //Hash from EPICS/ModbusTCP")
+			DevTypeBODY_HEADER.append("")
+			DevTypeBODY_HEADER.append("    #HashIFA := " + ifa.HASH + "; //Hash from Interface Factory as a constant")
+			DevTypeBODY_HEADER.append("")
+			DevTypeBODY_HEADER.append("    #MyWordsinDint[0] := \"PLCToEPICS\".\"Word\"[0];")
+			DevTypeBODY_HEADER.append("    #MyWordsinDint[1] := \"PLCToEPICS\".\"Word\"[1];")
+			DevTypeBODY_HEADER.append("    #HashTIAMap := #MyDInt; //Hash from PLCFactory TIA Map")
+			DevTypeBODY_HEADER.append("")
+			DevTypeBODY_HEADER.append("")
+			DevTypeBODY_HEADER.append("    IF ((#HashIFA = #HashModbus) AND (#HashModbus = #HashTIAMap)) THEN //Check CRCs")
+			DevTypeBODY_HEADER.append("        #DEVICE_PARAM_OK := TRUE;")
 
-				DevTypeBODY_END.append("    Else")
-				DevTypeBODY_END.append("       #DEVICE_PARAM_OK := FALSE; //Invalid Hash")
-				DevTypeBODY_END.append("    END_IF;")
-				DevTypeBODY_END.append("END_FUNCTION_BLOCK")
+			DevTypeBODY_END.append("    Else")
+			DevTypeBODY_END.append("       #DEVICE_PARAM_OK := FALSE; //Invalid Hash")
+			DevTypeBODY_END.append("    END_IF;")
+			DevTypeBODY_END.append("END_FUNCTION_BLOCK")
 
 		else:
 			NewDeviceType = False
@@ -2828,8 +2809,7 @@ def ProcessIFADevTypes(OutputDir, TIAVersion, CommsTest):
 				#==========================
 				#=== not supported TYPE ===
 				else:
-					if not Direct:
-						raise IFA.FatalException("Unsupported variable type", ActVariableType)
+					raise IFA.FatalException("Unsupported variable type", ActVariableType)
 				#==========================
 				if item.is_status():
 					if ActVariableArrayIndex >= MaxStatusReg:
@@ -2853,8 +2833,7 @@ def ProcessIFADevTypes(OutputDir, TIAVersion, CommsTest):
 			EPICS_device_calls_test_body.append("                                 DEVICE_PARAM_OK=>#\""+EndDeviceString+"\");")
 			EndDeviceString = ""
 		if NewDeviceType == True:
-			if not Direct:
-				WriteDevType()
+			WriteDevType()
 		else:
 			DevTypeHeader = []
 			DevTypeVAR_INPUT = []
@@ -2866,32 +2845,20 @@ def ProcessIFADevTypes(OutputDir, TIAVersion, CommsTest):
 			DevTypeBODY_CODE = []
 			DevTypeBODY_CODE_ARRAY = []
 			DevTypeBODY_END = []
-		if Direct:
-			DeviceInstance.append("   VAR")
-			DeviceInstance.append("      StatusReg " + NoExternal + " : Array[0.."+ str(MaxStatusReg) +"] of Word;")
-			DeviceInstance.append("      CommandReg " + NoExternal + " : Array[0.."+ str(MaxCommandReg) +"] of Word;")
-			DeviceInstance.append("   END_VAR")
-			DeviceInstance.append("BEGIN")
-			DeviceInstance.append("END_DATA_BLOCK")
 
 	#Constuct the output source file
-	if not Direct:
-		WriteDeviceInstances()
-		if CommsTest:
-			WriteEPICS_PLC_TesterDB()
-		WriteEPICS_device_calls()
-		if CommsTest:
-			WriteEPICS_device_calls_test()
+	WriteDeviceInstances()
+	if CommsTest:
+		WriteEPICS_PLC_TesterDB()
+	WriteEPICS_device_calls()
+	if CommsTest:
+		WriteEPICS_device_calls_test()
 
 	print("\nTotal", str(ProcessedDeviceNum), "device(s) processed.")
-	if not Direct:
-		print("Total", str(len(DeviceTypeList)), "device type(s) generated.\n")
-	else:
-		print("Device types are not being generated. (Direct mode)\n")
+	print("Total", str(len(DeviceTypeList)), "device type(s) generated.\n")
 
 
 def produce(OutputDir, _ifa, **kwargs):
-	global Direct
 	global ifa
 	global verify
 
