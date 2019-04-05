@@ -94,6 +94,11 @@ class IfDefFeatureMissingError(IfDefException):
         super(IfDefFeatureMissingError, self).__init__("Required feature '{}' is not supported in this version".format(feature))
 
 
+class IfDefExperimentalError(IfDefException):
+    def __init__(self, interface):
+        super(IfDefExperimentalError, self).__init__("The function '{}' is experimental. Use '--enable-experimental' to enable.".format(interface))
+
+
 
 #def ifdef_assert_instance(var, var_type, var_type_string = None):
 #    frame  = inspect.currentframe()
@@ -626,10 +631,22 @@ def hashed_interface(func):
     return hashed_interface_func
 
 
+def experimental_interface(func):
+    def experimental_interface_func(*args, **kwargs):
+        kwargs["__EXPERIMENTAL__"] = True
+        return func(*args, **kwargs)
+
+    return experimental_interface_func
+
+
 def ifdef_interface(func):
     def ifdef_interface_func(*args, **kwargs):
         if args is not None and isinstance(args, tuple) and len(args) > 0 and isinstance(args[0], IF_DEF):
-            _hashed_interface = kwargs.pop("_hashed_interface", False)
+            _hashed_interface       = kwargs.pop("_hashed_interface", False)
+            _experimental_interface = kwargs.pop("__EXPERIMENTAL__", False)
+            if _experimental_interface and not args[0]._experimental:
+                raise IfDefExperimentalError(func.__name__)
+
             var = func(*args, **kwargs)
 
             # If the function is an alias, get the real one
@@ -673,8 +690,13 @@ class IF_DEF(object):
         self._inst_slot             = "[PLCF#INSTALLATION_SLOT]"
         self._datablock_name        = IF_DEF.DEFAULT_DATABLOCK_NAME
         self._readonly              = keyword_params.get("PLC_READONLY", False)
+        self._experimental          = keyword_params.get("EXPERIMENTAL", False)
 
         self._features              = [ "STABLE-HASH", "OPC", "OPC-UA" ]
+        self._experimental_features = []
+
+        if self._experimental:
+            self._features.extend(self._experimental_features)
 
         self._properties[CMD_BLOCK.length_keyword()]    = 0
         self._properties[PARAM_BLOCK.length_keyword()]  = 0
@@ -689,7 +711,7 @@ class IF_DEF(object):
             if not hasattr(val, '__call__') or f.startswith('_'):
                 continue
 
-            if val.__name__ in ["ifdef_interface_func", "hashed_interface_func"]:
+            if val.__name__ in ["ifdef_interface_func", "hashed_interface_func", "experimental_interface_func"]:
                 self._evalEnv[f] = val
 
 

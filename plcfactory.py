@@ -1212,6 +1212,13 @@ def main(argv):
                             action  = "store_true"
                            )
 
+        parser.add_argument(
+                            '--enable-experimental',
+                            dest    = 'experimental',
+                            help    = 'enable experimental features',
+                            action  = "store_true"
+                           )
+
         return parser
 
 
@@ -1449,6 +1456,7 @@ def main(argv):
         default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "IFA", tia_map ] )
 
     ifdef_params["PLC_READONLY"] = args.plc_readonly
+    ifdef_params["EXPERIMENTAL"] = args.experimental
 
     if beckhoff:
         default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "IFA" ] )
