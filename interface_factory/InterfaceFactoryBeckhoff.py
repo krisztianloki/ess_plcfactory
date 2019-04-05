@@ -891,13 +891,7 @@ def AddDWORD(variable, InArrayName, InArrayNum, StartingRegister):
 		IsDouble = False
 		EndString = ""
 	if variable.is_parameter() or variable.is_command():
-		if StartingRegister != ActVariableArrayIndex:
-			CloseLastVariable()
-			StartingRegister = ActVariableArrayIndex
-			DevTypeBODY_CODE.append("")
-		DevTypeBODY_CODE.append("       DWORD for Modbus is not supported")
-		EndString = ""
-		IsDouble = False
+		raise IFA.FatalException("DWORD is not supported for ModbusTCP")
 
 	return (InArrayNum, StartingRegister)
 
