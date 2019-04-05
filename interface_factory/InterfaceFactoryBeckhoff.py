@@ -706,7 +706,10 @@ def AddBOOL(variable, InArrayName, InArrayNum, StartingRegister):
 			DevTypeBODY_CODE.append("")
 			DevTypeBODY_CODE.append("       nTempUINT			:= EPICS_GVL.aDataModbus[nOffsetCmd + "+str(ActVariableArrayIndex)+"];")
 		DevTypeBODY_CODE.append("       "+ActVariablePLCName+"             :=     nTempUINT." + str(ActVariableBitNumber)+ ";       //EPICSName: "+ActVariableEPICSName)
-		EndString = "if (EPICS_GVL.EasyTester <> 2) THEN EPICS_GVL.aDataModbus[nOffsetCmd + " + str(ActVariableArrayIndex)+ "]:=0; END_IF"
+		if variable.is_command():
+			EndString = "if (EPICS_GVL.EasyTester <> 2) THEN EPICS_GVL.aDataModbus[nOffsetCmd + " + str(ActVariableArrayIndex)+ "]:=0; END_IF"
+		else:
+			EndString = ""
 		IsDouble = False
 
 	return (InArrayNum, StartingRegister)
@@ -744,7 +747,10 @@ def AddBYTE(variable, InArrayName, InArrayNum, StartingRegister):
 			StartingRegister = ActVariableArrayIndex
 			DevTypeBODY_CODE.append("")
 		DevTypeBODY_CODE.append("       "+ActVariablePLCName+"             := UINT_TO_BYTE(EPICS_GVL.aDataModbus[nOffsetCmd + " + str(ActVariableArrayIndex)+ "]);       //EPICSName: "+ActVariableEPICSName)
-		EndString = ""
+		if variable.is_command():
+			EndString = "if (EPICS_GVL.EasyTester <> 2) THEN EPICS_GVL.aDataModbus[nOffsetCmd + " + str(ActVariableArrayIndex)+ "]:=0; END_IF"
+		else:
+			EndString = ""
 		IsDouble = False
 
 	return (InArrayNum, StartingRegister)
@@ -782,7 +788,10 @@ def AddINT(variable, InArrayName, InArrayNum, StartingRegister):
 			StartingRegister = ActVariableArrayIndex
 			DevTypeBODY_CODE.append("")
 		DevTypeBODY_CODE.append("       "+ActVariablePLCName+"             := UINT_TO_INT(EPICS_GVL.aDataModbus[nOffsetCmd + " + str(ActVariableArrayIndex)+ "]);       //EPICSName: "+ActVariableEPICSName)
-		EndString = ""
+		if variable.is_command():
+			EndString = "if (EPICS_GVL.EasyTester <> 2) THEN EPICS_GVL.aDataModbus[nOffsetCmd + " + str(ActVariableArrayIndex)+ "]:=0; END_IF"
+		else:
+			EndString = ""
 		IsDouble = False
 
 	return (InArrayNum, StartingRegister)
@@ -820,7 +829,10 @@ def AddWORD(variable, InArrayName, InArrayNum, StartingRegister):
 			StartingRegister = ActVariableArrayIndex
 			DevTypeBODY_CODE.append("")
 		DevTypeBODY_CODE.append("       "+ActVariablePLCName+"             := UINT_TO_WORD(EPICS_GVL.aDataModbus[nOffsetCmd + " + str(ActVariableArrayIndex)+ "]);       //EPICSName: "+ActVariableEPICSName)
-		EndString = ""
+		if variable.is_command():
+			EndString = "if (EPICS_GVL.EasyTester <> 2) THEN EPICS_GVL.aDataModbus[nOffsetCmd + " + str(ActVariableArrayIndex)+ "]:=0; END_IF"
+		else:
+			EndString = ""
 		IsDouble = False
 
 	return (InArrayNum, StartingRegister)
@@ -858,8 +870,10 @@ def AddDINT(variable, InArrayName, InArrayNum, StartingRegister):
 			StartingRegister = ActVariableArrayIndex
 			DevTypeBODY_CODE.append("")
 		DevTypeBODY_CODE.append("       uUINTs2DINT.stLowHigh.nLow             := EPICS_GVL.aDataModbus[nOffsetCmd + " + str(ActVariableArrayIndex)+ "];       //EPICSName: "+ActVariableEPICSName)
-		DevTypeBODY_CODE.append("       uUINTs2DINT.stLowHigh.nHigh             := EPICS_GVL.aDataModbus[nOffsetCmd + " + str(int(ActVariableArrayIndex)+1)+ "];       //EPICSName: "+ActVariableEPICSName)
+		DevTypeBODY_CODE.append("       uUINTs2DINT.stLowHigh.nHigh            := EPICS_GVL.aDataModbus[nOffsetCmd + " + str(ActVariableArrayIndex+1)+ "];       //EPICSName: "+ActVariableEPICSName)
 		EndString =  ActVariablePLCName + "				:= uUINTs2DINT.nValue;"
+		if variable.is_command():
+			EndString += "\nif (EPICS_GVL.EasyTester <> 2) THEN EPICS_GVL.aDataModbus[nOffsetCmd + " + str(ActVariableArrayIndex)+ "]:=0; EPICS_GVL.aDataModbus[nOffsetCmd + " + str(ActVariableArrayIndex+1)+ "]:=0; END_IF"
 		IsDouble = False
 
 	return (InArrayNum, StartingRegister)
@@ -930,6 +944,8 @@ def AddREAL(variable, InArrayName, InArrayNum, StartingRegister):
 		DevTypeBODY_CODE.append("       uUINTs2REAL.stLowHigh.nLow             := EPICS_GVL.aDataModbus[nOffsetCmd + " + str(ActVariableArrayIndex)+ "];       //EPICSName: "+ActVariableEPICSName)
 		DevTypeBODY_CODE.append("       uUINTs2REAL.stLowHigh.nHigh             := EPICS_GVL.aDataModbus[nOffsetCmd + " + str(int(ActVariableArrayIndex)+1)+ "];       //EPICSName: "+ActVariableEPICSName)
 		EndString =  ActVariablePLCName + "				:= uUINTs2REAL.fValue;"
+		if variable.is_command():
+			EndString += "\nif (EPICS_GVL.EasyTester <> 2) THEN EPICS_GVL.aDataModbus[nOffsetCmd + " + str(ActVariableArrayIndex)+ "]:=0; EPICS_GVL.aDataModbus[nOffsetCmd + " + str(ActVariableArrayIndex+1)+ "]:=0; END_IF"
 		IsDouble = False
 
 	return (InArrayNum, StartingRegister)
@@ -969,6 +985,8 @@ def AddTIME(variable, InArrayName, InArrayNum, StartingRegister):
 		DevTypeBODY_CODE.append("       uUINTs2TIME.stLowHigh.nLow             := EPICS_GVL.aDataModbus[nOffsetCmd + " + str(ActVariableArrayIndex)+ "];       //EPICSName: "+ActVariableEPICSName)
 		DevTypeBODY_CODE.append("       uUINTs2TIME.stLowHigh.nHigh             := EPICS_GVL.aDataModbus[nOffsetCmd + " + str(int(ActVariableArrayIndex)+1)+ "];       //EPICSName: "+ActVariableEPICSName)
 		EndString =  ActVariablePLCName + "				:= uUINTs2TIME.tValue;"
+		if variable.is_command():
+			EndString += "\nif (EPICS_GVL.EasyTester <> 2) THEN EPICS_GVL.aDataModbus[nOffsetCmd + " + str(ActVariableArrayIndex)+ "]:=0; EPICS_GVL.aDataModbus[nOffsetCmd + " + str(ActVariableArrayIndex+1)+ "]:=0; END_IF"
 		IsDouble = False
 
 	return (InArrayNum, StartingRegister)
