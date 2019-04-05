@@ -120,6 +120,10 @@ PLC Factory is capable of integrating (and generating code for) the following PL
     *   \[OPTIONAL\]
     *   Do not generate PLC communication testing code. This is the default
     *   `--plc-no-test`
+*   **--plc-readonly**
+    *   \[OPTIONAL\]
+    *   Do not allow command or parameter blocks in the PLC. Modbus will still be enabled to exchange the hash and heartbeat.
+    *   `--plc-readonly`
 *   **--eee**=<module_name>
     *   \[OPTIONAL\]
     *   Generate a proper EEE module. The default module name is derived from _device_ and of course prefixed with m-epics. Implicitly adds _EPICS-DB_, _AUTOSAVE-ST-CMD_, and _AUTOSAVE_ to the list of templates (which means you don't have to add any templates explicitly)
