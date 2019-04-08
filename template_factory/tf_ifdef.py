@@ -94,6 +94,11 @@ class IfDefFeatureMissingError(IfDefException):
         super(IfDefFeatureMissingError, self).__init__("Required feature '{}' is not supported in this version".format(feature))
 
 
+class IfDefExperimentalFeatureError(IfDefException):
+    def __init__(self, feature):
+        super(IfDefExperimentalFeatureError, self).__init__("Required feature '{}' is experimental in this version. Use '--enable-experimental' to enable".format(feature))
+
+
 class IfDefExperimentalError(IfDefException):
     def __init__(self, interface):
         super(IfDefExperimentalError, self).__init__("The function '{}' is experimental. Use '--enable-experimental' to enable.".format(interface))
@@ -936,6 +941,8 @@ class IF_DEF(object):
                 raise IfDefSyntaxError("Features must be strings")
 
             if feature.upper() not in self._features:
+                if feature.upper() in self._experimental_features:
+                    raise IfDefExperimentalFeatureError(feature)
                 raise IfDefFeatureMissingError(feature)
 
         return SOURCE(self._source)
