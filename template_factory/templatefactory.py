@@ -29,7 +29,7 @@ def createTemplate(definition, if_def, printername):
 
 
 
-def processDefinitionFile(definition, printers):
+def processDefinitionFile(definition, printers, **kwargs):
     assert isinstance(definition, str)
     assert isinstance(printers,   list)
 
@@ -41,7 +41,7 @@ def processDefinitionFile(definition, printers):
         hashobj = None
 
     with open(definition) as m:
-        if_def = tf.processLines(m, FILENAME = definition)
+        if_def = tf.processLines(m, FILENAME = definition, **kwargs)
 
 
     if if_def is None:
@@ -91,6 +91,11 @@ if __name__ == "__main__":
                         dest     = "optimize",
                        )
 
+    parser.add_argument('--enable-experimental',
+                        help     = "enable experimental features",
+                        action   = 'store_true',
+                       )
+
     args = parser.parse_known_args()[0]
 
     if args.show_printers:
@@ -122,4 +127,4 @@ if __name__ == "__main__":
 
     tf.optimize_s7db(args.optimize)
 
-    map(lambda t: processDefinitionFile(t, args.printers), args.definitions)
+    map(lambda t: processDefinitionFile(t, args.printers, EXPERIMENTAL = args.enable_experimental), args.definitions)
