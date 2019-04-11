@@ -1878,9 +1878,50 @@ class ANALOG(BASE_TYPE):
 
 
 class ENUM(BASE_TYPE):
+    class VLST(object):
+        _st = BASE_TYPE.PV_PREFIX + "{}ST"
+        _vl = BASE_TYPE.PV_PREFIX + "{}VL"
+
+        def __init__(self, idx, prefix):
+            self._idx    = idx
+            self._prefix = prefix
+
+
+        def idx(self):
+            return self._idx
+
+
+        def st(self):
+            return ENUM.VLST._st.format(self._prefix)
+
+
+        def vl(self):
+            return ENUM.VLST._vl.format(self._prefix)
+
+
+
     pv_types = { BLOCK.CMD : "mbbo",   BLOCK.PARAM : "mbbo",   BLOCK.STATUS : "mbbi" }
+    vlst = [ VLST( 0, "ZR"),
+             VLST( 1, "ON"),
+             VLST( 2, "TW"),
+             VLST( 3, "TH"),
+             VLST( 4, "FR"),
+             VLST( 5, "FV"),
+             VLST( 6, "SX"),
+             VLST( 7, "SV"),
+             VLST( 8, "EI"),
+             VLST( 9, "NI"),
+             VLST(10, "TE"),
+             VLST(11, "EL"),
+             VLST(12, "TV"),
+             VLST(13, "TT"),
+             VLST(14, "FT"),
+             VLST(15, "FF") ]
 
     def __init__(self, source, block, name, plc_var_type, keyword_params):
+        for vlst in ENUM.vlst:
+            if vlst.st() in keyword_params:
+                _test_and_set(keyword_params, vlst.vl(), vlst.idx())
         BASE_TYPE.__init__(self, source, block, name, plc_var_type, keyword_params)
 
 
