@@ -928,6 +928,17 @@ def create_e3(modulename, snippet):
 
     output_files['E3'] = e3_files
 
+    #
+    # Create script to run module with 'safe' defaults
+    #
+    with open(os.path.join(OUTPUT_DIR, "run_module.bash"), "w") as run:
+        if 'OPC' in ifdef_params['PLC_TYPE']:
+            print("""iocsh.bash -r {modulename},plcfactory -c 'loadIocsh({snippet}.iocsh, "IPADDR=127.0.0.1, PORT=4840, PUBLISHING_INTERVAL=200")'""".format(modulename = modulename,
+                                                                                                                                                             snippet    = snippet), file = run)
+        else:
+            print("""iocsh.bash -r {modulename},plcfactory -c 'loadIocsh({snippet}.iocsh, "IPADDR=127.0.0.1, RECVTIMEOUT=3000")'""".format(modulename = modulename,
+                                                                                                                                           snippet    = snippet), file = run)
+
     print("E3 Module created:", out_mdir)
     return out_mdir
 
