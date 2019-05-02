@@ -32,7 +32,7 @@ The following types can be used to add a variable to an interface definition:
 *   **digital**; a simple 1-bit information. Maps to the **_binary input/output_** record in EPICS and to the **_BOOL_** type in the PLC
 *   **analog**; an integer or floating point value. Maps to the **_analog input/output_** record in EPICS and the **_user specified_** PLC type in the PLC
 *   **time**; an interval (NOT a timestamp) in milliseconds. Maps to the **_analog input/output_** record in EPICS and to the **_TIME_** type in the PLC
-*   **alarm**; a simple 1-bit information that generates an EPICS alarm if its value is 1\. Maps to the **_binary input_** record in EPICS and to the **_BOOL_** type in the PLC.
+*   **alarm**; a simple 1-bit information that can generate an EPICS alarm. By default a value of 1 results in an alarm. Maps to the **_binary input_** record in EPICS and to the **_BOOL_** type in the PLC.
 *   **enum**; an enumeration. Maps to the **_multi-bit binary input/output_** record in EPICS and the **_user specified_** PLC type in the PLC
 *   **bitmask**; bits of a 16 bit integer. Maps to the **_multi-bit binary input/output direct_** record in EPICS and to the **_INT_** type in the PLC
 *   **string**; a maximum 39 character long string. Maps to the **_stringin_** record in EPICS and to the **_STRING_** type in the PLC
@@ -115,9 +115,23 @@ Adding more than one spare bit:
 
 ### Alarm variable
 
+The _`short_alarm_message`_ will end up in the PV's ONAM (or ZNAM) field
+
+A minor alarm if the value is 1:
+
 **`add_minor_alarm("<name>", "<short_alarm_message>")`**
 
+A major alarm if the value is 1:
+
 **`add_major_alarm("<name>", "<short_alarm_message>")`**
+
+A minor alarm if the value is 0:
+
+**`add_minor_alarm("<name>", "<short_alarm_message>", INVERSE_LOGIC=True)`**
+
+A major alarm if the value is 0:
+
+**`add_major_alarm("<name>", "<short_alarm_message>", INVERSE_LOGIC=True)`**
 
 ### Enum variable
 

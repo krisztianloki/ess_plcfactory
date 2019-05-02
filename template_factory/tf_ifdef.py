@@ -1094,8 +1094,12 @@ class IF_DEF(object):
         if not isinstance(alarm_message, str):
             raise IfDefSyntaxError("Alarm message is missing: {func}(\"{name}\", \"Short alarm message\")".format(name = name, func = "add_minor_alarm" if sevr == "MINOR" else "add_major_alarm"))
 
-        keyword_params.update(PV_OSV  = sevr)
-        _test_and_set_pv(keyword_params, "ONAM", alarm_message)
+        if keyword_params.get("INVERSE_LOGIC", False):
+            keyword_params.update(PV_ZSV  = sevr)
+            _test_and_set_pv(keyword_params, "ZNAM", alarm_message)
+        else:
+            keyword_params.update(PV_OSV  = sevr)
+            _test_and_set_pv(keyword_params, "ONAM", alarm_message)
 
         var = ALARM(self._source, self._active_bit_def(), name, sevr, alarm_message, keyword_params)
         return self._add(var)
