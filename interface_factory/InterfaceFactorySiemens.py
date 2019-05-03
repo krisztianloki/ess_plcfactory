@@ -2909,14 +2909,15 @@ def produce(OutputDir, _ifa, **kwargs):
 		#Process devices/device types
 		ProcessIFADevTypes(OutputDir, TIAVersion, CommsTest)
 
-	if not nodiag:
+	if not nodiag or onlydiag:
 		#WriteDiagnostics
 		WriteDiagnostics(TIAVersion)
 	else:
 		print("NOTE:\nSkipping diagnostics")
 
-	#Generating _CommsPLC_EPICS and global communication DBs
-	WriteCommsEpicsAndDbs()
+	if not onlydiag:
+		#Generating _CommsPLC_EPICS and global communication DBs
+		WriteCommsEpicsAndDbs()
 
 	#Write the output fo file
 	if verify:
