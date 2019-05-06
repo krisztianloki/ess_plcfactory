@@ -39,10 +39,11 @@ class Diagnostics(object):
     MAX_IO_SYSTEM          =  5
 
 
-    def __init__(self, MAX_IO_DEVICES = 1, MAX_LOCAL_MODULES = 30, MAX_MODULES_IN_IO_DEVICE = 30):
+    def __init__(self, MAX_IO_DEVICES = 1, MAX_LOCAL_MODULES = 30, MAX_MODULES_IN_IO_DEVICE = 30, Skip_Startup_OB = False):
         self._MAX_IO_DEVICES           = MAX_IO_DEVICES
         self._MAX_LOCAL_MODULES        = MAX_LOCAL_MODULES
         self._MAX_MODULES_IN_IO_DEVICE = MAX_MODULES_IN_IO_DEVICE
+        self._Skip_Startup_OB          = Skip_Startup_OB
 
 
     def __DiagnosticsData(self, TIAVersion, ExternalSourceFile):
@@ -1474,7 +1475,8 @@ class Diagnostics(object):
         self.__Diagnostic_error_interrupt(TIAVersion, ExternalSourceFile)
         self.__Pull_or_plug_of_modules(TIAVersion, ExternalSourceFile)
         self.__Rack_of_station_failure(TIAVersion, ExternalSourceFile)
-        self.__Startup(TIAVersion, ExternalSourceFile)
+        if not self._Skip_Startup_OB:
+            self.__Startup(TIAVersion, ExternalSourceFile)
 
 
     @staticmethod
@@ -1484,12 +1486,12 @@ class Diagnostics(object):
 
 
     @staticmethod
-    def process(TIAVersion, OutputDir = ".", MAX_IO_DEVICES = 1, MAX_LOCAL_MODULES = 30, MAX_MODULES_IN_IO_DEVICE = 30):
+    def process(TIAVersion, OutputDir = ".", MAX_IO_DEVICES = 1, MAX_LOCAL_MODULES = 30, MAX_MODULES_IN_IO_DEVICE = 30, Skip_Startup_OB = False):
         #Write the output to file
         externalPath = os.path.join(OutputDir, "PLCFactory_diagnostics_source_TIAv{tiaversion}.scl".format(tiaversion = TIAVersion))
         ExternalSourceFile = []
         with open(externalPath, 'wb') as externalScl:
-            diag = Diagnostics(MAX_IO_DEVICES = MAX_IO_DEVICES, MAX_LOCAL_MODULES = MAX_LOCAL_MODULES, MAX_MODULES_IN_IO_DEVICE = MAX_MODULES_IN_IO_DEVICE)
+            diag = Diagnostics(MAX_IO_DEVICES = MAX_IO_DEVICES, MAX_LOCAL_MODULES = MAX_LOCAL_MODULES, MAX_MODULES_IN_IO_DEVICE = MAX_MODULES_IN_IO_DEVICE, Skip_Startup_OB = Skip_Startup_OB)
             diag._WriteDiagnostics(TIAVersion, ExternalSourceFile)
             for line in ExternalSourceFile:
                 externalScl.write((line + '\r\n').encode())
@@ -1520,6 +1522,12 @@ def main(argv):
                         dest    = "MAX_MODULES_IN_IO_DEVICE",
                         default = 30
                        )
+    parser.add_argument(
+                        '--skip-startup-ob',
+                        dest    = "Skip_Startup_OB",
+                        help    = "Do not generate Startup OB; useful if you don't want to overwrite your changes",
+                        action  = 'store_true'
+                       )
 
     def consolidate_tia_version(tia_version):
         if tia_version is not None and isinstance(tia_version, str):
@@ -1540,7 +1548,7 @@ def main(argv):
         return tia_version
 
     args = parser.parse_args(argv)
-    Diagnostics.process(consolidate_tia_version(args.TIAVersion), MAX_IO_DEVICES = args.MAX_IO_DEVICES, MAX_LOCAL_MODULES = args.MAX_LOCAL_MODULES, MAX_MODULES_IN_IO_DEVICE = args.MAX_MODULES_IN_IO_DEVICE)
+    Diagnostics.process(consolidate_tia_version(args.TIAVersion), MAX_IO_DEVICES = args.MAX_IO_DEVICES, MAX_LOCAL_MODULES = args.MAX_LOCAL_MODULES, MAX_MODULES_IN_IO_DEVICE = args.MAX_MODULES_IN_IO_DEVICE, Skip_Startup_OB = args.Skip_Startup_OB)
 
 
 
