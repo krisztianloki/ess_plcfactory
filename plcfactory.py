@@ -80,6 +80,7 @@ ifdef_params   = dict(PLC_TYPE = "SIEMENS")
 output_files   = dict()
 previous_files = None
 device_tag     = None
+epi_version    = None
 hashes         = dict()
 prev_hashes    = None
 branch         = git.get_current_branch()
@@ -299,7 +300,10 @@ def getIfDefFromURL(device, artifact, epi):
         if not filename.endswith(IFDEF_TAG):
             filename += IFDEF_TAG
 
-    git_tag = device.properties().get(epi + " VERSION", "master")
+    if epi_version is not None:
+        git_tag = epi_version
+    else:
+        git_tag = device.properties().get(epi + " VERSION", "master")
     url     = "/".join([ "raw/{}".format(git_tag), filename ])
 
     print("Downloading Interface Definition file {filename} (version {version}) from {url}".format(filename = filename,
@@ -1435,6 +1439,12 @@ def main(argv):
                         type     = str)
 
     parser.add_argument(
+                        '--epi-version',
+                        dest     = "epi_version",
+                        help     = "'EPI VERSION' to use. Overrides any 'EPI VERSION' property set in CCDB",
+                        type     = str)
+
+    parser.add_argument(
                         '-t',
                         '--template',
                         help     = 'template name',
@@ -1456,6 +1466,8 @@ def main(argv):
 
     global device_tag
     device_tag = args.tag
+    global epi_version
+    epi_version = args.epi_version
 
     default_printers = set(["DEVICE-LIST"])
 

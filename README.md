@@ -70,6 +70,10 @@ For further information, see the files in [doc](doc/).
         *    template filenames like `*TEMPLATE__mps_<TEMPLATE-NAME>.txt`
         *    Interface Definition filenames like `*__mps.def`
         *    Interface Definition URLs with name `EPI__mps`
+*   **--epi-version=<version>**
+    *   \[OPTIONAL\]
+    *   Used to select a version of EPI repositories other than `master`. Please note: it overrides any `EPI VERSION` property specified in CCDB
+    *   `--epi-version=interface`
 
 ## EPICS-PLC integration
 
