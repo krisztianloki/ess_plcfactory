@@ -597,8 +597,8 @@ class OVERLAP(BLOCK):
         #
         # Check for alignment errors
         #
-        if not self._block._block_offset == self._overlap_offset:
-            raise IfDefInternalError("Consistency error: block is " + str(self._block._block_offset) + " while overlap is " + str(self._overlap_offset))
+#        if not self._block._block_offset == self._overlap_offset:
+#            raise IfDefInternalError("Consistency error: block is " + str(self._block._block_offset) + " while overlap is " + str(self._overlap_offset))
         if self.is_empty():
             self._overlap_alignment_needed = self._is_alignment_needed(width)
         elif self._overlap_alignment_needed != self._is_alignment_needed(width):
@@ -994,6 +994,7 @@ class IF_DEF(object):
         return self._add(self._PARAM)
 
 
+    @experimental_interface
     @ifdef_interface
     def define_overlap(self):
         if self._active_BLOCK is None:
@@ -1005,6 +1006,7 @@ class IF_DEF(object):
         return self._add_source()
 
 
+    @experimental_interface
     @ifdef_interface
     def end_overlap(self):
         if self._overlap is None:
