@@ -141,7 +141,7 @@ class PRINTER(object):
         with open(gen_fname.format(basename = os.path.splitext(os.path.basename(fname))[0], printer = self.name()), "w") as f:
             for line in output:
                 if line is not None:
-                    f.write(line)
+                    print(line.rstrip(), file = f)
 
 
     def needs_ifdef(self):

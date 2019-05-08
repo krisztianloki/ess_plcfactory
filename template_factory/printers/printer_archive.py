@@ -58,9 +58,9 @@ class ARCHIVE(PRINTER):
                 desc = self._get_desc(var)
                 if desc:
                     self._append("# {}".format(desc), output)
-                self._append("{inst_slot}:{name}{policy}\n".format(inst_slot = inst_slot,
-                                                                   name      = var.pv_name(),
-                                                                   policy    = self._archive(var)), output)
+                self._append("{inst_slot}:{name}{policy}".format(inst_slot = inst_slot,
+                                                                 name      = var.pv_name(),
+                                                                 policy    = self._archive(var)), output)
 
 
     def _archive(self, var):
