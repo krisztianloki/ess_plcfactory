@@ -652,6 +652,22 @@ def ifdef_interface(func):
             if _experimental_interface and not args[0]._experimental:
                 raise IfDefExperimentalError(func.__name__)
 
+            # If function has **keyword_params
+            if func.__code__.co_flags & 8:
+                def update_params(kwargs, default_params):
+                    for kw in default_params:
+                        if kw not in kwargs:
+                            kwargs[kw] = default_params[kw]
+
+                # Get function specific default params
+                try:
+                    update_params(kwargs, args[0]._defaults[func.__name__])
+                except KeyError:
+                    pass
+
+                # Get global params
+                update_params(kwargs, args[0]._global_defaults)
+
             var = func(*args, **kwargs)
 
             # If the function is an alias, get the real one
@@ -696,6 +712,8 @@ class IF_DEF(object):
         self._datablock_name        = IF_DEF.DEFAULT_DATABLOCK_NAME
         self._readonly              = keyword_params.get("PLC_READONLY", False)
         self._experimental          = keyword_params.get("EXPERIMENTAL", False)
+        self._global_defaults       = dict()
+        self._defaults              = dict()
 
         self._features              = [ "STABLE-HASH", "OPC", "OPC-UA" ]
         self._experimental_features = []
@@ -707,6 +725,8 @@ class IF_DEF(object):
         self._properties[PARAM_BLOCK.length_keyword()]  = 0
         self._properties[STATUS_BLOCK.length_keyword()] = 0
 
+        self._interface_funcs = dict()
+
         self._evalEnv = dict()
         self._evalEnv['__builtins__'] = None
         self._evalEnv['True'] = True
@@ -717,6 +737,7 @@ class IF_DEF(object):
                 continue
 
             if val.__name__ in ["ifdef_interface_func", "hashed_interface_func", "experimental_interface_func"]:
+                self._interface_funcs[val] = f
                 self._evalEnv[f] = val
 
 
@@ -944,6 +965,26 @@ class IF_DEF(object):
                 if feature.upper() in self._experimental_features:
                     raise IfDefExperimentalFeatureError(feature)
                 raise IfDefFeatureMissingError(feature)
+
+        return SOURCE(self._source)
+
+
+    @ifdef_interface
+    def set_defaults(self, *keywords, **keyword_params):
+        if not keywords:
+            self._global_defaults.update(keyword_params)
+        else:
+            interface_func_type = type(self.set_defaults)
+            for keyword in keywords:
+                # Catch case when function is specified as-is; without quotes
+                if not isinstance(keyword, str):
+                    if type(keyword) == interface_func_type:
+                        keyword = self._interface_funcs[keyword]
+                        if keyword == "set_defaults":
+                            continue
+                    else:
+                        raise IfDefSyntaxError("Not an Interface Definition keyword: " + str(keyword))
+                self._defaults[keyword] = keyword_params
 
         return SOURCE(self._source)
 

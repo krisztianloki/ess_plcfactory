@@ -156,6 +156,19 @@ If a variable has to be archived the **`ARCHIVE=<spec>`** construction can be us
 
 The specifications will be collected in a file ending with _.archive_. This file has to be uploaded to the relevant archiver configuration repository.
 
+If **`PV_DESC=<desc>`** or **`ARCHIVE_DESC=<desc>`** is specified (**`ARCHIVE_DESC`** overrides **`PV_DESC`**) it will be added as a comment before the PV name in the output.
+
+## Specifying defaults
+
+**`set_defaults`** can be used to define global and/or variable type specific default values. Values specified when adding a variable take precedence.
+
+*   **`set_defaults(KEYWORD1="value"[, KEYWORD2="value"]...)`**
+    *   This has the same effect as specifying `KEYWORD1="value"`, `KEYWORD2="value"`, and so on for every variable
+    *   **`set_defaults(ARCHIVE=True)`**
+*   **`set_defaults(<add_type1>[, <add_type2>]... ,KEYWORD1="value"[, KEYWORD2="value"]...)`**
+    *   This has the same effect as specifying `KEYWORD1="value"`, `KEYWORD2="value"`, and so on for every `add_type1`, `add_type2` construct
+    *   **`set_defaults(add_minor_alarm, INVERSE_LOGIC=True)`**
+
 ## Examples
 
 ### Archiving examples
