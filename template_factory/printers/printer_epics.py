@@ -266,7 +266,8 @@ record(bi, "{root_inst_slot}:AliveR") {{
 record(calcout, "{root_inst_slot}:iCheckHash") {{
 	field(INPA,	"{root_inst_slot}:iCommsHashToPLC")
 	field(INPB,	"{root_inst_slot}:CommsHashFromPLCR")
-	field(CALC,	"A = B")
+	field(INPC,	"{root_inst_slot}:CommsHashFromPLCR.STAT")
+	field(CALC,	"A == B && C == 0")
 	field(OOPT,	"On Change")
 	field(OUT,	"{root_inst_slot}:PLCHashCorrectR PP")
 }}
@@ -503,7 +504,8 @@ record(bi, "{root_inst_slot}:AliveR") {{
 record(calcout, "{root_inst_slot}:iCheckHash") {{
 	field(INPA,	"{root_inst_slot}:iCommsHashToPLC")
 	field(INPB,	"{root_inst_slot}:CommsHashFromPLCR")
-	field(CALC,	"A = B")
+	field(INPC,	"{root_inst_slot}:CommsHashFromPLCR.STAT")
+	field(CALC,	"A == B && C == 0")
 	field(OOPT,	"On Change")
 	field(OUT,	"{root_inst_slot}:PLCHashCorrectR PP")
 }}
