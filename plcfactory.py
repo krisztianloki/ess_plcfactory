@@ -20,11 +20,14 @@ __status__     = "Production"
 __env__        = "Python version 2.7"
 
 # Python libraries
+import sys
+if sys.version_info.major != 2:
+    raise RuntimeError("PLCFactory supports Python-2.x only. You are running " + sys.version)
+
 import argparse
 import datetime
 import os
 import errno
-import sys
 import time
 import hashlib
 import zlib
