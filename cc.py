@@ -43,6 +43,7 @@ import helpers
 
 class CC(object):
     TEMPLATE_DIR    = "templates"
+    TAG_SEPARATOR   = "__"
     paths_cached    = dict()
     sessions_cached = dict()
 
@@ -117,6 +118,42 @@ class CC(object):
 
 
         # Returns: ""
+        # filename is the default filename to use if not specified with '[]' notation
+        def downloadExternalLink(self, filename, extension = None, git_tag = None, filetype = "External Link"):
+            linkfile  = self.name()
+
+            open_bra = linkfile.find('[')
+            if open_bra != -1:
+                base = linkfile[:open_bra]
+
+                if linkfile[-1] != ']':
+                    raise CC.ArtifactException("Invalid name format in External Link for {device}: {name}".format(device = self._device.name(), name = linkfile))
+
+                filename = linkfile[open_bra + 1 : -1]
+                if extension is not None:
+                    if not extension.startswith('.'):
+                        extension = '.{}'.format(extension)
+                    if not filename.endswith(extension):
+                        filename += extension
+
+                if filename != helpers.sanitizeFilename(filename):
+                    raise CC.ArtifactException("Invalid filename in External Link for {device}: {name}".format(device = self._device.name(), name = filename))
+            else:
+                base = linkfile
+
+            if git_tag is None:
+                git_tag = self._device.properties().get(base + " VERSION", "master")
+            url = "/".join([ "raw/{}".format(git_tag), filename ])
+
+            print("Downloading {filetype} file {filename} (version {version}) from {url}".format(filetype = filetype,
+                                                                                                 filename = filename,
+                                                                                                 url      = self.uri(),
+                                                                                                 version  = git_tag))
+
+            return self.download(extra_url = url)
+
+
+        # Returns: "", the downloaded filename
         def download(self, extra_url = ""):
             # NOTE: we _must not_ use CC.TEMPLATE_DIR here,
             # CCDB_Dump relies on creating an instance variant of TEMPLATE_DIR to point it to its own templates directory
@@ -228,6 +265,112 @@ class CC(object):
             return self._ensure(self._backtrack(prop), "")
 
 
+        def defaultFilename(self, extension):
+            if not extension.startswith('.'):
+                extension = '.{}'.format(extension)
+
+            return helpers.sanitizeFilename(self.deviceType().upper() + extension)
+
+
+        # Returns the filename or None
+        def downloadArtifact(self, extension, device_tag = None, filetype = ''):
+            if not extension.startswith('.'):
+                extension = '.{}'.format(extension)
+
+            if device_tag:
+                # whatever__devicetag.extension
+                suffix = "".join([ CC.TAG_SEPARATOR, device_tag, extension ])
+            else:
+                suffix = extension
+
+            defs = filter(lambda a: a.is_file() and a.filename().endswith(suffix), self.artifacts())
+
+            if len(defs) > 1:
+                raise CC.ArtifactException("More than one {filetype} Artifacts were found for {device}: {defs}".format(filetype = filetype, device = self.name(), defs = defs))
+
+            if defs:
+                return defs[0].download()
+
+            return None
+
+
+        # Returns the filename or None
+        def downloadExternalLink(self, base, extension, device_tag = None, filetype = 'External Link', git_tag = None):
+            if device_tag:
+                # base__devicetag
+                base = CC.TAG_SEPARATOR.join([ base, device_tag ])
+
+            fqbase = base + "["
+            artifacts = filter(lambda u: u.is_uri() and (u.name() == base or u.name().startswith(fqbase)), self.artifacts())
+            if not artifacts:
+                return None
+
+            if len(artifacts) > 1:
+                raise CC.ArtifactException("More than one {filetype} External Links were found for {device}: {urls}".format(filetype = filetype, device = device.name(), urls = map(lambda u: u.uri(), artifacts)))
+
+            if not extension.startswith('.'):
+                extension = '.{}'.format(extension)
+
+            return artifacts[0].downloadExternalLink(self.defaultFilename(extension), extension, filetype = filetype, git_tag = git_tag)
+
+
+        # returns a stable list of controlled devices
+        # Returns: []
+        def buildControlsList(self, include_self = False, verbose = False):
+            self.putInControlledTree()
+
+            # find devices this device _directly_ controls
+            pool = self.controls()
+
+            # find all devices that are directly or indirectly controlled by 'device'
+            controlled_devices = set(pool)
+            while pool:
+                dev = pool.pop()
+
+                cdevs = dev.controls()
+                for cdev in cdevs:
+                    if cdev not in controlled_devices:
+                        controlled_devices.add(cdev)
+                        pool.append(cdev)
+
+            # group them by device type
+            pool = list(controlled_devices)
+            controlled_devices = dict()
+            for dev in pool:
+                device_type = dev.deviceType()
+                try:
+                    controlled_devices[device_type].append(dev)
+                except KeyError:
+                    controlled_devices[device_type] = [ dev ]
+
+            if verbose:
+                print("\r" + "#" * 60)
+                print("Device at root: " + self.name() + "\n")
+                print(self.name() + " controls: ")
+
+            # sort items into a list
+            def sortkey(device):
+                return device.name()
+            pool = list()
+            for device_type in sorted(controlled_devices):
+                if verbose:
+                    print("\t- " + device_type)
+
+                for dev in sorted(controlled_devices[device_type], key=sortkey):
+                    pool.append(dev)
+                    dev.putInControlledTree()
+                    if verbose:
+                        print("\t\t-- " + dev.name())
+
+            if verbose:
+                print("\n")
+
+            if include_self:
+                pool.insert(0, self)
+
+            return pool
+
+
 
     def __init__(self, clear_templates = True):
         # all devices; key, Device pairs
@@ -249,6 +392,53 @@ class CC(object):
             print("Reusing templates of any previous run")
 
         helpers.makedirs(CC.TEMPLATE_DIR)
+
+
+    @staticmethod
+    def addArgs(parser):
+        import argparse
+
+        ccdb_args = parser.add_argument_group("CCDB related options").add_mutually_exclusive_group()
+        ccdb_args.add_argument(
+                               '--ccdb-test',
+                               dest     = "ccdb_test",
+                               help     = 'select CCDB test database',
+                               action   = 'store_true',
+                               required = False)
+
+        ccdb_args.add_argument(
+                               '--ccdb-devel',
+                               dest     = "ccdb_devel",
+                               help     = argparse.SUPPRESS, #selects CCDB development database
+                               action   = 'store_true',
+                               required = False)
+
+        # this argument is just for show as the corresponding value is
+        # set to True by default
+        ccdb_args.add_argument(
+                               '--ccdb-production',
+                               dest     = "ccdb_production",
+                               help     = 'select production CCDB database',
+                               action   = 'store_true',
+                               required = False)
+
+        ccdb_args.add_argument(
+                               '--ccdb',
+                               dest     = "ccdb",
+                               help     = 'use a CCDB dump as backend',
+                               metavar  = 'directory-to-CCDB-dump / name-of-.ccdb.zip',
+                               type     = str,
+                               required = False)
+
+        parser.add_argument(
+                            '--cached',
+                            dest     = "clear_ccdb_cache",
+                            help     = 'do not clear "templates" folder; use the templates downloaded by a previous run',
+                            # be aware of the inverse logic between the meaning of the option and the meaning of the variable
+                            default  = True,
+                            action   = 'store_false')
+
+        return parser
 
 
     @staticmethod

@@ -18,6 +18,7 @@ __maintainer__ = "Gregor Ulm"
 __email__      = "gregor.ulm@esss.se"
 __status__     = "Production"
 __env__        = "Python version 2.7"
+__product__    = "ics_plc_factory"
 
 # Python libraries
 import sys
@@ -71,23 +72,23 @@ import plcf_git as git
 
 
 # global variables
-OUTPUT_DIR     = "output"
-MODULES_DIR    = os.path.join(os.path.dirname(__file__), "module_templates")
-TEMPLATE_TAG   = "TEMPLATE"
-HEADER_TAG     = "HEADER"
-FOOTER_TAG     = "FOOTER"
-IFDEF_TAG      = ".def"
-hashobj        = None
-ifdefs         = dict()
-ifdef_params   = dict(PLC_TYPE = "SIEMENS")
-output_files   = dict()
-previous_files = None
-device_tag     = None
-epi_version    = None
-hashes         = dict()
-prev_hashes    = None
-branch         = git.get_current_branch()
-commit_id      = git.get_local_ref(branch)
+OUTPUT_DIR      = "output"
+MODULES_DIR     = os.path.join(os.path.dirname(__file__), "module_templates")
+TEMPLATE_TAG    = "TEMPLATE"
+HEADER_TAG      = "HEADER"
+FOOTER_TAG      = "FOOTER"
+IFDEF_EXTENSION = ".def"
+hashobj         = None
+ifdefs          = dict()
+ifdef_params    = dict(PLC_TYPE = "SIEMENS")
+output_files    = dict()
+previous_files  = None
+device_tag      = None
+epi_version     = None
+hashes          = dict()
+prev_hashes     = None
+branch          = git.get_current_branch()
+commit_id       = git.get_local_ref(branch)
 if commit_id is not None:
     ifdef_params["COMMIT_ID"] = commit_id
 
@@ -288,66 +289,14 @@ def getEOL(header):
     return header[tagPos][len(tag):].strip().replace('\\n', '\n').replace('\\r', '\r').strip('"').strip("'")
 
 
-def getIfDefFromURL(device, artifact, epi):
-    if artifact.name() == epi:
-        filename = helpers.sanitizeFilename(device.deviceType().upper() + IFDEF_TAG)
-    else:
-        filename = artifact.name()
-        if filename[len(epi)] != '[' or filename[-1] != ']':
-            raise RuntimeError("Invalid name format in Interface Definition URL for {device}: {name}".format(device = device.name(), name = filename))
-
-        filename = filename[len(epi) + 1 : -1]
-        if filename != helpers.sanitizeFilename(filename):
-            raise RuntimeError("Invalid filename in Interface Definition URL for {device}: {name}".format(device = device.name(), name = filename))
-
-        if not filename.endswith(IFDEF_TAG):
-            filename += IFDEF_TAG
-
-    if epi_version is not None:
-        git_tag = epi_version
-    else:
-        git_tag = device.properties().get(epi + " VERSION", "master")
-    url     = "/".join([ "raw/{}".format(git_tag), filename ])
-
-    print("Downloading Interface Definition file {filename} (version {version}) from {url}".format(filename = filename,
-                                                                                                   url      = artifact.uri(),
-                                                                                                   version  = git_tag))
-
-    return artifact.download(extra_url = url)
-
-
 #
 # Returns an interface definition object
 #
 def getIfDef(device):
-    if device_tag:
-        ifdef_tag = "".join([ "__", device_tag, IFDEF_TAG ])
-    else:
-        ifdef_tag = IFDEF_TAG
-
-    defs = filter(lambda a: a.is_file() and a.filename().endswith(ifdef_tag), device.artifacts())
-
-    if len(defs) > 1:
-        raise RuntimeError("More than one Interface Definiton files were found for {device}: {defs}".format(device = device.name(), defs = defs))
-
-    if defs:
-        filename = defs[0].download()
-    else:
+    filename = device.downloadArtifact(IFDEF_EXTENSION, device_tag, filetype = "Interface Definition")
+    if filename is None:
         # No 'file' artifact found, let's see if there is a URL
-        if device_tag:
-            epi = "__".join([ "EPI", device_tag ])
-        else:
-            epi = "EPI"
-
-        fqepi = epi + "["
-        artifacts = filter(lambda u: u.is_uri() and (u.name() == epi or u.name().startswith(fqepi)), device.artifacts())
-        if not artifacts:
-            return None
-
-        if len(artifacts) > 1:
-            raise RuntimeError("More than one Interface Definition URLs were found for {device}: {urls}".format(device = device.name(), urls = map(lambda u: u.uri(), artifacts)))
-
-        filename = getIfDefFromURL(device, artifacts[0], epi)
+        filename = device.downloadExternalLink("EPI", IFDEF_EXTENSION, device_tag, "Interface Definition", git_tag = epi_version)
         if filename is None:
             return None
 
@@ -366,54 +315,6 @@ def getIfDef(device):
         ifdefs[deviceType] = (filename, ifdef)
 
     return ifdef
-
-
-def buildControlsList(device):
-    device.putInControlledTree()
-
-    # find devices this device _directly_ controls
-    pool = device.controls()
-
-    # find all devices that are directly or indirectly controlled by 'device'
-    controlled_devices = set(pool)
-    while pool:
-        dev = pool.pop()
-
-        cdevs = dev.controls()
-        for cdev in cdevs:
-            if cdev not in controlled_devices:
-                controlled_devices.add(cdev)
-                pool.append(cdev)
-
-    # group them by device type
-    pool = list(controlled_devices)
-    controlled_devices = dict()
-    for dev in pool:
-        device_type = dev.deviceType()
-        try:
-            controlled_devices[device_type].append(dev)
-        except KeyError:
-            controlled_devices[device_type] = [ dev ]
-
-    print("\r" + "#" * 60)
-    print("Device at root: " + device.name() + "\n")
-    print(device.name() + " controls: ")
-
-    # sort items into a list
-    def sortkey(device):
-        return device.name()
-    pool = list()
-    for device_type in sorted(controlled_devices):
-        print("\t- " + device_type)
-
-        for dev in sorted(controlled_devices[device_type], key=sortkey):
-            pool.append(dev)
-            dev.putInControlledTree()
-            print("\t\t-- " + dev.name())
-
-    print("\n")
-
-    return pool
 
 
 def getHeader(device, templateID):
@@ -506,7 +407,7 @@ def processTemplateID(templateID, devices):
 
         # Try to download template from artifact
         if template is None:
-            template = downloadTemplate(device, tagged_templateID)
+            template = downloadTemplate(device, "_" + tagged_templateID if device_tag else tagged_templateID)
             if template is not None:
                 template_seen = True
 
@@ -627,8 +528,7 @@ PLC-EPICS-COMMS:Endianness: [PLCF#PLC-EPICS-COMMS:Endianness]"""
     hash_base = "\n".join(pt.process(device, hash_base.splitlines()))
 
     # create a stable list of controlled devices
-    devices = [ device ]
-    devices.extend(buildControlsList(device))
+    devices = device.buildControlsList(include_self = True, verbose = True)
 
     for templateID in templateIDs:
         global hashobj
@@ -828,19 +728,12 @@ MISCS += $(wildcard misc/*.req)""", file = makefile)
     return out_mdir
 
 
-def create_data_dir():
-    dname = os.path.join(os.path.expanduser("~"), ".local/share/ics_plc_factory")
-    helpers.makedirs(dname)
-
-    return dname
-
-
 def read_data_files():
     global hashes
     global prev_hashes
 
     try:
-        with open(os.path.join(create_data_dir(), "hashes")) as h:
+        with open(os.path.join(helpers.create_data_dir(__product__), "hashes")) as h:
             raw_hashes = h.readline()
     except:
         return
@@ -952,7 +845,7 @@ def create_e3(modulename, snippet):
 
 def write_data_files():
     try:
-        with open(os.path.join(create_data_dir(), "hashes"), 'w') as h:
+        with open(os.path.join(helpers.create_data_dir(__product__), "hashes"), 'w') as h:
             print(str(hashes), file = h)
     except:
         print("Was not able to save data files")
@@ -1063,54 +956,6 @@ def banner():
     print("                                                     __/ | ")
     print("European Spallation Source, Lund                    |___/ \n")
 
-
-
-def check_for_updates():
-    local_ref = git.get_local_ref()
-
-    if local_ref is None:
-        print("Could not check local version")
-        return False
-
-    check_time = time.time()
-
-    try:
-        with open(os.path.join(create_data_dir(), "updates")) as u:
-            raw_updates = u.readline()
-        updates = ast_literal_eval(raw_updates)
-        if updates[0] + 600 > check_time:
-            if local_ref != updates[1]:
-                print("An update is available")
-            return False
-    except:
-        pass
-
-    print("Checking for updates...")
-    remote_ref = git.get_remote_ref()
-    if remote_ref is None:
-        print("Could not check for updates")
-        return False
-
-    # Check if we have remote ref. True means we are most probably ahead of origin; ignore remote ref then
-    if git.has_commit(remote_ref):
-        remote_ref = local_ref
-
-    updates = (check_time, remote_ref)
-    try:
-        with open(os.path.join(create_data_dir(), "updates"), "w") as u:
-            print(updates, file = u)
-    except:
-        pass
-
-    if remote_ref != local_ref:
-        print("""
-An update to PLC Factory is available.
-
-Please run `git pull`
-""")
-        return True
-
-    return False
 
 
 class PLCFArgumentError(Exception):
@@ -1264,7 +1109,7 @@ def main(argv):
         return parser
 
 
-    if check_for_updates():
+    if git.check_for_updates(helpers.create_data_dir(__product__), "PLC Factory"):
         return
 
     parser = argparse.ArgumentParser(add_help = False)
@@ -1385,47 +1230,7 @@ def main(argv):
                         type    = str
                        )
 
-    ccdb_args = parser.add_argument_group("CCDB related options").add_mutually_exclusive_group()
-    ccdb_args.add_argument(
-                           '--ccdb-test',
-                           '--test',
-                           dest     = "ccdb_test",
-                           help     = 'select CCDB test database',
-                           action   = 'store_true',
-                           required = False)
-
-    ccdb_args.add_argument(
-                           '--ccdb-devel',
-                           dest     = "ccdb_devel",
-                           help     = argparse.SUPPRESS, #selects CCDB development database
-                           action   = 'store_true',
-                           required = False)
-
-    # this argument is just for show as the corresponding value is
-    # set to True by default                        
-    ccdb_args.add_argument(
-                           '--ccdb-production',
-                           '--production',
-                           dest     = "ccdb_production",
-                           help     = 'select production CCDB database',
-                           action   = 'store_true',
-                           required = False)
-
-    ccdb_args.add_argument(
-                           '--ccdb',
-                           dest     = "ccdb",
-                           help     = 'use a CCDB dump as backend',
-                           metavar  = 'directory-to-CCDB-dump / name-of-.ccdb.zip',
-                           type     = str,
-                           required = False)
-
-    parser.add_argument(
-                        '--cached',
-                        dest     = "clear_templates",
-                        help     = 'do not clear "templates" folder; use the templates downloaded by a previous run',
-                        # be aware of the inverse logic between the meaning of the option and the meaning of the variable
-                        default  = True,
-                        action   = 'store_false')
+    CCDB.addArgs(parser)
 
     parser.add_argument(
                         '--verify',
@@ -1558,17 +1363,17 @@ def main(argv):
         glob.ccdb = CC.load(args.ccdb)
     elif args.ccdb_test:
         from ccdb import CCDB_TEST
-        glob.ccdb = CCDB_TEST(clear_templates = args.clear_templates)
+        glob.ccdb = CCDB_TEST(clear_templates = args.clear_ccdb_cache)
     elif args.ccdb_devel:
         from ccdb import CCDB_DEVEL
-        glob.ccdb = CCDB_DEVEL(clear_templates = args.clear_templates)
+        glob.ccdb = CCDB_DEVEL(clear_templates = args.clear_ccdb_cache)
     else:
-        glob.ccdb = CCDB(clear_templates = args.clear_templates)
+        glob.ccdb = CCDB(clear_templates = args.clear_ccdb_cache)
 
     global OUTPUT_DIR
     OUTPUT_DIR = os.path.join(OUTPUT_DIR, helpers.sanitizeFilename(device.lower()))
     if device_tag:
-        OUTPUT_DIR = os.path.join(OUTPUT_DIR, helpers.sanitizeFilename("__".join([ "", "tag", device_tag ])))
+        OUTPUT_DIR = os.path.join(OUTPUT_DIR, helpers.sanitizeFilename(CCDB.TAG_SEPARATOR.join([ "", "tag", device_tag ])))
     helpers.makedirs(OUTPUT_DIR)
 
     read_data_files()
@@ -1613,7 +1418,7 @@ def main(argv):
                 print("\nThe following warnings were detected:\n", file = sys.stderr)
             print(warn, file = sys.stderr)
 
-    if not args.clear_templates:
+    if not args.clear_ccdb_cache:
         print("\nTemplates were reused\n")
 
     try:

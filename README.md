@@ -52,10 +52,7 @@ For further information, see the files in [doc](doc/).
 *   **--ccdb-test**
     *   \[OPTIONAL\]
     *   Use the test version of the CCDB database
-*   **--test**
-    *   \[OPTIONAL\]
-    *   shorthand for **--ccdb-test**
-*   **--production**
+*   **--ccdb-production**
     *   \[OPTIONAL\]
     *   Use the production version of the CCDB database. This is the default.
 *   **--zip**=<created_zip_file>
