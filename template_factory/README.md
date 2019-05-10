@@ -127,11 +127,11 @@ A major alarm if the value is 1:
 
 A minor alarm if the value is 0:
 
-**`add_minor_alarm("<name>", "<short_alarm_message>", INVERSE_LOGIC=True)`**
+**`add_minor_alarm("<name>", "<short_alarm_message>", ALARM_IF=False)`**
 
 A major alarm if the value is 0:
 
-**`add_major_alarm("<name>", "<short_alarm_message>", INVERSE_LOGIC=True)`**
+**`add_major_alarm("<name>", "<short_alarm_message>", ALARM_IF=False)`**
 
 ### Enum variable
 
@@ -167,7 +167,7 @@ If **`PV_DESC=<desc>`** or **`ARCHIVE_DESC=<desc>`** is specified (**`ARCHIVE_DE
     *   **`set_defaults(ARCHIVE=True)`**
 *   **`set_defaults(<add_type1>[, <add_type2>]... ,KEYWORD1="value"[, KEYWORD2="value"]...)`**
     *   This has the same effect as specifying `KEYWORD1="value"`, `KEYWORD2="value"`, and so on for every `add_type1`, `add_type2` construct
-    *   **`set_defaults(add_minor_alarm, INVERSE_LOGIC=True)`**
+    *   **`set_defaults(add_minor_alarm, ALARM_IF=False)`**
 
 ## Examples
 
