@@ -105,6 +105,10 @@ class CC(object):
             raise NotImplementedError
 
 
+        def is_perdevtype(self):
+            raise NotImplementedError
+
+
         def filename(self):
             raise NotImplementedError
 
@@ -272,6 +276,19 @@ class CC(object):
             return helpers.sanitizeFilename(self.deviceType().upper() + extension)
 
 
+        def __splitDefs(self, defs):
+            # Separate device and device type artifacts
+            devtype_defs = []
+            dev_defs     = []
+            for art in defs:
+                if art.is_perdevtype():
+                    devtype_defs.append(art)
+                else:
+                    dev_defs.append(art)
+
+            return (dev_defs, devtype_defs)
+
+
         # Returns the filename or None
         def downloadArtifact(self, extension, device_tag = None, filetype = ''):
             if not extension.startswith('.'):
@@ -285,33 +302,56 @@ class CC(object):
 
             defs = filter(lambda a: a.is_file() and a.filename().endswith(suffix), self.artifacts())
 
-            if len(defs) > 1:
-                raise CC.ArtifactException("More than one {filetype} Artifacts were found for {device}: {defs}".format(filetype = filetype, device = self.name(), defs = defs))
+            # Separate device and device type artifacts
+            (dev_defs, devtype_defs) = self.__splitDefs(defs)
 
-            if defs:
+            def __checkArtifactList(defs):
+                if not defs:
+                    return None
+
+                if len(defs) > 1:
+                    raise CC.ArtifactException("More than one {filetype} Artifacts were found for {device}: {defs}".format(filetype = filetype, device = self.name(), defs = defs))
+
                 return defs[0].download()
 
-            return None
+            # device artifacts have higher priority than device type artifacts
+            art = __checkArtifactList(dev_defs)
+            if art is not None:
+                return art
+
+            return __checkArtifactList(devtype_defs)
 
 
         # Returns the filename or None
         def downloadExternalLink(self, base, extension, device_tag = None, filetype = 'External Link', git_tag = None):
+            if not extension.startswith('.'):
+                extension = '.{}'.format(extension)
+
             if device_tag:
                 # base__devicetag
                 base = CC.TAG_SEPARATOR.join([ base, device_tag ])
 
             fqbase = base + "["
             artifacts = filter(lambda u: u.is_uri() and (u.name() == base or u.name().startswith(fqbase)), self.artifacts())
-            if not artifacts:
-                return None
 
-            if len(artifacts) > 1:
-                raise CC.ArtifactException("More than one {filetype} External Links were found for {device}: {urls}".format(filetype = filetype, device = device.name(), urls = map(lambda u: u.uri(), artifacts)))
+            # Separate device and device type external links
+            (dev_defs, devtype_defs) = self.__splitDefs(artifacts)
 
-            if not extension.startswith('.'):
-                extension = '.{}'.format(extension)
+            def __checkExternalLinkList(defs):
+                if not defs:
+                    return None
 
-            return artifacts[0].downloadExternalLink(self.defaultFilename(extension), extension, filetype = filetype, git_tag = git_tag)
+                if len(defs) > 1:
+                    raise CC.ArtifactException("More than one {filetype} External Links were found for {device}: {urls}".format(filetype = filetype, device = self.name(), urls = map(lambda u: u.uri(), defs)))
+
+                return defs[0].downloadExternalLink(self.defaultFilename(extension), extension, filetype = filetype, git_tag = git_tag)
+
+            # device external links have higher priority than device type external links
+            art = __checkExternalLinkList(dev_defs)
+            if art is not None:
+                return art
+
+            return __checkExternalLinkList(devtype_defs)
 
 
         # returns a stable list of controlled devices
