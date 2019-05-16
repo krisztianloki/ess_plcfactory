@@ -1066,7 +1066,7 @@ def WriteCommsEpicsAndDbs():
 
 	ExternalSourceFile.append("	// Call the comms block to provide PLC<->EPICS comms")
 	ExternalSourceFile.append("	\"_CommsPLC_EPICS_DB\"(Enable         := \"Utilities\".AlwaysOn,")
-	ExternalSourceFile.append("	                     SendTrigger    := \"Utilities\".Pulse_200ms,")
+	ExternalSourceFile.append("	                     SendTrigger    := \"Utilities\"." + ifa.PLC_PULSE + ",")
 	ExternalSourceFile.append("	                     BytesToSend    := "+str(ifa.TOTALPLCTOEPICSLENGTH * 2)+",")
 	ExternalSourceFile.append("	                     InterfaceID    := "+ifa.INTERFACE_ID+",")
 	ExternalSourceFile.append("	                     S7ConnectionID := "+ifa.S7_CONNECTION_ID+",")

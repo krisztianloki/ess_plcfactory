@@ -36,7 +36,8 @@ class IFA(object):
                                     S7_PORT                  = int,
                                     MODBUS_PORT              = int,
                                     TOTALEPICSTOPLCLENGTH    = int,
-                                    TOTALPLCTOEPICSLENGTH    = int)
+                                    TOTALPLCTOEPICSLENGTH    = int,
+                                    PLC_PULSE                = str)
 
     valid_line_types = set(mandatory_ifa_properties.keys())
     valid_line_types.update(valid_device_entries)

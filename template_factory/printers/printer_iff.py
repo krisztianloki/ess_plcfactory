@@ -71,6 +71,12 @@ class IFF(PRINTER):
         # No need to initialize counters to 10, IFA does not need it
         #
         PRINTER.header(self, output, **keyword_params).add_filename_header(output, extension = "ifa")
+
+        if keyword_params.get("PLC_TYPE", "SIEMENS") == "SIEMENS":
+            plcpulse = self.plcf("PLC-EPICS-COMMS: PLCPulse")
+        else:
+            plcpulse = 0
+
         self._append("""HASH
 #HASH
 PLC
@@ -93,6 +99,8 @@ S7_PORT
 {s7port}
 MODBUS_PORT
 {mbport}
+PLC_PULSE
+{plcpulse}
 """.format(inst_slot                = self.inst_slot(),
            plc_type                 = keyword_params.get("PLC_TYPE", "SIEMENS"),
            max_io_devices           = self.plcdiag_orzero("Max-IO-Devices"),
@@ -102,7 +110,8 @@ MODBUS_PORT
            s7connectionid           = self.plcf("PLC-EPICS-COMMS: S7ConnectionID"),
            mbconnectionid           = self.plcf("PLC-EPICS-COMMS: MBConnectionID"),
            s7port                   = self.plcf("PLC-EPICS-COMMS: S7Port"),
-           mbport                   = self.plcf("PLC-EPICS-COMMS: MBPort")), output)
+           mbport                   = self.plcf("PLC-EPICS-COMMS: MBPort"),
+           plcpulse                 = plcpulse), output)
 
 
     #
