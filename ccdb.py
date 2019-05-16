@@ -193,9 +193,6 @@ class CCDB(CC):
 
     def getSimilarDevices(self, deviceName):
         assert isinstance(deviceName, str)
-        assert deviceName.count(":") == 1, "bad formatting of device name: " + deviceName
-
-        slot = deviceName.split(":")[0]
 
         url = self._base_url + "slotNames/"
 
@@ -209,10 +206,17 @@ class CCDB(CC):
         allDevices = map(lambda x: str(x), allDevices)
 
         # keep only device
-        candidates = filter(lambda x: x.startswith(slot), allDevices)
+        slot = deviceName.split(":")
+        if len(slot) > 1:
+            slot = slot[0].lower()
+            candidates = filter(lambda x: x.lower().startswith(slot), allDevices)
+            filtered = True
+        else:
+            candidates = allDevices
+            filtered = False
 
         # compute Levenshtein distances
-        return sorted(map(lambda x: (levenshtein.distance(deviceName, x), x), candidates))
+        return (filtered, sorted(map(lambda x: (levenshtein.distance(deviceName, x), x), candidates)))
 
 
     def deviceName(self, deviceName):
@@ -233,33 +237,39 @@ class CCDB(CC):
 
             result = self._get(url)
 
-            if result.status_code == 204:
-                print("""ERROR:
-Device {} not found.
-Please check the list of devices in CCDB, and keep
-in mind that device names are case-sensitive.
-Maybe you meant one of the following devices:
-(Accesing CCDB, may take a few seconds.)
-Most similar device names in CCDB in chosen slot (max. 10):""".format(deviceName))
-                top10 = self.getSimilarDevices(deviceName)[:10]
-
-                if top10 == []:
-                    print("No devices found.")
-                else:
-                    for (score, dev) in top10:
-                        print(dev)
-
-                print("\nExiting.\n")
-                exit(1)
-            elif result.status_code != 200:
+            if result.status_code != 200:
                 raise CC.DownloadException(url = url, code = result.status_code)
 
             # Old versions of CCDB returned the installation slot entry itself and not a dictionary
             tmpDict = json.loads(result.text)
             try:
                 device = self.tostring(tmpDict["installationSlots"])
+                if not device:
+                    print("""ERROR:
+Device '{}' not found.
+Please check the list of devices in CCDB, and keep
+in mind that device names are case-sensitive.
+Maybe you meant one of the following devices:
+(Accesing CCDB, may take a few seconds...)""".format(deviceName))
+
+                    (filtered, top10) = self.getSimilarDevices(deviceName)
+                    if not top10:
+                        print("""
+No devices found.""")
+                    else:
+                        print("""
+Most similar device names in CCDB {}(max. 10):""".format("in chosen slot " if filtered else ""))
+                        for (score, dev) in top10[:10]:
+                            print(dev)
+
+                    print("""
+Exiting.
+""")
+                    exit(1)
+
                 if len(device) > 1:
                     raise CC.Exception("More than one device found with the same name: {}".format(deviceName))
+
                 device = device[0]
             except KeyError:
                 device = self.tostring(tmpDict)
