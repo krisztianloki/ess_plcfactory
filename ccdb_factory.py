@@ -9,7 +9,7 @@ __license__    = "GPLv3"
 
 
 # Python libraries
-from os     import path as os_path
+import os
 from shutil import copy2
 
 # PLCFactory modules
@@ -55,6 +55,12 @@ class CCDB_Factory(CC):
             raise RuntimeError("Unable to auto-detect dataType for {}".format(value))
 
         return dataType
+
+
+    @staticmethod
+    def checkIfExists(filename):
+        if not os.access(filename, os.R_OK):
+            raise RuntimeError("Cannot find file '{}'".format(filename))
 
 
 
@@ -155,9 +161,11 @@ class CCDB_Factory(CC):
             if local_file is None:
                 local_file = name
 
+            CCDB_Factory.checkIfExists(local_file)
+
             artifactDict = dict(CCDB_Factory.default_artifact_dict)
             artifactDict["kind"]      = "SLOT"
-            artifactDict["name"]      = os_path.basename(name)
+            artifactDict["name"]      = os.path.basename(name)
             artifactDict["full_path"] = local_file
 
             try:
@@ -173,6 +181,7 @@ class CCDB_Factory(CC):
             artifactDict["name"] = name
             artifactDict["uri"]  = uri
             if local_file is not None:
+                CCDB_Factory.checkIfExists(local_file)
                 artifactDict["full_path"] = local_file
 
             try:
@@ -269,8 +278,11 @@ class CCDB_Factory(CC):
     def addArtifact(self, deviceType, name, local_file = None):
         if local_file is None:
             local_file = name
+
+        CCDB_Factory.checkIfExists(local_file)
+
         artifactDict = dict(CCDB_Factory.default_artifact_dict)
-        artifactDict["name"]      = os_path.basename(name)
+        artifactDict["name"]      = os.path.basename(name)
         artifactDict["full_path"] = local_file
 
         try:
@@ -284,6 +296,7 @@ class CCDB_Factory(CC):
         artifactDict["uri"]  = uri
         artifactDict["name"] = name
         if local_file is not None:
+            CCDB_Factory.checkIfExists(local_file)
             artifactDict["full_path"] = local_file
 
         try:
