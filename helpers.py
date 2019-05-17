@@ -15,6 +15,21 @@ try:
 except ImportError:
     from urllib.parse import urlsplit
 
+# Fake a WindowsError exception under non-Windows machines
+try:
+    we = WindowsError()
+    del we
+except NameError:
+    WindowsError = OSError
+
+# Fake a FileNotFoundError in Python2
+try:
+    fnf = FileNotFoundError()
+    del fnf
+except NameError:
+    FileNotFoundError = OSError
+
+
 
 def rmdirs(path):
     from shutil import rmtree
@@ -22,10 +37,10 @@ def rmdirs(path):
         if e_path != path:
             raise
 
-        if not (func is os.listdir or func is os.rmdir):
+        if not (func is os.listdir or func is os.rmdir or func is os.lstat):
             raise
 
-        if not (exc_info[0] is OSError or exc_info[0] is WindowsError):
+        if not (exc_info[0] is OSError or exc_info[0] is FileNotFoundError or exc_info[0] is WindowsError):
             raise
 
         if exc_info[1].errno != 2:
