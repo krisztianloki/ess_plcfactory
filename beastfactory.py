@@ -1,4 +1,4 @@
-#!/usr/bin/python2
+#!/usr/bin/env python2
 
 from __future__ import print_function
 from __future__ import absolute_import
@@ -18,9 +18,12 @@ __env__        = "Python version 2.7"
 __product__    = "ics_beast_factory"
 
 # Python libraries
+import sys
+if sys.version_info.major != 2:
+    raise RuntimeError("BEASTFactory supports Python-2.x only. You are running " + sys.version)
+
 import argparse
 import os
-import sys
 import time
 
 

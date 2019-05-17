@@ -1,3 +1,5 @@
+#!/usr/bin/env python2
+
 from __future__ import print_function
 from __future__ import absolute_import
 
@@ -7,6 +9,10 @@ __author__     = "Krisztian Loki"
 __copyright__  = "Copyright 2018, European Spallation Source, Lund"
 __license__    = "GPLv3"
 
+
+import sys
+if sys.version_info.major != 2:
+    raise RuntimeError("CCDBFactory supports Python-2.x only. You are running " + sys.version)
 
 # Python libraries
 import os
