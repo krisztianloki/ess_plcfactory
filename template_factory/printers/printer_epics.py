@@ -55,6 +55,10 @@ class EPICS_BASE(PRINTER):
 
 """
 
+    PLC_INFO_FIELDS = """
+	info("plc_datablock", "{plc_datablock}")
+	info("plc_variable", "{plc_variable}")"""
+
 
     def __init__(self, test = False):
         super(EPICS_BASE, self).__init__(comments = True, show_origin = True, preserve_empty_lines = True)
@@ -178,7 +182,8 @@ class EPICS(EPICS_BASE):
 
 
     def _toEPICS(self, var, inst_slot = "[PLCF#INSTALLATION_SLOT]", test = False):
-        pv_extra = self.DISABLE_TEMPLATE + var.build_pv_extra()
+        pv_extra = self.DISABLE_TEMPLATE + var.build_pv_extra() + EPICS_BASE.PLC_INFO_FIELDS.format(plc_datablock = self._if_def.DEFAULT_DATABLOCK_NAME,
+                                                                                                    plc_variable  = var.name())
         if var.is_parameter() or self._test:
             pv_extra = pv_extra + """
 	info(autosaveFields_pass0, "VAL")"""
@@ -212,6 +217,7 @@ record(stringin, "{root_inst_slot}:PLCFCommitR") {{
 #{plcf_commit}
 	field(VAL,	"{plcf_commit_39}")
 	field(PINI,	"YES")
+	info("plcf_commit", "{plcf_commit}")
 }}
 
 #########################################################
@@ -454,6 +460,7 @@ record(stringin, "{root_inst_slot}:PLCFCommitR") {{
 #{plcf_commit}
 	field(VAL,	"{plcf_commit_39}")
 	field(PINI,	"YES")
+	info("plcf_commit", "{plcf_commit}")
 }}
 
 #########################################################
@@ -698,6 +705,8 @@ class EPICS_OPC(EPICS_BASE):
 
 
     def _toEPICS(self, var, inst_slot = "[PLCF#INSTALLATION_SLOT]", test = False):
+        pv_extra = self.DISABLE_TEMPLATE + var.build_pv_extra() + EPICS_BASE.PLC_INFO_FIELDS.format(plc_datablock = var.datablock_name(),
+                                                                                                    plc_variable  = var.name())
         return (var.source(),
                 var.pv_template().format(recordtype = var.pv_type(),
                                          pv_name    = var._build_pv_name(self._if_def.inst_slot()),
@@ -706,7 +715,7 @@ class EPICS_OPC(EPICS_BASE):
                                          inp_out    = var.inp_out(inst_io   = '$(SUBSCRIPTION)',
                                                                   datablock = var.datablock_name(),
                                                                   var_name  = var.name()),
-                                         pv_extra   = var.build_pv_extra()))
+                                         pv_extra   = pv_extra))
 
 
     #
@@ -726,6 +735,7 @@ record(stringin, "{root_inst_slot}:PLCFCommitR") {{
 #{plcf_commit}
 	field(VAL,	"{plcf_commit_39}")
 	field(PINI,	"YES")
+	info("plcf_commit", "{plcf_commit}")
 }}
 
 record(mbbi, "{root_inst_slot}:OPCStateR") {{
