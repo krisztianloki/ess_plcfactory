@@ -165,3 +165,6 @@ The following output types can be automatically generated from **Interface Defin
 *   ARCHIVE
     *    The list of PVs that has to be archived. Can be added to the archiver repository: `https://gitlab.esss.lu.se/ics-infrastructure/epicsarchiver-config.git`
     *    `<device>-template-ARCHIVE-<timestamp>.archive`
+*   BOB
+    *    A Display Builder OPI for the PLC. It is only really usable for small projects right now (few devices with few signals)
+    *    `<device>-template-BOB-<timestamp>.bob`
