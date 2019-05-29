@@ -414,7 +414,7 @@ def processTemplateID(templateID, devices):
                 print("Generating template from Definition File...")
                 ifdef.calculate_hash(hashobj)
                 template = []
-                templatePrinter.body(ifdef, template)
+                templatePrinter.body(ifdef, template, DEVICE = device)
 
         # Try to download template from artifact
         if template is None:
@@ -1282,29 +1282,29 @@ def main(argv):
     default_printers = set(["DEVICE-LIST"])
 
     if args.plc_interface:
-        default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "IFA" ] )
+        default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "IFA", "BEAST", "BEAST-TEMPLATE" ] )
 
     if args.plc_direct:
         ifdef_params["OPTIMIZE"] = True
-        default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "IFA", tia_map ] )
+        default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "IFA", tia_map, "BEAST", "BEAST-TEMPLATE" ] )
 
     ifdef_params["PLC_READONLY"] = args.plc_readonly
     ifdef_params["EXPERIMENTAL"] = args.experimental
 
     if beckhoff:
-        default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "IFA" ] )
+        default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "IFA", "BEAST", "BEAST-TEMPLATE" ] )
         ifdef_params["PLC_TYPE"] = "BECKHOFF"
 
     if opc:
         # EPICS-DB will be deleted later, but we add it here so that it is enough to check for EPICS-DB
-        default_printers.update( [ "EPICS-DB", "EPICS-OPC-DB" ] )
+        default_printers.update( [ "EPICS-DB", "EPICS-OPC-DB", "BEAST", "BEAST-TEMPLATE" ] )
         ifdef_params["PLC_TYPE"] = "OPC"
 
     if eee:
-        default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "AUTOSAVE-ST-CMD", "AUTOSAVE" ] )
+        default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "AUTOSAVE-ST-CMD", "AUTOSAVE", "BEAST", "BEAST-TEMPLATE" ] )
 
     if e3:
-        default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "IOCSH", ] )
+        default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "IOCSH", "BEAST", "BEAST-TEMPLATE", ] )
 
     if default_printers:
         if not default_printers <= set(tf.available_printers()):

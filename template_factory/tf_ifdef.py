@@ -1025,6 +1025,24 @@ class IF_DEF(object):
         return self._ifaces
 
 
+    def status_interfaces(self):
+        self._exception_if_active()
+
+        return self._status_block().interfaces()
+
+
+    def command_interfaces(self):
+        self._exception_if_active()
+
+        return self._cmd_block().interfaces()
+
+
+    def parameter_interfaces(self):
+        self._exception_if_active()
+
+        return self._param_block().interfaces()
+
+
     def warnings(self):
         if self._filename:
             in_file = "In file {filename}".format(filename = self._filename)

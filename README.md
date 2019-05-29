@@ -168,3 +168,9 @@ The following output types can be automatically generated from **Interface Defin
 *   BOB
     *    A Display Builder OPI for the PLC. It is only really usable for small projects right now (few devices with few signals)
     *    `<device>-template-BOB-<timestamp>.bob`
+*   BEAST
+    *    A BeastFactory .alarms file. Automatically generated for PLCs and EPICS modules
+    *    `<device>-template-BEAST-<timestamp>.alarms`
+*   BEAST-TEMPLATE
+    *    A BeastFactory .alarms-template file. Automatically generated for PLCs and EPICS modules
+    *    `<device>-template-BEAST-TEMPLATE-<timestamp>.alarms-template`
