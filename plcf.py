@@ -44,76 +44,6 @@ class PLCFEvalException(PLCFException):
 
 
 
-def evalCounter(line, counters):
-    assert isinstance(line,     str )
-    assert isinstance(counters, dict)
-
-    # substitutions
-    for key in counters.keys():
-        (line, _) = PLCF.substitute(line, key, str(counters[key]))
-
-    # evaluation
-    (_, line) = processLineCounter(line)
-
-    return line
-
-
-def evalCounterIncrease(line, counters):
-    assert isinstance(line,     str )
-    assert isinstance(counters, dict)
-
-    # identify start of expression and substitute
-    pos = line.find("[PLCF#")
-
-    if pos != -1:
-
-        pre  = line[:pos]
-        post = line[pos:]
-
-        for key in counters.keys():
-            (post, _) = PLCF.substitute(post, key, str(counters[key]))
-
-        line = pre + post
-
-    # identify counter
-    counterVar = line.split()[1]
-    assert counterVar in counters.keys()
-
-    # evaluate
-    (counter, line) = processLineCounter(line)
-    assert isinstance(counter, int), counter
-    assert isinstance(line,    str)
-
-    for key in counters.keys():
-        if counterVar == key:
-            counters[key] = counter
-
-    return (counters, line)
-
-
-def processLineCounter(line):
-    assert isinstance(line, str)
-
-    (start, expression, end) = PLCF.getPLCFExpression(line)
-
-    if expression is None:
-        return (None, line)
-
-    result = ""
-
-    # evaluation happens after all substitutions have been performed
-    try:
-        result = eval(expression)
-
-    # catch references to slot names (and erroneous input)
-    except (SyntaxError, NameError) as e:
-        result = expression
-
-    return (result, line[:start] + str(result) + line[end + 1:])
-
-
-
-
 class PLCF(object):
     plcf_tag     = "[PLCF#"
     plcf_tag_len = len(plcf_tag)
@@ -308,6 +238,98 @@ class PLCF(object):
                 raise PLCFEvalException(expression, e) #from None
 
         return str(result)
+
+
+    @staticmethod
+    def evalCounters(lines, counters):
+        assert isinstance(lines, list)
+        assert isinstance(counters, dict)
+
+        output = []
+
+        for line in lines:
+            if PLCF.plcf_tag in line:
+                if "#COUNTER" not in line:
+                    line = PLCF._evalCounter(line, counters)
+                else:
+                    (counters, line) = PLCF._evalCounterIncrease(line, counters)
+
+            assert isinstance(line, str)
+            # PLCF should now all be processed
+            assert PLCF.plcf_tag not in line, "Leftover PLCF# expression in line: {line}".format(line = line)
+            output.append(line)
+
+        return (output, counters)
+
+
+    @staticmethod
+    def _evalCounter(line, counters):
+        assert isinstance(line,     str )
+        assert isinstance(counters, dict)
+
+        # substitutions
+        for key in counters.keys():
+            (line, _) = PLCF.substitute(line, key, str(counters[key]))
+
+        # evaluation
+        (_, line) = PLCF._processLineCounter(line)
+
+        return line
+
+
+    @staticmethod
+    def _evalCounterIncrease(line, counters):
+        assert isinstance(line, str)
+        assert isinstance(counters, dict)
+
+        # identify start of expression and substitute
+        pos = line.find(PLCF.plcf_tag)
+
+        if pos != -1:
+            pre  = line[:pos]
+            post = line[pos:]
+
+            for key in counters.keys():
+                (post, _) = PLCF.substitute(post, key, str(counters[key]))
+
+            line = pre + post
+
+        # identify counter
+        counterVar = line.split()[1]
+        assert counterVar in counters.keys()
+
+        # evaluate
+        (counter, line) = PLCF._processLineCounter(line)
+        assert isinstance(counter, int), counter
+        assert isinstance(line,    str)
+
+        for key in counters.keys():
+            if counterVar == key:
+                counters[key] = counter
+
+        return (counters, line)
+
+
+    @staticmethod
+    def _processLineCounter(line):
+        assert isinstance(line, str)
+
+        (start, expression, end) = PLCF.getPLCFExpression(line)
+
+        if expression is None:
+            return (None, line)
+
+        result = ""
+
+        # evaluation happens after all substitutions have been performed
+        try:
+            result = eval(expression)
+
+        # catch references to slot names (and erroneous input)
+        except (SyntaxError, NameError) as e:
+            result = expression
+
+        return (result, line[:start] + str(result) + line[end + 1:])
 
 
     @staticmethod

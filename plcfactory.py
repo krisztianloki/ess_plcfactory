@@ -345,11 +345,12 @@ def getFooter(device, templateID_or_printer):
 def getPLCF(device):
     global plcfs
 
+    device_name = device.name()
     try:
-        return plcfs[device.name()]
+        return plcfs[device_name]
     except KeyError:
         cplcf = plcf.PLCF(device)
-        plcfs[device.name()] = cplcf
+        plcfs[device_name] = cplcf
         return cplcf
 
 
@@ -360,7 +361,7 @@ def processTemplateID(templateID, devices):
     start_time = time.time()
 
     rootDevice = devices[0]
-    rcplcf      = getPLCF(rootDevice)
+    rcplcf     = getPLCF(rootDevice)
     rcplcf.register_template(templateID)
 
     if device_tag:
@@ -461,16 +462,11 @@ def processTemplateID(templateID, devices):
     header      = processHash(header)
     footer      = processHash(footer)
 
-    eol         = getEOL(header)
-
     output      = header + output + footer
 
     if not output:
         print("There were no templates for ID = {}.\n".format(tagged_templateID))
         return
-
-    lines  = output
-    output = []
 
     # Process counters; initialize
     numOfCounters = 9
@@ -479,21 +475,9 @@ def processTemplateID(templateID, devices):
     for n in range(numOfCounters):
         counters["Counter" + str(n + 1)] = 0
 
+    (output, counters) = plcf.PLCF.evalCounters(output, counters)
 
-    for line in lines:
-
-        if "[PLCF#" in line and "#COUNTER" not in line:
-            line = plcf.evalCounter(line, counters)
-
-        elif "[PLCF#" in line and '#COUNTER' in line:
-            (counters, line) = plcf.evalCounterIncrease(line, counters)
-
-        assert isinstance(line, str)
-        # PLCF should now all be be processed
-        assert "[PLCF#" not in line, "Leftover PLCF# expression in line: {line}".format(line = line)
-        output.append(line)
-
-
+    eol = getEOL(header)
     #write file
     with open(outputFile,'w') as f:
         for line in output:
