@@ -50,7 +50,7 @@ def evalCounter(line, counters):
 
     # substitutions
     for key in counters.keys():
-        line = PLCF.substitute(line, key, str(counters[key]))
+        (line, _) = PLCF.substitute(line, key, str(counters[key]))
 
     # evaluation
     (_, line) = processLineCounter(line)
@@ -71,7 +71,7 @@ def evalCounterIncrease(line, counters):
         post = line[pos:]
 
         for key in counters.keys():
-            post = PLCF.substitute(post, key, str(counters[key]))
+            (post, _) = PLCF.substitute(post, key, str(counters[key]))
 
         line = pre + post
 
@@ -244,6 +244,20 @@ class PLCF(object):
         return expression
 
 
+    def _check_infinite_recursion(self, expression, barrier):
+        expression = self._evalUp(expression)
+        for elem in self._keys:
+            # Found infinite recursion
+            if elem == barrier:
+                return True
+
+            # Caught a longer match, no infinite recursion
+            if elem in expression:
+                break
+
+        return False
+
+
     # replaces all variables in a PLCFLang expression with values
     # from CCDB and returns the evaluated expression
     def _evaluateExpression(self, expression):
@@ -255,8 +269,14 @@ class PLCF(object):
 
         for elem in self._keys:
             if elem in expression:
-                value = self._properties.get(elem)
-                tmp   = self.substitute(expression, elem, value)
+                value                = self._properties.get(elem)
+                (tmp, pos_after_val) = self.substitute(expression, elem, value)
+                # If the substitution string ('value') contains the key ('elem') then check if the result contains other keys than 'elem'
+                # In other words: try to avoid an infinite recursion
+                if elem in value and self._check_infinite_recursion(tmp, elem):
+                    tmp = tmp[:pos_after_val] + self._evaluateExpression(tmp[pos_after_val:])
+                    expression = self._evalUp(tmp)
+                    break
                 # recursion to take care of multiple occurrences of variables
                 return self._evaluateExpression(tmp)
 
@@ -349,12 +369,13 @@ class PLCF(object):
         assert isinstance(value,    str)
 
         if variable not in expr:
-            return expr
+            return (expr, len(expr))
 
-        start = expr.find(variable)
-        end   = start + len(variable)
+        start           = expr.find(variable)
+        end             = start + len(variable)
+        pos_after_value = start + len(value)
 
-        return expr[:start] + value + expr[end:]
+        return (expr[:start] + value + expr[end:], pos_after_value)
 
     # checks for basic validity of expression by determining whether
     # open and closed parentheses match
@@ -396,7 +417,11 @@ if __name__ == "__main__":
         def deviceType(self):
             return "FakeDeviceType"
         def propertiesDict(self):
-            return {}
+            return { "infinity": "infinity",
+                     "lonG"    : "lonG", "lonGer": "lonGer", "lengthy": "lonG",
+                     "short"   : "shorter", "shorter" : "tiny",
+                     "template": "beast-template",
+                     "A"       : "AB", "AB": "AC"}
         def backtrack(self, prop):
             return prop
 
@@ -406,6 +431,15 @@ if __name__ == "__main__":
     def noException(line):
         print("Checking {}... {}".format(line, cplcf.processLine(line)))
 
+
+    def match(line, expected):
+        print("Checking {}...".format(line), end = '')
+        result = cplcf.processLine(line)
+        if result == expected:
+            print(result)
+        else:
+            print()
+            raise RuntimeError("Test failed for {}:\nexpected {}\ngot      {}".format(line, expected, result))
 
     def expectException(line):
         try:
@@ -431,3 +465,15 @@ if __name__ == "__main__":
     expectException("[PLCF#ext.(]")
 
     expectException("[PLCF#ext.fn(()]")
+
+    match("[PLCF#infinity]", "infinity")
+
+    match("[PLCF#lengthyer]", "lonGer")
+
+    match("[PLCF#lengthyer lengthy]", "lonGer lonG")
+
+    match("[PLCF#short]", "tiny")
+
+    match("[PLCF#template template short]", "beast-template beast-template tiny")
+
+#    match("[PLCF#A]", "AC")
