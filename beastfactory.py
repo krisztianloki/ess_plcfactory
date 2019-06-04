@@ -201,7 +201,7 @@ Generating output file {}...
             self._alarm_tree.write(beast_xml, **self.etree_options)
 
         # create a dump of CCDB
-        self._ccdb.dump(ioc, self._output_dir)
+        self._ccdb.dump(self._iocName, self._output_dir)
 
 
 
