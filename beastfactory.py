@@ -53,27 +53,30 @@ class BEASTFactory(object):
         print("Falling back to original ElementTree implementation....", file = sys.stderr)
         import xml.etree.ElementTree as etree
 
+
     def __init__(self, argv):
         if git.check_for_updates(data_dir = helpers.create_data_dir(__product__), product = "BEAST Factory"):
             return
 
         self._output_dir = "output"
 
+        # get the number of --ioc arguments
+        parser = PLCFArgumentParser(add_help = False)
+
+        self.__add_ioc_arg(parser, False)
+
+        args = parser.parse_known_args(argv)[0]
+
+        # build the final argument list
         parser         = PLCFArgumentParser()
 
-        parser.add_argument(
-                            '-d',
-                            '--device',
-                            '--ioc',
-                            dest     = 'ioc',
-                            help     = 'IOC / installation slot',
-                            required = True
-                            )
+        self.__add_ioc_arg(parser)
 
         parser.add_argument(
                             '--config',
                             help     = 'BEAST config entry',
-                            default  = None
+                            default  = None,
+                            required = args.iocs is not None and len(args.iocs) > 1
                            )
 
         CCDB.addArgs(parser)
@@ -81,14 +84,14 @@ class BEASTFactory(object):
         parser.add_argument(
                             '--tag',
                             help     = 'tag to use if more than one matching External Link is found',
-                            type     = str)
+                            type     = str
+                           )
 
         # retrieve parameters
         args = parser.parse_args(argv)
 
         start_time = time.time()
 
-        self._iocName    = args.ioc
         self._config     = args.config
         self._device_tag = args.tag
 
@@ -108,12 +111,7 @@ class BEASTFactory(object):
         else:
             self._ccdb = CCDB(clear_templates = args.clear_ccdb_cache)
 
-        self._output_dir = os.path.join(self._output_dir, helpers.sanitizeFilename(self._iocName.lower()))
-        if self._device_tag:
-            self._output_dir = os.path.join(self._output_dir, helpers.sanitizeFilename(CCDB.TAG_SEPARATOR.join([ "", "tag", self._device_tag ])))
-        helpers.makedirs(self._output_dir)
-
-        self.processIOC()
+        self.processIOCs(args.iocs)
 
         if not args.clear_ccdb_cache:
             print("\nAlarms definitions were reused\n")
@@ -121,37 +119,65 @@ class BEASTFactory(object):
         print("--- %.1f seconds ---\n" % (time.time() - start_time))
 
 
-    def parseAlarmTree(self, ioc):
+    def __add_ioc_arg(self, parser, required = True):
+        parser.add_argument(
+                            '--ioc',
+                            '-d',
+                            '--device',
+                            dest     = 'iocs',
+                            help     = 'IOC / installation slot',
+                            action   = "append",
+                            required = required
+                           )
+
+
+
+    def _makeOutputDir(self, dirname):
+        output_dir = os.path.join(self._output_dir, helpers.sanitizeFilename(dirname.lower()))
+        if self._device_tag:
+            output_dir = os.path.join(output_dir, helpers.sanitizeFilename(CCDB.TAG_SEPARATOR.join([ "", "tag", self._device_tag ])))
+        helpers.makedirs(output_dir)
+
+        return output_dir
+
+
+    def _parseAlarmTree(self, ioc, merge_with):
         alarm_tree = ioc.downloadExternalLink("BEAST TREE", ".alarm-tree", filetype = "Alarm tree", device_tag = self._device_tag)
         if alarm_tree is None:
             raise BEASTFactoryException("No alarm tree found")
 
-        self._beast_def.parse_alarm_tree(alarm_tree, self._config)
+        print("Parsing {} of {}".format(alarm_tree, ioc.name()))
+
+        # initialize beast definition parser
+        beast_def = BEAST_DEF(merge_with)
+
+        # parse alarm tree
+        beast_def.parse_alarm_tree(alarm_tree, self._config)
+        print()
+
+        return beast_def
 
 
-    def parseAlarms(self, device):
+    def _parseAlarms(self, beast_def, device):
         alarm_list = device.downloadExternalLink("BEAST TEMPLATE", ".alarms-template", filetype = "Alarm definition template", device_tag = self._device_tag)
         if alarm_list:
             print("Parsing {} of {}".format(alarm_list, device.name()))
-            self._beast_def.parse(alarm_list, device = device)
+            beast_def.parse(alarm_list, device = device)
             print()
 
         alarm_list = device.downloadExternalLink("BEAST", ".alarms", filetype = "Alarm definition", device_tag = self._device_tag)
         if alarm_list:
             print("Parsing {} of {}".format(alarm_list, device.name()))
-            self._beast_def.parse(alarm_list, device = device)
+            beast_def.parse(alarm_list, device = device)
             print()
 
 
-    def processIOC(self):
+    def _processIOC(self, iocName, merge_with = None):
+        # clear any previous CCDB data
+        self._ccdb.clear()
+
         # get IOC device
-        ioc = self._ccdb.device(self._iocName)
-
-        # initialize beast definition parser
-        self._beast_def = BEAST_DEF(etree = self.etree)
-
-        # parse alarm tree
-        self.parseAlarmTree(ioc)
+        ioc = self._ccdb.device(iocName)
 
         # create a stable list of controlled devices
         try:
@@ -162,22 +188,37 @@ class BEASTFactory(object):
 
         devices = ioc.buildControlsList(include_self = True, verbose = True)
 
+        # parse alarm tree
+        beast_def = self._parseAlarmTree(ioc, merge_with)
+
         for device in devices:
             # parse alarm list
-            self.parseAlarms(device)
+            self._parseAlarms(beast_def, device)
 
-        # generate beast xml
-        beast_xml    = self._beast_def.toxml()
-        self._config = beast_xml.getroot().attrib["name"]
+        # create a dump of CCDB
+        self._ccdb.dump(iocName, self._makeOutputDir(iocName))
 
-        with open(os.path.join(self._output_dir, self._config + ".xml"), "w") as f:
+        return beast_def
+
+
+    def processIOCs(self, iocs):
+        beast_def = None
+        for iocName in iocs:
+            beast_def = self._processIOC(iocName, beast_def)
+        beast_xml = beast_def.toxml(etree = self.etree)
+
+        if len(iocs) == 1:
+            self._config = beast_xml.getroot().attrib["name"]
+
+        self.writeXml(beast_xml)
+
+
+    def writeXml(self, beast_xml):
+        with open(os.path.join(self._makeOutputDir(self._config), self._config + ".xml"), "w") as f:
             print("""
 Generating output file {}...
 """.format(f.name))
             beast_xml.write(f, **self.etree_options)
-
-        # create a dump of CCDB
-        self._ccdb.dump(self._iocName, self._output_dir)
 
 
 
@@ -202,8 +243,8 @@ class PLCFArgumentError(Exception):
 
 
 class PLCFArgumentParser(argparse.ArgumentParser):
-    def __init__(self):
-        argparse.ArgumentParser.__init__(self)
+    def __init__(self, **keyword_params):
+        argparse.ArgumentParser.__init__(self, **keyword_params)
 
 
     def exit(self, status = 0, message = None):

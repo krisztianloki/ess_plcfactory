@@ -17,8 +17,11 @@ Automatically generates a BEAST configuration xml from CCDB using alarm definiti
 #### Generate BEAST configuration xml file for IOC LEBT-010:Vac-IOC-DAQ001 overriding the config entry name
 `python beastfactory.py --ioc LEBT-010:Vac-IOC-DAQ001 --config=mytest`
 
+#### Generate a single BEAST configuration xml file from IOCs LEBT-010:Vac-IOC-DAQ001 and VacS-ACCV:Vac-IOC-11010 with 'Vacuum' as config entry name
+`python beastfactory.py --ioc LEBT-010:Vac-IOC-DAQ001 --ioc VacS-ACCV:Vac-IOC-11010 --config Vacuum`
 
-The resulting output file will be written to a dedicated directory \(derived from the ioc name\) in the `output` folder. The file name is taken from the config entry name of the alarm tree.
+
+The resulting output file will be written to a dedicated directory \(the config entry name in lowercase\) in the `output` folder. The file name is taken from the config entry name of the alarm tree or the config specified with `--config` if present.
 
 ## Usage
 
@@ -26,11 +29,11 @@ The resulting output file will be written to a dedicated directory \(derived fro
 
 *   **--ioc=<ioc_name_as_in_CCDB>**
     *   \[**REQUIRED**\]
-    *   The IOC for whom alarm configuration should be generated
+    *   The IOC for whom alarm configuration should be generated. If specified more than once (`--config` becomes mandatory) a single configuration will be generated merging the alarm trees (and alarms) of the IOCs
     *   `--ioc=LEBT-010:Vac-IOC-DAQ001`
 *   **--config=<config_entry_name>**
     *   \[OPTIONAL\]
-    *   Use this name instead of the one specified in the alarm tree
+    *   Use this name instead of the one specified in the alarm tree. **REQUIRED** if `--ioc` is specified more than once
     *   `--config=mytest`
 *   **--ccdb=<directory_of_ccdb_dump_OR_path_to_.ccdb.zip>**
     *   \[OPTIONAL\]

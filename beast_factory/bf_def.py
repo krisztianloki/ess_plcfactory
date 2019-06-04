@@ -378,15 +378,22 @@ def beastdef_interface(func):
 
 
 class BEAST_DEF(object):
-    def __init__(self, etree, **keyword_params):
+    def __init__(self, merge_with = None):
+        if merge_with is not None:
+            if not isinstance(merge_with, BEAST_DEF):
+                raise BEASTDefInternalError("Cannot merge with non-BEAST_DEF")
+
+            self._root_components = merge_with._root_components
+        else:
+            # Root components
+            self._root_components = OrderedDict()
+
         # Current component and pv
         self._component = None
         self._pv        = None
 
         # Path to current component
         self._components      = []
-        # Root components
-        self._root_components = OrderedDict()
 
         # Not defining alarm tree
         self._alarm_tree = False
@@ -400,9 +407,6 @@ class BEAST_DEF(object):
                                   'latching'     : True,
                                   'annunciating' : False,
                                 }
-
-        # The ElementTree implementation
-        self._etree = etree
 
         # The config name
         self._config = None
@@ -483,9 +487,6 @@ class BEAST_DEF(object):
 
 
     def parse_alarm_tree(self, def_file, config = None):
-        if self._root_components:
-            raise BEASTDefSyntaxError("Alarm tree is already defined!")
-
         self._alarm_tree = True
 
         with codecs.open(def_file, 'r', encoding = 'utf-8') as defs:
@@ -520,21 +521,21 @@ class BEAST_DEF(object):
                 linenum += 1
 
 
-    def toxml(self):
-        xml_tree = self._etree.ElementTree(self._etree.Element('config'))
+    def toxml(self, etree):
+        xml_tree = etree.ElementTree(etree.Element('config'))
         root     = xml_tree.getroot()
         root.tag = "config"
         root.attrib.clear()
         root.attrib['name'] = self._config
 
-        for component in self.components().itervalues():
-            component.toxml(root, etree = self._etree)
+        for component in self.components():
+            component.toxml(root, etree = etree)
 
         return xml_tree
 
 
     def components(self):
-        return self._root_components
+        return self._root_components.itervalues()
 
 
     @alarmtree_interface
