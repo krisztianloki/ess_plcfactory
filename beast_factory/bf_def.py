@@ -179,6 +179,15 @@ class BEAST_COMPONENT(BEAST_BASE):
         self._pvs.append(pv)
 
 
+    def xml(self, parent, etree):
+        element = etree.SubElement(parent, "component", name = self._name)
+
+        for child in self._children.itervalues():
+            child.xml(element, etree)
+
+        return element
+
+
 
 class BEAST_PV(BEAST_BASE):
     def __init__(self, line, name, defaults):
@@ -328,9 +337,21 @@ except NameError:
     unicodeargs = python3_unicodeargs
 
 
+def alarmtree_interface(func):
+    def alarmtree_interface_func(*args, **kwargs):
+        kwargs["__ALARM_TREE_FUNC__"] = True
+        return func(*args, **kwargs)
+
+    return alarmtree_interface_func
+
+
 def beastdef_interface(func):
     def beastdef_interface_func(*args, **kwargs):
         if args is not None and isinstance(args, tuple) and len(args) > 0 and isinstance(args[0], BEAST_DEF):
+            alarm_tree = kwargs.pop("__ALARM_TREE_FUNC__", False)
+            if args[0]._alarm_tree and not alarm_tree:
+                raise BEASTDefSyntaxError("Function not valid during alarm tree definition")
+
             # Convert every str to unicode
             args = unicodeargs(args)
             var = func(*args, **kwargs)
@@ -360,6 +381,9 @@ class BEAST_DEF(object):
         # Root components
         self._root_components = OrderedDict()
 
+        # Not defining alarm tree
+        self._alarm_tree = False
+
         # Defined titles to be used in guidance/display/command/automated_action
         self._titles = dict()
 
@@ -378,7 +402,7 @@ class BEAST_DEF(object):
             if not hasattr(val, '__call__') or f.startswith('_'):
                 continue
 
-            if val.__name__ in [ "beastdef_interface_func" ]:
+            if val.__name__ in [ "beastdef_interface_func", "alarmtree_interface_func" ]:
                 self._evalEnv[f] = val
 
 
@@ -419,11 +443,11 @@ class BEAST_DEF(object):
 
         try:
             if not isinstance(line, str) and not isinstance(line, unicode):
-                raise BESTDefSyntaxError("Alarm definition lines must be strings!")
+                raise BEASTDefSyntaxError("Alarm definition lines must be strings!")
 
             stripped_line = line.strip()
             if stripped_line.startswith("_"):
-                raise BESTDefSyntaxError("Alarm definition lines cannot start with '_'")
+                raise BEASTDefSyntaxError("Alarm definition lines cannot start with '_'")
 
             if stripped_line.startswith("#-"):
                 return
@@ -439,6 +463,23 @@ class BEAST_DEF(object):
             raise BEASTDefInternalError(e, line = stripped_line, linenum = linenum)
         except SyntaxError as e:
             raise BEASTDefSyntaxError(e.msg, line = stripped_line, linenum = linenum)
+
+
+    def parse_alarm_tree(self, def_file):
+        if self._root_components:
+            raise BEASTDefSyntaxError("Alarm tree is already defined!")
+
+        self._alarm_tree = True
+
+        with codecs.open(def_file, 'r', encoding = 'utf-8') as defs:
+            linenum = 1
+            for line in defs:
+                self._parse(line, linenum)
+                linenum += 1
+
+        self._alarm_tree = False
+
+        return self
 
 
     def parse(self, def_file, device = None):
@@ -460,6 +501,7 @@ class BEAST_DEF(object):
         return self._root_components
 
 
+    @alarmtree_interface
     @beastdef_interface
     def default_latching(self, latch):
         beastdef_assert_instance(isinstance(latch, bool), "latching", bool)
@@ -469,6 +511,7 @@ class BEAST_DEF(object):
         return BEAST_BASE(self._line)
 
 
+    @alarmtree_interface
     @beastdef_interface
     def default_annunciating(self, annunciate):
         beastdef_assert_instance(isinstance(annunciate, bool), "annunciating", bool)
@@ -478,6 +521,7 @@ class BEAST_DEF(object):
         return BEAST_BASE(self._line)
 
 
+    @alarmtree_interface
     @beastdef_interface
     def define_title(self, name, title):
         beastdef_assert_instance(isinstance(name, str) or isinstance(name, unicode), "name", str)
@@ -488,6 +532,7 @@ class BEAST_DEF(object):
         return BEAST_BASE(self._line)
 
 
+    @alarmtree_interface
     @beastdef_interface
     def component(self, name):
         beastdef_assert_instance(isinstance(name, str) or isinstance(name, unicode), "name", str)
@@ -513,6 +558,7 @@ class BEAST_DEF(object):
         return var
 
 
+    @alarmtree_interface
     @beastdef_interface
     def end_component(self):
         try:
@@ -636,5 +682,4 @@ class BEAST_DEF(object):
 
 
 if __name__ == "__main__":
-    bdef = BEAST_DEF()
-    bdef.parse("miki.alarm")
+    pass

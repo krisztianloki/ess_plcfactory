@@ -60,8 +60,11 @@ Every configuration and definition file shall be uploaded to a Git repository (o
 The name of an External Link shall be one of the following:
 
 *    **`BEAST TREE`**
+    *   Filename extension: .`alarm-tree`
 *    **`BEAST TEMPLATE`**
+    *   Filename extension: .`alarms-template`
 *    **`BEAST`**
+    *   Filename extension: .`alarms`
 
 The aforementioned names can be specialized further by specifying an additional "tag":
 
@@ -69,7 +72,7 @@ The aforementioned names can be specialized further by specifying an additional 
 *    **`BEAST TEMPLATE__tag`**
 *    **`BEAST__tag`**
 
-This enables devices to have more than one alarm definition and selects the correct one specified by the "tag".
+This enables devices to have more than one alarm definition and selects the correct one specified by the "tag" (see `--tag` option).
 
 #### Git tags, branches, commits
 
@@ -92,20 +95,18 @@ It is possible to explicitly specify the filename in square brackets after `BEAS
 
 #### Creating the Alarm tree
 
-The alarm tree has to be defined in the same format as required by BEAST and assigned to the IOC. The assignment is done with the **`BEAST TREE`** External Link name. The extension of the file shall be **`.alarm-tree`**. A sample alarm tree looks like this:
-```xml
-<config name="MAIN">
-	<component name="Level1.1">
-		<component name="Level2.1">
-			<component name="Level3.1">
-			</component>
-		</component>
-		<component name="Level2.2">
-		</component>
-	</component>
-	<component name="Level1.2">
-	</component>
-</config>
+The alarm tree definition uses a subset of the 'normal' alarm definition syntax and has to be assigned to the IOC. The assignment is done with the **`BEAST TREE`** External Link name. The extension of the file shall be **`.alarm-tree`**. A sample alarm tree looks like this (Tabs/Spaces are optional):
+```
+component("Level1.1")
+	component("Level2.1")
+		component("Level3.1")
+		end_component()
+	end_component()
+	component("Level2.2")
+	end_component()
+end_component()
+component("Level1.2")
+end_component()
 ```
 
 #### Creating alarm template definitions

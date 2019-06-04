@@ -6,7 +6,8 @@ Because in the current implementation every alarm definition is a special subset
 
 ## Defining components
 
-The empty alarm tree is already defined in a separate XML file, components defined here shall match that structure.
+Can be used in `.alarm-tree`, `.alarms`, `.alarms-template` definitions.
+Components defined in `.alarms` and `.alarms-template` files shall match (a subset of) the alarm tree structure.
 A component can be embedded in another component. The scope of a component ends with the explicit closure of it.
 
 ### Starting a component
@@ -19,6 +20,7 @@ A component can be embedded in another component. The scope of a component ends 
 
 ## Defining default attributes
 
+Can be used in `.alarm-tree`, `.alarms`, `.alarms-template` definitions.
 Every alarm will have these attribute values unless they are explicitly overriden.
 
 ### Latching
@@ -31,6 +33,7 @@ Every alarm will have these attribute values unless they are explicitly override
 
 ## Defining Titles for Guidance, Display, Command, and Automated action attributes
 
+Can be used in `.alarm-tree`, `.alarms`, `.alarms-template` definitions.
 To ease maintenance the possible titles of aforementioned attributes have to be defined beforehand. Every title is assigned a _type_ (a string identifier) and this type shall be used when defining the actual attributes.
 
 ### Title
@@ -39,6 +42,7 @@ To ease maintenance the possible titles of aforementioned attributes have to be 
 
 ## Adding alarms to a component
 
+Can only be used in `.alarms` and `.alarms-template` definitions.
 After a component is defined it can be populated with alarms. An alarm definition starts with defining the associated PV. Attributes of an alarm can be defined *after* defining the PV. The scope of an alarm / PV ends with the definition of another alarm / PV.
 
 ### PV
