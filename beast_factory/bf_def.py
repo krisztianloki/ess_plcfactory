@@ -387,9 +387,17 @@ class BEAST_DEF(object):
         # Defined titles to be used in guidance/display/command/automated_action
         self._titles = dict()
 
+        # Default and titles defined in the alarm tree
+        self._global_titles   = dict()
+        self._global_defaults = { 'enabled'      : True,
+                                  'latching'     : True,
+                                  'annunciating' : False,
+                                }
+
         # The PV name has to be prefixed
         self._devicename = None
 
+        # Initialize per-device(type) structures
         self._reset()
 
         self._evalEnv = dict()
@@ -429,12 +437,8 @@ class BEAST_DEF(object):
         self._component  = None
         self._pv         = None
         self._components = []
-        self._titles     = dict()
-
-        self._defaults = { 'enabled'      : True,
-                           'latching'     : True,
-                           'annunciating' : False,
-                         }
+        self._titles     = dict(self._global_titles)
+        self._defaults   = dict(self._global_defaults)
 
 
     def _parse(self, line, linenum):
@@ -476,6 +480,10 @@ class BEAST_DEF(object):
             for line in defs:
                 self._parse(line, linenum)
                 linenum += 1
+
+        # Save defined titles and defaults
+        self._global_defaults = self._defaults
+        self._global_titles   = self._titles
 
         self._alarm_tree = False
 
