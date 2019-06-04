@@ -126,8 +126,7 @@ class BEASTFactory(object):
         if alarm_tree is None:
             raise BEASTFactoryException("No alarm tree found")
 
-        self._alarm_tree = self._beast_def.parse_alarm_tree(alarm_tree, self._config)
-        self._config     = self._alarm_tree.getroot().attrib["name"]
+        self._beast_def.parse_alarm_tree(alarm_tree, self._config)
 
 
     def parseAlarms(self, device):
@@ -135,30 +134,20 @@ class BEASTFactory(object):
         if alarm_list:
             print("Parsing {} of {}".format(alarm_list, device.name()))
             self._beast_def.parse(alarm_list, device = device)
+            print()
 
         alarm_list = device.downloadExternalLink("BEAST", ".alarms", filetype = "Alarm definition", device_tag = self._device_tag)
         if alarm_list:
             print("Parsing {} of {}".format(alarm_list, device.name()))
             self._beast_def.parse(alarm_list, device = device)
-
-
-    def _process_component(self, components):
-        for component in components.itervalues():
-            xml_component = self._alarm_tree.getroot().find('.' + component.xpath())
-            if xml_component is None:
-                raise BEASTFactoryException("Component '{}' (line {}) at {} is not defined in the alarm tree".format(component.name(),
-                                                                                                                     component.lineno(),
-                                                                                                                     component.path()))
-
-            for pv in component.pvs():
-                pv.xml(xml_component, etree = self.etree)
-
-            self._process_component(component.components())
+            print()
 
 
     def processIOC(self):
+        # get IOC device
         ioc = self._ccdb.device(self._iocName)
 
+        # initialize beast definition parser
         self._beast_def = BEAST_DEF(etree = self.etree)
 
         # parse alarm tree
@@ -177,14 +166,15 @@ class BEASTFactory(object):
             # parse alarm list
             self.parseAlarms(device)
 
-        if self._beast_def:
-            self._process_component(self._beast_def.components())
+        # generate beast xml
+        beast_xml    = self._beast_def.toxml()
+        self._config = beast_xml.getroot().attrib["name"]
 
-        with open(os.path.join(self._output_dir, self._config + ".xml"), "w") as beast_xml:
+        with open(os.path.join(self._output_dir, self._config + ".xml"), "w") as f:
             print("""
 Generating output file {}...
-""".format(beast_xml.name))
-            self._alarm_tree.write(beast_xml, **self.etree_options)
+""".format(f.name))
+            beast_xml.write(f, **self.etree_options)
 
         # create a dump of CCDB
         self._ccdb.dump(self._iocName, self._output_dir)

@@ -183,11 +183,14 @@ class BEAST_COMPONENT(BEAST_BASE):
         self._pvs.append(pv)
 
 
-    def xml(self, parent, etree):
+    def toxml(self, parent, etree):
         element = etree.SubElement(parent, "component", name = self._name)
 
+        for pv in self.pvs():
+            pv.toxml(element, etree)
+
         for child in self._children.itervalues():
-            child.xml(element, etree)
+            child.toxml(element, etree)
 
         return element
 
@@ -214,7 +217,7 @@ class BEAST_PV(BEAST_BASE):
         return self._name
 
 
-    def xml(self, parent, etree):
+    def toxml(self, parent, etree):
         element = etree.SubElement(parent, "pv", name = self._name)
 
         if self._desc is not None:
@@ -226,7 +229,7 @@ class BEAST_PV(BEAST_BASE):
 
         def xmllist(ls, etree):
             for guidance in ls:
-                guidance.xml(element, etree)
+                guidance.toxml(element, etree)
 
         xmllist(self._guidances, etree)
         xmllist(self._commands, etree)
@@ -283,7 +286,7 @@ class BEAST_TitleDetailsDelay(BEAST_BASE):
         self._delay   = delay
 
 
-    def xml(self, parent, etree):
+    def toxml(self, parent, etree):
         element = etree.SubElement(parent, self._tag)
 
         etree.SubElement(element, "title").text     = self._title
@@ -503,18 +506,6 @@ class BEAST_DEF(object):
 
         self._alarm_tree = False
 
-        xml_tree = self._etree.ElementTree(self._etree.Element('config'))
-        root     = xml_tree.getroot()
-        root.tag = "config"
-        root.attrib.clear()
-        root.attrib['name'] = self._config
-
-        for component in self.components().itervalues():
-            component.xml(root, etree = self._etree)
-
-
-        return xml_tree
-
 
     def parse(self, def_file, device = None):
         self._reset()
@@ -528,7 +519,18 @@ class BEAST_DEF(object):
                 self._parse(line, linenum)
                 linenum += 1
 
-        return self
+
+    def toxml(self):
+        xml_tree = self._etree.ElementTree(self._etree.Element('config'))
+        root     = xml_tree.getroot()
+        root.tag = "config"
+        root.attrib.clear()
+        root.attrib['name'] = self._config
+
+        for component in self.components().itervalues():
+            component.toxml(root, etree = self._etree)
+
+        return xml_tree
 
 
     def components(self):
@@ -591,6 +593,11 @@ class BEAST_DEF(object):
                 var = self._component.components()[name]
         except KeyError:
             var = BEAST_COMPONENT(self._line, name, self._components)
+
+            if not self._alarm_tree:
+                raise BEASTDefSyntaxError("Component '{}' (line {}) with path {} is not defined in the alarm tree".format(name,
+                                                                                                                          var.lineno(),
+                                                                                                                          var.path()))
 
             if self._component is not None:
                 self._component.add_component(var)
