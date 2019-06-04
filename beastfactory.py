@@ -126,25 +126,8 @@ class BEASTFactory(object):
         if alarm_tree is None:
             raise BEASTFactoryException("No alarm tree found")
 
-        self._beast_def.parse_alarm_tree(alarm_tree)
-        self._alarm_tree = self.etree.ElementTree(self.etree.Element('config'))
-        root = self._alarm_tree.getroot()
-        for component in self._beast_def.components().itervalues():
-            component.xml(root, etree = self.etree)
-
-#        # Has to do this for pretty_print to work
-#        for element in root.iter():
-#            element.tail = None
-#            element.text = None
-
-        if root.tag == "config":
-            self._config = root.attrib.get("name", self._config)
-        if not self._config:
-            raise BEASTFactoryException("No config name is defined in alarm tree and no --config option was specified")
-
-        root.tag    = "config"
-        root.attrib.clear()
-        root.attrib['name'] = self._config
+        self._alarm_tree = self._beast_def.parse_alarm_tree(alarm_tree, self._config)
+        self._config     = self._alarm_tree.getroot().attrib["name"]
 
 
     def parseAlarms(self, device):
@@ -176,7 +159,7 @@ class BEASTFactory(object):
     def processIOC(self):
         ioc = self._ccdb.device(self._iocName)
 
-        self._beast_def = BEAST_DEF()
+        self._beast_def = BEAST_DEF(etree = self.etree)
 
         # parse alarm tree
         self.parseAlarmTree(ioc)

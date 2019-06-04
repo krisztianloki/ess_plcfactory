@@ -37,10 +37,14 @@ class BEASTDefException(Exception):
 
 
     def __repr__(self):
-        return """{error} at line {linenum}: {line}{args}""".format(error   = self.typemsg,
-                                                                    linenum = self.keyword_params.get("linenum", "N/A"),
-                                                                    line    = self.keyword_params.get("line", "N/A"),
-                                                                    args    = self.args_format.format(self.args[0]) if self.args[0] else "")
+        try:
+            return """{error} at line {linenum}: {line}{args}""".format(error   = self.typemsg,
+                                                                        linenum = self.keyword_params["linenum"],
+                                                                        line    = self.keyword_params["line"],
+                                                                        args    = self.args_format.format(self.args[0]) if self.args[0] else "")
+        except KeyError:
+            return """{error}: {args}""".format(error   = self.typemsg,
+                                                args    = self.args_format.format(self.args[0]) if self.args[0] else "")
 
 
     def __str__(self):
@@ -371,7 +375,7 @@ def beastdef_interface(func):
 
 
 class BEAST_DEF(object):
-    def __init__(self, **keyword_params):
+    def __init__(self, etree, **keyword_params):
         # Current component and pv
         self._component = None
         self._pv        = None
@@ -393,6 +397,12 @@ class BEAST_DEF(object):
                                   'latching'     : True,
                                   'annunciating' : False,
                                 }
+
+        # The ElementTree implementation
+        self._etree = etree
+
+        # The config name
+        self._config = None
 
         # The PV name has to be prefixed
         self._devicename = None
@@ -469,7 +479,7 @@ class BEAST_DEF(object):
             raise BEASTDefSyntaxError(e.msg, line = stripped_line, linenum = linenum)
 
 
-    def parse_alarm_tree(self, def_file):
+    def parse_alarm_tree(self, def_file, config = None):
         if self._root_components:
             raise BEASTDefSyntaxError("Alarm tree is already defined!")
 
@@ -485,9 +495,25 @@ class BEAST_DEF(object):
         self._global_defaults = self._defaults
         self._global_titles   = self._titles
 
+        if config is not None:
+            self._config = config
+
+        if self._config is None:
+            raise BEASTDefSyntaxError("No config name is defined in alarm tree and no --config option was specified")
+
         self._alarm_tree = False
 
-        return self
+        xml_tree = self._etree.ElementTree(self._etree.Element('config'))
+        root     = xml_tree.getroot()
+        root.tag = "config"
+        root.attrib.clear()
+        root.attrib['name'] = self._config
+
+        for component in self.components().itervalues():
+            component.xml(root, etree = self._etree)
+
+
+        return xml_tree
 
 
     def parse(self, def_file, device = None):
@@ -507,6 +533,17 @@ class BEAST_DEF(object):
 
     def components(self):
         return self._root_components
+
+
+    @alarmtree_interface
+    @beastdef_interface
+    def config(self, name):
+        if not self._alarm_tree:
+            raise BEASTDefSyntaxError("Function is only valid during alarm tree definition")
+
+        self._config = name
+
+        return BEAST_BASE(self._line)
 
 
     @alarmtree_interface

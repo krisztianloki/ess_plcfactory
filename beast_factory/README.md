@@ -97,6 +97,7 @@ It is possible to explicitly specify the filename in square brackets after `BEAS
 
 The alarm tree definition uses a subset of the 'normal' alarm definition syntax and has to be assigned to the IOC. The assignment is done with the **`BEAST TREE`** External Link name. The extension of the file shall be **`.alarm-tree`**. A sample alarm tree looks like this (Tabs/Spaces are optional):
 ```
+config("sample")
 component("Level1.1")
 	component("Level2.1")
 		component("Level3.1")

@@ -4,6 +4,13 @@
 
 Because in the current implementation every alarm definition is a special subset of python the same set of rules apply as to a python script. Basically every "instruction" is a function call; thus parenthesis are mandatory. Optional arguments are represented as keyword arguments and take the form of **`KEYWORD="value"`**. An exception to python syntax is that leading spaces and tabs are allowed (and ignored).
 
+## Defining config
+
+Can only be used in `.alarm-tree`
+It is used to define the BEAST configuration name
+
+**`config("<name>")`**
+
 ## Defining components
 
 Can be used in `.alarm-tree`, `.alarms`, `.alarms-template` definitions.
