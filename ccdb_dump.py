@@ -34,8 +34,14 @@ class CCDB_Dump(object):
             CCDB.Device.ccdb = self
 
 
+        # do not dump
         def dump(self, filename, dir = None):
             return None
+
+
+        # do not clear
+        def clear(self):
+            pass
 
 
         # prevent downloading possibly new revisions of def files

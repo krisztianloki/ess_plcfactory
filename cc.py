@@ -413,25 +413,9 @@ class CC(object):
 
 
     def __init__(self, clear_templates = True):
-        # all devices; key, Device pairs
-        self._devices              = dict()
+        self._clear_templates = clear_templates
 
-        self._hashSum              = None
-
-        # cache for device, property dictionary
-        self._propDict             = dict()
-
-        # cache for ^() expressions
-        # key: (device, expression), value: property
-        self._backtrackCache       = dict()
-
-        if clear_templates:
-            # clear templates downloaded in a previous run
-            helpers.rmdirs(CC.TEMPLATE_DIR)
-        else:
-            print("Reusing templates of any previous run")
-
-        helpers.makedirs(CC.TEMPLATE_DIR)
+        self.__clear()
 
 
     @staticmethod
@@ -578,6 +562,33 @@ class CC(object):
                 f.write(line)
 
         return save_as
+
+
+    def __clear(self):
+        # all devices; key, Device pairs
+        self._devices              = dict()
+
+        self._hashSum              = None
+
+        # cache for device, property dictionary
+        self._propDict             = dict()
+
+        # cache for ^() expressions
+        # key: (device, expression), value: property
+        self._backtrackCache       = dict()
+
+        if self._clear_templates:
+            # clear templates downloaded in a previous run
+            helpers.rmdirs(CC.TEMPLATE_DIR)
+        else:
+            print("Reusing templates of any previous run")
+
+        helpers.makedirs(CC.TEMPLATE_DIR)
+
+
+    # clear whatever we have. let other implementations override
+    def clear(self):
+        self.__clear()
 
 
     # Returns: CC.Device
