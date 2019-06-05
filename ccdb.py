@@ -80,11 +80,13 @@ class CCDB(CC):
     class Device(CC.Device):
         ccdb = None
 
-        def __init__(self, slot):
+        def __init__(self, slot, ccdb = None):
             super(CCDB.Device, self).__init__()
             self._slot  = slot
             self._props = None
             self._arts  = None
+            if ccdb is not None:
+                self.ccdb = ccdb
 
 
         def __str__(self):
@@ -283,10 +285,10 @@ Exiting.
                 if result.status_code == 200:
                     slots = self.tostring(json.loads(result.text)["installationSlots"])
                     for slot in slots:
-                        self._devices[slot["name"]] = self.Device(slot)
+                        self._devices[slot["name"]] = self.Device(slot, ccdb = self)
 
             # save downloaded data
-            self._devices[deviceName] = self.Device(device)
+            self._devices[deviceName] = self.Device(device, ccdb = self)
 
         return self._devices[deviceName]
 

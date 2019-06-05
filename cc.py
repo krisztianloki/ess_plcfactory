@@ -587,7 +587,11 @@ class CC(object):
         except KeyError:
             if cachedOnly:
                 return None
-            return self._device(deviceName)
+
+            device      = self._device(deviceName)
+            device.ccdb = self
+
+            return device
 
 
     # Returns: the device name

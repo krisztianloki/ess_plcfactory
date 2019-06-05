@@ -118,8 +118,8 @@ class CCDB_Factory(CC):
                                "poweredBy"    : None}
 
 
-        def __init__(self, deviceName, deviceType = None):
-            super(CCDB_Factory.Device, self).__init__(dict(CCDB_Factory.Device.default_device_dict))
+        def __init__(self, deviceName, deviceType = None, ccdb = None):
+            super(CCDB_Factory.Device, self).__init__(dict(CCDB_Factory.Device.default_device_dict), ccdb = ccdb)
             self._slot["name"] = deviceName
             if deviceType is not None:
                 self._slot["deviceType"] = deviceName
@@ -138,10 +138,14 @@ class CCDB_Factory(CC):
             if not isinstance(value, list):
                 value = [ value ]
 
-            self._slot["controls"] = value
+            try:
+                self._slot["controls"].append(value)
+            except AttributeError:
+                # Handle 'controls' is None case
+                self._slot["controls"] = value
 
             for deviceName in value:
-                device = CCDB_Factory.Device.ccdb.device(deviceName)
+                device = self.ccdb.device(deviceName)
                 try:
                     already = set(device._slot["controlledBy"])
                     already.add(self.name())
@@ -161,6 +165,13 @@ class CCDB_Factory(CC):
                     return
 
             self._slot["properties"].append({"name": key, "value": str(value), "dataType": CCDB_Factory.toDatatype(value, dataType)})
+
+
+        def addDevice(self, deviceType, deviceName):
+            device = self.ccdb.addDevice(deviceType, deviceName)
+            self.setControls(deviceName)
+
+            return device
 
 
         def addArtifact(self, name, local_file = None):
@@ -345,13 +356,8 @@ if __name__ == "__main__":
     factory.addLink("VACUUM_VAC-VVS", "EPI",                    "https://bitbucket.org/europeanspallationsource/repository", "local_filename")
     factory.addLink("VACUUM_VAC-VVS", "EPI__tag[tag_filename]", "https://bitbucket.org/europeanspallationsource/repository")
 
-    valves = ["LEBT-010:Vac-VVS-20000", "LEBT-010:Vac-VVS-40000"]
-
     # Add the PLC
     plc = factory.addPLC("MPS-Vac:Ctrl-PLC-001")
-
-    # Set the controls relationship
-    plc.setControls(valves)
 
     # Change some properties
     plc.setProperty('PLCF#PLC-EPICS-COMMS: InterfaceID', 666)
@@ -359,13 +365,15 @@ if __name__ == "__main__":
     # Add slot artifacts
     plc.addArtifact("plc_filename")
 
-    # Add other devices
+    valves = ["LEBT-010:Vac-VVS-20000", "LEBT-010:Vac-VVS-40000"]
+
+    # Add other devices (implicitly sets controls/controlled-by relationship)
     for valve in valves:
-        factory.addDevice("VACUUM_VAC-VVS", valve)
+        plc.addDevice("VACUUM_VAC-VVS", valve)
 
     # Add slot link to device
     factory.device("LEBT-010:Vac-VVS-20000").addLink("EPI__tag", "https://bitbucket.org/europeanspallationsource/repository2", "local_filename2")
     factory.device("LEBT-010:Vac-VVS-20000").addArtifact("slot_filename")
 
     # Dump our CCDB
-    factory.dump("factory")
+    factory.dump("my_ccdb")

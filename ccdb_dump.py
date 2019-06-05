@@ -55,7 +55,7 @@ class CCDB_Dump(object):
         def _createDevices(self, devicedict):
             deviceDict = ast.literal_eval(devicedict)
             for (key, value) in deviceDict.iteritems():
-                self._devices[key] = CCDB.Device(value)
+                self._devices[key] = CCDB.Device(value, ccdb = self)
 
 
         def _device(self, deviceName):
