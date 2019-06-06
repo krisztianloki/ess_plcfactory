@@ -5,25 +5,26 @@ from shlex import split as shlex_split
 import subprocess
 import time
 
+__git_dir = (os.path.abspath(os.path.dirname(__file__)))
 
 
 def get_current_branch():
     try:
-        return subprocess.check_output(shlex_split("git rev-parse --abbrev-ref HEAD")).strip()
+        return subprocess.check_output(shlex_split("git rev-parse --abbrev-ref HEAD"), cwd = __git_dir).strip()
     except subprocess.CalledProcessError:
         return None
 
 
 def get_local_ref(branch = "master"):
     try:
-        return subprocess.check_output(shlex_split("git rev-parse {}".format(branch))).strip()
+        return subprocess.check_output(shlex_split("git rev-parse {}".format(branch)), cwd = __git_dir).strip()
     except subprocess.CalledProcessError:
         return None
 
 
 def get_remote_ref(branch = "master"):
     try:
-        output = subprocess.check_output(shlex_split("git ls-remote --quiet --exit-code origin refs/heads/{}".format(branch)))
+        output = subprocess.check_output(shlex_split("git ls-remote --quiet --exit-code origin refs/heads/{}".format(branch)), cwd = __git_dir)
         return output[:-len("refs/heads/{}\n".format(branch))].strip()
     except subprocess.CalledProcessError:
         return None
@@ -32,7 +33,7 @@ def get_remote_ref(branch = "master"):
 def has_commit(commit):
     try:
         # Cannot use check_call; have to redirect stderr...
-        subprocess.check_output(shlex_split("git cat-file -e {}^{{commit}}".format(commit)), stderr = subprocess.STDOUT)
+        subprocess.check_output(shlex_split("git cat-file -e {}^{{commit}}".format(commit)), stderr = subprocess.STDOUT, cwd = __git_dir)
         return True
     except subprocess.CalledProcessError:
         return False
