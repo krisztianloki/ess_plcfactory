@@ -138,13 +138,19 @@ class CCDB_Factory(CC):
             if not isinstance(value, list):
                 value = [ value ]
 
+            devnames = []
+            for devname in value:
+                if isinstance(devname, CCDB_Factory.Device):
+                    devname = devname.name()
+                devnames.append(devname)
+
             try:
-                self._slot["controls"].append(value)
+                self._slot["controls"].extend(devnames)
             except AttributeError:
                 # Handle 'controls' is None case
-                self._slot["controls"] = value
+                self._slot["controls"] = devnames
 
-            for deviceName in value:
+            for deviceName in devnames:
                 device = self.ccdb.device(deviceName)
                 try:
                     already = set(device._slot["controlledBy"])
