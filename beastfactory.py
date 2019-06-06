@@ -205,7 +205,8 @@ class BEASTFactory(object):
         beast_def = None
         for iocName in iocs:
             beast_def = self._processIOC(iocName, beast_def)
-        beast_xml = beast_def.toxml(etree = self.etree)
+        branch = git.get_current_branch()
+        beast_xml = beast_def.toxml(etree = self.etree, branch = branch, commit = git.get_local_ref(branch))
 
         if len(iocs) == 1:
             self._config = beast_xml.getroot().attrib["name"]
