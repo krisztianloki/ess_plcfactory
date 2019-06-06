@@ -72,11 +72,15 @@ class BEASTFactory(object):
 
         self.__add_ioc_arg(parser)
 
+        def is_config_mandatory(opt):
+            return opt is not None and len(opt) > 1
+
+
         parser.add_argument(
                             '--config',
                             help     = 'BEAST config entry',
                             default  = None,
-                            required = args.iocs is not None and len(args.iocs) > 1
+                            required = is_config_mandatory(args.iocs) or is_config_mandatory(args.xmls)
                            )
 
         CCDB.addArgs(parser)
@@ -111,7 +115,10 @@ class BEASTFactory(object):
         else:
             self._ccdb = CCDB(clear_templates = args.clear_ccdb_cache)
 
-        self.processIOCs(args.iocs)
+        if args.iocs:
+            self.processIOCs(args.iocs)
+        elif args.xmls:
+            self.mergeXMLs(args.xmls)
 
         if not args.clear_ccdb_cache:
             print("\nAlarms definitions were reused\n")
@@ -120,16 +127,26 @@ class BEASTFactory(object):
 
 
     def __add_ioc_arg(self, parser, required = True):
-        parser.add_argument(
-                            '--ioc',
-                            '-d',
-                            '--device',
-                            dest     = 'iocs',
-                            help     = 'IOC / installation slot',
-                            action   = "append",
-                            required = required
-                           )
+        ix = parser.add_mutually_exclusive_group(required = required)
 
+        ix.add_argument(
+                        '--ioc',
+                        '-d',
+                        '--device',
+                        dest     = 'iocs',
+                        metavar  = 'IOC-name',
+                        help     = 'IOC / installation slot',
+                        action   = "append",
+                       )
+
+
+        ix.add_argument(
+                        '--xml',
+                        dest     = 'xmls',
+                        metavar  = 'BEAST-xml-file',
+                        help     = 'BEAST xml files to merge',
+                        action   = "append",
+                       )
 
 
     def _makeOutputDir(self, dirname):
@@ -201,6 +218,16 @@ class BEASTFactory(object):
         return beast_def
 
 
+    def __beastXML(self):
+        beast_xml = self.etree.ElementTree(self.etree.Element('config'))
+        root      = beast_xml.getroot()
+        root.tag  = "config"
+        root.attrib.clear()
+        root.attrib['name'] = self._config
+
+        return (beast_xml, root)
+
+
     def processIOCs(self, iocs):
         beast_def = None
         for iocName in iocs:
@@ -210,6 +237,15 @@ class BEASTFactory(object):
 
         if len(iocs) == 1:
             self._config = beast_xml.getroot().attrib["name"]
+
+        self.writeXml(beast_xml)
+
+
+    def mergeXMLs(self, xmls):
+        (beast_xml, root) = self.__beastXML()
+        for xml in xmls:
+            for component in self.etree.parse(xml).getroot():
+                root.append(component)
 
         self.writeXml(beast_xml)
 
