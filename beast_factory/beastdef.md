@@ -6,7 +6,7 @@ Because in the current implementation every alarm definition is a special subset
 
 ## Defining config
 
-Can only be used in `.alarm-tree`
+Can only be used in `.alarm-tree`.
 It is used to define the BEAST configuration name
 
 **`config("<name>")`**
@@ -24,6 +24,13 @@ A component can be embedded in another component. The scope of a component ends 
 ### Closing a component
 
 **`end_component()`**
+
+## Including alarm templates
+
+Can only be used in `.alarm-tree`.
+If alarms from a device type have to be added to more than one component, this feature comes to the rescue. For example, the alarms for each ODH monitor belong to different components and it does not make sense to create a new `.alarms-template` with different `component()` definitions for **every** ODH monitor; create only one **without** component definitions and include that in the alarm tree at the correct components.
+
+**`include("<device-name-as-defined-in-CCDB>")`**
 
 ## Defining default attributes
 
@@ -132,8 +139,25 @@ After a component is defined it can be populated with alarms. An alarm definitio
     `    end_component()`
     `    component("ColdBox Vacuum")`
 
-    *    Defines the following component tree
+    *    Defines the following alarm tree
          *   TICP ColdBox
              *   UTILITIES
              *   ColdBox Vacuum
 
+### Including
+
+*   `component("ODH")`
+    `    component("Monitor 1")`
+    `        include("section-subsection:ODH-O2iM-1")`
+    `    end_component()`
+    `    component("Monitor 2")`
+    `        include("section-subsection:ODH-O2iM-2")`
+    `    end_component()`
+    `end_component()`
+
+    *    Defines the following alarm tree and includes the `.alarms-template` (defined with the `BEAST TEMPLATE` External Link) from the two ODH monitors
+         *   ODH
+             *   Monitor 1
+                 * alarms of `section-subsection:ODH-O2iM-1`
+             *   Monitor 2
+                 * alarms of `section-subsection:ODH-O2iM-2`

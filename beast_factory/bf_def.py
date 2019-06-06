@@ -164,6 +164,15 @@ class BEAST_COMPONENT(BEAST_BASE):
         return self._path
 
 
+    def strpath(self, include_self = False):
+        p = ['']
+        p.extend([c.name() for c in self._path])
+        if include_self:
+            p.append(self._name)
+
+        return "/".join(p)
+
+
     def xpath(self):
         return "{}/component[@name='{}']".format("".join(["/component[@name='{}']".format(i.name()) for i in self._path]), self._name)
 
@@ -395,19 +404,10 @@ class BEAST_DEF(object):
             # Root components
             self._root_components = OrderedDict()
 
-        # Current component and pv
-        self._component = None
-        self._pv        = None
-
-        # Path to current component
-        self._components      = []
-
         # Not defining alarm tree
         self._alarm_tree = False
 
         # Defined titles to be used in guidance/display/command/automated_action
-        self._titles = dict()
-
         # Default and titles defined in the alarm tree
         self._global_titles   = dict()
         self._global_defaults = { 'enabled'      : True,
@@ -415,11 +415,11 @@ class BEAST_DEF(object):
                                   'annunciating' : False,
                                 }
 
+        # Includes
+        self._includes = dict()
+
         # The config name
         self._config = None
-
-        # The PV name has to be prefixed
-        self._devicename = None
 
         # Initialize per-device(type) structures
         self._reset()
@@ -457,10 +457,20 @@ class BEAST_DEF(object):
 
 
     def _reset(self):
+        # The PV name has to be prefixed
         self._devicename = None
+
+        # Current component and pv
         self._component  = None
         self._pv         = None
+
+        # Path to current component
         self._components = []
+
+        # Not processing on behalf of an include directive
+        self._including  = False
+
+        # Initialize titles and defaults to the globally defined ones
         self._titles     = dict(self._global_titles)
         self._defaults   = dict(self._global_defaults)
 
@@ -515,11 +525,21 @@ class BEAST_DEF(object):
         self._alarm_tree = False
 
 
-    def parse(self, def_file, device = None):
+    def parse(self, def_file, device):
         self._reset()
 
-        if def_file.endswith('.alarms-template') and device:
-            self._devicename = device.name()
+        devicename = device.name()
+
+        try:
+            self._component = self._includes[devicename]
+            self._including = True
+        except KeyError:
+            pass
+
+        if def_file.endswith('.alarms-template'):
+            self._devicename = devicename
+        elif self._including:
+            raise BEASTDefSyntaxError("Only .alarms-template definitions can be included")
 
         with codecs.open(def_file, 'r', encoding = 'utf-8') as defs:
             linenum = 1
@@ -606,6 +626,9 @@ class BEAST_DEF(object):
     def component(self, name):
         beastdef_assert_instance(isinstance(name, str) or isinstance(name, unicode), "name", str)
 
+        if self._including:
+            raise BEASTDefSyntaxError("Included definitions cannot (yet?) have components")
+
         self._pv = None
 
         try:
@@ -619,7 +642,7 @@ class BEAST_DEF(object):
             if not self._alarm_tree:
                 raise BEASTDefSyntaxError("Component '{}' (line {}) with path {} is not defined in the alarm tree".format(name,
                                                                                                                           var.lineno(),
-                                                                                                                          var.path()))
+                                                                                                                          var.strpath()))
 
             if self._component is not None:
                 self._component.add_component(var)
@@ -630,6 +653,23 @@ class BEAST_DEF(object):
         self._components.append(var)
 
         return var
+
+
+    @alarmtree_interface
+    @beastdef_interface
+    def include(self, devicename):
+        if not self._alarm_tree:
+            raise BEASTDefSyntaxError("Function is only valid during alarm tree definition")
+
+        if self._component is None:
+            raise BEASTDefSyntaxError("Cannot do includes outside of a component")
+
+        if devicename in self._includes:
+            raise BEASTDefSyntaxError("'{}' is already included in '{}'".format(devicename, self._includes[devicename].strpath(True)))
+
+        self._includes[devicename] = self._component
+
+        return BEAST_BASE(self._line)
 
 
     @alarmtree_interface
