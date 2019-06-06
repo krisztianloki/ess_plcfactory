@@ -254,6 +254,10 @@ class BEAST_PV(BEAST_BASE):
         self._desc = desc
 
 
+    def disable(self, val):
+        self._enabled = not val
+
+
     def set_latching(self, latching):
         self._latching = latching
 
@@ -671,6 +675,18 @@ class BEAST_DEF(object):
             raise BEASTDefSyntaxError("Description without PV")
 
         self._pv.add_description(xml_descape(desc))
+
+        return self._pv
+
+
+    @beastdef_interface
+    def disable(self, val = True):
+        beastdef_assert_instance(isinstance(val, bool), "disable", bool)
+
+        if self._pv is None:
+            raise BEASTDefSyntaxError("Disable without PV")
+
+        self._pv.disable(val)
 
         return self._pv
 

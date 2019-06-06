@@ -60,6 +60,10 @@ After a component is defined it can be populated with alarms. An alarm definitio
 
 **`description("<desc>")`**
 
+### Disabling
+
+**`disable()`**
+
 ### Latching
 
 **`latching({True|False})`**
