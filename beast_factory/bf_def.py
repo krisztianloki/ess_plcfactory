@@ -75,6 +75,12 @@ class BEASTDefInternalError(BEASTDefException):
 
 
 
+class BEASTDefPrematureEnd(BEASTDefException):
+    def __init__(self, *args):
+        super(BEASTDefPrematureEnd, self).__init__("Unexpected EOF while parsing", *args)
+
+
+
 class BEASTDefFeatureMissingError(BEASTDefException):
     def __init__(self, feature):
         super(BEASTDefFeatureMissingError, self).__init__("Required feature '{}' is not supported in this version".format(feature))
@@ -505,17 +511,50 @@ class BEAST_DEF(object):
         except AssertionError as e:
             raise BEASTDefInternalError(e, line = stripped_line, linenum = linenum)
         except SyntaxError as e:
-            raise BEASTDefSyntaxError(e.msg, line = stripped_line, linenum = linenum)
+            if e.msg == "unexpected EOF while parsing":
+                raise BEASTDefPrematureEnd()
+            elif e.msg == "EOF while scanning triple-quoted string literal":
+                raise BEASTDefPrematureEnd()
+            elif e.msg == "invalid syntax" and e.lineno > 1 and len(stripped_line.splitlines()[e.lineno - 1]) == e.offset:
+                raise BEASTDefPrematureEnd()
+            raise BEASTDefSyntaxError(e.msg, line = stripped_line, linenum = linenum + e.lineno - 1)
+        except TypeError as e:
+            if "got an unexpected keyword argument" in e.message:
+                raise BEASTDefSyntaxError(e.message, line = stripped_line, linenum = linenum)
+
+            raise
+
+
+    def _read_def(self, def_file):
+        with codecs.open(def_file, 'r', encoding = 'utf-8') as defs:
+            multiline    = None
+            multilinenum = 1
+            linenum      = 1
+
+            for line in defs:
+                try:
+                    if multiline:
+                        multiline += line
+                        self._parse(multiline, multilinenum)
+                        multiline = None
+                    else:
+                        self._parse(line, linenum)
+                except BEASTDefPrematureEnd:
+                    if multiline is None:
+                        multiline    = line
+                        multilinenum = linenum
+
+                linenum += 1
+
+            if multiline:
+                raise BEASTDefPrematureEnd(def_file)
+
 
 
     def parse_alarm_tree(self, def_file, config = None):
         self._alarm_tree = True
 
-        with codecs.open(def_file, 'r', encoding = 'utf-8') as defs:
-            linenum = 1
-            for line in defs:
-                self._parse(line, linenum)
-                linenum += 1
+        self._read_def(def_file)
 
         # Save defined titles and defaults
         self._global_defaults = self._defaults
@@ -546,11 +585,7 @@ class BEAST_DEF(object):
         elif self._including:
             raise BEASTDefSyntaxError("Only .alarms-template definitions can be included")
 
-        with codecs.open(def_file, 'r', encoding = 'utf-8') as defs:
-            linenum = 1
-            for line in defs:
-                self._parse(line, linenum)
-                linenum += 1
+        self._read_def(def_file)
 
 
     def toxml(self, etree, branch, commit):
