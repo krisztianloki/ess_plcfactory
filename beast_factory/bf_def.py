@@ -170,6 +170,11 @@ class BEAST_COMPONENT(BEAST_BASE):
         if include_self:
             p.append(self._name)
 
+        try:
+            p[1]
+        except IndexError:
+            return "/"
+
         return "/".join(p)
 
 
