@@ -4,7 +4,7 @@ from __future__ import absolute_import
 """ InterfaceFactory : Entry point """
 
 __author__     = "Miklos Boros"
-__copyright__  = "Copyright 2017-2018, European Spallation Source, Lund"
+__copyright__  = "Copyright 2017-2019, European Spallation Source, Lund"
 __credits__    = [ "Krisztian Loki"
 				, "Miklos Boros"
 				, "Francois Bellorini"
@@ -595,6 +595,199 @@ def WriteDeviceInstances():
 
 	DeviceInstance = []
 
+def WriteEPICS_Debugger():
+
+	global ExternalSourceFile
+
+	ExternalSourceFile.append("DATA_BLOCK \"EPICS_DebuggerResult\"")
+	ExternalSourceFile.append("{ S7_Optimized_Access := 'TRUE' }")
+	ExternalSourceFile.append("VERSION : 0.1")
+	ExternalSourceFile.append("NON_RETAIN")
+	ExternalSourceFile.append("   VAR ")
+	ExternalSourceFile.append("      EPICS_Debugger_Checksum : Array[0..7] of Byte;   // Current TIA Portal Software Hash including PLC logic (this is not the EPICS IOC Hash)")
+	ExternalSourceFile.append("      EPICS_Debugger_UtilitiesCall : String;   // PLCFactory Utilities call status")
+	ExternalSourceFile.append("      EPICS_Debugger_DeviceCalls : String;   // PLCFactory DeviceCalls status")
+	ExternalSourceFile.append("      EPICS_Debugger_IOCHash : String;   // EPICS IOC Hash vs. PLCFactory Hash")
+	ExternalSourceFile.append("      EPICS_Debugger_ModBusHeartBeat : String;   // EPICS IOC Modbus (IOC->PLC) communication status")
+	ExternalSourceFile.append("      EPICS_Debugger_S7Connection : String;   // EPICS IOC S7 TCP (PLC->IOC) communication status")
+	ExternalSourceFile.append("      EPICS_Debugger_EPICS_GeneralState : String;   // Main status of the EPICS IOC communication")
+	ExternalSourceFile.append("      EPICS_S7Port : Int;   // Actual TCP port that has been opened by the PLC")
+	ExternalSourceFile.append("      EPICS_ModbusPort : Int;   // Actual ModBusTCP port that has been opened by the PLC")
+	ExternalSourceFile.append("      EPICS_PLC_EthernetInterface : UInt;   // The currently used HW Identifer of the Ethernet Port on the PLC dedicated to EPICS")
+	ExternalSourceFile.append("   END_VAR")
+	ExternalSourceFile.append("")
+	ExternalSourceFile.append("BEGIN")
+	ExternalSourceFile.append("")
+	ExternalSourceFile.append("END_DATA_BLOCK")
+
+	ExternalSourceFile.append("FUNCTION_BLOCK \"EPICS_DebuggerFB\"")
+	ExternalSourceFile.append("{ S7_Optimized_Access := 'TRUE' }")
+	ExternalSourceFile.append("VERSION : 0.1")
+	ExternalSourceFile.append("   VAR ")
+	ExternalSourceFile.append("      GetChecksum_Instance {OriginalPartName := 'GetChecksum_FB_807_S71500'; LibVersion := '1.0'; ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : GetChecksum;")
+	ExternalSourceFile.append("      execute { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;")
+	ExternalSourceFile.append("      scope { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : UInt := 1;")
+	ExternalSourceFile.append("      busy { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;")
+	ExternalSourceFile.append("      done { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;")
+	ExternalSourceFile.append("      error { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;")
+	ExternalSourceFile.append("      memErrStatus { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Word;")
+	ExternalSourceFile.append("      CheckUtilitiesTON {OriginalPartName := 'IEC_TIMER'; LibVersion := '1.0'; ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : TON_TIME;")
+	ExternalSourceFile.append("      UtilSquareErrorTON { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;")
+	ExternalSourceFile.append("      CheckUtilitiesTON2 {OriginalPartName := 'IEC_TIMER'; LibVersion := '1.0'; ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : TON_TIME;")
+	ExternalSourceFile.append("      UtilSquareErrorTON2 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;")
+	ExternalSourceFile.append("      ModBus_TON {OriginalPartName := 'IEC_TIMER'; LibVersion := '1.0'; ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : TON_TIME;")
+	ExternalSourceFile.append("      ModBus_wordsave { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Word;")
+	ExternalSourceFile.append("   END_VAR")
+	ExternalSourceFile.append("   VAR DB_SPECIFIC")
+	ExternalSourceFile.append("      Helper_String { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : String;")
+	ExternalSourceFile.append("      Helper_String_Array { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} AT Helper_String : Struct")
+	ExternalSourceFile.append("         String_Maximal { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Byte;")
+	ExternalSourceFile.append("         String_Actual { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Byte;")
+	ExternalSourceFile.append("         StringValueArray { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Array[0..15] of Byte;")
+	ExternalSourceFile.append("      END_STRUCT;")
+	ExternalSourceFile.append("   END_VAR")
+	ExternalSourceFile.append("   VAR ")
+	ExternalSourceFile.append("      S7ConnTON {OriginalPartName := 'IEC_TIMER'; LibVersion := '1.0'; ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : TON_TIME;")
+	ExternalSourceFile.append("   END_VAR")
+	ExternalSourceFile.append("")
+	ExternalSourceFile.append("   VAR_TEMP ")
+	ExternalSourceFile.append("      i : Int;")
+	ExternalSourceFile.append("      ModBusOK : Bool;")
+	ExternalSourceFile.append("      S7OK : Bool;")
+	ExternalSourceFile.append("   END_VAR")
+	ExternalSourceFile.append("")
+	ExternalSourceFile.append("")
+	ExternalSourceFile.append("BEGIN")
+	ExternalSourceFile.append("	//Author: Miklos Boros (miklos.boros@esss.se), Copyrigth 2017-2019 by European Spallation Source, Lund")
+	ExternalSourceFile.append("	//This block was generated by PLCFactory")
+	ExternalSourceFile.append("	//Description: This FB checks the EPICS configuration and outputs the result into EPICS_DebuggerResult.")
+	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("	//DO NOT Modify this block!!!")
+	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("	#GetChecksum_Instance(Scope:=#scope,")
+	ExternalSourceFile.append("	                      Done=>#done,")
+	ExternalSourceFile.append("	                      Busy=>#busy,")
+	ExternalSourceFile.append("	                      Error=>#error,")
+	ExternalSourceFile.append("	                      Status=>#memErrStatus,")
+	ExternalSourceFile.append("	                      Checksum:=\"EPICS_DebuggerResult\".EPICS_Debugger_Checksum);")
+	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("	#CheckUtilitiesTON(IN:=\"Utilities\".Square_100ms,")
+	ExternalSourceFile.append("	                   PT:=T#200ms,")
+	ExternalSourceFile.append("	                   Q=>#UtilSquareErrorTON);")
+	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("	#CheckUtilitiesTON2(IN := NOT \"Utilities\".Square_100ms,")
+	ExternalSourceFile.append("	                   PT := T#200ms,")
+	ExternalSourceFile.append("	                   Q => #UtilSquareErrorTON2);")
+	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("	#ModBus_TON(IN := #ModBus_wordsave = \"EPICSToPLC\".\"Word\"[2],")
+	ExternalSourceFile.append("	            PT := T#5s);")
+	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("	IF (\"Utilities\".AlwaysOn = FALSE) THEN")
+	ExternalSourceFile.append("	    \"EPICS_DebuggerResult\".#EPICS_Debugger_UtilitiesCall := 'ERROR: FunctionBlock: \"_UilitiesFB\" is called with a wrong InstanceDB. Call it with the existing iDB named: \"Utilities\" AND check if the System Memory bits and the System Clock byte is enabled!';")
+	ExternalSourceFile.append("	ELSE    ")
+	ExternalSourceFile.append("	    IF (#UtilSquareErrorTON OR #UtilSquareErrorTON2) THEN")
+	ExternalSourceFile.append("	        \"EPICS_DebuggerResult\".#EPICS_Debugger_UtilitiesCall := 'ERROR: FunctionBlock: \"_UilitiesFB\" is called with a wrong InstanceDB. Call it with the existing iDB named: \"Utilities\" AND check if the System Memory bits and the System Clock byte is enabled!';")
+	ExternalSourceFile.append("	    ELSE")
+	ExternalSourceFile.append("	        \"EPICS_DebuggerResult\".#EPICS_Debugger_UtilitiesCall := 'OK: EPICS Utilities works as expected.';")
+	ExternalSourceFile.append("	        ")
+	ExternalSourceFile.append("	    END_IF;")
+	ExternalSourceFile.append("	END_IF;")
+	ExternalSourceFile.append("	    ")
+	ExternalSourceFile.append("	IF (\"Utilities\".EPICS_Device_calls_precessed) THEN")
+	ExternalSourceFile.append("	    \"EPICS_DebuggerResult\".#EPICS_Debugger_DeviceCalls := 'OK: \"EPICS_device_calls\" is called as expected.';")
+	ExternalSourceFile.append("	ELSE")
+	ExternalSourceFile.append("	    \"EPICS_DebuggerResult\".#EPICS_Debugger_DeviceCalls := 'ERROR: \"EPICS_device_calls\" is not called in OB1!';")
+	ExternalSourceFile.append("	END_IF;")
+	ExternalSourceFile.append("	    ")
+	ExternalSourceFile.append("	IF ((\"EPICSToPLC\".\"Word\"[0] = \"PLCToEPICS\".\"Word\"[0]) AND (\"EPICSToPLC\".\"Word\"[1] = \"PLCToEPICS\".\"Word\"[1])) THEN")
+	ExternalSourceFile.append("	    \"EPICS_DebuggerResult\".#EPICS_Debugger_IOCHash := 'OK: IOC and PLC hash are equal.';")
+	ExternalSourceFile.append("	ELSE    ")
+	ExternalSourceFile.append("	    \"EPICS_DebuggerResult\".#EPICS_Debugger_IOCHash := 'ERROR: IOC and PLC hash are NOT equal!';")
+	ExternalSourceFile.append("	END_IF;")
+	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("	IF (#ModBus_TON.Q) THEN")
+	ExternalSourceFile.append("	    \"EPICS_DebuggerResult\".#EPICS_Debugger_ModBusHeartBeat := 'ERROR: The IOC is not sending any HeartBeat via ModBus!';")
+	ExternalSourceFile.append("	    #ModBusOK := FALSE;")
+	ExternalSourceFile.append("	ELSE")
+	ExternalSourceFile.append("	    \"EPICS_DebuggerResult\".#EPICS_Debugger_ModBusHeartBeat := 'OK: ModBus HeartBeat is received as expected.';")
+	ExternalSourceFile.append("	    #ModBusOK := TRUE;")
+	ExternalSourceFile.append("	END_IF;")
+	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("	#S7ConnTON(IN := NOT \"_CommsPLC_EPICS_DB\".SendDone, PT := T#3s);")
+	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("	IF (\"_CommsPLC_EPICS_DB\".BytesToSend > 0) THEN")
+	ExternalSourceFile.append("	    ")
+	ExternalSourceFile.append("	    IF (#S7ConnTON.Q) THEN")
+	ExternalSourceFile.append("	        \"EPICS_DebuggerResult\".EPICS_Debugger_S7Connection := 'ERROR: EPICS S7 connection can not send Status variables!';")
+	ExternalSourceFile.append("	        #S7OK := FALSE;")
+	ExternalSourceFile.append("	    ELSE")
+	ExternalSourceFile.append("	        \"EPICS_DebuggerResult\".EPICS_Debugger_S7Connection := 'OK: EPICS S7 works as expected.';")
+	ExternalSourceFile.append("	        #S7OK := TRUE;")
+	ExternalSourceFile.append("	        ")
+	ExternalSourceFile.append("	    END_IF;")
+	ExternalSourceFile.append("	ELSE")
+	ExternalSourceFile.append("	    \"EPICS_DebuggerResult\".EPICS_Debugger_S7Connection := 'OK: EPICS S7 disabled, there is no Status variable to send.';")
+	ExternalSourceFile.append("	    #S7OK := TRUE;")
+	ExternalSourceFile.append("	END_IF;")
+	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("	IF (#ModBusOK AND #S7OK) THEN")
+	ExternalSourceFile.append("	    \"EPICS_DebuggerResult\".EPICS_Debugger_EPICS_GeneralState := 'OK. EPICS IOC communication is ONLINE.';")
+	ExternalSourceFile.append("	END_IF;")
+	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("	IF (#ModBusOK AND NOT #S7OK) THEN")
+	ExternalSourceFile.append("	    \"EPICS_DebuggerResult\".EPICS_Debugger_EPICS_GeneralState := 'ERROR. ModBus seems to be working but S7 TCP is blocked. Try to check your PLC router IP.';")
+	ExternalSourceFile.append("	END_IF;")
+	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("	IF (NOT #ModBusOK AND #S7OK) THEN")
+	ExternalSourceFile.append("	    \"EPICS_DebuggerResult\".EPICS_Debugger_EPICS_GeneralState := 'ERROR. ModBus seems to be offline. Waiting for IOC to finish connecting to the PLC.';")
+	ExternalSourceFile.append("	END_IF;")
+	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("	IF ( NOT #ModBusOK AND NOT #S7OK) THEN")
+	ExternalSourceFile.append("	    \"EPICS_DebuggerResult\".EPICS_Debugger_EPICS_GeneralState := 'ERROR. Both ModBus and S7 TCP seems to be offline. Check if your IOC is running and if it is connected to the right PLC interface. Your HardwareID comes from CCDB!';")
+	ExternalSourceFile.append("	END_IF;")
+	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("	\"EPICS_DebuggerResult\".EPICS_ModbusPort := \"_CommsPLC_EPICS_DB\".MBPort;")
+	ExternalSourceFile.append("	\"EPICS_DebuggerResult\".EPICS_S7Port := \"_CommsPLC_EPICS_DB\".S7Port;")
+	ExternalSourceFile.append("	\"EPICS_DebuggerResult\".EPICS_PLC_EthernetInterface :=  \"_CommsPLC_EPICS_DB\".InterfaceID;")
+	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("	#ModBus_wordsave := \"EPICSToPLC\".\"Word\"[2];")
+	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("END_FUNCTION_BLOCK")
+
+	ExternalSourceFile.append("DATA_BLOCK \"EPICS_DebuggerFB_iDB\"")
+	ExternalSourceFile.append("{ S7_Optimized_Access := 'TRUE' }")
+	ExternalSourceFile.append("VERSION : 0.1")
+	ExternalSourceFile.append("NON_RETAIN")
+	ExternalSourceFile.append("\"EPICS_DebuggerFB\"")
+	ExternalSourceFile.append("")
+	ExternalSourceFile.append("BEGIN")
+	ExternalSourceFile.append("")
+	ExternalSourceFile.append("END_DATA_BLOCK")
+
+	ExternalSourceFile.append("ORGANIZATION_BLOCK \"EPICS_DebuggerOB\"")
+	ExternalSourceFile.append("TITLE = \"Main Program Sweep (Cycle)\"")
+	ExternalSourceFile.append("{ S7_Optimized_Access := 'TRUE' }")
+	ExternalSourceFile.append("VERSION : 0.1")
+	ExternalSourceFile.append("")
+	ExternalSourceFile.append("BEGIN")
+	ExternalSourceFile.append("	//Author: Miklos Boros (miklos.boros@esss.se), Copyrigth 2017-2019 by European Spallation Source, Lund")
+	ExternalSourceFile.append("	//This block was generated by PLCFactory")
+	ExternalSourceFile.append("	//Description: This OB is a cyclic OB called in every PLC cycle and EPICS_DebuggerFB checks the EPICS configuration.")
+	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("	//DO NOT Modify this block!!!")
+	ExternalSourceFile.append("	\"EPICS_DebuggerFB_iDB\"();")
+	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("END_ORGANIZATION_BLOCK")
+
+
+
 def WriteEPICS_device_calls():
 
 	global ExternalSourceFile
@@ -612,13 +805,14 @@ def WriteEPICS_device_calls():
 	ExternalSourceFile.append("   END_VAR");
 	ExternalSourceFile.append("");
 	ExternalSourceFile.append("BEGIN");
-	ExternalSourceFile.append("      //Author: Miklos Boros (miklos.boros@esss.se), Copyrigth 2017-2018 by European Spallation Source, Lund");
+	ExternalSourceFile.append("      //Author: Miklos Boros (miklos.boros@esss.se), Copyrigth 2017-2019 by European Spallation Source, Lund");
 	ExternalSourceFile.append("      //This block was generated by PLCFactory");
 	ExternalSourceFile.append("      //According to HASH:"+ifa.HASH);
 	ExternalSourceFile.append("      //Description: Description: This function calls the devices according to the corresponding device type");
 	ExternalSourceFile.append("");
 	ExternalSourceFile.append("        //DO NOT Modify the following line!!!");
 	ExternalSourceFile.append("        \"Utilities\".TestInProgress := FALSE;");
+	ExternalSourceFile.append("        \"Utilities\".EPICS_Device_calls_precessed := TRUE;");
 	ExternalSourceFile.append("");
 
 	ExternalSourceFile.extend(EPICS_device_calls_body)
@@ -645,13 +839,14 @@ def WriteEPICS_device_calls_test():
 	ExternalSourceFile.append("   END_VAR");
 	ExternalSourceFile.append("");
 	ExternalSourceFile.append("BEGIN");
-	ExternalSourceFile.append("      //Author: Miklos Boros (miklos.boros@esss.se), Copyrigth 2017-2018 by European Spallation Source, Lund");
+	ExternalSourceFile.append("      //Author: Miklos Boros (miklos.boros@esss.se), Copyrigth 2017-2019 by European Spallation Source, Lund");
 	ExternalSourceFile.append("      //This block was generated by PLCFactory");
 	ExternalSourceFile.append("      //According to HASH:"+ifa.HASH);
 	ExternalSourceFile.append("      //Description: Description: This function calls the devices according to the corresponding device type");
 	ExternalSourceFile.append("");
 	ExternalSourceFile.append("      //DO NOT Modify the following line!!!");
 	ExternalSourceFile.append("      \"Utilities\".TestInProgress := TRUE;");
+	ExternalSourceFile.append("      \"Utilities\".EPICS_Device_calls_precessed := TRUE;");
 	ExternalSourceFile.append("");
 
 	ExternalSourceFile.extend(EPICS_device_calls_test_body)
@@ -741,6 +936,7 @@ def WriteStandardPLCCode(TIAVersion):
 	ExternalSourceFile.append("      Square_2sONS " + NoExternal + " : Bool;")
 	ExternalSourceFile.append("      Pulse_2s " + NoExternal + " : Bool;   // Bit TRUE every 2 s for one PLC scan")
 	ExternalSourceFile.append("      TestInProgress " + NoExternal + " : Bool;   // Indicates which caller FC is used")
+	ExternalSourceFile.append("      EPICS_Device_calls_precessed " + NoExternal + " : Bool;   // Indicates which caller FC is used")
 	ExternalSourceFile.append("   END_VAR")
 	ExternalSourceFile.append("")
 	ExternalSourceFile.append("BEGIN")
@@ -1241,7 +1437,7 @@ def ProcessIFADevTypes(OutputDir, TIAVersion, CommsTest):
 			DevTypeVAR_TEMP.append("      i : Int;")
 			DevTypeVAR_TEMP.append("   END_VAR")
 
-			DevTypeBODY_HEADER.append("    //Author: Miklos Boros (miklos.boros@esss.se), Copyrigth 2017-2018 by European Spallation Source, Lund")
+			DevTypeBODY_HEADER.append("    //Author: Miklos Boros (miklos.boros@esss.se), Copyrigth 2017-2019 by European Spallation Source, Lund")
 			DevTypeBODY_HEADER.append("    //This block was generated by PLCFactory, please don't change it MANUALLY!")
 			if not verify:
 				DevTypeBODY_HEADER.append("    //Input File Name: " + os.path.basename(ifa.IfaPath))
@@ -1428,6 +1624,7 @@ def ProcessIFADevTypes(OutputDir, TIAVersion, CommsTest):
 	if CommsTest:
 		WriteEPICS_PLC_TesterDB()
 	WriteEPICS_device_calls()
+	WriteEPICS_Debugger()
 	if CommsTest:
 		WriteEPICS_device_calls_test()
 
@@ -1524,7 +1721,7 @@ def main(argv):
 	print("  _| |_| | | | ||  __/ |  | || (_| | (_|  __/ | | | (_| | (__| || (_) | |  | |_| |")
 	print(" |_____|_| |_|\__\___|_|  |_| \__,_|\___\___| |_|  \__,_|\___|\__\___/|_|   \__, |")
 	print("                                                                             __/ |")
-	print(" Copyright 2017-2018, European Spallation Source, Lund                      |___/ \n")
+	print(" Copyright 2017-2019, European Spallation Source, Lund                      |___/ \n")
 
 
 	print("InterfaceFactory can't be run in standalone mode! Use PLCFactory instead.")
