@@ -15,7 +15,13 @@ import codecs
 import sys
 import datetime
 
-import helpers
+try:
+    import helpers
+except ImportError:
+    import os
+    sys.path.append(os.path.join(os.path.abspath(os.path.dirname(__file__)), os.path.pardir))
+    import helpers
+    del os
 
 
 
@@ -848,4 +854,12 @@ class BEAST_DEF(object):
 
 
 if __name__ == "__main__":
-    pass
+    class FakeDevice:
+        def name(self):
+            return "FakeDevice"
+
+    try:
+        bf_def = BEAST_DEF()
+        bf_def.parse(sys.argv[1], FakeDevice())
+    except BEASTDefException as e:
+        print(e, file = sys.stderr)
