@@ -857,39 +857,9 @@ def WriteEPICS_device_calls_test():
 	EPICS_device_calls_test_header = []
 
 
-def WriteStandardPLCCode(TIAVersion):
+def WriteUtilitiesCode(TIAVersion):
 
 	global ExternalSourceFile
-
-
-	ExternalSourceFile.append("FUNCTION \"UTIL_P_TRIG\" : Void")
-	ExternalSourceFile.append("TITLE = Positive Edge Detection Pulse")
-	ExternalSourceFile.append("{ S7_Optimized_Access := 'TRUE' }")
-	ExternalSourceFile.append("VERSION : 0.1")
-	ExternalSourceFile.append("   VAR_INPUT ")
-	ExternalSourceFile.append("      \"i_Input Bit\" : Bool;")
-	ExternalSourceFile.append("   END_VAR")
-	ExternalSourceFile.append("")
-	ExternalSourceFile.append("   VAR_IN_OUT ")
-	ExternalSourceFile.append("      \"iq_Trigger Bit\" : Bool;")
-	ExternalSourceFile.append("      \"iq_Pulse Bit\" : Bool;")
-	ExternalSourceFile.append("   END_VAR")
-	ExternalSourceFile.append("")
-	ExternalSourceFile.append("BEGIN")
-	ExternalSourceFile.append("	//Prositive edge generator for SCL")
-	ExternalSourceFile.append("	")
-	ExternalSourceFile.append("	IF #\"i_Input Bit\" AND #\"iq_Trigger Bit\"")
-	ExternalSourceFile.append("	THEN")
-	ExternalSourceFile.append("	    #\"iq_Pulse Bit\" := FALSE;")
-	ExternalSourceFile.append("	ELSIF #\"i_Input Bit\"")
-	ExternalSourceFile.append("	    THEN")
-	ExternalSourceFile.append("	        #\"iq_Pulse Bit\" := TRUE;")
-	ExternalSourceFile.append("	        #\"iq_Trigger Bit\" := TRUE;")
-	ExternalSourceFile.append("	    ELSE")
-	ExternalSourceFile.append("	        #\"iq_Pulse Bit\" := FALSE;")
-	ExternalSourceFile.append("	        #\"iq_Trigger Bit\" := FALSE;")
-	ExternalSourceFile.append("	END_IF;")
-	ExternalSourceFile.append("END_FUNCTION")
 
 	ExternalSourceFile.append("FUNCTION_BLOCK \"_UtilitiesFB\"")
 	ExternalSourceFile.append("{ S7_Optimized_Access := 'TRUE' }")
@@ -1035,6 +1005,42 @@ def WriteStandardPLCCode(TIAVersion):
 	ExternalSourceFile.append("BEGIN")
 	ExternalSourceFile.append("")
 	ExternalSourceFile.append("END_DATA_BLOCK")
+
+
+def WriteStandardPLCCode(TIAVersion):
+
+	global ExternalSourceFile
+
+	ExternalSourceFile.append("FUNCTION \"UTIL_P_TRIG\" : Void")
+	ExternalSourceFile.append("TITLE = Positive Edge Detection Pulse")
+	ExternalSourceFile.append("{ S7_Optimized_Access := 'TRUE' }")
+	ExternalSourceFile.append("VERSION : 0.1")
+	ExternalSourceFile.append("   VAR_INPUT ")
+	ExternalSourceFile.append("      \"i_Input Bit\" : Bool;")
+	ExternalSourceFile.append("   END_VAR")
+	ExternalSourceFile.append("")
+	ExternalSourceFile.append("   VAR_IN_OUT ")
+	ExternalSourceFile.append("      \"iq_Trigger Bit\" : Bool;")
+	ExternalSourceFile.append("      \"iq_Pulse Bit\" : Bool;")
+	ExternalSourceFile.append("   END_VAR")
+	ExternalSourceFile.append("")
+	ExternalSourceFile.append("BEGIN")
+	ExternalSourceFile.append("	//Prositive edge generator for SCL")
+	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("	IF #\"i_Input Bit\" AND #\"iq_Trigger Bit\"")
+	ExternalSourceFile.append("	THEN")
+	ExternalSourceFile.append("	    #\"iq_Pulse Bit\" := FALSE;")
+	ExternalSourceFile.append("	ELSIF #\"i_Input Bit\"")
+	ExternalSourceFile.append("	    THEN")
+	ExternalSourceFile.append("	        #\"iq_Pulse Bit\" := TRUE;")
+	ExternalSourceFile.append("	        #\"iq_Trigger Bit\" := TRUE;")
+	ExternalSourceFile.append("	    ELSE")
+	ExternalSourceFile.append("	        #\"iq_Pulse Bit\" := FALSE;")
+	ExternalSourceFile.append("	        #\"iq_Trigger Bit\" := FALSE;")
+	ExternalSourceFile.append("	END_IF;")
+	ExternalSourceFile.append("END_FUNCTION")
+
+	WriteUtilitiesCode(TIAVersion)
 
 	ExternalSourceFile.append("DATA_BLOCK \"EPICSToPLC\"")
 	ExternalSourceFile.append("{ S7_Optimized_Access := 'FALSE' }")
@@ -1203,6 +1209,7 @@ def WriteStandardPLCCode(TIAVersion):
 	ExternalSourceFile.append("	")
 	ExternalSourceFile.append("END_FUNCTION")
 
+
 def WriteCommsEpicsAndDbs():
 
 	global ExternalSourceFile
@@ -1344,6 +1351,7 @@ def ProcessIFADevTypes(OutputDir, TIAVersion, CommsTest):
 	InArrayName = None
 	InArrayNum  = None
 
+	WriteUtilitiesCode(TIAVersion)
 
 	for device in ifa.Devices:
 		ProcessedDeviceNum = ProcessedDeviceNum + 1
