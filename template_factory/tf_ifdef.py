@@ -654,6 +654,9 @@ def ifdef_interface(func):
 
             # If function has **keyword_params
             if func.__code__.co_flags & 8:
+                # Expand templates
+                BASE_TYPE.expand_templates(kwargs)
+
                 def update_params(kwargs, default_params):
                     for kw in default_params:
                         if kw not in kwargs:
@@ -1388,7 +1391,6 @@ class BASE_TYPE(SOURCE):
             raise IfDefSyntaxError("Empty name")
 
         self._keyword_params = keyword_params
-        self._expand_templates()
 
         if block.is_status_block():
             reserved_params = ["DTYP", "INP", "SCAN"]
@@ -1459,18 +1461,19 @@ class BASE_TYPE(SOURCE):
         return _bytes_in_type(self._plc_type)
 
 
-    def _expand_templates(self):
-        if "TEMPLATE" not in self._keyword_params:
+    @staticmethod
+    def expand_templates(keyword_params):
+        if "TEMPLATE" not in keyword_params:
             return
 
-        tname = self._keyword_params["TEMPLATE"]
-        if tname not in self.templates:
+        tname = keyword_params["TEMPLATE"]
+        if tname not in BASE_TYPE.templates:
             raise IfDefSyntaxError("No such template: " + tname)
 
-        template = self.templates[tname]
+        template = BASE_TYPE.templates[tname]
         for tkey in template.keys():
-            if tkey not in self._keyword_params:
-                self._keyword_params[tkey] = template[tkey]
+            if tkey not in keyword_params:
+                keyword_params[tkey] = template[tkey]
 
 
     def _end_bits(self):
