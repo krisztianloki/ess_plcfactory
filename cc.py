@@ -83,6 +83,7 @@ class CC(object):
 
     class Artifact(object):
         # list of the path names of downloaded artifacts
+        # FIXME: should make this per-CC
         downloadedArtifacts = list()
 
         def __init__(self, device):
@@ -578,6 +579,9 @@ class CC(object):
         # cache for ^() expressions
         # key: (device, expression), value: property
         self._backtrackCache       = dict()
+
+        # cache of downloaded artifacts
+        CC.Artifact.downloadedArtifacts = list()
 
         if self._clear_templates:
             # clear templates downloaded in a previous run
