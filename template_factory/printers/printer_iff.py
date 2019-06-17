@@ -59,8 +59,8 @@ class IFF(PRINTER):
         return "IFA"
 
 
-    def plcdiag_orzero(self, plc_diag):
-        return self.plcf("'PLC-DIAG:{plc_diag}' if not 'PLC-DIAG:{plc_diag}'.startswith('PLC-DIAG') else 0".format(plc_diag = plc_diag))
+    def property_default(self, prop_name, default):
+        return self.plcf("'{prop_name}' if not '{prop_name}'.startswith('{prefix_prop_name}') else {default}".format(prop_name = prop_name, prefix_prop_name = prop_name.split(':')[0], default = default))
 
 
     #
@@ -73,7 +73,7 @@ class IFF(PRINTER):
         super(IFF, self).header(output, **keyword_params).add_filename_header(output, extension = "ifa")
 
         if keyword_params.get("PLC_TYPE", "SIEMENS") == "SIEMENS":
-            plcpulse = self.plcf("PLC-EPICS-COMMS: PLCPulse")
+            plcpulse = self.property_default("PLC-EPICS-COMMS: PLCPulse", "'Pulse_200ms'")
         else:
             plcpulse = 0
 
@@ -103,9 +103,9 @@ PLC_PULSE
 {plcpulse}
 """.format(inst_slot                = self.inst_slot(),
            plc_type                 = keyword_params.get("PLC_TYPE", "SIEMENS"),
-           max_io_devices           = self.plcdiag_orzero("Max-IO-Devices"),
-           max_local_modules        = self.plcdiag_orzero("Max-Local-Modules"),
-           max_modules_in_io_device = self.plcdiag_orzero("Max-Modules-In-IO-Device"),
+           max_io_devices           = self.property_default("PLC-DIAG:Max-IO-Devices", 10),
+           max_local_modules        = self.property_default("PLC-DIAG:Max-Local-Modules", 30),
+           max_modules_in_io_device = self.property_default("PLC-DIAG:Max-Modules-In-IO-Device", 30),
            interfaceid              = self.plcf("PLC-EPICS-COMMS: InterfaceID"),
            s7connectionid           = self.plcf("PLC-EPICS-COMMS: S7ConnectionID"),
            mbconnectionid           = self.plcf("PLC-EPICS-COMMS: MBConnectionID"),
