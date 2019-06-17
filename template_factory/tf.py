@@ -8,7 +8,7 @@ __copyright__  = "Copyright 2017, European Spallation Source, Lund"
 __license__    = "GPLv3"
 
 
-from tf_ifdef import IF_DEF, IfDefException
+from tf_ifdef import IF_DEF
 from printers import get_printer, available_printers, is_combinable
 
 OPTIMIZE_S7DB = False
@@ -23,75 +23,15 @@ def new(hashobj = None):
     return IF_DEF(hashobj)
 
 
-def _processLine(if_def, line, num):
-    assert isinstance(if_def, IF_DEF)
-    assert isinstance(line,   str)
-    assert isinstance(num,    int)
-
-    errormsg = "{error} at line {num}: {line}"
-
-    try:
-        if_def.add(line, num)
-    except SyntaxError:
-        print(errormsg.format(error = "Syntax error", num = num, line = line.strip()))
-        exit(1)
-    except IfDefException as e :
-        print(errormsg.format(error = e.type(), num = num, line = line.strip()))
-        if e.args:
-            print(e.args[0])
-        exit(1)
-    except AssertionError as e :
-        print(errormsg.format(error = "Internal error", num = num, line = line.strip()))
-        if e.args:
-            print(e.args[0])
-        exit(1)
-    except Exception as e:
-        print(errormsg.format(error = "Exception", num = num, line = line))
-        if e.args:
-            print(e.args[0])
-        exit(1)
-
-
-def processLines(lines, processor = None, **kwargs):
-    if isinstance(lines, list):
-        assert isinstance(lines[0], str)
-    else:
-        assert isinstance(lines, file)
+def parseDef(def_file, **kwargs):
+    assert isinstance(def_file, str)
 
     if "OPTIMIZE" not in kwargs:
         kwargs["OPTIMIZE"] = OPTIMIZE_S7DB
 
     if_def = IF_DEF(**kwargs)
 
-    if processor is None:
-        processor = _processLine
-
-    multiline  = None
-    multilinei = 1
-    i = 1
-    for line in lines:
-        #
-        # Check for multiline strings making sure that it actually spans multiple lines
-        #
-        if line.count('"""') % 2:
-            if multiline is None:
-                multiline  = line
-                multilinei = i
-            else:
-                multiline += line
-                processor(if_def, multiline, multilinei)
-                multiline = None
-        elif multiline:
-            multiline += line
-        else:
-            processor(if_def, line, i)
-        i += 1
-
-
-    if multiline:
-        multiline_error = "Unclosed multiline string at {num}: {line}"
-        print(multiline_error.format(num = multilinei, line = multiline))
-        return None
+    if_def.parse(def_file)
 
     if_def.end()
 
