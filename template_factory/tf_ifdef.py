@@ -66,40 +66,69 @@ PLC_type_limits = { 'BYTE'  : limits["u8"],
 
 
 class IfDefException(Exception):
-    def __init__(self, typemsg, *args):
-        self.typemsg = typemsg
-        self.args    = args
+    args_format = """
+{}
+"""
+
+    def __init__(self, typemsg, *args, **keyword_params):
+        self.typemsg        = typemsg
+        self.args           = args
+        self.keyword_params = keyword_params
 
 
     def __call__(self, *args):
         return self.__class__(self.typemsg, *(self.args + args))
 
 
+    def __repr__(self):
+        try:
+            return """{error} at line {linenum}: {line}{args}""".format(error   = self.typemsg,
+                                                                        linenum = self.keyword_params["linenum"],
+                                                                        line    = self.keyword_params["line"],
+                                                                        args    = self.args_format.format(self.args[0]) if self.args[0] else "")
+        except KeyError:
+            return """{error}: {args}""".format(error   = self.typemsg,
+                                                args    = self.args_format.format(self.args[0]) if self.args[0] else "")
+
+
+    def __str__(self):
+        return repr(self)
+
+
     def type(self):
         return self.typemsg
 
 
+    def add_params(self, **keyword_params):
+        self.keyword_params.update(keyword_params)
+
+
 class IfDefSyntaxError(IfDefException):
-    def __init__(self, *args):
-        super(IfDefSyntaxError, self).__init__("Syntax error", *args)
+    def __init__(self, *args, **keyword_params):
+        super(IfDefSyntaxError, self).__init__("Syntax error", *args, **keyword_params)
 
 
 class IfDefInternalError(IfDefException):
-    def __init__(self, *args):
-        super(IfDefInternalError, self).__init__("Internal error", *args)
+    def __init__(self, *args, **keyword_params):
+        super(IfDefInternalError, self).__init__("Internal error", *args, **keyword_params)
 
 
-class IfDefFeatureMissingError(IfDefException):
+class IfDefPrematureEnd(IfDefSyntaxError):
+    def __init__(self, *args, **keyword_params):
+        super(IfDefPrematureEnd, self).__init__("Unexpected EOF while parsing", *args, **keyword_params)
+
+
+class IfDefFeatureMissingError(IfDefSyntaxError):
     def __init__(self, feature):
         super(IfDefFeatureMissingError, self).__init__("Required feature '{}' is not supported in this version".format(feature))
 
 
-class IfDefExperimentalFeatureError(IfDefException):
+class IfDefExperimentalFeatureError(IfDefSyntaxError):
     def __init__(self, feature):
         super(IfDefExperimentalFeatureError, self).__init__("Required feature '{}' is experimental in this version. Use '--enable-experimental' to enable".format(feature))
 
 
-class IfDefExperimentalError(IfDefException):
+class IfDefExperimentalError(IfDefSyntaxError):
     def __init__(self, interface):
         super(IfDefExperimentalError, self).__init__("The function '{}' is experimental. Use '--enable-experimental' to enable.".format(interface))
 
@@ -681,7 +710,7 @@ def ifdef_interface(func):
                 raise IfDefInternalError("Function '{f}' not returning variable, please file a bug report".format(f = func.__name__))
             return IF_DEF_INTERFACE_FUNC(_hashed_interface, var)
         else:
-            raise IfDefException("Trying to call non-interface function '{f}'".format(f = func.__name__))
+            raise IfDefSyntaxError("Trying to call non-interface function '{f}'".format(f = func.__name__))
 
     return ifdef_interface_func
 
@@ -710,7 +739,7 @@ class IF_DEF(object):
         self._from_plc_words_length = 0
         self._optimize              = OPTIMIZE
         self._plc_array             = None
-        self._filename              = keyword_params.get('FILENAME')
+        self._filename              = None
         self._inst_slot             = "[PLCF#INSTALLATION_SLOT]"
         self._datablock_name        = IF_DEF.DEFAULT_DATABLOCK_NAME
         self._readonly              = keyword_params.get("PLC_READONLY", False)
@@ -718,7 +747,7 @@ class IF_DEF(object):
         self._global_defaults       = dict()
         self._defaults              = dict()
 
-        self._features              = [ "STABLE-HASH", "OPC", "OPC-UA" ]
+        self._features              = [ "STABLE-HASH", "OPC", "OPC-UA", "MULTILINE" ]
         self._experimental_features = []
 
         if self._experimental:
@@ -744,22 +773,28 @@ class IF_DEF(object):
                 self._evalEnv[f] = val
 
 
-    def _eval(self, source, stripped_source, linenum):
-        if stripped_source.split('(')[0] not in self._evalEnv:
+    def _eval(self, line):
+        if line.split('(')[0] not in self._evalEnv:
             raise IfDefSyntaxError("Not supported keyword")
 
-        self._source    = (source, linenum)
         try:
-            result = eval(stripped_source, self._evalEnv)
+            result = eval(line, self._evalEnv)
 
             if not isinstance(result, IF_DEF_INTERFACE_FUNC):
                raise IfDefSyntaxError("Missing parentheses?")
-        except AssertionError as e:
-            raise IfDefInternalError(e)
-        except SyntaxError as e:
-            raise IfDefSyntaxError(e)
         except NameError as e:
             raise IfDefSyntaxError(e)
+        except TypeError as e:
+            words = e.args[0].split(' ')
+            if len(words) > 1:
+                first_word = words[0]
+                if first_word[:-2] in self._evalEnv and words[1] == 'takes' and words[2] == 'exactly':
+                    # Decrease numbers by 1 ('self' should be hidden from user)
+                    words[3] = str(int(words[3]) - 1)
+                    words[5] = "({}".format(int(words[5][1:]) - 1)
+                    e.args = (" ".join(words),)
+                    raise IfDefSyntaxError(e)
+            raise e
 
 
     def _status_block(self):
@@ -872,11 +907,90 @@ class IF_DEF(object):
         return keyword_params
 
 
+    def _parse(self, line, linenum):
+        self._source  = (line, linenum)
+        stripped_line = line.strip()
+
+        try:
+            if not isinstance(line, str) and not isinstance(line, unicode):
+                raise IfDefSyntaxError("Interface definition lines must be strings!")
+
+            if not self._active:
+                raise IfDefSyntaxError("The interface definition is no longer active!")
+
+            if stripped_line.startswith("_"):
+                raise IfDefSyntaxError("Interface definition lines cannot start with '_'")
+
+            if stripped_line.startswith("#TF#") or stripped_line.startswith("#-"):
+                return
+
+            if stripped_line.startswith("#"):
+                self._add_comment(line[1:])
+                return
+
+            if stripped_line == "":
+                self._add_comment(line)
+                return
+
+            self._eval(stripped_line)
+        except IfDefException as e:
+            e.add_params(line = stripped_line, linenum = linenum)
+            raise e
+        except AssertionError as e:
+            raise IfDefInternalError(e, line = stripped_line, linenum = linenum)
+        except SyntaxError as e:
+            if e.msg == "unexpected EOF while parsing":
+                raise IfDefPrematureEnd()
+            elif e.msg == "EOF while scanning triple-quoted string literal":
+                raise IfDefPrematureEnd()
+            elif e.msg == "invalid syntax" and e.lineno > 1 and len(stripped_line.splitlines()[e.lineno - 1]) == e.offset:
+                raise IfDefPrematureEnd()
+            raise IfDefSyntaxError(e.msg, line = stripped_line, linenum = linenum + e.lineno - 1)
+        except TypeError as e:
+            if "got an unexpected keyword argument" in e.message:
+                raise IfDefSyntaxError(e.message, line = stripped_line, linenum = linenum)
+
+            raise
+
+
+    def _read_def(self, def_file):
+        with open(def_file, 'r') as defs:
+            multiline    = None
+            multilinenum = 1
+            linenum      = 1
+
+            for line in defs:
+                try:
+                    if multiline:
+                        multiline += line
+                        self._parse(multiline, multilinenum)
+                        multiline = None
+                    else:
+                        self._parse(line, linenum)
+                except IfDefPrematureEnd:
+                    if multiline is None:
+                        multiline    = line
+                        multilinenum = linenum
+
+                linenum += 1
+
+            if multiline:
+                raise IfDefPrematureEnd(def_file)
+
+
+    def parse(self, def_file):
+        if self._filename is not None:
+            raise IfDefInternalError("Cannot parse more than one Interface Definition file")
+
+        self._filename = def_file
+        self._read_def(def_file)
+
+
     def calculate_hash(self, hashobj):
         self._exception_if_active()
 
         if hashobj is None or "update" not in dir(hashobj) or not callable(hashobj.update):
-            raise IfDefException("Expected a hash object from the hashlib module!")
+            raise IfDefInternalError("Expected a hash object from the hashlib module!")
 
         self._calc_block_hash(hashobj, self._preBLOCK)
         self._calc_block_hash(hashobj, self._cmd_block())
@@ -928,31 +1042,6 @@ class IF_DEF(object):
 
     def inst_slot(self):
         return self._inst_slot
-
-
-    def add(self, source, linenum = -1):
-        if not isinstance(source, str):
-            raise IfDefSyntaxError("Interface definition lines must be strings!")
-
-        if not self._active:
-            raise IfDefSyntaxError("The interface definition is no longer active!")
-
-        stripped_source = source.strip()
-        if stripped_source.startswith("_"):
-            raise IfDefSyntaxError("Interface definition lines cannot start with '_'")
-
-        if stripped_source.startswith("#TF#") or stripped_source.startswith("#-"):
-            return
-
-        if stripped_source.startswith("#"):
-            self._add_comment(source[1:])
-            return
-
-        if stripped_source == "":
-            self._add_comment(source)
-            return
-
-        self._eval(source, stripped_source, linenum)
 
 
     @ifdef_interface
@@ -1019,7 +1108,7 @@ class IF_DEF(object):
     @ifdef_interface
     def define_command_block(self):
         if self._readonly:
-            raise IfDefException("Cannot declare command block when in read-only mode")
+            raise IfDefSyntaxError("Cannot declare command block when in read-only mode")
         if self._CMD is not None:
             raise IfDefSyntaxError("Block redefinition is not possible!")
 
@@ -1030,7 +1119,7 @@ class IF_DEF(object):
     @ifdef_interface
     def define_parameter_block(self):
         if self._readonly:
-            raise IfDefException("Cannot declare parameter block when in read-only mode")
+            raise IfDefSyntaxError("Cannot declare parameter block when in read-only mode")
         if self._PARAM is not None:
             raise IfDefSyntaxError("Block redefinition is not possible!")
 

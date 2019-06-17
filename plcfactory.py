@@ -308,8 +308,7 @@ def getIfDef(device):
 
         raise PLCFactoryException("Different Interface Definitions for the same device type: {devtype}!".format(devtype = deviceType))
 
-    with open(filename) as f:
-        ifdef = tf.processLines(f, FILENAME = filename, **ifdef_params)
+    ifdef = tf.parseDef(filename, **ifdef_params)
 
     if ifdef is not None:
         ifdefs[deviceType] = (filename, ifdef)

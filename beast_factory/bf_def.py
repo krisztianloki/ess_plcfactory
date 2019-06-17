@@ -81,13 +81,13 @@ class BEASTDefInternalError(BEASTDefException):
 
 
 
-class BEASTDefPrematureEnd(BEASTDefException):
+class BEASTDefPrematureEnd(BEASTDefSyntaxError):
     def __init__(self, *args):
         super(BEASTDefPrematureEnd, self).__init__("Unexpected EOF while parsing", *args)
 
 
 
-class BEASTDefFeatureMissingError(BEASTDefException):
+class BEASTDefFeatureMissingError(BEASTDefSyntaxError):
     def __init__(self, feature):
         super(BEASTDefFeatureMissingError, self).__init__("Required feature '{}' is not supported in this version".format(feature))
 
@@ -404,7 +404,7 @@ def beastdef_interface(func):
                 raise BEASTDefInternalError("Function '{f}' not returning variable, please file a bug report".format(f = func.__name__))
             return BEAST_DEF_INTERFACE_FUNC(var)
         else:
-            raise BEASTDefException("Trying to call non-interface function '{f}'".format(f = func.__name__))
+            raise BEASTDefSyntaxError("Trying to call non-interface function '{f}'".format(f = func.__name__))
 
     return beastdef_interface_func
 
@@ -459,7 +459,7 @@ class BEAST_DEF(object):
         return len(self._root_components)
 
 
-    def _eval(self, line, linenum):
+    def _eval(self, line):
         keyword = line.split('(')[0]
         if keyword not in self._evalEnv:
             raise BEASTDefSyntaxError("Not supported keyword: '{}'".format(keyword))
@@ -468,6 +468,17 @@ class BEAST_DEF(object):
             result = eval(line, self._evalEnv)
         except NameError as e:
             raise BEASTDefSyntaxError(e)
+        except TypeError as e:
+            words = e.args[0].split(' ')
+            if len(words) > 1:
+                first_word = words[0]
+                if first_word[:-2] in self._evalEnv and words[1] == 'takes' and words[2] == 'exactly':
+                    # Decrease numbers by 1 ('self' should be hidden from user)
+                    words[3] = str(int(words[3]) - 1)
+                    words[5] = "({}".format(int(words[5][1:]) - 1)
+                    e.args = (" ".join(words),)
+                    raise BEASTDefSyntaxError(e)
+            raise e
 
         if not isinstance(result, BEAST_DEF_INTERFACE_FUNC):
            raise BEASTDefSyntaxError("Missing parentheses?")
@@ -510,7 +521,7 @@ class BEAST_DEF(object):
             if stripped_line.startswith("#") or stripped_line == "":
                 return
 
-            self._eval(stripped_line, linenum)
+            self._eval(stripped_line)
         except BEASTDefException as e:
             e.add_params(line = stripped_line, linenum = linenum)
             raise e
@@ -554,7 +565,6 @@ class BEAST_DEF(object):
 
             if multiline:
                 raise BEASTDefPrematureEnd(def_file)
-
 
 
     def parse_alarm_tree(self, def_file, config = None):

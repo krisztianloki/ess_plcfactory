@@ -11,6 +11,7 @@ __license__   = "GPLv3"
 import argparse
 import hashlib
 import tf as tf
+from tf_ifdef import IfDefException
 
 
 def createTemplate(definition, if_def, printername):
@@ -40,9 +41,7 @@ def processDefinitionFile(definition, printers, **kwargs):
     else:
         hashobj = None
 
-    with open(definition) as m:
-        if_def = tf.processLines(m, FILENAME = definition, **kwargs)
-
+    if_def = tf.parseDef(definition, **kwargs)
 
     if if_def is None:
         exit(1)
@@ -127,4 +126,8 @@ if __name__ == "__main__":
 
     tf.optimize_s7db(args.optimize)
 
-    map(lambda t: processDefinitionFile(t, args.printers, EXPERIMENTAL = args.enable_experimental), args.definitions)
+    try:
+        map(lambda t: processDefinitionFile(t, args.printers, EXPERIMENTAL = args.enable_experimental), args.definitions)
+    except IfDefException as e:
+        from sys import stderr
+        print(e, file = stderr)
