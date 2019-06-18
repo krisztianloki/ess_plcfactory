@@ -33,6 +33,9 @@ from   ccdb   import CCDB
 import helpers
 import plcf_git as git
 
+# Template Factory
+sys.path.append(os.path.join(os.path.abspath(os.path.dirname(__file__)), 'template_factory'))
+from tf_ifdef import IF_DEF
 
 
 
@@ -91,6 +94,12 @@ class BEASTFactory(object):
                             type     = str
                            )
 
+        parser.add_argument(
+                            '--verify',
+                            help     = 'try to verify PV names using Interface Definition files',
+                            action   = 'store_true'
+                           )
+
         # retrieve parameters
         args = parser.parse_args(argv)
 
@@ -98,6 +107,7 @@ class BEASTFactory(object):
 
         self._config     = args.config
         self._device_tag = args.tag
+        self._def_alarms = list() if args.verify else None
 
         os.system('clear')
 
@@ -189,12 +199,25 @@ class BEASTFactory(object):
             print()
 
 
+    def _parseIfDef(self, device):
+        if self._def_alarms is None:
+            return
+
+        filename = device.downloadArtifact(".def", self._device_tag, filetype = "Interface Definition")
+        if filename is None:
+            # No 'file' artifact found, let's see if there is a URL
+            filename = device.downloadExternalLink("EPI", ".def", filetype = "Interface Definition", device_tag = self._device_tag)
+            if filename is None:
+                return
+
+        ifdef = IF_DEF.parse(filename, QUIET = True)
+
+        self._def_alarms.extend(map(lambda a: "{}:{}".format(device.name(), a.pv_name()), ifdef.alarms()))
+
+
     def _processIOC(self, iocName, merge_with = None):
         # clear any previous CCDB data
         self._ccdb.clear()
-
-        # get IOC device
-        ioc = self._ccdb.device(iocName)
 
         # create a stable list of controlled devices
         try:
@@ -202,6 +225,9 @@ class BEASTFactory(object):
         except TypeError:
             print("Obtaining controls tree...", end = '')
             sys.stdout.flush()
+
+        # get IOC device
+        ioc = self._ccdb.device(iocName)
 
         devices = ioc.buildControlsList(include_self = True, verbose = True)
 
@@ -211,11 +237,41 @@ class BEASTFactory(object):
         for device in devices:
             # parse alarm list
             self._parseAlarms(beast_def, device)
+            # parse IfDef
+            self._parseIfDef(device)
 
         # create a dump of CCDB
         self._ccdb.dump(iocName, self._makeOutputDir(iocName))
 
         return beast_def
+
+
+    def _checkAlarms(self, bf_def):
+        if self._def_alarms is None:
+            return
+
+        extra_alarms = list()
+        def check_pvs(item):
+            for component in item.components().itervalues():
+                for pv in component.pvs():
+                    try:
+                        self._def_alarms.remove(pv.name())
+                    except ValueError:
+                        extra_alarms.append(pv.name())
+
+                check_pvs(component)
+
+        check_pvs(bf_def)
+
+        if extra_alarms:
+            print("""The following alarms could not be found in Interface Definition files:
+""")
+            print(extra_alarms)
+
+        if self._def_alarms:
+            print("""The following {} Interface Definition alarms are not added to BEAST:
+""".format(len(self._def_alarms)))
+            print(self._def_alarms)
 
 
     def __beastXML(self):
@@ -232,6 +288,7 @@ class BEASTFactory(object):
         beast_def = None
         for iocName in iocs:
             beast_def = self._processIOC(iocName, beast_def)
+
         branch = git.get_current_branch()
         beast_xml = beast_def.toxml(etree = self.etree, branch = branch, commit = git.get_local_ref(branch))
 
@@ -239,6 +296,8 @@ class BEASTFactory(object):
             self._config = beast_xml.getroot().attrib["name"]
 
         self.writeXml(beast_xml)
+
+        self._checkAlarms(beast_def)
 
 
     def mergeXMLs(self, xmls):

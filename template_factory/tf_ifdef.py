@@ -763,6 +763,7 @@ class IF_DEF(object):
         self._datablock_name        = IF_DEF.DEFAULT_DATABLOCK_NAME
         self._readonly              = keyword_params.get("PLC_READONLY", False)
         self._experimental          = keyword_params.get("EXPERIMENTAL", False)
+        self._quiet                 = keyword_params.get("QUIET",        False)
         self._global_defaults       = dict()
         self._defaults              = dict()
 
@@ -848,7 +849,8 @@ class IF_DEF(object):
         if block is not None:
             block.end()
             self._properties[block.length_keyword()] = block.length() // 2
-            print("{var}: {length}".format(var = block.length_keyword(), length = str(block.length() // 2)))
+            if not self._quiet:
+                print("{var}: {length}".format(var = block.length_keyword(), length = str(block.length() // 2)))
 
 
     def _add(self, var):
@@ -1057,6 +1059,12 @@ class IF_DEF(object):
 
     def inst_slot(self):
         return self._inst_slot
+
+
+    def alarms(self):
+        self._exception_if_active()
+
+        return filter(lambda a: isinstance(a, ALARM), self._status_block().interfaces())
 
 
     @ifdef_interface

@@ -46,6 +46,9 @@ The resulting output file will be written to a dedicated directory \(the config 
 *   **--ccdb-production**
     *   \[OPTIONAL\]
     *   Use the production version of the CCDB database. This is the default.
+*   **--verify**
+    *   \[OPTIONAL\]
+    *   Try to cross-check alarms with Interface Definition files.
 *   **--tag=<tag_name>**
     *   \[OPTIONAL\]
     *   Used to select the correct link if more than one External Link was found

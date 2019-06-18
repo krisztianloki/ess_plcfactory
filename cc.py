@@ -313,6 +313,8 @@ class CC(object):
                 if len(defs) > 1:
                     raise CC.ArtifactException("More than one {filetype} Artifacts were found for {device}: {defs}".format(filetype = filetype, device = self.name(), defs = defs))
 
+                print("Downloading {filetype} file {filename} from CCDB".format(filetype = filetype,
+                                                                                filename = defs[0].filename()))
                 return defs[0].download()
 
             # device artifacts have higher priority than device type artifacts
