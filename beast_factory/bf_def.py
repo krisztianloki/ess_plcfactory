@@ -625,14 +625,14 @@ class BEAST_DEF(object):
            commit = commit,
            date   = '{:%Y.%m.%d. %H:%M:%S}'.format(datetime.datetime.now()))))
 
-        for component in self.components():
+        for component in self.components().itervalues():
             component.toxml(root, etree = etree)
 
         return xml_tree
 
 
     def components(self):
-        return self._root_components.itervalues()
+        return self._root_components
 
 
     @alarmtree_interface
