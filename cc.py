@@ -586,6 +586,7 @@ class CC(object):
         if self._clear_templates:
             # clear templates downloaded in a previous run
             helpers.rmdirs(CC.TEMPLATE_DIR)
+            CC.paths_cached = dict()
         else:
             print("Reusing templates of any previous run")
 
