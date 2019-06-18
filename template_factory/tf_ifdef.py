@@ -718,6 +718,25 @@ def ifdef_interface(func):
 
 class IF_DEF(object):
     DEFAULT_DATABLOCK_NAME = "DEV_[PLCF#INSTALLATION_SLOT]_iDB"
+    __CACHE                = dict()
+
+
+    @staticmethod
+    def parse(def_file, **keyword_params):
+        try:
+            if not keyword_params.get("NO_CACHE", False):
+                return IF_DEF.__CACHE[def_file]
+        except KeyError:
+            pass
+
+        if_def = IF_DEF(**keyword_params)
+
+        if_def._read_def(def_file)
+        if_def._end()
+
+        IF_DEF.__CACHE[def_file] = if_def
+
+        return if_def
 
 
     def __init__(self, OPTIMIZE = False, **keyword_params):
@@ -954,6 +973,10 @@ class IF_DEF(object):
 
 
     def _read_def(self, def_file):
+        if self._filename is not None:
+            raise IfDefInternalError("Cannot parse more than one Interface Definition file")
+
+        self._filename = def_file
         with open(def_file, 'r') as defs:
             multiline    = None
             multilinenum = 1
@@ -976,14 +999,6 @@ class IF_DEF(object):
 
             if multiline:
                 raise IfDefPrematureEnd(def_file)
-
-
-    def parse(self, def_file):
-        if self._filename is not None:
-            raise IfDefInternalError("Cannot parse more than one Interface Definition file")
-
-        self._filename = def_file
-        self._read_def(def_file)
 
 
     def calculate_hash(self, hashobj):
@@ -1376,7 +1391,7 @@ class IF_DEF(object):
         return var
 
 
-    def end(self):
+    def _end(self):
         if self._overlap is not None:
             raise IfDefSyntaxError("Overlap is not ended")
 

@@ -1282,7 +1282,7 @@ def main(argv):
         default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "IFA" ] )
 
     if args.plc_direct:
-        tf.optimize_s7db(True)
+        ifdef_params["OPTIMIZE"] = True
         default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "IFA", tia_map ] )
 
     ifdef_params["PLC_READONLY"] = args.plc_readonly
@@ -1315,7 +1315,7 @@ def main(argv):
     # Make sure that OPTIMIZE_S7DB is turned on if TIA-MAP-DIRECT is requested
     if not args.plc_direct and "TIA-MAP-DIRECT" in templateIDs:
         tia_map = "TIA-MAP-DIRECT"
-        tf.optimize_s7db(True)
+        ifdef_params["OPTIMIZE"] = True
         templateIDs.add("IFA")
         if args.plc_no_diag == False and not args.plc_direct:
             args.plc_only_diag =  True

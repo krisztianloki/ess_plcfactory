@@ -124,10 +124,8 @@ if __name__ == "__main__":
     if 'all' in args.printers:
         args.printers = available_printers
 
-    tf.optimize_s7db(args.optimize)
-
     try:
-        map(lambda t: processDefinitionFile(t, args.printers, EXPERIMENTAL = args.enable_experimental), args.definitions)
+        map(lambda t: processDefinitionFile(t, args.printers, EXPERIMENTAL = args.enable_experimental, OPTIMIZE = args.optimize), args.definitions)
     except IfDefException as e:
         from sys import stderr
         print(e, file = stderr)
