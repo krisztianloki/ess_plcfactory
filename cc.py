@@ -654,6 +654,10 @@ class CC(object):
 
 
     def dump(self, filename, directory = "."):
+        return self.save(filename, directory)
+
+
+    def save(self, filename, directory = "."):
         assert isinstance(filename, str)
 
         import zipfile

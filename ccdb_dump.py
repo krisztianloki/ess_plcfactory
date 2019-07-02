@@ -35,6 +35,10 @@ class CCDB_Dump(object):
 
 
         # do not dump
+        def save(self, filename, dir = None):
+            return None
+
+
         def dump(self, filename, dir = None):
             return None
 

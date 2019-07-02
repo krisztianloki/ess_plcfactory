@@ -1399,7 +1399,7 @@ def main(argv):
     write_data_files()
 
     # create a dump of CCDB
-    output_files["CCDB-DUMP"] = glob.ccdb.dump("-".join([ device, glob.timestamp ]), OUTPUT_DIR)
+    output_files["CCDB-DUMP"] = glob.ccdb.save("-".join([ device, glob.timestamp ]), OUTPUT_DIR)
 
     # record the arguments used to run this instance
     record_args(root_device)

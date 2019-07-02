@@ -241,7 +241,7 @@ class BEASTFactory(object):
             self._parseIfDef(device)
 
         # create a dump of CCDB
-        self._ccdb.dump(iocName, self._makeOutputDir(iocName))
+        self._ccdb.save(iocName, self._makeOutputDir(iocName))
 
         return beast_def
 

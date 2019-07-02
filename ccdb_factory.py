@@ -71,7 +71,7 @@ class CCDB_Factory(CC):
 
 
     class Artifact(CCDB.Artifact):
-        def dump(self):
+        def save(self):
             if self.is_file():
                 self.download()
             else:
@@ -129,9 +129,9 @@ class CCDB_Factory(CC):
             return CCDB_Factory.Artifact(self, a)
 
 
-        def dump(self):
+        def save(self):
             for artifact in self.artifacts():
-                artifact.dump()
+                artifact.save()
 
 
         def setControls(self, value):
@@ -344,10 +344,14 @@ class CCDB_Factory(CC):
 
 
     def dump(self, filename, *pargs, **kwargs):
-        for device in self._devices.itervalues():
-            device.dump()
+        return self.save(filename, *pargs, **kwargs)
 
-        return super(CCDB_Factory, self).dump(filename, *pargs, **kwargs)
+
+    def save(self, filename, *pargs, **kwargs):
+        for device in self._devices.itervalues():
+            device.save()
+
+        return super(CCDB_Factory, self).save(filename, *pargs, **kwargs)
 
 
 
@@ -384,4 +388,4 @@ if __name__ == "__main__":
     factory.device("LEBT-010:Vac-VVS-20000").addArtifact("slot_filename")
 
     # Dump our CCDB
-    factory.dump("my_ccdb")
+    factory.save("my_ccdb")
