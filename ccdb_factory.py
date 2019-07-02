@@ -240,7 +240,7 @@ class CCDB_Factory(CC):
                                    {'dataType': 'Integer', 'value': '1', 'kind': 'SLOT', 'name': 'PLCF#PLC-DIAG:Max-IO-Devices', 'unit': None},
                                    {'dataType': 'Integer', 'value': '10', 'kind': 'SLOT', 'name': 'PLCF#PLC-DIAG:Max-Local-Modules', 'unit': None},
                                    {'dataType': 'Integer', 'value': '10', 'kind': 'SLOT', 'name': 'PLCF#PLC-DIAG:Max-Modules-In-IO-Device', 'unit': None},
-                                   {'dataType': 'String', 'value': 'Pulse_200ms', 'kind': 'SLOT', 'name': 'PLC-EPICS-COMMS: PLCPulse', 'unit': None},
+                                   {'dataType': 'String', 'value': 'Pulse_200ms', 'kind': 'SLOT', 'name': 'PLCF#PLC-EPICS-COMMS: PLCPulse', 'unit': None},
                                   ]
         return plc
 
