@@ -1082,6 +1082,9 @@ class IF_DEF(object):
     def alarms(self):
         self._exception_if_active()
 
+        if self._status_block() is None:
+            return []
+
         return filter(lambda a: isinstance(a, ALARM), self._status_block().interfaces())
 
 
