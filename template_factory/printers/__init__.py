@@ -180,7 +180,7 @@ class PRINTER(object):
 
     def _append_origin(self, origin, output):
         if self._show_origin and origin.strip() != "":
-            output.append(self.comment() + self.origin() + origin)
+            output.extend(map(lambda x: self.comment() + self.origin() + x, origin.splitlines()))
 
 
     def _append_source(self, source, output):
