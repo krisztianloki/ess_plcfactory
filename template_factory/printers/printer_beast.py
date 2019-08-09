@@ -54,7 +54,10 @@ class BEAST(BEAST_BASE):
     #
     def _ifdef_body(self, if_def, output, **keyword_params):
         printed = False
-        device = keyword_params["DEVICE"].name()
+        try:
+            device = keyword_params["DEVICE"].name()
+        except KeyError:
+            device = "Unknown device"
 
         for var in if_def.alarms():
             if not printed:
@@ -92,13 +95,17 @@ class BEAST_TEMPLATE(BEAST_BASE):
     # BODY
     #
     def _ifdef_body(self, if_def, output, **keyword_params):
-        device = keyword_params["DEVICE"]
+        device = keyword_params.get("DEVICE", None)
 
-        device_type = device.deviceType()
-        if device_type in self._devtypes:
-            return
+        if device is not None:
+            device_type = device.deviceType()
+            if device_type in self._devtypes:
+                return
 
-        self._devtypes.append(device_type)
+            self._devtypes.append(device_type)
+        else:
+            device_type = "Unknown device type"
+
         printed = False
 
         for var in if_def.alarms():
