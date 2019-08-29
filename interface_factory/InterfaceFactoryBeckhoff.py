@@ -263,84 +263,70 @@ def Write_FB_EPICS_S7_Comm():
 
 	FB_EPICS_S7_Comm.append
 
-	FB_EPICS_S7_Comm.append("<?xml version=\"1.0\" encoding=\"utf-8\"?>");
-	FB_EPICS_S7_Comm.append("<TcPlcObject ");
-	FB_EPICS_S7_Comm.append("Version=\"1.1.0.1\" ProductVersion=\"3.1.4022.10\">");
-	FB_EPICS_S7_Comm.append("<POU ");
+	FB_EPICS_S7_Comm.append("<?xml version=\"1.0\" encoding=\"utf-8\"?>")
+	FB_EPICS_S7_Comm.append("<TcPlcObject Version=\"1.1.0.1\" ProductVersion=\"3.1.4022.18\">")
 	GlobalIDCounter = GlobalIDCounter + 1
-	FB_EPICS_S7_Comm.append("Name=\"FB_EPICS_S7_Comm\" Id=\"{5bb54db1-6fe3-4b17-2b0f-"+str(GlobalIDCounter).zfill(12)+"}\" SpecialFunc=\"None\">");
-	FB_EPICS_S7_Comm.append("<Declaration>");
-	FB_EPICS_S7_Comm.append("<![CDATA[");
-	FB_EPICS_S7_Comm.append("FUNCTION_BLOCK FB_EPICS_S7_Comm");
-	FB_EPICS_S7_Comm.append("VAR_INPUT");
-	FB_EPICS_S7_Comm.append("	bConnect	:BOOL;					//Open or closes TCP/IP connection");
-	FB_EPICS_S7_Comm.append("	nS7Port		:UDINT :=2000;			//Server port. Leave empty for default 2000");
-	FB_EPICS_S7_Comm.append("	nPLC_Hash	:DINT;					//Hash written during XML generation at PLC factory");
-	FB_EPICS_S7_Comm.append("	tSendTrig	:TIME:= T#200MS;			//Frequency of pushed data");
-	FB_EPICS_S7_Comm.append("	");
-	FB_EPICS_S7_Comm.append("END_VAR");
-	FB_EPICS_S7_Comm.append("VAR_OUTPUT");
-	FB_EPICS_S7_Comm.append("	nCase		:INT:=0;				//Status. 0=Init, 1=Close conn., 2=Listen, 3=Accept, 4=Send data");
-	FB_EPICS_S7_Comm.append("	bConnected	:BOOL;					//TCP/IP connection accepted");
-	FB_EPICS_S7_Comm.append("	bError		:BOOL;					//Error in connection");
-	FB_EPICS_S7_Comm.append("END_VAR");
-	FB_EPICS_S7_Comm.append("VAR");
-	FB_EPICS_S7_Comm.append("	");
-	FB_EPICS_S7_Comm.append("	");
-	FB_EPICS_S7_Comm.append("	sSrvNetID		:T_AmsNetId :='';		// Local ID if empty");
-	FB_EPICS_S7_Comm.append("	sLocalHost		:STRING(15) :='';	");
-	FB_EPICS_S7_Comm.append("	");
-	FB_EPICS_S7_Comm.append("	FB_SocketCloseAll:FB_SocketCloseAll;");
-	FB_EPICS_S7_Comm.append("	bClose			:BOOL;");
-	FB_EPICS_S7_Comm.append("	bCloseBusy		:BOOL;");
-	FB_EPICS_S7_Comm.append("	bCloseError		:BOOL;");
-	FB_EPICS_S7_Comm.append("	nCloseErrID		:UDINT;");
-	FB_EPICS_S7_Comm.append("	");
-	FB_EPICS_S7_Comm.append("	FB_SocketListen	:FB_SocketListen;");
-	FB_EPICS_S7_Comm.append("	bListen			:BOOL;");
-	FB_EPICS_S7_Comm.append("	bListenBusy		:BOOL;");
-	FB_EPICS_S7_Comm.append("	bListenError	:BOOL;");
-	FB_EPICS_S7_Comm.append("	nListenErrID	:UDINT;");
-	FB_EPICS_S7_Comm.append("	hListener		:T_HSOCKET;");
-	FB_EPICS_S7_Comm.append("	");
-	FB_EPICS_S7_Comm.append("	FB_SocketAccept	:FB_SocketAccept;");
-	FB_EPICS_S7_Comm.append("	bAccept			:BOOL;");
-	FB_EPICS_S7_Comm.append("	bAccepted		:BOOL;");
-	FB_EPICS_S7_Comm.append("	bAcceptBusy		:BOOL;");
-	FB_EPICS_S7_Comm.append("	bAcceptError	:BOOL;");
-	FB_EPICS_S7_Comm.append("	nAcceptErrID	:UDINT;");
-	FB_EPICS_S7_Comm.append("	hSocket			:T_HSOCKET;");
-	FB_EPICS_S7_Comm.append("	");
-	FB_EPICS_S7_Comm.append("	FB_SocketSend	:FB_SocketSend;");
-	FB_EPICS_S7_Comm.append("	bSend			:BOOL;");
-	FB_EPICS_S7_Comm.append("	bSendBusy		:BOOL;");
-	FB_EPICS_S7_Comm.append("	bSendError		:BOOL;");
-	FB_EPICS_S7_Comm.append("	nSendErrID		:UDINT;");
-	FB_EPICS_S7_Comm.append("	");
-	FB_EPICS_S7_Comm.append("	F_bConnect		:F_TRIG;");
-	FB_EPICS_S7_Comm.append("	T_Init			:TON;");
-	FB_EPICS_S7_Comm.append("	tInit			:TIME:= T#1S;");
-	FB_EPICS_S7_Comm.append("	T_Push			:TON;");
-	FB_EPICS_S7_Comm.append("	nNumberOfErr	:INT:=0;");
-	FB_EPICS_S7_Comm.append("	");
-	FB_EPICS_S7_Comm.append("	//blink & counter functions");
-	FB_EPICS_S7_Comm.append("	bBlink			:BOOL;			//enable blink function");
-	FB_EPICS_S7_Comm.append("	fb_Pulse		:FB_Pulse;		//Pulse/counter function block");
-	FB_EPICS_S7_Comm.append("	nCount			:UINT;");
-	FB_EPICS_S7_Comm.append("");
-	FB_EPICS_S7_Comm.append("");
+	FB_EPICS_S7_Comm.append("  <POU Name=\"FB_EPICS_S7_Comm\" Id=\"{5bb54db1-6fe3-4b17-2b0f-"+str(GlobalIDCounter).zfill(12)+"}\" SpecialFunc=\"None\">")
+	FB_EPICS_S7_Comm.append("    <Declaration><![CDATA[");
+	FB_EPICS_S7_Comm.append("FUNCTION_BLOCK FB_EPICS_S7_Comm")
+	FB_EPICS_S7_Comm.append("VAR_INPUT")
+	FB_EPICS_S7_Comm.append("	nS7Port			:UDINT	:= 2000;			//Server port. Leave empty for default 2000")
+	FB_EPICS_S7_Comm.append("	nPLC_Hash		:DINT;					//Hash written during XML generation at PLC factory")
+	FB_EPICS_S7_Comm.append("	tSendTrig		:TIME	:= T#200MS;			//Frequency of pushed data")
+	FB_EPICS_S7_Comm.append("	")
+	FB_EPICS_S7_Comm.append("END_VAR")
+	FB_EPICS_S7_Comm.append("VAR_OUTPUT")
+	FB_EPICS_S7_Comm.append("	nCase			:INT	:= 0;				//Status. 0=Init, 1=Close conn., 2=Listen, 3=Accept, 4=Send data")
+	FB_EPICS_S7_Comm.append("	bConnected		:BOOL;					//TCP/IP connection accepted")
+	FB_EPICS_S7_Comm.append("	bError			:BOOL;					//Error in connection")
+	FB_EPICS_S7_Comm.append("END_VAR")
+	FB_EPICS_S7_Comm.append("VAR")
+	FB_EPICS_S7_Comm.append("	sSrvNetID		:T_AmsNetId	:='';			// Local ID if empty")
+	FB_EPICS_S7_Comm.append("	sLocalHost		:STRING(15)	:='';			// Local if empty")
+	FB_EPICS_S7_Comm.append("	bConnectEpics		:BOOL		:= TRUE;		//Open or closes TCP/IP connection")
+	FB_EPICS_S7_Comm.append("")
+	FB_EPICS_S7_Comm.append("	fb_SocketCloseAll	:FB_SocketCloseAll;")
+	FB_EPICS_S7_Comm.append("	bCloseAll		:BOOL;")
+	FB_EPICS_S7_Comm.append("	bCloseAllBusy		:BOOL;")
+	FB_EPICS_S7_Comm.append("	bCloseAllError		:BOOL;")
+	FB_EPICS_S7_Comm.append("	nCloseAllErrID		:UDINT;")
+	FB_EPICS_S7_Comm.append("")
+	FB_EPICS_S7_Comm.append("	hServer			:T_HSERVER;")
+	FB_EPICS_S7_Comm.append("	bListen			:BOOL;")
+	FB_EPICS_S7_Comm.append("")
+	FB_EPICS_S7_Comm.append("	fbServerConnection	:FB_ServerClientConnection;")
+	FB_EPICS_S7_Comm.append("	bSvrConnect		:BOOL;")
+	FB_EPICS_S7_Comm.append("	bSvrBusy		:BOOL;")
+	FB_EPICS_S7_Comm.append("	bSvrError		:BOOL;")
+	FB_EPICS_S7_Comm.append("	nSvrErrID		:UDINT;")
+	FB_EPICS_S7_Comm.append("	hSocket			:T_HSOCKET;")
+	FB_EPICS_S7_Comm.append("	eSvrState		:E_SocketConnectionState;")
+	FB_EPICS_S7_Comm.append("")
+	FB_EPICS_S7_Comm.append("	fb_SocketSend		:FB_SocketSend;")
+	FB_EPICS_S7_Comm.append("	bSend			:BOOL;")
+	FB_EPICS_S7_Comm.append("	bSendBusy		:BOOL;")
+	FB_EPICS_S7_Comm.append("	bSendError		:BOOL;")
+	FB_EPICS_S7_Comm.append("	nSendErrID		:UDINT;")
+	FB_EPICS_S7_Comm.append("")
+	FB_EPICS_S7_Comm.append("	f_bConnectEpics		:F_TRIG;")
+	FB_EPICS_S7_Comm.append("	t_Init			:TON;")
+	FB_EPICS_S7_Comm.append("	//tInitTime		:TIME:= T#3S;")
+	FB_EPICS_S7_Comm.append("	t_Push			:TON;")
+	FB_EPICS_S7_Comm.append("	nNumberOfErr		:INT:=0;")
+	FB_EPICS_S7_Comm.append("")
+	FB_EPICS_S7_Comm.append("	//blink & counter functions")
+	FB_EPICS_S7_Comm.append("	fb_Pulse		:FB_Pulse;		//Pulse/counter function block")
+	FB_EPICS_S7_Comm.append("	nCount			:UINT;")
+	FB_EPICS_S7_Comm.append("")
 	FB_EPICS_S7_Comm.append("	i				:INT:=3;		//index for filling data array loop");
 	FB_EPICS_S7_Comm.append("	nPLC_HashH		:UINT;			//Least significant part of the hash");
 	FB_EPICS_S7_Comm.append("	nPLC_HashL		:UINT;			//Most significant part of the hash");
-	FB_EPICS_S7_Comm.append("	");
 	FB_EPICS_S7_Comm.append("END_VAR");
 	FB_EPICS_S7_Comm.append("");
 	FB_EPICS_S7_Comm.append("]]>");
-	FB_EPICS_S7_Comm.append("</Declaration>");
-	FB_EPICS_S7_Comm.append("<Implementation>");
-	FB_EPICS_S7_Comm.append("<ST>");
-	FB_EPICS_S7_Comm.append("<![CDATA[");
-	FB_EPICS_S7_Comm.append("(*");
+	FB_EPICS_S7_Comm.append("    </Declaration>");
+	FB_EPICS_S7_Comm.append("    <Implementation>");
+	FB_EPICS_S7_Comm.append("      <ST><![CDATA[(*");
 	FB_EPICS_S7_Comm.append("**********************EPICS<-->Beckhoff integration at ESS in Lund, Sweden*******************************");
 	FB_EPICS_S7_Comm.append("TCP/IP server on Bechoff for EPICS<--Beckhoff communication flow.");
 	FB_EPICS_S7_Comm.append("Modbus Server on Beckhoff for EPICS-->Beckhoff communication flow.");
@@ -350,8 +336,8 @@ def Write_FB_EPICS_S7_Comm():
 	FB_EPICS_S7_Comm.append("Notes: TCP/IP server pushes data to the EPICS IOC connected. Modbus connection is open for R/W.");
 	FB_EPICS_S7_Comm.append("Code must not be changed manually. Code is generated and handled by PLC factory at ESS.");
 	FB_EPICS_S7_Comm.append("Functionality: ");
-	FB_EPICS_S7_Comm.append("Step 0: Wait for initialization command. Is set true as default.");
-	FB_EPICS_S7_Comm.append("Step 1: Close all open connections");
+	FB_EPICS_S7_Comm.append("Step 0: Reset all flags to start sequence");
+	FB_EPICS_S7_Comm.append("Step 1: Close all previous connections");
 	FB_EPICS_S7_Comm.append("Step 2: Initialize TCP/Ip server Listener");
 	FB_EPICS_S7_Comm.append("Step 3: Accept any incoming connection request. Matching connection is validated via the input nPLC Hash at EPICS level.");
 	FB_EPICS_S7_Comm.append("Step 4: Sends data to epics constantly using input tSendTrig as frequency");
@@ -359,87 +345,65 @@ def Write_FB_EPICS_S7_Comm():
 	FB_EPICS_S7_Comm.append("*)");
 	FB_EPICS_S7_Comm.append("");
 	FB_EPICS_S7_Comm.append("CASE nCase OF ");
-	FB_EPICS_S7_Comm.append("	0:// Wait for initialization command");
-	FB_EPICS_S7_Comm.append("	IF bConnect THEN");
-	FB_EPICS_S7_Comm.append("		bClose := FALSE;");
+	FB_EPICS_S7_Comm.append("	0:// Reset all flags to start sequence");
+	FB_EPICS_S7_Comm.append("	bCloseAll		:=FALSE;")
+	FB_EPICS_S7_Comm.append("	bListen 		:=FALSE;")
+	FB_EPICS_S7_Comm.append("	bSvrConnect		:=FALSE;")
+	FB_EPICS_S7_Comm.append("	bSend 			:=FALSE;")
+	FB_EPICS_S7_Comm.append("	t_Init.IN		:=FALSE;")
+	FB_EPICS_S7_Comm.append("	t_Push.IN		:=FALSE;")
+	FB_EPICS_S7_Comm.append("	nNumberOfErr		:=0;")
+	FB_EPICS_S7_Comm.append("	IF bConnectEpics THEN");
 	FB_EPICS_S7_Comm.append("		nCase := nCase + 1;");
 	FB_EPICS_S7_Comm.append("	END_IF");
-	FB_EPICS_S7_Comm.append("	");
-	FB_EPICS_S7_Comm.append("	1://Close all current connections");
-	FB_EPICS_S7_Comm.append("	T_Init.IN	:= TRUE;");
-	FB_EPICS_S7_Comm.append("	bClose 		:= TRUE;");
-	FB_EPICS_S7_Comm.append("	bListen 	:= FALSE;");
-	FB_EPICS_S7_Comm.append("	bAccept		:= FALSE;");
-	FB_EPICS_S7_Comm.append("	bSend 		:= FALSE;");
-	FB_EPICS_S7_Comm.append("	T_Push.IN	:= FALSE;");
-	FB_EPICS_S7_Comm.append("	IF NOT bConnect AND T_Init.Q THEN");
-	FB_EPICS_S7_Comm.append("		bClose := FALSE;");
-	FB_EPICS_S7_Comm.append("		T_Init.IN:= FALSE;");
-	FB_EPICS_S7_Comm.append("		nCase := nCase - 1;	");
+	FB_EPICS_S7_Comm.append("");
+	FB_EPICS_S7_Comm.append("	1:// Close all previous connections");
+	FB_EPICS_S7_Comm.append("	t_Init.PT	:= T#3S;");
+	FB_EPICS_S7_Comm.append("	t_Init.IN	:= TRUE;");
+	FB_EPICS_S7_Comm.append("	bCloseAll	:= TRUE;");
+	FB_EPICS_S7_Comm.append("	IF NOT bCloseAllBusy AND T_Init.Q AND NOT bSvrBusy THEN");
+	FB_EPICS_S7_Comm.append("		T_Init.IN	:= FALSE;");
+	FB_EPICS_S7_Comm.append("		bCloseAll	:= FALSE;");
+	FB_EPICS_S7_Comm.append("		nCase		:= nCase + 1;");
 	FB_EPICS_S7_Comm.append("	END_IF");
-	FB_EPICS_S7_Comm.append("	IF bConnect AND NOT bCloseBusy AND T_Init.Q THEN");
-	FB_EPICS_S7_Comm.append("		bClose := FALSE;");
-	FB_EPICS_S7_Comm.append("		T_Init.IN:= FALSE;");
-	FB_EPICS_S7_Comm.append("		nCase := nCase + 1;");
-	FB_EPICS_S7_Comm.append("	END_IF");
-	FB_EPICS_S7_Comm.append("	");
-	FB_EPICS_S7_Comm.append("	2://Initialize Listener for new incoming connections ");
-	FB_EPICS_S7_Comm.append("	T_Init.IN:=TRUE;");
+	FB_EPICS_S7_Comm.append("");
+	FB_EPICS_S7_Comm.append("	2:// Initialize TCP/IP server Listener");
 	FB_EPICS_S7_Comm.append("	bListen	:= TRUE;");
-	FB_EPICS_S7_Comm.append("	IF hListener.handle = 0 AND T_Init.Q THEN ");
-	FB_EPICS_S7_Comm.append("		bListen	:= FALSE;");
-	FB_EPICS_S7_Comm.append("		T_Init.IN:=FALSE;");
+	FB_EPICS_S7_Comm.append("	nCase	:= nCase + 1;");
+	FB_EPICS_S7_Comm.append("");
+	FB_EPICS_S7_Comm.append("	3:// Start server and wait to accept a connection");
+	FB_EPICS_S7_Comm.append("	t_Init.PT	:= T#600S;");
+	FB_EPICS_S7_Comm.append("	t_Init.IN	:= TRUE;");
+	FB_EPICS_S7_Comm.append("	bSvrConnect	:= TRUE;");
+	FB_EPICS_S7_Comm.append("	IF eSvrState = eSOCKET_CONNECTED AND NOT bSvrBusy THEN");
+	FB_EPICS_S7_Comm.append("		t_Init.IN		:= FALSE;");
+	FB_EPICS_S7_Comm.append("		nCase			:= nCase + 1;");
 	FB_EPICS_S7_Comm.append("	END_IF");
-	FB_EPICS_S7_Comm.append("	IF bListenError AND T_Init.Q THEN");
-	FB_EPICS_S7_Comm.append("		bListen	:= FALSE;");
-	FB_EPICS_S7_Comm.append("		T_Init.IN:=FALSE;");
-	FB_EPICS_S7_Comm.append("		nCase := nCase - 1;");
+	FB_EPICS_S7_Comm.append("	IF t_Init.Q THEN");
+	FB_EPICS_S7_Comm.append("		t_Init.IN		:= FALSE;");
+	FB_EPICS_S7_Comm.append("		bListen			:= FALSE;");
+	FB_EPICS_S7_Comm.append("		bSvrConnect		:= FALSE;");
+	FB_EPICS_S7_Comm.append("		nCase			:= 0;");
 	FB_EPICS_S7_Comm.append("	END_IF");
-	FB_EPICS_S7_Comm.append("	IF hListener.handle <> 0 AND T_Init.Q THEN");
-	FB_EPICS_S7_Comm.append("		bListen	:= FALSE;");
-	FB_EPICS_S7_Comm.append("		T_Init.IN:=FALSE;");
-	FB_EPICS_S7_Comm.append("		nCase := nCase + 1;");
-	FB_EPICS_S7_Comm.append("	END_IF");
-	FB_EPICS_S7_Comm.append("			");
-	FB_EPICS_S7_Comm.append("	3://Accept connections");
-	FB_EPICS_S7_Comm.append("	T_Init.IN	:= TRUE;");
-	FB_EPICS_S7_Comm.append("	bAccept		:= TRUE;");
-	FB_EPICS_S7_Comm.append("	IF NOT bAccepted AND T_Init.Q THEN");
-	FB_EPICS_S7_Comm.append("		T_Init.IN	:= FALSE;");
-	FB_EPICS_S7_Comm.append("		bAccept		:= FALSE;");
-	FB_EPICS_S7_Comm.append("		nNumberOfErr	:= nNumberOfErr + 1;");
-	FB_EPICS_S7_Comm.append("	END_IF");
-	FB_EPICS_S7_Comm.append("	IF bAccepted AND T_Init.Q THEN");
-	FB_EPICS_S7_Comm.append("		T_Init.IN	:= FALSE;");
-	FB_EPICS_S7_Comm.append("		bAccept		:= FALSE;");
-	FB_EPICS_S7_Comm.append("		nCase := nCase + 1;");
-	FB_EPICS_S7_Comm.append("		nNumberOfErr	:=0;");
-	FB_EPICS_S7_Comm.append("	END_IF");
-	FB_EPICS_S7_Comm.append("	IF nNumberOfErr = 10 THEN");
-	FB_EPICS_S7_Comm.append("		T_Push.IN	:= FALSE;");
-	FB_EPICS_S7_Comm.append("		bSend 		:= FALSE;");
-	FB_EPICS_S7_Comm.append("		nNumberOfErr	:=0;");
-	FB_EPICS_S7_Comm.append("		nCase := 0;");
-	FB_EPICS_S7_Comm.append("	END_IF");
-	FB_EPICS_S7_Comm.append("		");
-	FB_EPICS_S7_Comm.append("	4: //Push data to EPICS	");
-	FB_EPICS_S7_Comm.append("	T_Push.IN	:= TRUE;");
+	FB_EPICS_S7_Comm.append("");
+	FB_EPICS_S7_Comm.append("	4:// Push data to EPICS");
+	FB_EPICS_S7_Comm.append("	t_Push.IN	:= TRUE;");
 	FB_EPICS_S7_Comm.append("	bSend 		:= TRUE;");
-	FB_EPICS_S7_Comm.append("	IF T_Push.Q THEN");
-	FB_EPICS_S7_Comm.append("		T_Push.IN	:= FALSE;");
+	FB_EPICS_S7_Comm.append("	IF t_Push.Q THEN");
+	FB_EPICS_S7_Comm.append("		t_Push.IN	:= FALSE;");
 	FB_EPICS_S7_Comm.append("		bSend 		:= FALSE;");
 	FB_EPICS_S7_Comm.append("		IF bSendError THEN");
 	FB_EPICS_S7_Comm.append("			nNumberOfErr	:= nNumberOfErr + 1;	");
 	FB_EPICS_S7_Comm.append("		END_IF");
 	FB_EPICS_S7_Comm.append("	END_IF");
-	FB_EPICS_S7_Comm.append("	IF nNumberOfErr = 3 THEN");
-	FB_EPICS_S7_Comm.append("		T_Push.IN	:= FALSE;");
+	FB_EPICS_S7_Comm.append("	IF nNumberOfErr = 20 THEN");
+	FB_EPICS_S7_Comm.append("		t_Push.IN	:= FALSE;");
 	FB_EPICS_S7_Comm.append("		bSend 		:= FALSE;");
-	FB_EPICS_S7_Comm.append("		nNumberOfErr	:=0;");
-	FB_EPICS_S7_Comm.append("		nCase := 1;");
+	FB_EPICS_S7_Comm.append("		bListen		:= FALSE;");
+	FB_EPICS_S7_Comm.append("		bSvrConnect	:= FALSE;");
+	FB_EPICS_S7_Comm.append("		nNumberOfErr	:= 0;");
+	FB_EPICS_S7_Comm.append("		nCase		:= 0;");
 	FB_EPICS_S7_Comm.append("	END_IF");
-	FB_EPICS_S7_Comm.append("");
-	FB_EPICS_S7_Comm.append("		");
 	FB_EPICS_S7_Comm.append("END_CASE");
 	FB_EPICS_S7_Comm.append("");
 	FB_EPICS_S7_Comm.append("//Prepares array to be sent");
@@ -451,76 +415,72 @@ def Write_FB_EPICS_S7_Comm():
 	FB_EPICS_S7_Comm.append("");
 	FB_EPICS_S7_Comm.append("");
 	FB_EPICS_S7_Comm.append("//TCP IP communication function blocks");
-	FB_EPICS_S7_Comm.append("FB_SocketCloseAll(");
-	FB_EPICS_S7_Comm.append("	sSrvNetId:=sSrvNetID , ");
-	FB_EPICS_S7_Comm.append("	bExecute:=bClose , ");
-	FB_EPICS_S7_Comm.append("	tTimeout:=T#2S , ");
-	FB_EPICS_S7_Comm.append("	bBusy=>bCloseBusy , ");
-	FB_EPICS_S7_Comm.append("	bError=>bCloseError , ");
-	FB_EPICS_S7_Comm.append("	nErrId=>nCloseErrID );");
+	FB_EPICS_S7_Comm.append("F_CreateServerHnd(")
+	FB_EPICS_S7_Comm.append("	sSrvNetID 	:=sSrvNetID,")
+	FB_EPICS_S7_Comm.append("	sLocalHost 	:=sLocalHost,")
+	FB_EPICS_S7_Comm.append("	nLocalPort	:=nS7Port,")
+	FB_EPICS_S7_Comm.append("	nMode		:=LISTEN_MODE_CLOSEALL,")
+	FB_EPICS_S7_Comm.append("	bEnable		:=bListen,")
+	FB_EPICS_S7_Comm.append("	hServer		:=hServer);")
+	FB_EPICS_S7_Comm.append("")
+	FB_EPICS_S7_Comm.append("fbServerConnection(")
+	FB_EPICS_S7_Comm.append("	hServer	:= hServer,")
+	FB_EPICS_S7_Comm.append("	eMode	:= eACCEPT_ALL,")
+	FB_EPICS_S7_Comm.append("	sRemoteHost:= '',")
+	FB_EPICS_S7_Comm.append("	nRemotePort:=nS7Port,")
+	FB_EPICS_S7_Comm.append("	bEnable	:= bSvrConnect,")
+	FB_EPICS_S7_Comm.append("	tReconnect	:= T#3S,")
+	FB_EPICS_S7_Comm.append("	bBusy		=>bSvrBusy,")
+	FB_EPICS_S7_Comm.append("	bError		=>bSvrError,")
+	FB_EPICS_S7_Comm.append("	nErrID		=>nSvrErrID,")
+	FB_EPICS_S7_Comm.append("	hSocket		=>hSocket,")
+	FB_EPICS_S7_Comm.append("	eState		=>eSvrState);")
+	FB_EPICS_S7_Comm.append("")
+	FB_EPICS_S7_Comm.append("fb_SocketCloseAll(");
+	FB_EPICS_S7_Comm.append("	sSrvNetId:=sSrvNetID,");
+	FB_EPICS_S7_Comm.append("	bExecute:=bCloseAll,");
+	FB_EPICS_S7_Comm.append("	tTimeout:=T#5S,");
+	FB_EPICS_S7_Comm.append("	bBusy=>bCloseAllBusy,");
+	FB_EPICS_S7_Comm.append("	bError=>bCloseAllError,");
+	FB_EPICS_S7_Comm.append("	nErrId=>nCloseAllErrID);");
 	FB_EPICS_S7_Comm.append("");
-	FB_EPICS_S7_Comm.append("FB_SocketListen(");
-	FB_EPICS_S7_Comm.append("	sSrvNetId:=sSrvNetID , ");
-	FB_EPICS_S7_Comm.append("	sLocalHost:=sLocalHost , ");
-	FB_EPICS_S7_Comm.append("	nLocalPort:=nS7Port , ");
-	FB_EPICS_S7_Comm.append("	bExecute:=bListen , ");
-	FB_EPICS_S7_Comm.append("	tTimeout:=T#2S , ");
-	FB_EPICS_S7_Comm.append("	bBusy=>bListenBusy , ");
-	FB_EPICS_S7_Comm.append("	bError=>bListenError , ");
-	FB_EPICS_S7_Comm.append("	nErrId=>nListenErrID , ");
-	FB_EPICS_S7_Comm.append("	hListener=>hListener );");
-	FB_EPICS_S7_Comm.append("	");
-	FB_EPICS_S7_Comm.append("FB_SocketAccept(");
-	FB_EPICS_S7_Comm.append("	sSrvNetId:=sSrvNetID , ");
-	FB_EPICS_S7_Comm.append("	hListener:=hListener , ");
-	FB_EPICS_S7_Comm.append("	bExecute:=bAccept , ");
-	FB_EPICS_S7_Comm.append("	tTimeout:=T#2S , ");
-	FB_EPICS_S7_Comm.append("	bAccepted=>bAccepted , ");
-	FB_EPICS_S7_Comm.append("	bBusy=>bAcceptBusy , ");
-	FB_EPICS_S7_Comm.append("	bError=>bAcceptError , ");
-	FB_EPICS_S7_Comm.append("	nErrId=>nAcceptErrID , ");
-	FB_EPICS_S7_Comm.append("	hSocket=>hSocket );");
-	FB_EPICS_S7_Comm.append("	");
-	FB_EPICS_S7_Comm.append("FB_SocketSend(");
-	FB_EPICS_S7_Comm.append("	sSrvNetId:=sSrvNetID , ");
-	FB_EPICS_S7_Comm.append("	hSocket:=hSocket , ");
-	FB_EPICS_S7_Comm.append("	cbLen:=SIZEOF(EPICS_GVL.aDataS7) , ");
-	FB_EPICS_S7_Comm.append("	pSrc:=ADR(EPICS_GVL.aDataS7) , ");
-	FB_EPICS_S7_Comm.append("	bExecute:=bSend , ");
-	FB_EPICS_S7_Comm.append("	tTimeout:=T#5S , ");
-	FB_EPICS_S7_Comm.append("	bBusy=>bSendBusy , ");
-	FB_EPICS_S7_Comm.append("	bError=>bSendError , ");
-	FB_EPICS_S7_Comm.append("	nErrId=>nSendErrID );");
+	FB_EPICS_S7_Comm.append("fb_SocketSend(");
+	FB_EPICS_S7_Comm.append("	sSrvNetId:=sSrvNetID,");
+	FB_EPICS_S7_Comm.append("	hSocket:=hSocket,");
+	FB_EPICS_S7_Comm.append("	cbLen:=SIZEOF(EPICS_GVL.aDataS7),");
+	FB_EPICS_S7_Comm.append("	pSrc:=ADR(EPICS_GVL.aDataS7),");
+	FB_EPICS_S7_Comm.append("	bExecute:=bSend,");
+	FB_EPICS_S7_Comm.append("	tTimeout:=T#5S,");
+	FB_EPICS_S7_Comm.append("	bBusy=>bSendBusy,");
+	FB_EPICS_S7_Comm.append("	bError=>bSendError,");
+	FB_EPICS_S7_Comm.append("	nErrId=>nSendErrID);");
 	FB_EPICS_S7_Comm.append("");
 	FB_EPICS_S7_Comm.append("//Counter function");
 	FB_EPICS_S7_Comm.append("IF nCase = 4 THEN ");
-	FB_EPICS_S7_Comm.append("	bBlink	:= TRUE;");
+	FB_EPICS_S7_Comm.append("	fb_Pulse.bEn := TRUE;");
 	FB_EPICS_S7_Comm.append("	ELSE");
-	FB_EPICS_S7_Comm.append("	bBlink	:= FALSE;	");
+	FB_EPICS_S7_Comm.append("	fb_Pulse.bEn := FALSE;");
 	FB_EPICS_S7_Comm.append("END_IF");
-	FB_EPICS_S7_Comm.append("");
-	FB_EPICS_S7_Comm.append("fb_Pulse(bEn:=bBlink , tTimePulse:=T#1S , bPulse=> , nCount=>nCount );");
+	FB_EPICS_S7_Comm.append("fb_Pulse(bEn:= , tTimePulse:=T#1S , bPulse=> , nCount=>nCount );");
 	FB_EPICS_S7_Comm.append("");
 	FB_EPICS_S7_Comm.append("");
 	FB_EPICS_S7_Comm.append("//Triggers");
-	FB_EPICS_S7_Comm.append("F_bConnect(CLK:=bConnect, Q=>);");
-	FB_EPICS_S7_Comm.append("IF F_bConnect.Q  THEN //Close all connections");
-	FB_EPICS_S7_Comm.append("	nCase:=1;");
-	FB_EPICS_S7_Comm.append("	T_Init.IN:= FALSE;");
-	FB_EPICS_S7_Comm.append("	nNumberOfErr:=0;");
+	FB_EPICS_S7_Comm.append("f_bConnectEpics(CLK:=bConnectEpics, Q=>);");
+	FB_EPICS_S7_Comm.append("IF f_bConnectEpics.Q THEN");
+	FB_EPICS_S7_Comm.append("	nCase	:= 0;");
 	FB_EPICS_S7_Comm.append("END_IF");
 	FB_EPICS_S7_Comm.append("");
 	FB_EPICS_S7_Comm.append("//Timers");
-	FB_EPICS_S7_Comm.append("T_Init(IN:=, PT:=tInit);");
-	FB_EPICS_S7_Comm.append("T_Push(IN:=, PT:=tSendTrig);");
+	FB_EPICS_S7_Comm.append("t_Init(IN:=, PT:=);");
+	FB_EPICS_S7_Comm.append("t_Push(IN:=, PT:=tSendTrig);");
 	FB_EPICS_S7_Comm.append("");
 	FB_EPICS_S7_Comm.append("//Outputs");
-	FB_EPICS_S7_Comm.append("bConnected	:= bAccepted AND bConnect AND nCase>=3;");
-	FB_EPICS_S7_Comm.append("bError		:= bConnect AND (bCloseError OR bListenError OR bAcceptError OR bSendError);");
+	FB_EPICS_S7_Comm.append("bConnected	:= eSvrState = eSOCKET_CONNECTED AND nCase = 4 AND NOT bSendError;");
+	FB_EPICS_S7_Comm.append("bError		:= bCloseAllError OR bSvrError OR bSendError;");
 	FB_EPICS_S7_Comm.append("]]>");
-	FB_EPICS_S7_Comm.append("</ST>");
-	FB_EPICS_S7_Comm.append("</Implementation>");
-	FB_EPICS_S7_Comm.append("</POU>");
+	FB_EPICS_S7_Comm.append("      </ST>");
+	FB_EPICS_S7_Comm.append("    </Implementation>");
+	FB_EPICS_S7_Comm.append("  </POU>");
 	FB_EPICS_S7_Comm.append("</TcPlcObject>");
 
 	externalPath = os.path.join(OutputDirectory,basedir,"EPICS","ESS standard PLC code", "FB_EPICS_S7_Comm.TcPOU")
@@ -1081,26 +1041,20 @@ def ProcessIFADevTypes(OutputDir):
 	EPICS_GVL.append("//Global Variables used in EPICS<-->Beckhoff communication at ESS. ");
 
 	FC_EPICS_DEVICE_CALLS_HEADER.append("<?xml version=\"1.0\" encoding=\"utf-8\"?>");
-	FC_EPICS_DEVICE_CALLS_HEADER.append("<TcPlcObject ");
-	FC_EPICS_DEVICE_CALLS_HEADER.append("Version=\"1.1.0.1\" ProductVersion=\"3.1.4022.10\">");
-	FC_EPICS_DEVICE_CALLS_HEADER.append("<POU ");
+	FC_EPICS_DEVICE_CALLS_HEADER.append("<TcPlcObject Version=\"1.1.0.1\" ProductVersion=\"3.1.4022.18\">");
 	GlobalIDCounter = GlobalIDCounter + 1
-	FC_EPICS_DEVICE_CALLS_HEADER.append("Name=\"FC_EPICS_DEVICE_CALLS\" Id=\"{5bb54db1-6fe3-4b17-2b0f-"+str(GlobalIDCounter).zfill(12)+"}\" SpecialFunc=\"None\">");
-	FC_EPICS_DEVICE_CALLS_HEADER.append("");
-	FC_EPICS_DEVICE_CALLS_HEADER.append("<Declaration>");
-	FC_EPICS_DEVICE_CALLS_HEADER.append("<![CDATA[");
+	FC_EPICS_DEVICE_CALLS_HEADER.append("  <POU Name=\"FC_EPICS_DEVICE_CALLS\" Id=\"{5bb54db1-6fe3-4b17-2b0f-"+str(GlobalIDCounter).zfill(12)+"}\" SpecialFunc=\"None\">");
+	FC_EPICS_DEVICE_CALLS_HEADER.append("    <Declaration><![CDATA[");
 	FC_EPICS_DEVICE_CALLS_HEADER.append("FUNCTION FC_EPICS_DEVICE_CALLS : BOOL");
 	FC_EPICS_DEVICE_CALLS_HEADER.append("VAR_INPUT");
 	FC_EPICS_DEVICE_CALLS_HEADER.append("END_VAR");
 	FC_EPICS_DEVICE_CALLS_HEADER.append("VAR");
 	FC_EPICS_DEVICE_CALLS_HEADER.append("END_VAR");
 	FC_EPICS_DEVICE_CALLS_HEADER.append("]]>");
-	FC_EPICS_DEVICE_CALLS_HEADER.append("</Declaration>");
-	FC_EPICS_DEVICE_CALLS_HEADER.append("<Implementation>");
-	FC_EPICS_DEVICE_CALLS_HEADER.append("<ST>");
-	FC_EPICS_DEVICE_CALLS_HEADER.append("<![CDATA[");
+	FC_EPICS_DEVICE_CALLS_HEADER.append("    </Declaration>");
+	FC_EPICS_DEVICE_CALLS_HEADER.append("    <Implementation>");
+	FC_EPICS_DEVICE_CALLS_HEADER.append("      <ST><![CDATA[");
 	FC_EPICS_DEVICE_CALLS_HEADER.append("EPICS_GVL.FB_EPICS_S7_Comm(")
-	FC_EPICS_DEVICE_CALLS_HEADER.append("    bConnect:=TRUE ,")
 	FC_EPICS_DEVICE_CALLS_HEADER.append("    nS7Port:=2000 ,")
 	FC_EPICS_DEVICE_CALLS_HEADER.append("    nPLC_Hash:="+ifa.HASH+" ,")
 	FC_EPICS_DEVICE_CALLS_HEADER.append("    tSendTrig:=T#200MS ,")
@@ -1109,9 +1063,9 @@ def ProcessIFADevTypes(OutputDir):
 	FC_EPICS_DEVICE_CALLS_HEADER.append("    bError=> );")
 
 	FC_EPICS_DEVICE_CALLS_FOOTER.append("]]>");
-	FC_EPICS_DEVICE_CALLS_FOOTER.append("</ST>");
-	FC_EPICS_DEVICE_CALLS_FOOTER.append("</Implementation>");
-	FC_EPICS_DEVICE_CALLS_FOOTER.append("</POU>");
+	FC_EPICS_DEVICE_CALLS_FOOTER.append("      </ST>");
+	FC_EPICS_DEVICE_CALLS_FOOTER.append("    </Implementation>");
+	FC_EPICS_DEVICE_CALLS_FOOTER.append("  </POU>");
 	FC_EPICS_DEVICE_CALLS_FOOTER.append("</TcPlcObject>");
 
 
