@@ -97,14 +97,6 @@ class PRINTER(object):
                                                                                 ext       = extension), output)
 
 
-    def modulename(self):
-        return self.plcf("ext.eee_modulename()")
-
-
-    def snippet(self):
-        return self.plcf("ext.snippet()")
-
-
     def comment(self):
         return ""
 

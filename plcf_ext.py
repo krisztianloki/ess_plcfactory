@@ -30,15 +30,19 @@ def to_filename(x):
 
 
 def eee_modulename():
-    return plcf_glob.modulename
+    return plcf_glob.eee_modulename
 
 
 def e3_modulename():
-    return plcf_glob.modulename
+    return plcf_glob.e3_modulename
 
 
-def snippet():
-    return plcf_glob.snippet
+def eee_snippet():
+    return plcf_glob.eee_snippet
+
+
+def e3_snippet():
+    return plcf_glob.e3_snippet
 
 
 

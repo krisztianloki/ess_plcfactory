@@ -506,19 +506,28 @@ def processDevice(deviceName, templateIDs):
 
     device = glob.ccdb.device(deviceName)
 
-    if glob.modulename is None:
-        dev_props = device.properties()
-        modulename = dev_props.get("EPICSModule", [])
-        if len(modulename) == 1:
-            glob.modulename = modulename[0]
-        else:
-            glob.modulename = helpers.sanitizeFilename(deviceName.lower())
+    # Get the EPICSModule and EPICSSnippet properties
+    dev_props = device.properties()
+    modulename = dev_props.get("EPICSModule", [])
+    if len(modulename) == 1:
+        modulename = modulename[0]
+    else:
+        modulename = helpers.sanitizeFilename(deviceName.lower())
 
-        snippet = dev_props.get("EPICSSnippet", [])
-        if len(snippet) == 1:
-            glob.snippet = snippet[0]
-        else:
-            glob.snippet = glob.modulename
+    snippet = dev_props.get("EPICSSnippet", [])
+    if len(snippet) == 1:
+        snippet = snippet[0]
+    else:
+        snippet = modulename
+
+    # Set the module and snippet names from the CCDB properties if needed
+    if not glob.eee_modulename:
+        glob.eee_modulename = modulename
+        glob.eee_snippet    = snippet
+
+    if not glob.e3_modulename:
+        glob.e3_modulename = modulename
+        glob.e3_snippet    = snippet
 
     cplcf = getPLCF(device)
 
@@ -1177,7 +1186,6 @@ def main(argv):
 
     args = parser.parse_known_args(argv)[0]
 
-    modulename     = None
     eee_modulename = None
     e3_modulename  = None
     if args.eee is not None:
@@ -1185,6 +1193,8 @@ def main(argv):
             eee_modulename = args.eee.lower()
             if eee_modulename.startswith('m-epics-'):
                 eee_modulename = eee_modulename[len('m-epics-'):]
+        glob.eee_modulename = eee_modulename
+        glob.eee_snippet    = eee_modulename
         eee = True
     else:
         eee = False
@@ -1194,22 +1204,11 @@ def main(argv):
             e3_modulename = args.e3.lower()
             if e3_modulename.startswith('e3-'):
                 e3_modulename = e3_modulename[len('e3-'):]
+        glob.e3_modulename = e3_modulename
+        glob.e3_snippet    = e3_modulename
         e3 = True
     else:
         e3 = False
-
-    if eee_modulename and e3_modulename and eee_modulename != e3_modulename:
-        print("Unfortunately creating EEE and E3 modules with different names ('{eee}' vs '{e3}') is not yet possible in the same PLC Factory session".format(eee = eee_modulename, e3 = e3_modulename))
-        exit(1)
-
-    if eee_modulename:
-        modulename = eee_modulename
-    elif e3_modulename:
-        modulename = e3_modulename
-
-    if modulename:
-        glob.modulename = modulename
-        glob.snippet    = modulename
 
     # Third pass
     #  get all options
@@ -1416,9 +1415,9 @@ def main(argv):
     record_args(root_device)
 
     if eee:
-        create_eee(glob.modulename, glob.snippet)
+        create_eee(glob.eee_modulename, glob.eee_snippet)
     if e3:
-        create_e3(glob.modulename, glob.snippet)
+        create_e3(glob.e3_modulename, glob.e3_snippet)
 
     if args.zipit is not None:
         create_zipfile(args.zipit)

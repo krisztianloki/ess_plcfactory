@@ -31,6 +31,14 @@ class eee(object):
         return "cmd"
 
 
+    def modulename(self):
+        return self.plcf("ext.eee_modulename()")
+
+
+    def snippet(self):
+        return self.plcf("ext.eee_snippet()")
+
+
     def _modversion(self):
         return "REQUIRE_{modulename}_VERSION".format(modulename = self.modulename())
 
@@ -41,6 +49,14 @@ class e3(object):
     @staticmethod
     def _extension():
         return "iocsh"
+
+
+    def modulename(self):
+        return self.plcf("ext.e3_modulename()")
+
+
+    def snippet(self):
+        return self.plcf("ext.e3_snippet()")
 
 
     def _modversion(self):
