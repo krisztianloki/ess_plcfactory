@@ -127,10 +127,16 @@ PLC Factory is capable of integrating (and generating code for) the following PL
     *   `--plc-readonly`
 *   **--eee**=<module_name>
     *   \[OPTIONAL\]
-    *   Generate a proper EEE module. The default module name is derived from _device_ and of course prefixed with m-epics. Implicitly adds _EPICS-DB_, _AUTOSAVE-ST-CMD_, and _AUTOSAVE_ to the list of templates (which means you don't have to add any templates explicitly)
+    *   Generate a proper EEE module. If not specified, the module name is taken from the _EPICSModule_ property of _device_ with a fallback to being derived from _device_ and of course prefixed with m-epics. The name of the snippet follows a similar algorithm; taken from the _EPICSSnippet_ property and falls back to being derived from the module name. Implicitly adds _EPICS-DB_, _AUTOSAVE-ST-CMD_, and _AUTOSAVE_ to the list of templates (which means you don't have to add any templates explicitly)
     *   `--eee`
     *   `--eee=my-module`
     *   `--eee=m-epics-my-module`
+*   **--e3**=<module_name>
+    *   \[OPTIONAL\] \[EXPERIMENTAL\]
+    *   Generate a proper E3 module. If not specified, the module name is taken from the _EPICSModule_ property of _device_ with a fallback to being derived from _device_ and of course prefixed with e3. The name of the snippet follows a similar algorithm; taken from the _EPICSSnippet_ property and falls back to being derived from the module name. Implicitly adds _EPICS-DB_, _AUTOSAVE-ST-CMD_, and _AUTOSAVE_ to the list of templates (which means you don't have to add any templates explicitly)
+    *   `--e3`
+    *   `--e3=my-module`
+    *   `--e3=e3-my-module`
 *   **--root=<prefix>**
     *   \[OPTIONAL\]
     *   Change the root prefix in the generated EPICS db from _device_ to the specified string.

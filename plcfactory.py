@@ -1177,24 +1177,35 @@ def main(argv):
 
     args = parser.parse_known_args(argv)[0]
 
-    modulename = None
+    modulename     = None
+    eee_modulename = None
+    e3_modulename  = None
     if args.eee is not None:
         if args.eee != "":
-            modulename = args.eee.lower()
-            if modulename.startswith('m-epics-'):
-                modulename = modulename[len('m-epics-'):]
+            eee_modulename = args.eee.lower()
+            if eee_modulename.startswith('m-epics-'):
+                eee_modulename = eee_modulename[len('m-epics-'):]
         eee = True
     else:
         eee = False
 
     if args.e3 is not None:
         if args.e3 != "":
-            e3 = args.e3.lower()
-            if e3.startswith('e3-'):
-                e3 = e3[len('e3-'):]
+            e3_modulename = args.e3.lower()
+            if e3_modulename.startswith('e3-'):
+                e3_modulename = e3_modulename[len('e3-'):]
         e3 = True
     else:
         e3 = False
+
+    if eee_modulename and e3_modulename and eee_modulename != e3_modulename:
+        print("Unfortunately creating EEE and E3 modules with different names ('{eee}' vs '{e3}') is not yet possible in the same PLC Factory session".format(eee = eee_modulename, e3 = e3_modulename))
+        exit(1)
+
+    if eee_modulename:
+        modulename = eee_modulename
+    elif e3_modulename:
+        modulename = e3_modulename
 
     if modulename:
         glob.modulename = modulename
