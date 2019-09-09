@@ -55,7 +55,7 @@ class CC(object):
 
     class DownloadException(Exception):
         def __init__(self, url, code):
-            super(CC.DownloadException, self).__init__(url, code)
+            super(CC.DownloadException, self).__init__()
             self.url  = url
             self.code = code
 
@@ -67,17 +67,23 @@ class CC(object):
 
 
     class ArtifactException(DownloadException):
-        def __init__(self, dloadexception, deviceName, filename):
-            super(CC.ArtifactException, self).__init__(url = dloadexception.url, code = dloadexception.code)
+        def __init__(self, dloadexception, deviceName = None, filename = None):
             self.deviceName = deviceName
             self.filename   = filename
 
+            if isinstance(dloadexception, CC.DownloadException):
+                super(CC.ArtifactException, self).__init__(url = dloadexception.url, code = dloadexception.code)
+                self.msg = "Cannot get artifact {art} of {device}: error {code} ({url})".format(device = self.deviceName,
+                                                                                                art    = self.filename,
+                                                                                                code   = self.code,
+                                                                                                url    = self.url)
+            else:
+                super(CC.ArtifactException, self).__init__(None, None)
+                self.msg = dloadexception
+
 
         def __str__(self):
-            return "Cannot get artifact {art} of {device}: error {code} ({url})".format(device = self.deviceName,
-                                                                                        art    = self.filename,
-                                                                                        code   = self.code,
-                                                                                        url    = self.url)
+            return self.msg
 
 
 
@@ -132,7 +138,7 @@ class CC(object):
                 base = linkfile[:open_bra]
 
                 if linkfile[-1] != ']':
-                    raise CC.ArtifactException("Invalid name format in External Link for {device}: {name}".format(device = self._device.name(), name = linkfile))
+                    raise CC.ArtifactException("Invalid name format in External Link for {device}: {name}".format(device = self._device.name(), name = linkfile), self._device.name(), linkfile)
 
                 filename = linkfile[open_bra + 1 : -1]
                 if extension is not None:
@@ -142,7 +148,7 @@ class CC(object):
                         filename += extension
 
                 if filename != helpers.sanitizeFilename(filename):
-                    raise CC.ArtifactException("Invalid filename in External Link for {device}: {name}".format(device = self._device.name(), name = filename))
+                    raise CC.ArtifactException("Invalid filename in External Link for {device}: {name}".format(device = self._device.name(), name = filename), self._device.name(), filename)
             else:
                 base = linkfile
 
@@ -311,7 +317,7 @@ class CC(object):
                     return None
 
                 if len(defs) > 1:
-                    raise CC.ArtifactException("More than one {filetype} Artifacts were found for {device}: {defs}".format(filetype = filetype, device = self.name(), defs = defs))
+                    raise CC.ArtifactException("More than one {filetype} Artifacts were found for {device}: {defs}".format(filetype = filetype, device = self.name(), defs = defs), self.name())
 
                 print("Downloading {filetype} file {filename} from CCDB".format(filetype = filetype,
                                                                                 filename = defs[0].filename()))
@@ -345,7 +351,7 @@ class CC(object):
                     return None
 
                 if len(defs) > 1:
-                    raise CC.ArtifactException("More than one {filetype} External Links were found for {device}: {urls}".format(filetype = filetype, device = self.name(), urls = map(lambda u: u.uri(), defs)))
+                    raise CC.ArtifactException("More than one {filetype} External Links were found for {device}: {urls}".format(filetype = filetype, device = self.name(), urls = map(lambda u: u.uri(), defs)), self.name())
 
                 return defs[0].downloadExternalLink(self.defaultFilename(extension), extension, filetype = filetype, git_tag = git_tag)
 
