@@ -195,8 +195,12 @@ class CC(object):
 
 
     class Device(object):
-        def __init__(self):
+        ccdb = None
+
+        def __init__(self, ccdb):
             self._inControlledTree = False
+            if ccdb is not None:
+                self.ccdb = ccdb
 
 
         @staticmethod
@@ -269,6 +273,11 @@ class CC(object):
         # Returns: []
         def artifactNames(self):
             return map(lambda an: an.name(), filter(lambda fa: fa.is_file(), self.artifacts()))
+
+
+        # Returns: []
+        def externalLinks(self):
+            return filter(lambda u: u.is_uri(), self.artifacts())
 
 
         # Returns: ""
@@ -418,6 +427,10 @@ class CC(object):
                 pool.insert(0, self)
 
             return pool
+
+
+        def toFactory(self, filename, directory = ".", git_tag = None, script = None):
+            return self.ccdb.toFactory(filename, directory, git_tag = git_tag, root = self, script = script);
 
 
 
@@ -657,6 +670,166 @@ class CC(object):
         assert isinstance(deviceName, str)
 
         raise NotImplementedError
+
+
+    def toFactory(self, filename, directory = ".", git_tag = None, script = None, root = None):
+        devtypes      = []
+        fact_devtypes = []
+        fact_root     = []
+        fact_devs     = []
+
+        setProperty_str = """{var}.setProperty("{k}", "{v}")"""
+
+        def setProperty(out, dev, var):
+            comment = False
+            for (k, v) in dev.properties().items():
+                if not comment:
+                    comment = True
+                    out.append("# Properties")
+                out.append(setProperty_str.format(var = var,
+                                                  k    = k,
+                                                  v    = v))
+
+        def addDevice(dev, fact, var, output):
+            devType = dev.deviceType()
+            if devType == "PLC":
+                output.append("""#
+# Adding PLC: {device}
+#
+{var} = {fact}.addPLC("{device}")""".format(var = var, fact = fact, device = dev.name()))
+            elif devType == "PLC_BECKHOFF":
+                output.append("""#
+# Adding Beckhoff PLC: {device}
+#
+{var} = {fact}.addBECKHOFF("{device}")""".format(var = var, fact = fact, device = dev.name()))
+            else:
+                output.append("""#
+# Adding device {device} of type {type}
+#
+{var} = {fact}.addDevice("{type}", "{device}")""".format(var = var, fact = fact, type = devType, device = dev.name()))
+
+            setProperty(output, dev, var)
+
+            comment = False
+            for elink in dev.externalLinks():
+                if not elink.is_perdevtype():
+                    if not comment:
+                        comment = True
+                        output.append("# External links")
+                    output.append("""{var}.addLink("{name}", "{link}")""".format(var     = var,
+                                                                                 name    = elink.name(),
+                                                                                 link    = elink.uri()))
+
+            comment = False
+            for art in dev.artifacts():
+                if not art.is_perdevtype() and art.is_file():
+                    if not comment:
+                        comment = True
+                        output.append("# Artifacts")
+                    output.append("""{var}.addArtifact("{name}")""".format(var  = var,
+                                                                           name = art.name()))
+
+            output.append('')
+
+        def ctrls(device, var, idx = None):
+            cvar = "{}{}".format(var, idx) if idx else "dev"
+            idx  = idx + 1 if idx else 1
+            for dev in device.controls():
+                addDevice(dev, var, cvar, fact_devs)
+                ctrls(dev, cvar, idx)
+
+        # Define device type external links
+        plc = None
+        for devname in self._devices.keys():
+            dev      = self.device(devname)
+            devType  = dev.deviceType()
+            exLinks  = dev.externalLinks()
+
+            if devType not in devtypes:
+                if root is None and (devType == "PLC" or devType == "PLC_BECKHOFF"):
+                    if plc:
+                        raise CC.Exception("Cannot determine root device")
+                    plc = dev
+
+                devtypes.append(devType)
+
+                newline = False
+                comment = False
+                for elink in exLinks:
+                    if elink.is_perdevtype():
+                        if not comment:
+                            comment = True
+                            fact_devtypes.append("""# External links for {}""".format(devType))
+                        fact_devtypes.append("""factory.addLink("{devtype}", "{name}", "{link}")""".format(devtype = devType,
+                                                                                                           name    = elink.name(),
+                                                                                                           link    = elink.uri()))
+
+                newline = comment
+                comment = False
+                for art in dev.artifacts():
+                    if art.is_perdevtype() and art.is_file():
+                        if not comment:
+                            comment = True
+                            fact_devtypes.append("# Artifacts for {}".format(devType))
+                        fact_devtypes.append("""factory.addArtifact("{devtype}", "{name}")""".format(devtype = devType,
+                                                                                                     name    = art.name()))
+
+                if newline or comment:
+                    fact_devtypes.append('')
+
+        if root is None:
+            root = plc
+
+        if root is None:
+            raise CC.Exception("Cannot determine root device")
+
+        rootType = root.deviceType()
+        if rootType == "IOC":
+            root_var = "ioc"
+        elif rootType == "PLC" or rootType == "PLC_BECKHOFF":
+            root_var = "plc"
+        else:
+            root_var = "root"
+
+        addDevice(root, "factory", root_var, fact_root)
+        ctrls(root, root_var)
+
+        fact = """#!/usr/bin/env python2
+
+import os
+import sys
+
+sys.path.append(os.path.curdir)
+sys.path.append(os.path.abspath(os.path.dirname(__file__)))
+
+from ccdb_factory import CCDB_Factory
+
+factory = CCDB_Factory({factory_options})
+
+{links}
+{root}
+{devs}
+
+#
+# Saving the created CCDB
+#
+factory.save("{filename}")""".format(factory_options = 'git_tag = "{}"'.format(git_tag) if git_tag is not None else "",
+                                     links           = "\n".join(fact_devtypes),
+                                     root            = "\n".join(fact_root),
+                                     devs            = "\n".join(fact_devs),
+                                     filename        = filename)
+
+        if script is None:
+            script = filename
+
+        if not script.endswith("_ccdb.py"):
+            script += "_ccdb.py"
+
+        script = os_path.join(directory, helpers.sanitizeFilename(script))
+        with open(script, "w") as f:
+            print(fact, file = f)
+
+        return script
 
 
     def dump(self, filename, directory = "."):

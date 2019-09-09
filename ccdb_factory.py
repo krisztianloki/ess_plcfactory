@@ -80,7 +80,7 @@ class CCDB_Factory(CC):
 
 
     class Artifact(CCDB.Artifact):
-        def save(self):
+        def save(self, git_tag = None):
             if self.is_file():
                 self.download()
             else:
@@ -96,7 +96,8 @@ class CCDB_Factory(CC):
                 else:
                     raise RuntimeError("Unable to auto-detect extension for {}".format(name))
 
-                self.downloadExternalLink(self._device.defaultFilename(extension), extension)
+                # git-tag
+                self.downloadExternalLink(self._device.defaultFilename(extension), extension, git_tag)
 
 
         def _download(self, save_as, url = None):
@@ -138,9 +139,9 @@ class CCDB_Factory(CC):
             return CCDB_Factory.Artifact(self, a)
 
 
-        def save(self):
+        def save(self, git_tag = None):
             for artifact in self.artifacts():
-                artifact.save()
+                artifact.save(git_tag)
 
 
         def setControls(self, value):
@@ -189,6 +190,20 @@ class CCDB_Factory(CC):
             return device
 
 
+        def addPLC(self, deviceName):
+            device = self.ccdb.addPLC(deviceName)
+            self.setControls(deviceName)
+
+            return device
+
+
+        def addBECKHOFF(self, deviceName):
+            device = self.ccdb.addBECKHOFF(deviceName)
+            self.setControls(deviceName)
+
+            return device
+
+
         def __addArtifact(self, artifactDict):
             CCDB_Factory.checkArtifact(self._slot["artifacts"], artifactDict)
             try:
@@ -225,9 +240,10 @@ class CCDB_Factory(CC):
 
 
 
-    def __init__(self):
+    def __init__(self, git_tag = None):
         super(CCDB_Factory, self).__init__()
         CCDB_Factory.Device.ccdb = self
+        self._git_tag    = git_tag
         self._artifacts  = dict()
         self._properties = dict()
 
@@ -361,7 +377,7 @@ class CCDB_Factory(CC):
 
     def save(self, filename, *pargs, **kwargs):
         for device in self._devices.itervalues():
-            device.save()
+            device.save(self._git_tag)
 
         return super(CCDB_Factory, self).save(filename, *pargs, **kwargs)
 

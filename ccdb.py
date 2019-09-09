@@ -78,15 +78,11 @@ class CCDB(CC):
 
 
     class Device(CC.Device):
-        ccdb = None
-
         def __init__(self, slot, ccdb = None):
-            super(CCDB.Device, self).__init__()
+            super(CCDB.Device, self).__init__(ccdb)
             self._slot  = slot
             self._props = None
             self._arts  = None
-            if ccdb is not None:
-                self.ccdb = ccdb
 
 
         def __str__(self):
