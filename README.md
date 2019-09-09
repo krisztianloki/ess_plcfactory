@@ -28,7 +28,7 @@ Invocation follows the pattern `python plcfactory.py --device <device> --templat
 ###### With shorthands:
 `python plcfactory.py -d LNS-LEBT-010:Vac-PLC-11111 -t EPICS-DB TIA-MAP`
 
-The resulting output file(s) will be written to a dedicated directory \(derived from the device name\) in the `output` folder.
+The resulting output file(s) will be written to a dedicated directory \(derived from the device name\) in the `output` folder (can be customized with the `--output` option).
 
 For further information, see the files in [doc](doc/).
 
@@ -71,6 +71,12 @@ For further information, see the files in [doc](doc/).
     *   \[OPTIONAL\]
     *   Used to select a version of EPI repositories other than `master`. Please note: it overrides any `EPI VERSION` property specified in CCDB
     *   `--epi-version=interface`
+*   **--output=<directory>**
+    *   \[OPTIONAL\]
+    *   Used to control the location of the generated files. The default is `output/<devicename>` in the current directory
+    *   `--output=my_output`   will save everything to `my_output`
+    *   `--output=+my_device`  will save everything to `output/my_device`
+    *   `--output=my_output+`  will save everything to `my_output/<devicename>`
 
 ## EPICS-PLC integration
 

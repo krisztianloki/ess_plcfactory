@@ -1273,6 +1273,14 @@ def main(argv):
                         default  = [],
                         required = not (tia_version or eee or e3 or beckhoff or opc))
 
+    global OUTPUT_DIR
+    parser.add_argument(
+                        '--output',
+                        dest     = 'output_dir',
+                        help     = 'the output directory. Default: {}/'.format(OUTPUT_DIR),
+                        type     = str,
+                        default  = OUTPUT_DIR)
+
     # retrieve parameters
     args       = parser.parse_args(argv)
 
@@ -1382,8 +1390,15 @@ def main(argv):
     else:
         glob.ccdb = CCDB(clear_templates = args.clear_ccdb_cache)
 
-    global OUTPUT_DIR
-    OUTPUT_DIR = os.path.join(OUTPUT_DIR, helpers.sanitizeFilename(device.lower()))
+    if args.output_dir[0] == '+':
+        OUTPUT_DIR = os.path.join(OUTPUT_DIR, args.output_dir[1:])
+    elif args.output_dir[-1] == '+':
+        OUTPUT_DIR = os.path.join(args.output_dir[:-1], helpers.sanitizeFilename(device.lower()))
+    elif args.output_dir == OUTPUT_DIR:
+        OUTPUT_DIR = os.path.join(args.output_dir, helpers.sanitizeFilename(device.lower()))
+    else:
+        OUTPUT_DIR = args.output_dir
+
     if device_tag:
         OUTPUT_DIR = os.path.join(OUTPUT_DIR, helpers.sanitizeFilename(CCDB.TAG_SEPARATOR.join([ "", "tag", device_tag ])))
     helpers.makedirs(OUTPUT_DIR)
