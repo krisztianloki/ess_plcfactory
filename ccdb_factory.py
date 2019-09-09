@@ -70,6 +70,15 @@ class CCDB_Factory(CC):
 
 
 
+    @staticmethod
+    def checkArtifact(artifacts, artifact):
+        if isinstance(artifacts, list):
+            for art in artifacts:
+                if art["kind"] == artifact["kind"] and art["name"] == artifact["name"]:
+                    raise RuntimeError("Duplicate entries: ", art, artifact)
+
+
+
     class Artifact(CCDB.Artifact):
         def save(self):
             if self.is_file():
@@ -180,6 +189,15 @@ class CCDB_Factory(CC):
             return device
 
 
+        def __addArtifact(artifact):
+            CCDB_Factory.checkArtifact(self._slot["artifacts"], artifact)
+            try:
+                self._slot["artifacts"].append(artifactDict)
+            except AttributeError:
+                # Handle 'artifacts' is None case
+                self._slot["artifacts"] = [ artifactDict ]
+
+
         def addArtifact(self, name, local_file = None):
             if local_file is None:
                 local_file = name
@@ -191,11 +209,7 @@ class CCDB_Factory(CC):
             artifactDict["name"]      = os.path.basename(name)
             artifactDict["full_path"] = local_file
 
-            try:
-                self._slot["artifacts"].append(artifactDict)
-            except AttributeError:
-                # Handle 'artifacts' is None case
-                self._slot["artifacts"] = [ artifactDict ]
+            self.__addArtifact(artifactDict)
 
 
         def addLink(self, name, uri, local_file = None):
@@ -207,11 +221,7 @@ class CCDB_Factory(CC):
                 CCDB_Factory.checkIfExists(local_file)
                 artifactDict["full_path"] = local_file
 
-            try:
-                self._slot["artifacts"].append(artifactDict)
-            except AttributeError:
-                # Handle 'artifacts' is None case
-                self._slot["artifacts"] = [ artifactDict ]
+            self.__addArtifact(artifactDict)
 
 
 
@@ -300,6 +310,14 @@ class CCDB_Factory(CC):
         return device
 
 
+    def __addArtifact(self, deviceType, artifactDict):
+        CCDB_Factory.checkArtifact(self._artifacts.get(deviceType), artifactDict)
+        try:
+            self._artifacts[deviceType].append(artifactDict)
+        except KeyError:
+            self._artifacts[deviceType] = [ artifactDict ]
+
+
     def addArtifact(self, deviceType, name, local_file = None):
         if local_file is None:
             local_file = name
@@ -310,10 +328,7 @@ class CCDB_Factory(CC):
         artifactDict["name"]      = os.path.basename(name)
         artifactDict["full_path"] = local_file
 
-        try:
-            self._artifacts[deviceType].append(artifactDict)
-        except KeyError:
-            self._artifacts[deviceType] = [ artifactDict ]
+        self.__addArtifact(deviceType, artifactDict)
 
 
     def addLink(self, deviceType, name, uri, local_file = None):
@@ -324,10 +339,7 @@ class CCDB_Factory(CC):
             CCDB_Factory.checkIfExists(local_file)
             artifactDict["full_path"] = local_file
 
-        try:
-            self._artifacts[deviceType].append(artifactDict)
-        except KeyError:
-            self._artifacts[deviceType] = [ artifactDict ]
+        self.__addArtifact(deviceType, artifactDict)
 
 
     def setProperty(self, deviceType, key, value, dataType = None):
