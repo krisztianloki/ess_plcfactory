@@ -189,7 +189,7 @@ class CCDB_Factory(CC):
             return device
 
 
-        def __addArtifact(artifact):
+        def __addArtifact(self, artifact):
             CCDB_Factory.checkArtifact(self._slot["artifacts"], artifact)
             try:
                 self._slot["artifacts"].append(artifactDict)
