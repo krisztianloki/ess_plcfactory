@@ -52,4 +52,4 @@ class DUMMY(PRINTER):
     # FOOTER
     #
     def footer(self, output, **keyword_params):
-        super(DUMMY, self).footer(self, output, **keyword_params)
+        super(DUMMY, self).footer(output, **keyword_params)
