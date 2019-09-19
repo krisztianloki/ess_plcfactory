@@ -312,14 +312,14 @@ def getIfDef(device):
     return ifdef
 
 
-def getHeader(device, templateID):
+def getHeader(device, templateID, plcf):
     assert isinstance(templateID, str)
 
     templatePrinter = tf.get_printer(templateID)
     if templatePrinter is not None:
         print("Using built-in template header")
         header = []
-        templatePrinter.header(header, **ifdef_params)
+        templatePrinter.header(header, PLCF = plcf, OUTPUT_DIR = OUTPUT_DIR, HELPERS = helpers, **ifdef_params)
     else:
         header = openTemplate(device, HEADER_TAG, templateID)
 
@@ -331,13 +331,13 @@ def getHeader(device, templateID):
     return (header, templatePrinter)
 
 
-def getFooter(device, templateID_or_printer):
+def getFooter(device, templateID_or_printer, plcf):
     if isinstance(templateID_or_printer, str):
         footer = openTemplate(device, FOOTER_TAG, templateID_or_printer)
     else:
         print("Using built-in template footer")
         footer = []
-        templateID_or_printer.footer(footer)
+        templateID_or_printer.footer(footer, PLCF = plcf)
 
     return footer
 
@@ -377,7 +377,7 @@ def processTemplateID(templateID, devices):
     output = []
 
     # process header
-    (header, templatePrinter) = getHeader(rootDevice, templateID)
+    (header, templatePrinter) = getHeader(rootDevice, templateID, rcplcf)
     # has to acquire filename _before_ processing the header
     # there are some special tags that are only valid in the header
     outputFile = os.path.join(OUTPUT_DIR, createFilename(rcplcf, header))
@@ -414,7 +414,7 @@ def processTemplateID(templateID, devices):
                 print("Generating template from Definition File...")
                 ifdef.calculate_hash(hashobj)
                 template = []
-                templatePrinter.body(ifdef, template, DEVICE = device)
+                templatePrinter.body(ifdef, template, DEVICE = device, PLCF = cplcf)
 
         # Try to download template from artifact
         if template is None:
@@ -454,7 +454,7 @@ def processTemplateID(templateID, devices):
     if not def_seen:
         glob.ccdb.computeHash(hashobj)
 
-    footer = getFooter(rootDevice, templatePrinter if templatePrinter is not None else templateID)
+    footer = getFooter(rootDevice, templatePrinter if templatePrinter is not None else templateID, rcplcf)
     if footer:
         footer = rcplcf.process(footer)
 

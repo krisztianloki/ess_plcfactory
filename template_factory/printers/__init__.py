@@ -44,6 +44,8 @@ class PRINTER(object):
         self._comments       = comments
         self._preserve_empty = preserve_empty_lines
         self._show_origin    = show_origin
+        self._output_dir     = "."
+        self._helpers        = None
 
 
     def _check_if_list(self, output):
@@ -75,10 +77,9 @@ class PRINTER(object):
         return self.plcf("TIMESTAMP")
 
 
-    def add_filename_header(self, output, inst_slot = None, template = True, extension = 'txt', custom = None):
+    def filename(self, inst_slot = None, template = True, extension = 'txt', custom = None):
         if custom:
-            self._append("#FILENAME {custom}".format(custom = custom), output)
-            return
+            return custom
 
         if inst_slot is None:
             inst_slot = self.root_inst_slot()
@@ -91,10 +92,14 @@ class PRINTER(object):
             template = ""
 
 
-        self._append("#FILENAME {inst_slot}{template}-{timestamp}.{ext}".format(inst_slot = inst_slot,
-                                                                                template  = template,
-                                                                                timestamp = self.timestamp(),
-                                                                                ext       = extension), output)
+        return "{inst_slot}{template}-{timestamp}.{ext}".format(inst_slot = inst_slot,
+                                                                template  = template,
+                                                                timestamp = self.timestamp(),
+                                                                ext       = extension)
+
+
+    def add_filename_header(self, output, inst_slot = None, template = True, extension = 'txt', custom = None):
+        self._append("#FILENAME {}".format(self.filename(inst_slot, template, extension, custom)), output)
 
 
     def comment(self):
@@ -143,6 +148,8 @@ class PRINTER(object):
 
     def header(self, output, **keyword_params):
         self._check_if_list(output)
+        self._output_dir = keyword_params.get("OUTPUT_DIR", ".")
+        self._helpers    = keyword_params.get("HELPERS", None)
 
         return self
 
