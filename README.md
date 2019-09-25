@@ -186,3 +186,6 @@ The following output types can be automatically generated from **Interface Defin
 *   BEAST-TEMPLATE
     *    A BeastFactory .alarms-template file. Automatically generated for PLCs and EPICS modules
     *    `<device>-template-BEAST-TEMPLATE-<timestamp>.alarms-template`
+*   OPC-MAP.XLS
+    *    If the `openpyxl` package is installed (`sudo pip2 install openpyxl`) an Excel sheet is generated (by default with `--plc-opc`) with a mapping between EPICS PV names and PLC datablock-tag names
+    *    `<device>-template-OPC-MAP.XLS-<timestamp>.xlsx`

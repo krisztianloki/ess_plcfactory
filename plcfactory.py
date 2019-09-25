@@ -1333,6 +1333,9 @@ def main(argv):
     else:
         templateIDs = set(args.template)
 
+    if opc and "OPC-MAP.XLS" in tf.available_printers():
+        templateIDs.update( [ "OPC-MAP.XLS" ] )
+
     # Make sure that OPTIMIZE_S7DB is turned on if TIA-MAP-DIRECT is requested
     if not args.plc_direct and "TIA-MAP-DIRECT" in templateIDs:
         tia_map = "TIA-MAP-DIRECT"
