@@ -65,7 +65,52 @@ class e3(object):
 
 
 
-class ST_CMD(eee, PRINTER):
+class MACROS(object):
+    def __init__(self):
+        super(MACROS, self).__init__()
+        self._root_macro = False
+        self._macros     = []
+
+
+    @staticmethod
+    def macro_name(macro):
+        return macro[2:-1]
+
+
+    def macros(self):
+        return self._macros
+
+
+    def _declare_macros(self, if_def, output):
+        if not self._root_macro:
+            self._root_macro = True
+            if self.root_inst_slot()[0] == '$':
+                self._macros.append(self.root_inst_slot())
+                self._append("""
+# @field {}
+# @type STRING
+# PLC device name
+""".format(self.macro_name(self.root_inst_slot())), output)
+
+        for macro in if_def.macros():
+            self._macros.append(macro)
+            self._append("""
+# @field {macro}
+# @type STRING
+# {macro}
+""".format(macro = self.macro_name(macro)), output)
+
+
+    def _define_macros(self):
+        if not self._macros:
+            return ""
+
+        return ", " + ", ".join(["{m}={v}".format(m = self.macro_name(m), v = m) for m in self._macros])
+
+
+
+
+class ST_CMD(eee, MACROS, PRINTER):
     def __init__(self):
         super(ST_CMD, self).__init__()
         self._opc = False
@@ -120,6 +165,9 @@ class ST_CMD(eee, PRINTER):
     # BODY
     #
     def _ifdef_body(self, if_def, output, **keyword_parameters):
+        # Append macro 'declarations' to header part...
+        self._declare_macros(if_def, output);
+
         status = if_def._status_block()
         if status is not None:
             self._append("#COUNTER {status_cnt} = [PLCF# {status_cnt} + {db_length}]".format(status_cnt = STATUS_BLOCK.counter_keyword(),
@@ -128,10 +176,11 @@ class ST_CMD(eee, PRINTER):
 
     def _dbLoadRecords(self, plc_macro):
         return """# Load plc interface database
-dbLoadRecords("{modulename}.db", "{PLC_MACRO}={plcname}, MODVERSION=$({modversion})")""".format(PLC_MACRO  = plc_macro,
+dbLoadRecords("{modulename}.db", "{PLC_MACRO}={plcname}, MODVERSION=$({modversion}){macros}")""".format(PLC_MACRO  = plc_macro,
                                                                                                         plcname    = self.root_inst_slot(),
                                                                                                         modulename = self.modulename(),
-                                                                                                        modversion = self._modversion())
+                                                                                                        modversion = self._modversion(),
+                                                                                                        macros     = self._define_macros())
 
 
     #
@@ -221,7 +270,7 @@ class IOCSH(e3, ST_CMD):
 
 
 
-class ST_TEST_CMD(eee, PRINTER):
+class ST_TEST_CMD(eee, MACROS, PRINTER):
     def __init__(self):
         super(ST_TEST_CMD, self).__init__()
 
@@ -252,6 +301,14 @@ class ST_TEST_CMD(eee, PRINTER):
 
 
     #
+    # BODY
+    #
+    def _ifdef_body(self, if_def, output, **keyword_parameters):
+        # Append macro 'declarations' to header part...
+        self._declare_macros(if_def, output);
+
+
+    #
     # FOOTER
     #
     def footer(self, output, **keyword_parameters):
@@ -259,9 +316,10 @@ class ST_TEST_CMD(eee, PRINTER):
 
         st_cmd_footer = """
 # Load plc interface database
-dbLoadRecords("{modulename}-test.db", "MODVERSION=$({modversion})")
+dbLoadRecords("{modulename}-test.db", "MODVERSION=$({modversion}){macros}")
 """.format(modulename = self.modulename(),
-           modversion = self._modversion())
+           modversion = self._modversion(),
+           macros     = self._define_macros())
 
         self._append(st_cmd_footer, output)
 

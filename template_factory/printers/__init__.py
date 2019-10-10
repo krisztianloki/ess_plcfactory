@@ -36,6 +36,7 @@ from tf_ifdef import IF_DEF, SOURCE, PRINTER_METADATA
 #
 class PRINTER(object):
     def __init__(self, comments = False, preserve_empty_lines = False, show_origin = False):
+        super(PRINTER, self).__init__()
         assert isinstance(comments,             bool),    func_param_msg("comments",             "bool")
         assert isinstance(preserve_empty_lines, bool),    func_param_msg("preserve_empty_lines", "bool")
         assert isinstance(show_origin,          bool),    func_param_msg("show_origin",          "bool")
@@ -46,6 +47,7 @@ class PRINTER(object):
         self._show_origin    = show_origin
         self._output_dir     = "."
         self._helpers        = None
+        self._root_inst_slot = None
 
 
     def _check_if_list(self, output):
@@ -66,7 +68,10 @@ class PRINTER(object):
 
 
     def root_inst_slot(self):
-        return self.plcf("ROOT_INSTALLATION_SLOT")
+        if self._root_inst_slot is None:
+            return self.plcf("ROOT_INSTALLATION_SLOT")
+        else:
+            return self._root_inst_slot
 
 
     def template(self):
@@ -148,8 +153,9 @@ class PRINTER(object):
 
     def header(self, output, **keyword_params):
         self._check_if_list(output)
-        self._output_dir = keyword_params.get("OUTPUT_DIR", ".")
-        self._helpers    = keyword_params.get("HELPERS", None)
+        self._output_dir     = keyword_params.get("OUTPUT_DIR", ".")
+        self._helpers        = keyword_params.get("HELPERS", None)
+        self._root_inst_slot = keyword_params.get("ROOT_INSTALLATION_SLOT", None)
 
         return self
 

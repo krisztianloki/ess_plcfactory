@@ -69,6 +69,13 @@ Digital types are packed into WORDs so no space is wasted. The earlier the digit
 
 Because in the current implementation every interface definition is a special subset of python the same set of rules apply as to a python script. Basically every "instruction" is a function call; thus parenthesis are mandatory. Optional arguments are represented as keyword arguments and take the form of **`KEYWORD="value"`**.
 
+## Defining the device name A.K.A. installation slot (CCDB-term)
+
+While it is neither necessary nor recommended to override the default device name (retreived from CCDB by PLCFactory) it is still possible to do so. One use case is the Vacuum Mobile Pumping Kart project; it consists of about a dozen karts with completely identical PLCs (hardware and software wise). Overriding the device name enables the reuse of a base MobilePumpingKart module; just use a macro like `$(VMPG_INSTANCE)`.
+This feature should be used with caution: if there are more than one devices with the same Interface Definition the same device name will be used for all of them - except of course the name is dynamic; like a CCDB property that is unique for every device (use PLCF# expressions to reference CCDB properties).
+
+**`define_installation_slot("<device_name>")`**
+
 ## Defining blocks
 
 A block can only be defined once, empty blocks need not be defined. The scope of a block definition ends with the definition of another block.

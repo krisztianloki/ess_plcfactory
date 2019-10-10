@@ -79,6 +79,7 @@ FOOTER_TAG      = "FOOTER"
 IFDEF_EXTENSION = ".def"
 hashobj         = None
 ifdefs          = dict()
+printers        = dict()
 ifdef_params    = dict(PLC_TYPE = "SIEMENS")
 plcfs           = dict()
 output_files    = dict()
@@ -315,9 +316,14 @@ def getIfDef(device):
 def getHeader(device, templateID, plcf):
     assert isinstance(templateID, str)
 
-    templatePrinter = tf.get_printer(templateID)
+    try:
+        templatePrinter = printers[templateID]
+    except KeyError:
+        templatePrinter = tf.get_printer(templateID)
+
     if templatePrinter is not None:
         print("Using built-in template header")
+        printers[templateID] = templatePrinter
         header = []
         templatePrinter.header(header, PLCF = plcf, OUTPUT_DIR = OUTPUT_DIR, HELPERS = helpers, **ifdef_params)
     else:
@@ -331,13 +337,15 @@ def getHeader(device, templateID, plcf):
     return (header, templatePrinter)
 
 
-def getFooter(device, templateID_or_printer, plcf):
-    if isinstance(templateID_or_printer, str):
-        footer = openTemplate(device, FOOTER_TAG, templateID_or_printer)
-    else:
-        print("Using built-in template footer")
-        footer = []
-        templateID_or_printer.footer(footer, PLCF = plcf)
+def getFooter(device, templateID, plcf):
+    try:
+        templatePrinter = printers[templateID]
+    except KeyError:
+        return openTemplate(device, FOOTER_TAG, templateID)
+
+    print("Using built-in template footer")
+    footer = []
+    templatePrinter.footer(footer, PLCF = plcf)
 
     return footer
 
@@ -454,7 +462,7 @@ def processTemplateID(templateID, devices):
     if not def_seen:
         glob.ccdb.computeHash(hashobj)
 
-    footer = getFooter(rootDevice, templatePrinter if templatePrinter is not None else templateID, rcplcf)
+    footer = getFooter(rootDevice, templateID, rcplcf)
     if footer:
         footer = rcplcf.process(footer)
 
@@ -655,16 +663,20 @@ def create_eee(modulename, snippet):
         pass
 
     try:
-        m_cp(output_files['AUTOSAVE-ST-CMD'],         "startup", snippet + ".cmd")
+        startup = 'AUTOSAVE-ST-CMD'
+        m_cp(output_files[startup],                   "startup", snippet + ".cmd")
     except KeyError:
-        m_cp(output_files['ST-CMD'],                  "startup", snippet + ".cmd")
+        startup = 'ST-CMD'
+        m_cp(output_files[startup],                   "startup", snippet + ".cmd")
 
     test_cmd = True
     try:
-        m_cp(output_files['AUTOSAVE-ST-TEST-CMD'],    "startup", snippet + "-test.cmd")
+        test_startup = 'AUTOSAVE-ST-TEST-CMD'
+        m_cp(output_files[test_startup],              "startup", snippet + "-test.cmd")
     except KeyError:
         try:
-            m_cp(output_files['ST-TEST-CMD'],         "startup", snippet + "-test.cmd")
+            test_startup = 'ST-TEST-CMD'
+            m_cp(output_files[test_startup],          "startup", snippet + "-test.cmd")
         except KeyError:
             test_cmd = False
 
@@ -716,24 +728,38 @@ MISCS += $(wildcard misc/*.req)""", file = makefile)
 
     output_files['EEE'] = eee_files
 
+    macros          = ""
+    live_macros     = ""
+    test_macros     = ""
+    startup_printer = printers[startup]
+    macro_list      = startup_printer.macros()
+    if macro_list:
+        macros      = ", ".join(["{m}={m}".format(m = startup_printer.macro_name(macro)) for macro in macro_list])
+        live_macros = ", {}".format(macros)
+
     #
     # Create script to run module with 'safe' defaults
     #
     with open(os.path.join(OUTPUT_DIR, "run_module"), "w") as run:
         if 'OPC' in ifdef_params['PLC_TYPE']:
-            print("""iocsh -r {modulename},local -c 'requireSnippet({snippet}.cmd, "IPADDR=127.0.0.1, PORT=4840, PUBLISHING_INTERVAL=200")'""".format(modulename = modulename,
-                                                                                                                                                      snippet    = snippet), file = run)
+            print("""iocsh -r {modulename},local -c 'requireSnippet({snippet}.cmd, "IPADDR=127.0.0.1, PORT=4840, PUBLISHING_INTERVAL=200{macros}")'""".format(modulename = modulename,
+                                                                                                                                                              snippet    = snippet,
+                                                                                                                                                              macros     = live_macros), file = run)
         else:
-            print("""iocsh -r {modulename},local -c 'requireSnippet({snippet}.cmd, "IPADDR=127.0.0.1, RECVTIMEOUT=3000")'""".format(modulename = modulename,
-                                                                                                                                    snippet    = snippet), file = run)
+            print("""iocsh -r {modulename},local -c 'requireSnippet({snippet}.cmd, "IPADDR=127.0.0.1, RECVTIMEOUT=3000{macros}")'""".format(modulename = modulename,
+                                                                                                                                            snippet    = snippet,
+                                                                                                                                            macros     = live_macros), file = run)
 
     if test_cmd:
         #
         # Create script to run test version of module
         #
         with open(os.path.join(OUTPUT_DIR, "run_test_module"), "w") as run:
-            print("""iocsh -r {modulename},local -c 'requireSnippet({snippet}-test.cmd)'""".format(modulename = modulename,
-                                                                                                   snippet    = snippet), file = run)
+            if macros:
+                test_macros = ', "{}"'.format(macros)
+            print("""iocsh -r {modulename},local -c 'requireSnippet({snippet}-test.cmd{macros})'""".format(modulename = modulename,
+                                                                                                           snippet    = snippet,
+                                                                                                           macros     = test_macros), file = run)
 
     print("EEE Module created:", out_mdir)
     return out_mdir
@@ -1291,6 +1317,8 @@ def main(argv):
         glob.root_installation_slot = args.root
     else:
         glob.root_installation_slot = device
+
+    ifdef_params["ROOT_INSTALLATION_SLOT"] = glob.root_installation_slot
 
     global device_tag
     device_tag = args.tag

@@ -717,7 +717,8 @@ def ifdef_interface(func):
 
 
 class IF_DEF(object):
-    DEFAULT_DATABLOCK_NAME = "DEV_[PLCF#INSTALLATION_SLOT]_iDB"
+    DEFAULT_INSTALLATION_SLOT = "[PLCF#INSTALLATION_SLOT]"
+    DEFAULT_DATABLOCK_NAME    = "DEV_{}_iDB".format(DEFAULT_INSTALLATION_SLOT)
     __CACHE                = dict()
 
 
@@ -759,13 +760,14 @@ class IF_DEF(object):
         self._optimize              = OPTIMIZE
         self._plc_array             = None
         self._filename              = None
-        self._inst_slot             = "[PLCF#INSTALLATION_SLOT]"
+        self._inst_slot             = IF_DEF.DEFAULT_INSTALLATION_SLOT
         self._datablock_name        = IF_DEF.DEFAULT_DATABLOCK_NAME
         self._readonly              = keyword_params.get("PLC_READONLY", False)
         self._experimental          = keyword_params.get("EXPERIMENTAL", False)
         self._quiet                 = keyword_params.get("QUIET",        False)
         self._global_defaults       = dict()
         self._defaults              = dict()
+        self._macros                = list()
 
         self._features              = [ "STABLE-HASH", "OPC", "OPC-UA", "MULTILINE" ]
         self._experimental_features = []
@@ -1088,6 +1090,10 @@ class IF_DEF(object):
         return filter(lambda a: isinstance(a, ALARM), self._status_block().interfaces())
 
 
+    def macros(self):
+        return self._macros
+
+
     @ifdef_interface
     def require_feature(self, *features):
         if len(features) == 0:
@@ -1127,7 +1133,13 @@ class IF_DEF(object):
 
     @ifdef_interface
     def define_installation_slot(self, name):
+        if self._inst_slot != IF_DEF.DEFAULT_INSTALLATION_SLOT:
+            raise IfDefSyntaxError("Installation slot redefinition is not possible!")
+
         self._inst_slot = name
+        if name[0] == '$':
+            self._macros.append(name)
+
         return self._add_source()
 
 
