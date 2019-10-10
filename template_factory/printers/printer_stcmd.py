@@ -92,14 +92,14 @@ class ST_CMD(eee, PRINTER):
 # @field IPADDR
 # @type STRING
 # PLC IP address
-{optional}
+{s7_vs_opc}
 # @field {modversion}
 # @runtime YES
 #COUNTER {status_cnt} = [PLCF#{status_cnt} + 10 * 2]
 
 """.format(modversion = self._modversion(),
            status_cnt = STATUS_BLOCK.counter_keyword(),
-           optional   = """
+           s7_vs_opc  = """
 # @field RECVTIMEOUT
 # @type INTEGER
 # PLC->EPICS receive timeout (ms), should be longer than frequency of PLC SND block trigger (REQ input)
@@ -126,6 +126,14 @@ class ST_CMD(eee, PRINTER):
                                                                                              db_length  = status.length()), output)
 
 
+    def _dbLoadRecords(self, plc_macro):
+        return """# Load plc interface database
+dbLoadRecords("{modulename}.db", "{PLC_MACRO}={plcname}, MODVERSION=$({modversion})")""".format(PLC_MACRO  = plc_macro,
+                                                                                                        plcname    = self.root_inst_slot(),
+                                                                                                        modulename = self.modulename(),
+                                                                                                        modversion = self._modversion())
+
+
     #
     # FOOTER
     #
@@ -146,29 +154,30 @@ class ST_CMD(eee, PRINTER):
 # Input block size  : {insize} bytes
 # Output block size : 0 bytes
 # Endianness        : {endianness}
-s7plcConfigure("{modulename}", $(IPADDR), {s7drvport}, {insize}, 0, {bigendian}, $(RECVTIMEOUT), 0)
+s7plcConfigure("{plcname}", $(IPADDR), {s7drvport}, {insize}, 0, {bigendian}, $(RECVTIMEOUT), 0)
 
 # Modbus port       : {modbusdrvport}
-drvAsynIPPortConfigure("{modulename}", $(IPADDR):{modbusdrvport}, 0, 0, 1)
+drvAsynIPPortConfigure("{plcname}", $(IPADDR):{modbusdrvport}, 0, 0, 1)
 
 # Link type         : TCP/IP (0)
-modbusInterposeConfig("{modulename}", 0, $(RECVTIMEOUT), 0)
+modbusInterposeConfig("{plcname}", 0, $(RECVTIMEOUT), 0)
 
 # Slave address     : 0
 # Function code     : 16 - Write Multiple Registers
 # Addressing        : Absolute (-1)
 # Data segment      : 2 words
-drvModbusAsynConfigure("{modulename}write", "{modulename}", 0, 16, -1, 2, 0, 0, "S7-1500")
+drvModbusAsynConfigure("{plcname}write", "{plcname}", 0, 16, -1, 2, 0, 0, "S7-1500")
 
-# Load plc interface database
-dbLoadRecords("{modulename}.db", "PLCNAME={modulename}, MODVERSION=$({modversion})")
+{dbloadrecords}
 """.format(s7drvport     = self.plcf("PLC-EPICS-COMMS: S7Port"),
            modbusdrvport = self.plcf("PLC-EPICS-COMMS: MBPort"),
            insize        = self.plcf(STATUS_BLOCK.counter_keyword()),
            endianness    = self.plcf("PLC-EPICS-COMMS:Endianness"),
            bigendian     = self.plcf("1 if 'PLC-EPICS-COMMS:Endianness' == 'BigEndian' else 0"),
            modulename    = self.modulename(),
-           modversion    = self._modversion()
+           modversion    = self._modversion(),
+           plcname       = self.root_inst_slot(),
+           dbloadrecords = self._dbLoadRecords("PLCNAME")
           )
 
         self._append(st_cmd_footer, output)
@@ -181,17 +190,18 @@ dbLoadRecords("{modulename}.db", "PLCNAME={modulename}, MODVERSION=$({modversion
         super(ST_CMD, self).footer(output, **keyword_parameters)
 
         st_cmd_footer = """
-# Session name : {modulename}-session
-opcuaCreateSession("{modulename}-session", "opc.tcp://$(IPADDR):$(PORT)")
+# Session name : {plcname}-session
+opcuaCreateSession("{plcname}-session", "opc.tcp://$(IPADDR):$(PORT)")
 
-# Subscription       : {modulename}
+# Subscription       : {plcname}
 # Publising interval : $(PUBLISHING_INTERVAL)
-opcuaCreateSubscription("{modulename}", "{modulename}-session", $(PUBLISHING_INTERVAL))
+opcuaCreateSubscription("{plcname}", "{plcname}-session", $(PUBLISHING_INTERVAL))
 
-# Load plc interface database
-dbLoadRecords("{modulename}.db", "SUBSCRIPTION={modulename}, MODVERSION=$({modversion})")
+{dbloadrecords}
 """.format(modulename    = self.modulename(),
-           modversion    = self._modversion()
+           modversion    = self._modversion(),
+           plcname       = self.root_inst_slot(),
+           dbloadrecords = self._dbLoadRecords("SUBSCRIPTION")
           )
 
         self._append(st_cmd_footer, output)
