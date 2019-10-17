@@ -176,11 +176,14 @@ class ST_CMD(eee, MACROS, PRINTER):
 
     def _dbLoadRecords(self, plc_macro):
         return """# Load plc interface database
-dbLoadRecords("{modulename}.db", "{PLC_MACRO}={plcname}, MODVERSION=$({modversion}){macros}")""".format(PLC_MACRO  = plc_macro,
-                                                                                                        plcname    = self.root_inst_slot(),
-                                                                                                        modulename = self.modulename(),
-                                                                                                        modversion = self._modversion(),
-                                                                                                        macros     = self._define_macros())
+dbLoadRecords("{modulename}.db", "{PLC_MACRO}={plcname}, MODVERSION=$({modversion}), S7_PORT={s7_port}, MODBUS_PORT={modbus_port}{macros}")""".format(
+            PLC_MACRO   = plc_macro,
+            plcname     = self.root_inst_slot(),
+            modulename  = self.modulename(),
+            modversion  = self._modversion(),
+            s7_port     = self.plcf("PLC-EPICS-COMMS: S7Port"),
+            modbus_port = self.plcf("PLC-EPICS-COMMS: MBPort"),
+            macros      = self._define_macros())
 
 
     #
