@@ -1023,9 +1023,10 @@ def main(argv):
         plc_args = plc_group.add_mutually_exclusive_group()
 
         plc_args.add_argument(
+                              '--plc-siemens',
                               '--plc-interface',
                               dest    = "plc_interface",
-                              help    = 'use the default templates for PLCs and generate interface PLC comms. The default TIA version is TIAv14',
+                              help    = 'use the default templates for Siemens PLCs and generate interface PLC comms. The default TIA version is TIAv14',
                               metavar = 'TIA-Portal-version',
                               nargs   = "?",
                               const   = 'TIAv14',
@@ -1035,7 +1036,7 @@ def main(argv):
         plc_args.add_argument(
                               '--plc-direct',
                               dest    = "plc_direct",
-                              help    = 'use the default templates for PLCs and generate direct PLC comms. The default TIA version is TIAv14',
+                              help    = '(OBSOLETE) use the default templates for Siemens PLCs and generate direct PLC comms. The default TIA version is TIAv14',
                               metavar = 'TIA-Portal-version',
                               nargs   = "?",
                               const   = 'TIAv14',
@@ -1409,6 +1410,14 @@ def main(argv):
 
     banner()
 
+    if args.plc_direct:
+        print("""
+++++++++++++++++++++++++++++++++++++++++++++++++++
++ YOU ARE USING THE OBSOLETE --plc-direct OPTION +
+++++++++++++++++++++++++++++++++++++++++++++++++++
+
+""")
+
     if args.ccdb:
         from cc import CC
         glob.ccdb = CC.load(args.ccdb)
@@ -1495,6 +1504,14 @@ def main(argv):
 """)
     except KeyError:
         pass
+
+    if args.plc_direct:
+        print("""
++++++++++++++++++++++++++++++++++++++++++++++++++++
++ YOU WERE USING THE OBSOLETE --plc-direct OPTION +
++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+""")
 
     print("--- %.1f seconds ---\n" % (time.time() - start_time))
 

@@ -12,11 +12,8 @@ PLC Factory requires Python 2.7.
 
 Automaticly generate the PLC block and the corresponding IOC from CCDB using .def files. The .def files are linked to the CCDB device types.
 
-#### Generate TIAv14 blocks (diagnostics code included) with EEE module:
-`python plcfactory.py -d CrS-CMS:Cryo-PLC-01 --plc-interface=14 --eee`
-
-#### Generate TIAv14 base blocks (diagnostics code included) with EEE module:
-`python plcfactory.py -d CrS-CMS:Cryo-PLC-01 --plc-direct=14 --eee`
+#### Generate TIAv14 blocks with EEE module:
+`python plcfactory.py -d CrS-CMS:Cryo-PLC-01 --plc-siemens=14 --eee`
 
 #### Using manually created PLC Factory templates:
 
@@ -70,7 +67,7 @@ For further information, see the files in [doc](doc/).
 *   **--epi-version=<version>**
     *   \[OPTIONAL\]
     *   Used to select a version of EPI repositories other than `master`. Please note: it overrides any `EPI VERSION` property specified in CCDB
-    *   `--epi-version=interface`
+    *   `--epi-version=v4.0.1`
 *   **--output=<directory>**
     *   \[OPTIONAL\]
     *   Used to control the location of the generated files. The default is `output/<devicename>` in the current directory
@@ -82,7 +79,7 @@ For further information, see the files in [doc](doc/).
 
 PLC Factory is capable of integrating (and generating code for) the following PLC types:
 
-*   **Siemens SIMATIC S7-1200 / S7-1500** (selected with either the `--plc-direct` or `--plc-interface` option)
+*   **Siemens SIMATIC S7-1200 / S7-1500** (selected with the `--plc-siemens` option)
 
     *   _TIA Portal v13_
     *   _TIA Portal v14_
@@ -94,19 +91,25 @@ PLC Factory is capable of integrating (and generating code for) the following PL
 #### Options related to EPICS-PLC integration
 
 *   **--plc-direct**=<tia_version>
-    *   \[OPTIONAL\]
-    *   Generate the EPICS db, the communication and diagnostics PLC code for the specified TIA version. The default version is _TIA Portal v14_
+    *   \[OBSOLETE\] \[OPTIONAL\]
+    *   Generate the EPICS db and the communication PLC code for the specified TIA version. The default version is _TIA Portal v14_
     *   `--plc-direct`
     *   `--plc-direct=13`
-*   **--plc-interface**=<tia_version>
+*   **--plc-siemens**=<tia_version>
     *   \[OPTIONAL\]
-    *   Generate the EPICS db, the communication, data (de)serialization, and diagnostics PLC code for the specified TIA version. The default version is _TIA Portal v14_
-    *   `--plc-interface`
-    *   `--plc-interface=13`
+    *   Generate the EPICS db, the communication and the data (de)serialization PLC code for the specified TIA version. The default version is _TIA Portal v14_
+    *   `--plc-siemens`
+    *   `--plc-siemens=13`
+*   **--plc-interface**=<tia_version>
+    *   same as **--plc-siemens**
 *   **--plc-beckhoff**
     *   \[OPTIONAL\]
     *   Generate the EPICS db, the communication and data (de)serialization PLC code for TwinCAT 3 (Diagnostics is not yet supported)
     *   `--plc-beckhoff`
+*   **--plc-opc**
+    *   \[OPTIONAL\]
+    *   Generate the EPICS db for OPC UA using the opcua device support
+    *   `--plc-opc`
 *   **--plc-diag**
     *   \[OPTIONAL\]
     *   Generate diagnostics PLC code
@@ -149,7 +152,7 @@ PLC Factory is capable of integrating (and generating code for) the following PL
     *   `--root=my-root`
     *   `--root='$(ROOT_PREFIX)'`
 
-One of `--plc-direct`, `--plc-interface`, or `--plc-beckhoff` is required for EPICS-PLC integration. These options implicitly adds _EPICS-DB_, _IFA_, and the proper _TIA-MAP_ to the list of templates (which means you don't have to add any templates explicitly).
+One of `--plc-siemens`, `--plc-beckhoff`, or `--plc-opc` is required for EPICS-PLC integration. These options implicitly adds _EPICS-DB_, _IFA_, and the proper _TIA-MAP_ to the list of templates (which means you don't have to add any templates explicitly).
 
 The information on what is exchanged between EPICS and a PLC is defined in so-called **Interface Definition** files. For further information, please see [template_factory](template_factory/)
 
