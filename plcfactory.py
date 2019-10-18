@@ -1165,6 +1165,7 @@ def main(argv):
     #  get the device
     args   = parser.parse_known_args(argv)[0]
     device = args.device
+    plc    = False
 
     if args.list_templates:
         print(tf.available_printers())
@@ -1330,10 +1331,12 @@ def main(argv):
 
     if args.plc_interface:
         default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "IFA", "BEAST", "BEAST-TEMPLATE" ] )
+        plc = True
 
     if args.plc_direct:
         ifdef_params["OPTIMIZE"] = True
         default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "IFA", tia_map, "BEAST", "BEAST-TEMPLATE" ] )
+        plc = True
 
     ifdef_params["PLC_READONLY"] = args.plc_readonly
     ifdef_params["EXPERIMENTAL"] = args.experimental
@@ -1341,11 +1344,17 @@ def main(argv):
     if beckhoff:
         default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "IFA", "BEAST", "BEAST-TEMPLATE" ] )
         ifdef_params["PLC_TYPE"] = "BECKHOFF"
+        plc = True
 
     if opc:
         # EPICS-DB will be deleted later, but we add it here so that it is enough to check for EPICS-DB
         default_printers.update( [ "EPICS-DB", "EPICS-OPC-DB", "BEAST", "BEAST-TEMPLATE" ] )
         ifdef_params["PLC_TYPE"] = "OPC"
+        plc = True
+
+    if not plc and (eee or e3):
+        print("Generating EEE or E3 modules is only supported with PLC integration")
+        exit(1)
 
     if eee:
         default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "AUTOSAVE-ST-CMD", "AUTOSAVE", "BEAST", "BEAST-TEMPLATE" ] )
@@ -1475,10 +1484,11 @@ def main(argv):
     # record the arguments used to run this instance
     record_args(root_device)
 
-    if eee:
-        create_eee(glob.eee_modulename, glob.eee_snippet)
-    if e3:
-        create_e3(glob.e3_modulename, glob.e3_snippet)
+    if plc:
+        if eee:
+            create_eee(glob.eee_modulename, glob.eee_snippet)
+        if e3:
+            create_e3(glob.e3_modulename, glob.e3_snippet)
 
     if args.zipit is not None:
         create_zipfile(args.zipit)
