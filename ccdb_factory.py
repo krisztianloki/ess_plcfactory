@@ -256,7 +256,6 @@ class CCDB_Factory(CC):
                                    {'dataType': 'String', 'value': 'PLCToEPICS', 'kind': 'SLOT', 'name': 'PLCF#PLCToEPICSDataBlockName', 'unit': None},
                                    {'dataType': 'Integer', 'value': '0', 'kind': 'SLOT', 'name': 'PLCF#EPICSToPLCDataBlockStartOffset', 'unit': None},
                                    {'dataType': 'Integer', 'value': '0', 'kind': 'SLOT', 'name': 'PLCF#PLCToEPICSDataBlockStartOffset', 'unit': None},
-                                   {'dataType': 'Integer', 'value': '2000', 'kind': 'SLOT', 'name': 'PLCF#PLC-EPICS-COMMS: BytesToSend', 'unit': None},
                                    {'dataType': 'Integer', 'value': '502', 'kind': 'SLOT', 'name': 'PLCF#PLC-EPICS-COMMS: MBPort', 'unit': None},
                                    {'dataType': 'Integer', 'value': '255', 'kind': 'SLOT', 'name': 'PLCF#PLC-EPICS-COMMS: MBConnectionID', 'unit': None},
                                    {'dataType': 'Integer', 'value': '256', 'kind': 'SLOT', 'name': 'PLCF#PLC-EPICS-COMMS: S7ConnectionID', 'unit': None},
