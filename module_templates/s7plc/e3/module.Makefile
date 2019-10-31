@@ -30,7 +30,7 @@ include $(where_am_I)/../configure/DECOUPLE_FLAGS
 TEMPLATES += $(wildcard db/*.db)
 SCRIPTS   += $(wildcard iocsh/*.iocsh)
 
-REQUIRED=modbus s7plc
+REQUIRED=modbus s7plc calc
 
 ifneq ($(strip $(MODBUS_DEP_VERSION)),)
 modbus_VERSION=$(MODBUS_DEP_VERSION)
