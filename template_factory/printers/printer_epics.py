@@ -248,29 +248,29 @@ record(stringin, "{root_inst_slot}:PLCAddr-RB") {{
 # We assume S7 and Modbus address are the same (as they should be)
 	field(DESC,	"Address of the PLC")
 }}
-record(scalcout, "$(VMPG_PLC_INSTANCE):iPLCAddr-RB") {{
+record(scalcout, "{root_inst_slot}:iPLCAddr-RB") {{
 	field(DESC,	"Strip port number of host:port")
-	field(INAA,	"$(VMPG_PLC_INSTANCE):S7Addr-RB CP")
+	field(INAA,	"{root_inst_slot}:S7Addr-RB CP")
 	field(CALC,	"AA[0,':']")
-	field(OUT,	"$(VMPG_PLC_INSTANCE):PLCAddr-RB PP")
+	field(OUT,	"{root_inst_slot}:PLCAddr-RB PP")
 }}
 record(stringout, "{root_inst_slot}:PLCAddrS") {{
 	field(DESC,	"Address of the PLC")
 	field(FLNK,	"{root_inst_slot}:iSetPLCAddrS")
 }}
-record(fanout, "$(VMPG_PLC_INSTANCE):iSetPLCAddrS") {{
-	field(LNK1,	"$(VMPG_PLC_INSTANCE):iCalcS7AddrS")
-	field(LNK2,	"$(VMPG_PLC_INSTANCE):iCalcModbusAddrS")
+record(fanout, "{root_inst_slot}:iSetPLCAddrS") {{
+	field(LNK1,	"{root_inst_slot}:iCalcS7AddrS")
+	field(LNK2,	"{root_inst_slot}:iCalcModbusAddrS")
 }}
-record(scalcout, "$(VMPG_PLC_INSTANCE):iCalcS7AddrS") {{
-	field(INAA,	"$(VMPG_PLC_INSTANCE):PLCAddrS")
+record(scalcout, "{root_inst_slot}:iCalcS7AddrS") {{
+	field(INAA,	"{root_inst_slot}:PLCAddrS")
 	field(CALC,	"AA + ':' + '$(S7_PORT)'")
-	field(OUT,	"$(VMPG_PLC_INSTANCE):iS7AddrS PP")
+	field(OUT,	"{root_inst_slot}:iS7AddrS PP")
 }}
-record(scalcout, "$(VMPG_PLC_INSTANCE):iCalcModbusAddrS") {{
-	field(INAA,	"$(VMPG_PLC_INSTANCE):PLCAddrS")
+record(scalcout, "{root_inst_slot}:iCalcModbusAddrS") {{
+	field(INAA,	"{root_inst_slot}:PLCAddrS")
 	field(CALC,	"AA + ':' + '$(MODBUS_PORT)'")
-	field(OUT,	"$(VMPG_PLC_INSTANCE):iAsyn.HOSTINFO PP")
+	field(OUT,	"{root_inst_slot}:iAsyn.HOSTINFO PP")
 }}
 record(stringin, "{root_inst_slot}:ModbusAddr-RB") {{
 	field(DESC,	"Address of the PLC")
