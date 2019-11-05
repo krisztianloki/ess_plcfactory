@@ -10,6 +10,7 @@ __license__    = "GPLv3"
 
 # Python libraries
 import json
+from collections import OrderedDict
 from ast import literal_eval as ast_literal_eval
 
 # PLC Factory modules
@@ -118,7 +119,7 @@ class CCDB(CC):
                 return self._props
 
             props = self._ensure(self._slot.get("properties", []), [])
-            self._props = dict()
+            self._props = OrderedDict()
             for prop in props:
                 name  = prop.get("name")
                 value = prop.get("value")
