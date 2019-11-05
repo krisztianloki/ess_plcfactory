@@ -40,6 +40,10 @@ ifneq ($(strip $(S7PLC_DEP_VERSION)),)
 s7plc_VERSION=$(S7PLC_DEP_VERSION)
 endif
 
+ifneq ($(strip $(CALC_DEP_VERSION)),)
+calc_VERSION=$(CALC_DEP_VERSION)
+endif
+
 
 ## This RULE should be used in case of inflating DB files 
 ## db rule is the default in RULES_DB, so add the empty one
