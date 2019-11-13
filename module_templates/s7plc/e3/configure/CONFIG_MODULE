@@ -5,6 +5,7 @@ E3_MODULE_VERSION:=plcfactory
 
 MODBUS_DEP_VERSION:=2.11.0p
 S7PLC_DEP_VERSION:=1.4.1
+CALC_DEP_VERSION:=3.7.1
 
 #
 # In most case, we don't need to touch the following variables.
