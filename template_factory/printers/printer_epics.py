@@ -650,6 +650,7 @@ record(calcout, "{root_inst_slot}:iRuinHash") {{
         return self
 
 
+
 class UPLOAD_PARAMS(PRINTER):
     def __init__(self):
         super(UPLOAD_PARAMS, self).__init__()
@@ -684,9 +685,15 @@ record(fanout, "{root_inst_slot}:UploadParametersS") {{
         self._output = output
 
         self._params = []
-        for src in if_def.interfaces():
-            if isinstance(src, BLOCK) and src.is_param_block():
+        try:
+            # Check for parameter block and that its length is greater than zero;
+            #  cannot check if it is empty since the 'define_parameter_block()' also
+            #  ends up as an (SOURCE) interface (along with other possible helpers)
+            if if_def.parameter_block().length() > 0:
                 self._LNKx(output)
+        except AttributeError:
+            # No parameter block
+            pass
 
 
     def _LNKx(self, output):
@@ -694,15 +701,16 @@ record(fanout, "{root_inst_slot}:UploadParametersS") {{
             self._foc += 1
             self._append("""	field(LNK{lnk}, "{root_inst_slot}:{upload}")
 }}
-""".format(lnk       = str(self._lnk),
+""".format(lnk            = str(self._lnk),
            root_inst_slot = self.root_inst_slot(),
-           upload    = self._fo_name.format(foc = str(self._foc))), output)
+           upload         = self._fo_name.format(foc = str(self._foc))), output)
+
             self._lnk = 1
 
         if self._lnk == 1 and self._foc:
             self._append("""record(fanout, "{root_inst_slot}:{upload}") {{
 """.format(root_inst_slot = self.root_inst_slot(),
-           upload    = 'UploadParametersS' if self._foc == 0 else self._fo_name.format(foc = str(self._foc))), output)
+           upload         = 'UploadParametersS' if self._foc == 0 else self._fo_name.format(foc = str(self._foc))), output)
 
         self._append("""	field(LNK{lnk}, "{inst_slot}:UploadParametersS")
 """.format(lnk       = str(self._lnk),

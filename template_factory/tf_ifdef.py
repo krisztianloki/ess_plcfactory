@@ -1027,16 +1027,34 @@ class IF_DEF(object):
         return self._ifaces
 
 
+    def status_block(self):
+        self._exception_if_active()
+
+        return self._status_block()
+
+
     def status_interfaces(self):
         self._exception_if_active()
 
         return self._status_block().interfaces()
 
 
+    def command_block(self):
+        self._exception_if_active()
+
+        return self._cmd_block()
+
+
     def command_interfaces(self):
         self._exception_if_active()
 
         return self._cmd_block().interfaces()
+
+
+    def parameter_block(self):
+        self._exception_if_active()
+
+        return self._param_block()
 
 
     def parameter_interfaces(self):
