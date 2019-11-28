@@ -919,9 +919,9 @@ class IF_DEF(object):
         if block is None:
             return
 
-        hashobj.update(block.hash_message().encode())
+        hashobj.update(block.hash_message())
         for var in block.interfaces():
-            hashobj.update(var.hash_message().encode())
+            hashobj.update(var.hash_message())
 
 
     def _handle_extra_params(self, keyword_params):
@@ -1016,7 +1016,7 @@ class IF_DEF(object):
         self._calc_block_hash(hashobj, self._param_block())
         self._calc_block_hash(hashobj, self._status_block())
 
-        hashobj.update(str(self._properties).encode())
+        hashobj.update(str(self._properties))
 
         return hashobj
 

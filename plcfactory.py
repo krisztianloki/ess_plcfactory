@@ -119,7 +119,7 @@ The following exception occured during the processing of template '{template}' o
 
 class Hasher(object):
     def __init__(self, hash_base = None):
-        self._hashobj = hashlib.sha256(hash_base)
+        self._hashobj = hashlib.sha256(hash_base.encode())
 
 
     def update(self, string):
@@ -409,7 +409,7 @@ def processTemplateID(templateID, devices):
         print(device.name())
         print("Device type: " + deviceType)
 
-        hashobj.update(device.name().encode())
+        hashobj.update(device.name())
 
         # get template
         template = None
