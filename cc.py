@@ -740,10 +740,10 @@ class CC(object):
 
         # Define device type external links
         plc = None
-        for devname in self._devices.keys():
+        for devname in sorted(self._devices.keys()):
             dev      = self.device(devname)
             devType  = dev.deviceType()
-            exLinks  = dev.externalLinks()
+            exLinks  = sorted(dev.externalLinks(), key = lambda x: x.name())
 
             if devType not in devtypes:
                 if root is None and (devType == "PLC" or devType == "PLC_BECKHOFF"):
