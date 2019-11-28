@@ -468,7 +468,7 @@ def AddSTRING(variable, InArrayName, InArrayNum, StartingRegister):
 	ActVariableType       = variable.properties["TYPE"]
 	ActVariableArrayIndex = int(variable.properties["ARRAY_INDEX"])
 	ActVariableBitNumber  = int(variable.properties["BIT_NUMBER"])
-	ActStringLength       = variable.dimension() / 2 + (variable.dimension() % 2)
+	ActStringLength       = variable.dimension() // 2 + (variable.dimension() % 2)
 
 	if variable.is_status():
 		if InArrayName is not None:
