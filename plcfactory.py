@@ -27,6 +27,7 @@ if sys.version_info.major != 2:
 
 import argparse
 import datetime
+import filecmp
 import os
 import errno
 import time
@@ -300,7 +301,9 @@ def getIfDef(device):
     deviceType = device.deviceType()
 
     if deviceType in ifdefs:
-        if ifdefs[deviceType][0] == filename:
+        # check if the def file attached directly to a device is the same for every device with the same device type
+        # doing a simple check first to see if we need to check file contents at all
+        if ifdefs[deviceType][0] == filename or filecmp.cmp(ifdefs[deviceType][0], filename, shallow = 0):
             return ifdefs[deviceType][1]
 
         raise PLCFactoryException("Different Interface Definitions for the same device type: {devtype}!".format(devtype = deviceType))
@@ -917,7 +920,6 @@ def verify_output(strictness):
     for template in ignored_templates:
         previous_files.pop(template, None)
 
-    import filecmp
     # Compare files in output_files to those in previous_files
     # previous_files will contain files that are not the same
     # not_checked will contain files that are not found / not generated
