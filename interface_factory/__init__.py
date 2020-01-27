@@ -33,8 +33,10 @@ class IFA(object):
                                     INTERFACE_ID             = str,
                                     S7_CONNECTION_ID         = str,
                                     MODBUS_CONNECTION_ID     = str,
+                                    DIAG_CONNECTION_ID       = str,
                                     S7_PORT                  = int,
                                     MODBUS_PORT              = int,
+                                    DIAG_PORT                = int,
                                     TOTALEPICSTOPLCLENGTH    = int,
                                     TOTALPLCTOEPICSLENGTH    = int,
                                     PLC_PULSE                = str)

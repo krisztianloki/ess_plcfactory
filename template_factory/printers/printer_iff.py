@@ -91,10 +91,14 @@ MAX_MODULES_IN_IO_DEVICE
 {max_modules_in_io_device}
 INTERFACE_ID
 {interfaceid}
+DIAG_CONNECTION_ID
+{diagconnectionid}
 S7_CONNECTION_ID
 {s7connectionid}
 MODBUS_CONNECTION_ID
 {mbconnectionid}
+DIAG_PORT
+{diagport}
 S7_PORT
 {s7port}
 MODBUS_PORT
@@ -107,8 +111,10 @@ PLC_PULSE
            max_local_modules        = self.property_default("PLC-DIAG:Max-Local-Modules", 30),
            max_modules_in_io_device = self.property_default("PLC-DIAG:Max-Modules-In-IO-Device", 30),
            interfaceid              = self.plcf("PLC-EPICS-COMMS: InterfaceID"),
+           diagconnectionid         = self.property_default("PLC-EPICS-COMMS: DiagConnectionID", 254),
            s7connectionid           = self.plcf("PLC-EPICS-COMMS: S7ConnectionID"),
            mbconnectionid           = self.plcf("PLC-EPICS-COMMS: MBConnectionID"),
+           diagport                 = self.property_default("PLC-EPICS-COMMS: DiagPort", 2001),
            s7port                   = self.plcf("PLC-EPICS-COMMS: S7Port"),
            mbport                   = self.plcf("PLC-EPICS-COMMS: MBPort"),
            plcpulse                 = plcpulse), output)
