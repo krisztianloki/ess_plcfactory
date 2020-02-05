@@ -40,7 +40,6 @@ ActualDeviceType = ""
 EPICSTOPLCLENGTH = ""
 PLCTOEPICSLENGTH = ""
 EPICSTOPLCDATABLOCKOFFSET = ""
-EPICSTOPLCPARAMETERSSTART = ""
 PLCTOEPICSDATABLOCKOFFSET = ""
 
 DeviceTypeList = []
@@ -523,7 +522,6 @@ def WriteDevType():
 	ExternalSourceFile.extend(DevTypeVAR_INPUT)
 	ExternalSourceFile.append("   EPICSToPLCLength " + NoExternal + " : Int;   // Length of device command register array (in words)")
 	ExternalSourceFile.append("   EPICSToPLCDataBlockOffset " + NoExternal + " : Int;   // Offset in EPICS->PLC comms block where this device data resides (in words)")
-	ExternalSourceFile.append("   EPICSToPLCParametersStart " + NoExternal + " : Int;   // The border offset between the Command and the Parameter area")
 	ExternalSourceFile.append("   PLCToEPICSLength " + NoExternal + " : Int;   // Length of device status register array (in words)")
 	ExternalSourceFile.append("   PLCToEPICSDataBlockOffset " + NoExternal + " : Int;   // Offset in PLC->EPICS comms block where this device data resides (in words)")
 	ExternalSourceFile.append("   END_VAR")
@@ -1302,7 +1300,6 @@ def ProcessIFADevTypes(OutputDir, TIAVersion, CommsTest):
 	global EPICSTOPLCLENGTH
 	global PLCTOEPICSLENGTH
 	global EPICSTOPLCDATABLOCKOFFSET
-	global EPICSTOPLCPARAMETERSSTART
 	global PLCTOEPICSDATABLOCKOFFSET
 	global DeviceTypeList
 	DeviceTypeList = []
@@ -1361,7 +1358,6 @@ def ProcessIFADevTypes(OutputDir, TIAVersion, CommsTest):
 		PLCTOEPICSLENGTH = device.properties["PLCTOEPICSLENGTH"]
 		EPICSTOPLCLENGTH = device.properties["EPICSTOPLCLENGTH"]
 		EPICSTOPLCDATABLOCKOFFSET = device.properties["EPICSTOPLCDATABLOCKOFFSET"]
-		EPICSTOPLCPARAMETERSSTART = device.properties["EPICSTOPLCPARAMETERSSTART"]
 		PLCTOEPICSDATABLOCKOFFSET = device.properties["PLCTOEPICSDATABLOCKOFFSET"]
 		Text = "Device: "+ ActualDeviceName + " Type: "+ ActualDeviceType
 		print("    ", "-" * len(Text), sep='')
@@ -1390,7 +1386,6 @@ def ProcessIFADevTypes(OutputDir, TIAVersion, CommsTest):
 		EPICS_device_calls_body.append("")
 		EPICS_device_calls_body.append("      "+ActualDataBlock+" (EPICSToPLCLength:="+EPICSTOPLCLENGTH+",")
 		EPICS_device_calls_body.append("      EPICSToPLCDataBlockOffset:="+EPICSTOPLCDATABLOCKOFFSET+"+10,")
-		EPICS_device_calls_body.append("      EPICSToPLCParametersStart:="+EPICSTOPLCPARAMETERSSTART+",")
 		EPICS_device_calls_body.append("      PLCToEPICSLength:="+PLCTOEPICSLENGTH+",")
 		EPICS_device_calls_body.append("      PLCToEPICSDataBlockOffset:="+PLCTOEPICSDATABLOCKOFFSET+"+10);")
 
@@ -1403,7 +1398,6 @@ def ProcessIFADevTypes(OutputDir, TIAVersion, CommsTest):
 		EPICS_device_calls_test_body.append("")
 		EPICS_device_calls_test_body.append("      "+ActualDataBlock+" (EPICSToPLCLength:="+EPICSTOPLCLENGTH+",")
 		EPICS_device_calls_test_body.append("      EPICSToPLCDataBlockOffset:="+EPICSTOPLCDATABLOCKOFFSET+"+10,")
-		EPICS_device_calls_test_body.append("      EPICSToPLCParametersStart:="+EPICSTOPLCPARAMETERSSTART+",")
 		EPICS_device_calls_test_body.append("      PLCToEPICSLength:="+PLCTOEPICSLENGTH+",")
 		EPICS_device_calls_test_body.append("      PLCToEPICSDataBlockOffset:="+PLCTOEPICSDATABLOCKOFFSET+"+10,")
 

@@ -136,8 +136,6 @@ PLCTOEPICSLENGTH
 {plctoepicslength}
 EPICSTOPLCDATABLOCKOFFSET
 {epicstoplcdatablockoffset}
-EPICSTOPLCPARAMETERSSTART
-{epicstoplcparametersstart}
 PLCTOEPICSDATABLOCKOFFSET
 {plctoepicsdatablockoffset}
 #COUNTER {cmd_cnt} = [PLCF# {cmd_cnt} + {epicstoplclength}];
@@ -147,7 +145,6 @@ PLCTOEPICSDATABLOCKOFFSET
            datablock                 = if_def.DEFAULT_DATABLOCK_NAME,
            epicstoplcdatablockoffset = self.plcf("^(EPICSToPLCDataBlockStartOffset) + {cmd_cnt}".format(cmd_cnt = CMD_BLOCK.counter_keyword())),
            plctoepicsdatablockoffset = self.plcf("^(PLCToEPICSDataBlockStartOffset) + {status_cnt}".format(status_cnt = STATUS_BLOCK.counter_keyword())),
-           epicstoplcparametersstart = self.plcf(str(if_def.properties()[CMD_BLOCK.length_keyword()])),
            epicstoplclength          = if_def.to_plc_words_length(),
            plctoepicslength          = if_def.from_plc_words_length(),
            cmd_cnt                   = CMD_BLOCK.counter_keyword(),

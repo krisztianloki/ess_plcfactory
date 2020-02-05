@@ -14,13 +14,13 @@ class IFA(object):
     mandatory_device_properties = dict(DEVICE                    = str,
                                        DEVICE_TYPE               = str,
                                        DATABLOCK                 = str,
-                                       EPICSTOPLCPARAMETERSSTART = int,
                                        EPICSTOPLCLENGTH          = int,
                                        EPICSTOPLCDATABLOCKOFFSET = int,
                                        PLCTOEPICSLENGTH          = int,
                                        PLCTOEPICSDATABLOCKOFFSET = int)
 
-    valid_device_entries   = set([ 'BLOCK', 'DEFINE_ARRAY', 'END_ARRAY' ])
+#   EPICSTOPLCPARAMETERSSTART is deprecated and ignored but kept for compatibility
+    valid_device_entries   = set([ 'BLOCK', 'DEFINE_ARRAY', 'END_ARRAY', 'EPICSTOPLCPARAMETERSSTART' ])
     valid_device_entries.update(set(mandatory_device_properties.keys()))
     valid_device_entries.update(valid_variable_entries)
 

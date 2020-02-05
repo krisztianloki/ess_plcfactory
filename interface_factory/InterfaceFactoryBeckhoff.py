@@ -63,7 +63,6 @@ ActualDeviceNameWhite = ""
 ActualDeviceType = ""
 EPICSTOPLCLENGTH = ""
 EPICSTOPLCDATABLOCKOFFSET = ""
-EPICSTOPLCPARAMETERSSTART = ""
 PLCTOEPICSDATABLOCKOFFSET = ""
 DeviceTypeList = []
 
@@ -965,7 +964,6 @@ def ProcessIFADevTypes(OutputDir):
 	global ActualDeviceType
 	global EPICSTOPLCLENGTH
 	global EPICSTOPLCDATABLOCKOFFSET
-	global EPICSTOPLCPARAMETERSSTART
 	global PLCTOEPICSDATABLOCKOFFSET
 	global DeviceTypeList
 	DeviceTypeList = []
@@ -1083,7 +1081,6 @@ def ProcessIFADevTypes(OutputDir):
 		ActualDeviceType = device.properties["DEVICE_TYPE"]
 		EPICSTOPLCLENGTH = device.properties["EPICSTOPLCLENGTH"]
 		EPICSTOPLCDATABLOCKOFFSET = device.properties["EPICSTOPLCDATABLOCKOFFSET"]
-		EPICSTOPLCPARAMETERSSTART = device.properties["EPICSTOPLCPARAMETERSSTART"]
 		PLCTOEPICSDATABLOCKOFFSET = device.properties["PLCTOEPICSDATABLOCKOFFSET"]
 		ActualDeviceNameWhite = ActualDeviceName
 
@@ -1119,8 +1116,7 @@ def ProcessIFADevTypes(OutputDir):
 		FC_EPICS_DEVICE_CALLS_BODY.append("")
 		FC_EPICS_DEVICE_CALLS_BODY.append("EPICS_GVL.FB_DEV_"+ActualDeviceNameWhite+"(")
 		FC_EPICS_DEVICE_CALLS_BODY.append("       nOffsetStatus:= "+str(int(PLCTOEPICSDATABLOCKOFFSET)+10)+",")
-		FC_EPICS_DEVICE_CALLS_BODY.append("       nOffsetCmd:="+str(int(EPICSTOPLCDATABLOCKOFFSET)-12288+10)+",")
-		FC_EPICS_DEVICE_CALLS_BODY.append("       nOffsetPar:="+str(int(EPICSTOPLCDATABLOCKOFFSET)-12288+10+int(EPICSTOPLCPARAMETERSSTART))+");")
+		FC_EPICS_DEVICE_CALLS_BODY.append("       nOffsetCmd:="+str(int(EPICSTOPLCDATABLOCKOFFSET)-12288+10)+");")
 
 		EPICS_GVL.append("	FB_DEV_"+ActualDeviceNameWhite+"	:FB_DEVTYPE_"+ActualDeviceType+";					//Device instance("+ActualDeviceName+")")
 
