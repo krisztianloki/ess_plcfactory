@@ -550,14 +550,25 @@ PLC-EPICS-COMMS:Endianness: [PLCF#PLC-EPICS-COMMS:Endianness]"""
     # create a stable list of controlled devices
     devices = device.buildControlsList(include_self = True, verbose = True)
 
+    hash_per_template = dict()
     for templateID in templateIDs:
         global hashobj
         hashobj = initializeHash(hash_base)
 
         processTemplateID(templateID, devices)
 
+        hash_per_template[templateID] = (hashobj.getHash(), hashobj.getCRC32())
+
+    # Check if IFA and EPICS-DB hashes are the same and obtain hash for PLC
+    try:
+        cur_hash = hash_per_template["IFA"]
+        if cur_hash[0] != hash_per_template["EPICS-DB"][0]:
+            raise RuntimeError("Hash mismatch detected between EPICS and PLC. Please file a bug report")
+    except KeyError:
+        # Fall back to the current hash
+        cur_hash = (hashobj.getHash(), hashobj.getCRC32())
+
     global hashes
-    cur_hash = (hashobj.getHash(), hashobj.getCRC32())
     hashes[device.name()] = cur_hash
 
     try:
