@@ -754,7 +754,6 @@ class IF_DEF(object):
         self._overlap               = None
         self._active                = True
         self._source                = ""
-        self._properties            = OrderedDict()
         self._to_plc_words_length   = 0
         self._from_plc_words_length = 0
         self._optimize              = OPTIMIZE
@@ -774,10 +773,6 @@ class IF_DEF(object):
 
         if self._experimental:
             self._features.extend(self._experimental_features)
-
-        self._properties[CMD_BLOCK.length_keyword()]    = 0
-        self._properties[PARAM_BLOCK.length_keyword()]  = 0
-        self._properties[STATUS_BLOCK.length_keyword()] = 0
 
         self._interface_funcs = dict()
 
@@ -850,7 +845,6 @@ class IF_DEF(object):
 
         if block is not None:
             block.end()
-            self._properties[block.length_keyword()] = block.length() // 2
             if not self._quiet:
                 print("{var}: {length}".format(var = block.length_keyword(), length = str(block.length() // 2)))
 
@@ -889,7 +883,7 @@ class IF_DEF(object):
 
         assert isinstance(block, BLOCK), func_param_msg("block", "BLOCK", type(block))
 
-        return self._properties[block.length_keyword()]
+        return block.length() // 2
 
 
     def _exception_if_active(self):
@@ -1016,7 +1010,15 @@ class IF_DEF(object):
         self._calc_block_hash(hashobj, self._param_block())
         self._calc_block_hash(hashobj, self._status_block())
 
-        hashobj.update(str(self._properties))
+        if int(self._to_plc_words_length) or int(self._from_plc_words_length):
+            # None of this is needed I think...
+            # but kept for hash stability
+            properties = OrderedDict()
+            properties[CMD_BLOCK.length_keyword()]    = self._words_length_of(self._cmd_block())
+            properties[PARAM_BLOCK.length_keyword()]  = self._words_length_of(self._param_block())
+            properties[STATUS_BLOCK.length_keyword()] = self._words_length_of(self._status_block())
+
+            hashobj.update(str(properties))
 
         return hashobj
 
@@ -1075,12 +1077,6 @@ class IF_DEF(object):
                 warns.extend(iface.warnings())
 
         return warns if len(warns) > 3 else []
-
-
-    def properties(self):
-        self._exception_if_active()
-
-        return self._properties
 
 
     def to_plc_words_length(self):
