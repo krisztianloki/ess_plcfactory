@@ -1659,7 +1659,6 @@ def produce(OutputDir, _ifa, **kwargs):
 	global ExternalSourceFile
 	ExternalSourceFile = []
 
-	SclPath    = kwargs['SclPath']
 	TIAVersion = kwargs.get('TIAVersion', 14)
 	if TIAVersion not in [13, 14, 15]:
 		raise IFA.FatalException("Unsupported TIA-Portal version {}".format(TIAVersion))

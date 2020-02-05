@@ -402,12 +402,8 @@ def produce(OutputDir, IfaPath, **kwargs):
 
     factory = None
     if ifa.PLC_TYPE == "SIEMENS":
-        if kwargs.get("direct", False):
-            from .InterfaceFactoryLegacySiemens import produce
-            factory = produce
-        else:
-            from .InterfaceFactorySiemens import produce
-            factory = produce
+        from .InterfaceFactorySiemens import produce
+        factory = produce
     elif ifa.PLC_TYPE == "BECKHOFF":
         from .InterfaceFactoryBeckhoff import produce
         factory = produce

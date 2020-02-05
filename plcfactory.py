@@ -1027,18 +1027,8 @@ def main(argv):
         plc_args.add_argument(
                               '--plc-siemens',
                               '--plc-interface',
-                              dest    = "plc_interface",
+                              dest    = "siemens",
                               help    = 'use the default templates for Siemens PLCs and generate interface PLC comms. The default TIA version is TIAv14',
-                              metavar = 'TIA-Portal-version',
-                              nargs   = "?",
-                              const   = 'TIAv14',
-                              type    = str
-                             )
-
-        plc_args.add_argument(
-                              '--plc-direct',
-                              dest    = "plc_direct",
-                              help    = '(OBSOLETE) use the default templates for Siemens PLCs and generate direct PLC comms. The default TIA version is TIAv14',
                               metavar = 'TIA-Portal-version',
                               nargs   = "?",
                               const   = 'TIAv14',
@@ -1190,19 +1180,12 @@ def main(argv):
 
         return tia_version
 
-    if args.plc_direct is not None:
-        tia_version        = args.plc_direct.lower()
-        tia_map            = "TIA-MAP-DIRECT"
-        args.plc_direct    = True
-        args.plc_interface = False
-    elif args.plc_interface is not None:
-        tia_version        = args.plc_interface.lower()
-        tia_map            = None
-        args.plc_interface = True
-        args.plc_direct    = False
+    if args.siemens is not None:
+        tia_version  = args.siemens.lower()
+        siemens      = True
     else:
         tia_version = None
-        tia_map     = None
+        siemens     = False
 
     beckhoff = args.beckhoff
 
@@ -1301,7 +1284,7 @@ def main(argv):
                         nargs    = '+',
                         type     = str,
                         default  = [],
-                        required = not (tia_version or eee or e3 or beckhoff or opc))
+                        required = not (siemens or eee or e3 or beckhoff or opc))
 
     global OUTPUT_DIR
     parser.add_argument(
@@ -1331,13 +1314,8 @@ def main(argv):
 
     default_printers = set(["DEVICE-LIST"])
 
-    if args.plc_interface:
+    if siemens:
         default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "IFA", "BEAST", "BEAST-TEMPLATE" ] )
-        plc = True
-
-    if args.plc_direct:
-        ifdef_params["OPTIMIZE"] = True
-        default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "IFA", tia_map, "BEAST", "BEAST-TEMPLATE" ] )
         plc = True
 
     ifdef_params["PLC_READONLY"] = args.plc_readonly
@@ -1376,26 +1354,11 @@ def main(argv):
     if opc and "OPC-MAP.XLS" in tf.available_printers():
         templateIDs.update( [ "OPC-MAP.XLS" ] )
 
-    # Make sure that OPTIMIZE_S7DB is turned on if TIA-MAP-DIRECT is requested
-    if not args.plc_direct and "TIA-MAP-DIRECT" in templateIDs:
-        tia_map = "TIA-MAP-DIRECT"
-        ifdef_params["OPTIMIZE"] = True
-        templateIDs.add("IFA")
-        if args.plc_no_diag == False and not args.plc_direct:
-            args.plc_only_diag =  True
-            tia_version        =  14
-
-    if "TIA-MAP-DIRECT" in templateIDs and "TIA-MAP-INTERFACE" in templateIDs:
-        raise PLCFArgumentError("Cannot mix TIA-MAP-DIRECT with TIA-MAP-INTERFACE")
-
-    if (args.plc_only_diag or args.plc_no_diag == False) and tia_version is None:
-        raise PLCFArgumentError('--plc-only-diag requires --plc-direct or --plc-interface')
+    if (args.plc_only_diag or args.plc_no_diag == False) and not siemens:
+        raise PLCFArgumentError('--plc-only-diag requires --plc-interface/--plc-siemens')
 
     if (args.plc_only_diag or args.plc_no_diag == False) and beckhoff:
         raise PLCFArgumentError('PLCFactory cannot (yet?) generate diagnostics code for Beckhoff PLCs')
-
-    if beckhoff and ( "TIA-MAP-DIRECT" in templateIDs or "TIA-MAP-INTERFACE" in templateIDs ):
-        raise PLCFArgumentError("Cannot use --plc-beckhoff with TIA-MAPs")
 
     if "EPICS-DB" in templateIDs:
         templateIDs.add("UPLOAD-PARAMS")
@@ -1420,14 +1383,6 @@ def main(argv):
     os.system('clear')
 
     banner()
-
-    if args.plc_direct:
-        print("""
-++++++++++++++++++++++++++++++++++++++++++++++++++
-+ YOU ARE USING THE OBSOLETE --plc-direct OPTION +
-++++++++++++++++++++++++++++++++++++++++++++++++++
-
-""")
 
     if args.ccdb:
         from cc import CC
@@ -1462,10 +1417,10 @@ def main(argv):
 
     root_device = processDevice(device, list(templateIDs))
 
-    if tia_version or args.plc_only_diag or beckhoff:
+    if siemens or args.plc_only_diag or beckhoff:
         from interface_factory import produce as ifa_produce
 
-        output_files.update(ifa_produce(OUTPUT_DIR, output_files["IFA"], SclPath = output_files.get(tia_map, ""), TIAVersion = tia_version, nodiag = args.plc_no_diag, onlydiag = args.plc_only_diag, commstest = args.plc_test, direct = args.plc_direct, verify = args.verify, readonly = args.plc_readonly))
+        output_files.update(ifa_produce(OUTPUT_DIR, output_files["IFA"], TIAVersion = tia_version, nodiag = args.plc_no_diag, onlydiag = args.plc_only_diag, commstest = args.plc_test, verify = args.verify, readonly = args.plc_readonly))
 
     # create a factory of CCDB
     try:
@@ -1516,14 +1471,6 @@ def main(argv):
 """)
     except KeyError:
         pass
-
-    if args.plc_direct:
-        print("""
-+++++++++++++++++++++++++++++++++++++++++++++++++++
-+ YOU WERE USING THE OBSOLETE --plc-direct OPTION +
-+++++++++++++++++++++++++++++++++++++++++++++++++++
-
-""")
 
     print("--- %.1f seconds ---\n" % (time.time() - start_time))
 
