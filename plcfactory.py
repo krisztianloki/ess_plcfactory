@@ -709,6 +709,21 @@ def create_eee(modulename, snippet):
 
     m_cp(output_files["CREATOR"],                     "misc",    "creator")
 
+    try:
+        m_cp(output_files["BECKHOFF"],                "misc",    os.path.basename(output_files["BECKHOFF"]))
+    except KeyError:
+        pass
+
+    try:
+        m_cp(output_files["STANDARD_SCL"],            "misc",    os.path.basename(output_files["STANDARD_SCL"]))
+    except KeyError:
+        pass
+
+    try:
+        m_cp(output_files["PROJECT_SCL"],             "misc",    os.path.basename(output_files["PROJECT_SCL"]))
+    except KeyError:
+        pass
+
     #
     # Copy CCDB dump
     #
@@ -860,6 +875,21 @@ def create_e3(modulename, snippet):
         pass
 
     m_cp(output_files["CREATOR"],                     "misc",    "creator")
+
+    try:
+        m_cp(output_files["BECKHOFF"],                "misc",    os.path.basename(output_files["BECKHOFF"]))
+    except KeyError:
+        pass
+
+    try:
+        m_cp(output_files["STANDARD_SCL"],            "misc",    os.path.basename(output_files["STANDARD_SCL"]))
+    except KeyError:
+        pass
+
+    try:
+        m_cp(output_files["PROJECT_SCL"],             "misc",    os.path.basename(output_files["PROJECT_SCL"]))
+    except KeyError:
+        pass
 
     #
     # Copy CCDB dump

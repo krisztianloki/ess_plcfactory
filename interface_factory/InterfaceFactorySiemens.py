@@ -1706,7 +1706,7 @@ def produce(OutputDir, _ifa, **kwargs):
 	if onlydiag:
 		print("NOTE:\nOnly diagnostics code is generated")
 
-	generated_files["EXTERNAL_SCL"] = externalPath
+	generated_files["PROJECT_SCL"] = externalPath
 
 	return generated_files
 
