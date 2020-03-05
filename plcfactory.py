@@ -36,6 +36,25 @@ import zlib
 from shutil import copy2, copyfileobj
 from ast    import literal_eval as ast_literal_eval
 
+import plcf_git as git
+
+
+tainted = False
+
+
+def taint_message():
+    if not tainted:
+        return
+    print("""
+Your working copy is not clean; warranty is void.
+""", file = sys.stderr)
+
+
+if git.get_status() == False:
+    tainted = True
+    taint_message()
+
+
 # Template Factory
 parent_dir = os.path.abspath(os.path.dirname(__file__))
 tf_dir     = os.path.join(parent_dir, 'template_factory')
@@ -68,7 +87,6 @@ import plcf
 from plcf_ext import PLCFExtException
 from   ccdb import CCDB
 import helpers
-import plcf_git as git
 
 
 # global variables
@@ -1035,6 +1053,8 @@ def banner():
     print("|_|    |______\_____| |_|  \__,_|\___|\__\___/|_|   \__, | ")
     print("                                                     __/ | ")
     print("European Spallation Source, Lund                    |___/ \n")
+
+    taint_message()
 
 
 

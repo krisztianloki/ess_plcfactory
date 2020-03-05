@@ -8,6 +8,14 @@ import time
 __git_dir = (os.path.abspath(os.path.dirname(__file__)))
 
 
+def get_status():
+    # Returns True if clean
+    try:
+        return subprocess.check_output(shlex_split("git status -uno --porcelain"), cwd = __git_dir).strip() == ""
+    except subprocess.CalledProcessError:
+        return False
+
+
 def get_current_branch():
     try:
         return subprocess.check_output(shlex_split("git rev-parse --abbrev-ref HEAD"), cwd = __git_dir).strip()
