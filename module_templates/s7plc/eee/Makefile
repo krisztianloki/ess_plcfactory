@@ -1,3 +1,4 @@
+EXCLUDE_VERSIONS=3.14
 include ${EPICS_ENV_PATH}/module.Makefile
 
 AUTO_DEPENDENCIES = NO
