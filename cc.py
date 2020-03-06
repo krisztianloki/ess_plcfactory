@@ -147,7 +147,16 @@ class CC(object):
                     if not filename.endswith(extension):
                         filename += extension
 
-                if filename != helpers.sanitizeFilename(filename):
+                # Check if the specified filename is valid. Need to split if path was included
+                def check_filename(fname):
+                    head, tail = os_path.split(fname)
+                    if not head:
+                        return True
+                    if head != helpers.sanitizeFilename(head):
+                        return False
+                    return check_filename(tail)
+
+                if not check_filename(filename):
                     raise CC.ArtifactException("Invalid filename in External Link for {device}: {name}".format(device = self._device.name(), name = filename), self._device.name(), filename)
             else:
                 base = linkfile
