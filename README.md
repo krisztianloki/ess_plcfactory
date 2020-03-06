@@ -90,11 +90,6 @@ PLC Factory is capable of integrating (and generating code for) the following PL
 
 #### Options related to EPICS-PLC integration
 
-*   **--plc-direct**=<tia_version>
-    *   \[OBSOLETE\] \[OPTIONAL\]
-    *   Generate the EPICS db and the communication PLC code for the specified TIA version. The default version is _TIA Portal v14_
-    *   `--plc-direct`
-    *   `--plc-direct=13`
 *   **--plc-siemens**=<tia_version>
     *   \[OPTIONAL\]
     *   Generate the EPICS db, the communication and the data (de)serialization PLC code for the specified TIA version. The default version is _TIA Portal v14_
