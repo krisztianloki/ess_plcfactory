@@ -349,17 +349,20 @@ class CC(object):
 
 
         # Returns the filename or None
-        def downloadArtifact(self, extension, device_tag = None, filetype = ''):
-            if not extension.startswith('.'):
-                extension = '.{}'.format(extension)
+        def downloadArtifact(self, extension, device_tag = None, filetype = '', custom_filter = None, filter_args = None):
+            if custom_filter is None:
+                if not extension.startswith('.'):
+                    extension = '.{}'.format(extension)
 
-            if device_tag:
-                # whatever__devicetag.extension
-                suffix = "".join([ CC.TAG_SEPARATOR, device_tag, extension ])
+                if device_tag:
+                    # whatever__devicetag.extension
+                    suffix = "".join([ CC.TAG_SEPARATOR, device_tag, extension ])
+                else:
+                    suffix = extension
+
+                defs = filter(lambda a: a.is_file() and a.filename().endswith(suffix), self.artifacts())
             else:
-                suffix = extension
-
-            defs = filter(lambda a: a.is_file() and a.filename().endswith(suffix), self.artifacts())
+                defs = filter(lambda a: a.is_file() and custom_filter(a, *filter_args), self.artifacts())
 
             # Separate device and device type artifacts
             (dev_defs, devtype_defs) = self.__splitDefs(defs)

@@ -171,20 +171,14 @@ def initializeHash(hash_base = None):
     return Hasher(hash_base)
 
 
-def openTemplate(device, tag, templateID):
+def openHeaderFooter(device, tag, templateID):
     assert isinstance(tag,        str)
     assert isinstance(templateID, str)
 
-    matches = filter(lambda f: matchingArtifact(f, (tag, TEMPLATE_TAG), templateID), device.artifacts())
-
-    if not matches:
-        return []
-
-    if len(matches) > 1:
-        raise RuntimeError("More than one possible matching artifacts found for {template}: {artifacts}".format(template  = "_".join([ tag, TEMPLATE_TAG, templateID ]),
-                                                                                                                artifacts = matches))
-
-    filename = matches[0].download()
+    filename = device.downloadArtifact(extension = ".txt",
+                                       filetype = "{} for {}".format("_".join([ tag, TEMPLATE_TAG, templateID ]), templateID),
+                                       custom_filter = matchingArtifact,
+                                       filter_args = ((tag, TEMPLATE_TAG), templateID))
 
     with open(filename) as f:
         lines = f.readlines()
@@ -195,22 +189,13 @@ def openTemplate(device, tag, templateID):
 def downloadTemplate(device, templateID):
     assert isinstance(templateID, str)
 
-    matches = filter(lambda f:matchingArtifact(f, TEMPLATE_TAG, templateID), device.artifacts())
-
-    if not matches:
-        return None
-
-    if len(matches) > 1:
-        raise RuntimeError("More than one possible matching artifacts found for {template}: {artifacts}".format(template  = "_".join([ TEMPLATE_TAG, templateID ]),
-                                                                                                                artifacts = matches))
-
-    return matches[0].download()
+    return device.downloadArtifact(extension = ".txt",
+                                   filetype = "{} for {}".format("_".join([ TEMPLATE_TAG, templateID ]), templateID),
+                                   custom_filter = matchingArtifact,
+                                   filter_args = (TEMPLATE_TAG, templateID))
 
 
 def matchingArtifact(artifact, tag, templateID):
-    if not artifact.is_file():
-        return False
-
     filename = artifact.filename()
 
     # exactly one '.' in filename
@@ -348,7 +333,7 @@ def getHeader(device, templateID, plcf):
         header = []
         templatePrinter.header(header, PLCF = plcf, OUTPUT_DIR = OUTPUT_DIR, HELPERS = helpers, **ifdef_params)
     else:
-        header = openTemplate(device, HEADER_TAG, templateID)
+        header = openHeaderFooter(device, HEADER_TAG, templateID)
 
     if not header:
         print("No header found.\n")
@@ -362,7 +347,7 @@ def getFooter(device, templateID, plcf):
     try:
         templatePrinter = printers[templateID]
     except KeyError:
-        return openTemplate(device, FOOTER_TAG, templateID)
+        return openHeaderFooter(device, FOOTER_TAG, templateID)
 
     print("Using built-in template footer")
     footer = []
