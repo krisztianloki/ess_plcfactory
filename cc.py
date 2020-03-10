@@ -10,6 +10,7 @@ __license__    = "GPLv3"
 
 # Python libraries
 from   os import path     as os_path
+import getpass
 try:
     from   urlparse import urlsplit
 except ImportError:
@@ -84,6 +85,39 @@ class CC(object):
 
         def __str__(self):
             return self.msg
+
+
+
+    class BasicAuth(requests.auth.AuthBase):
+        def __init__(self, username = None):
+            super(CC.BasicAuth, self).__init__()
+
+            if username is None:
+                username = getpass.getuser()
+            self.username = username
+            self.password = None
+
+
+        def __eq__(self, other):
+            return all([
+                         self.username == getattr(other, 'username', None),
+                         self.password == getattr(other, 'password', None)
+                       ])
+
+
+        def __ne__(self, other):
+            return not self == other
+
+
+        def __call__(self, r):
+            if not self.password:
+                self.password = getpass.getpass("Password of {} for {}: ".format(self.username, r.url.split('?')[0]))
+            r.headers['Authorization'] = requests.auth._basic_auth_str(self.username, self.password)
+            return r
+
+
+        def isvalid(self):
+            return self.password is not None
 
 
 
@@ -570,16 +604,23 @@ class CC(object):
 
 
     @staticmethod
-    def get(url, **keyword_params):
+    def get(url, auth = None, **keyword_params):
         netloc = urlsplit(url).netloc
 
         try:
-            session = CC.sessions_cached[netloc]
+            (session, auth) = CC.sessions_cached[netloc]
         except KeyError:
             session = requests.session()
-            CC.sessions_cached[netloc] = session
+            if auth is None:
+                auth    = CC.BasicAuth()
+            CC.sessions_cached[netloc] = (session, auth)
 
-        return session.get(url, **keyword_params)
+        # Try without authentication first; don't want to bother users with asking for their password when not really needed
+        result = session.get(url, auth = auth if auth.isvalid() else None, **keyword_params)
+        if result.status_code == 401:
+            result = session.get(url, auth = auth, **keyword_params)
+
+        return result
 
 
     @staticmethod
