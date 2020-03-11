@@ -156,14 +156,16 @@ The information on what is exchanged between EPICS and a PLC is defined in so-ca
 Assigning Interface Definitions happens on the _device type_-level in CCDB. Every device that belongs to the same device type has the same Interface Definition. There are 2 distinct ways of assigning:
 
 *   Upload the Interface Definition file as an _Artifact_ of the _device type_. The only restriction is that the file must have a **.def** extension.
-*   Upload the Interface Definition file to a Git repository (only Bitbucket and GitLab has been tested so far) and add the URL to the repository (without the **.git** extension) as an _External Link_ to the _device type_ and use **EPI** as the link name. By default PLCFactory constructs the filename to download as follows:
+*   Upload the Interface Definition file to a Git repository (only Bitbucket and GitLab has been tested so far) and add the URL to the repository as an _External Link_ to the _device type_ and use **EPI** as the link name. By default PLCFactory constructs the filename to download as follows:
     *    takes the name of the _device type_
     *    in all uppercase
     *    changes reserved characters (**<**, **>**, **:**, **"**, **/**, **\\**, **|**, **?**, **\***) to **_**
     *    appends **.def**
 
     It is possible to explicitly specify the filename (and path relative to the repository top) in square brackets after _EPI_; **EPI[file-to-download]**. The file must still have a **.def** extension (although it is automatically appended if not already specified). This technique can be used to share the same Interface Definition across device types.
-    It is possible to specify a version of the .def file to use other than _master_ with the **EPI VERSION** property (either on _slot_ or _device type_ level)
+    If the link specified with **EPI** has a _.git_ extension then the repository will be cloned. Otherwise the definition files will be individually downloaded (by appending /raw/<branch> to the URL).
+    It is possible to specify a version of the .def file to use other than _master_ with the **EPI VERSION** property (either on _slot_ or _device type_ level).
+    Authentication for GitLab is only supported if using the git clone method.
 
 #### Built-in templates / output types
 

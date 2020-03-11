@@ -8,12 +8,30 @@ import time
 __git_dir = (os.path.abspath(os.path.dirname(__file__)))
 
 
-def get_status():
+def get_status(cwd = None):
     # Returns True if clean
+    if cwd is None:
+        cwd = __git_dir
     try:
         return subprocess.check_output(shlex_split("git status -uno --porcelain"), cwd = __git_dir).strip() == ""
     except subprocess.CalledProcessError:
         return False
+
+
+def clone(url, cwd, branch = None):
+    try:
+        return subprocess.check_call(shlex_split("git clone --quiet {} {} .".format(url, "" if branch is None else "--branch {} --depth 1".format(branch))), cwd = cwd)
+    except subprocess.CalledProcessError as e:
+        print(e)
+        raise
+
+
+def checkout(cwd, version):
+    try:
+        return subprocess.check_call(shlex_split("git checkout --quiet {}".format(version)), cwd = cwd)
+    except subprocess.CalledProcessError as e:
+        print(e)
+        raise
 
 
 def get_current_branch():

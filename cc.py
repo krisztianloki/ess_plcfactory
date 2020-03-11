@@ -39,14 +39,17 @@ except ImportError:
 
 # PLC Factory modules
 import helpers
+import plcf_git as git
 
 
 
 class CC(object):
     TEMPLATE_DIR    = "templates"
     TAG_SEPARATOR   = "__"
+    GIT_SUFFIX      = ".git"
     paths_cached    = dict()
     sessions_cached = dict()
+    repos_cached    = dict()
 
 
     class Exception(Exception):
@@ -129,6 +132,11 @@ class CC(object):
         def __init__(self, device):
             self._device = device
 
+            self._saveas         = None
+            self._saveasurl      = None
+            self._saveasversion  = None
+            self._saveasfilename = None
+
 
         def __repr__(self):
             return self.name()
@@ -146,6 +154,10 @@ class CC(object):
             raise NotImplementedError
 
 
+        def is_git(self):
+            return self.is_uri() and self.uri().endswith(CC.GIT_SUFFIX)
+
+
         def is_perdevtype(self):
             raise NotImplementedError
 
@@ -160,6 +172,47 @@ class CC(object):
 
         def uniqueID(self):
             raise NotImplementedError
+
+
+        def saveas(self):
+            """
+            Returns the full path (relative to the current directory) of the downloaded artifact filename
+            """
+            if self._saveas is None:
+                if not self.is_file():
+                    raise NotImplementedError
+                self._saveas = CC.saveas(self.uniqueID(), self.saveas_filename(), self._device.ccdb.TEMPLATE_DIR)
+
+            return self._saveas
+
+
+        def saveas_url(self):
+            """
+            Returns the full url from where the artifact has to be downloaded
+            """
+            if self._saveasurl is None:
+                raise NotImplementedError
+
+            return self._saveasurl
+
+
+        def saveas_version(self):
+            """
+            Returns the version that needs to be downloaded (the branch/tag if git repo)
+            """
+            if self._saveasversion is None:
+                raise NotImplementedError
+
+            return self._saveasversion
+
+
+        def saveas_filename(self):
+            if self._saveasfilename is None:
+                if not self.is_file():
+                    raise NotImplementedError
+                self._saveasfilename = self.filename()
+
+            return self._saveasfilename
 
 
         # Returns: ""
@@ -181,55 +234,54 @@ class CC(object):
                     if not filename.endswith(extension):
                         filename += extension
 
-                # Check if the specified filename is valid. Need to split if path was included
-                def check_filename(fname):
-                    head, tail = os_path.split(fname)
-                    if not head:
-                        return True
-                    if head != helpers.sanitizeFilename(head):
-                        return False
-                    return check_filename(tail)
-
-                if not check_filename(filename):
+                # Check if the specified filename is valid
+                if filename != helpers.sanitizeFilename(filename):
                     raise CC.ArtifactException("Invalid filename in External Link for {device}: {name}".format(device = self._device.name(), name = filename), self._device.name(), filename)
             else:
                 base = linkfile
 
             if git_tag is None:
                 git_tag = self._device.properties().get(base + " VERSION", "master")
-            url = "/".join([ "raw/{}".format(git_tag), filename ])
 
             print("Downloading {filetype} file {filename} (version {version}) from {url}".format(filetype = filetype,
                                                                                                  filename = filename,
                                                                                                  url      = self.uri(),
                                                                                                  version  = git_tag))
 
-            return self.download(extra_url = url)
+            self._saveasversion  = git_tag
+            self._saveasfilename = filename
+
+            # NOTE: we _must not_ use CC.TEMPLATE_DIR here,
+            # CCDB_Dump relies on creating an instance variant of TEMPLATE_DIR to point it to its own templates directory
+            if not self.is_git():
+                url = "/".join([ self.uri(), "raw", git_tag ])
+                self._saveasurl      = "/".join([ url, filename ])
+                self._saveas         = CC.saveas(self.uniqueID(), filename, os_path.join(self._device.ccdb.TEMPLATE_DIR, CC.urlToPath(url)))
+            else:
+                # Make sure that only one version is requested of the same repo
+                # This is a limitation of the current implementation
+                if CC.repos_cached.get(self.uri(), git_tag) != git_tag:
+                    raise CC.ArtifactException("Cannot mix different versions/branches of the same repository: {}".format(self.uri()))
+
+                self._saveasurl      = self.uri()
+                # We could remove the '.git' extension from the url but I see no point in doing that
+                self._saveas         = CC.saveas(self.uniqueID(), filename, os_path.join(self._device.ccdb.TEMPLATE_DIR, CC.urlToPath(self.uri())))
+
+            return self.download()
 
 
         # Returns: "", the downloaded filename
-        def download(self, extra_url = ""):
-            # NOTE: we _must not_ use CC.TEMPLATE_DIR here,
-            # CCDB_Dump relies on creating an instance variant of TEMPLATE_DIR to point it to its own templates directory
-            output_dir = self._device.ccdb.TEMPLATE_DIR
-
-            if self.is_uri():
-                filename = CC.urlToFilename(extra_url)
-                url      = "/".join([ self.uri(), extra_url ])
-                save_as  = CC.saveas(self.uniqueID(), filename, os_path.join(output_dir, CC.urlToDir(url)))
-            else:
-                filename = self.filename()
-                url      = None
-                save_as  = CC.saveas(self.uniqueID(), filename, output_dir)
+        def download(self):
+            save_as  = self.saveas()
 
             # check if filename has already been downloaded
             if os_path.exists(save_as):
                 return save_as
 
             try:
-                self._download(save_as, url = url)
+                self._download(save_as)
             except CC.DownloadException as e:
-                raise CC.ArtifactException(e, deviceName = self._device.name(), filename = filename)
+                raise CC.ArtifactException(e, deviceName = self._device.name(), filename = self.saveas_filename())
 
             CC.Artifact.downloadedArtifacts.append(save_as)
 
@@ -376,6 +428,7 @@ class CC(object):
 
                 print("Downloading {filetype} file {filename} from CCDB".format(filetype = filetype,
                                                                                 filename = defs[0].filename()))
+
                 return defs[0].download()
 
             # device artifacts have higher priority than device type artifacts
@@ -545,6 +598,9 @@ class CC(object):
 
     @staticmethod
     def urlToFilename(url):
+        """
+        Returns the last component of a URL. It is assumed to be the filename
+        """
         comps = CC.urlComps(url)
         # assume the last component is a filename
         return comps[-1]
@@ -552,10 +608,23 @@ class CC(object):
 
     @staticmethod
     def urlToDir(url):
+        """
+        Returns the url without the protocol and the last component as that one is assumed to be a filename
+        """
         comps = CC.urlComps(url)
 
         # ignore the last component, it is assumed to be a filename
         del comps[-1]
+
+        return os_path.join(*map(lambda sde: helpers.sanitizeFilename(sde), comps))
+
+
+    @staticmethod
+    def urlToPath(url):
+        """
+        Returns the url without the protocol
+        """
+        comps = CC.urlComps(url)
 
         return os_path.join(*map(lambda sde: helpers.sanitizeFilename(sde), comps))
 
@@ -639,6 +708,14 @@ class CC(object):
                 f.write(line)
 
         return save_as
+
+
+    @staticmethod
+    def git_download(url, cwd, version = "master"):
+        print("Cloning {}...".format(url))
+        git.clone(url, cwd, branch = version)
+        git.checkout(cwd, version)
+        CC.repos_cached[url] = version
 
 
     def __clear(self):

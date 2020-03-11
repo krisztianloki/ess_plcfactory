@@ -73,8 +73,14 @@ def sanitizeFilename(filename):
         # Only needef for Python3
         filename = filename.decode()
 
-    result = map(lambda x: '_' if x in '<>:"/\|?*' else x, filename)
-    return "".join(result)
+    def sanP(p):
+        (head, tail) = os.path.split(p)
+        if not head:
+            return "".join(map(lambda x: '_' if x in '<>:"/\|?*' else x, p))
+        head = "".join(map(lambda x: '_' if x in '<>:"/\|?*' else x, head))
+        return os.path.join(head, sanP(tail))
+
+    return sanP(filename)
 
 
 def create_data_dir(product):

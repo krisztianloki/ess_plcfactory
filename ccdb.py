@@ -61,7 +61,7 @@ class CCDB(CC):
             return self._artifact["kind"] == "TYPE"
 
 
-        def _download(self, save_as, url = None):
+        def _download(self, save_as):
             if self.is_file():
                 if self.is_perdevtype():
                     url = "/".join([ "deviceTypes", self._device.deviceType(), "download", self.filename() ])
@@ -69,8 +69,12 @@ class CCDB(CC):
                     url = "/".join([ "slots", self._device.name(), "download", self.filename() ])
 
                 return self._device.ccdb.download_from_ccdb(url, save_as)
+            elif self.is_git():
+                # Remove the "filename" part from saveas to get the directory where the repo needs to be cloned into
+                cwd = self.saveas()[:-len(self.saveas_filename())-1]
+                return self._device.ccdb.git_download(self.saveas_url(), cwd, self.saveas_version())
             else:
-                return self._device.ccdb.download(url, save_as)
+                return self._device.ccdb.download(self.saveas_url(), save_as)
 
 
         def _type(self):

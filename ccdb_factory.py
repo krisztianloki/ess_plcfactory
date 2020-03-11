@@ -100,14 +100,14 @@ class CCDB_Factory(CC):
                 self.downloadExternalLink(self._device.defaultFilename(extension), extension, git_tag)
 
 
-        def _download(self, save_as, url = None):
+        def _download(self, save_as):
             if self.is_file():
                 copy2(self._artifact["full_path"], save_as)
             else:
                 try:
                     copy2(self._artifact["full_path"], save_as)
                 except KeyError:
-                    super(CCDB_Factory.Artifact, self)._download(save_as, url)
+                    super(CCDB_Factory.Artifact, self)._download(save_as)
 
 
 
