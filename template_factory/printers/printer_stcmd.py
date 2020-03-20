@@ -217,8 +217,8 @@ modbusInterposeConfig("{plcname}", 0, $(RECVTIMEOUT), 0)
 # Slave address     : 0
 # Function code     : 16 - Write Multiple Registers
 # Addressing        : Absolute (-1)
-# Data segment      : 2 words
-drvModbusAsynConfigure("{plcname}write", "{plcname}", 0, 16, -1, 2, 0, 0, "S7-1500")
+# Data segment      : 20 words
+drvModbusAsynConfigure("{plcname}write", "{plcname}", 0, 16, -1, 20, 0, 0, "S7-1500")
 
 {dbloadrecords}
 """.format(s7drvport     = self.plcf("PLC-EPICS-COMMS: S7Port"),

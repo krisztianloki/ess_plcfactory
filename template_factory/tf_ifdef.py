@@ -487,6 +487,7 @@ class STATUS_BLOCK(BLOCK):
 class MODBUS(object):
     _int32_types   = [ "INT32_BE",   "INT32_LE" ]
     _float32_types = [ "FLOAT32_BE", "FLOAT32_LE" ]
+    _zstring_types = [ "ZSTRING_HIGH_LOW", "ZSTRING_LOW_HIGH" ]
 
     _endian_dependent_type_pairs = dict(
 # DWORD and UDINT are unsigned types, but MODBUS does not support writing (or reading) unsigned 32bit integers
@@ -495,7 +496,8 @@ class MODBUS(object):
 #                    UDINT = _int32_types,
                     DINT   = _int32_types,
                     REAL   = _float32_types,
-                    TIME   = _int32_types)
+                    TIME   = _int32_types,
+                    STRING = _zstring_types)
 
 
     _valid_type_pairs = dict(_endian_dependent_type_pairs,
@@ -551,6 +553,8 @@ class MODBUS(object):
             pairs = self._int32_types
         elif epics_type in self._float32_types:
             pairs = self._float32_types
+        elif epics_type in self._zstring_types:
+            pairs = self._zstring_types
         else:
             raise IfDefInternalError("Cannot determine endian correct type of {}".format(epics_type))
 
@@ -2184,9 +2188,9 @@ class BITMASK(BASE_TYPE):
 
 
 class STRING(BASE_TYPE):
+    pv_types = { BLOCK.CMD : "stringout",   BLOCK.PARAM : "stringout",   BLOCK.STATUS : "stringin" }
+
     def __init__(self, source, block, name, max_len, keyword_params):
-        if not block.is_status_block():
-            raise IfDefSyntaxError("Strings are only supported in status blocks")
         if max_len is not None:
             if max_len < 1:
                 raise IfDefSyntaxError("String length has to be greater than 0")
@@ -2219,7 +2223,22 @@ class STRING(BASE_TYPE):
 
 
     def pv_type(self):
-        return "stringin"
+        return self.pv_types[self.block_type()]
+
+
+    def endian_correct_dtyp_var_type(self):
+        ec_dtyp_var_type = super(STRING, self).endian_correct_dtyp_var_type()
+        if self.is_status():
+            return ec_dtyp_var_type
+
+        return "{}={}".format(ec_dtyp_var_type, self.dimension())
+
+
+    def dtyp(self):
+        if self.is_status():
+            return super(STRING, self).dtyp()
+
+        return "asynOctetWrite"
 
 
     def hash_message(self):
@@ -2227,7 +2246,10 @@ class STRING(BASE_TYPE):
 
 
     def link_extra(self):
-        return " L={}".format(self.dimension())
+        if self.is_status():
+            return " L={}".format(self.dimension())
+
+        return super(STRING, self).link_extra()
 
 
 

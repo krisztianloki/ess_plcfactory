@@ -120,7 +120,7 @@ def AddBOOL(variable, InArrayName, InArrayNum, StartingRegister):
 			DevTypeBODY_CODE.append("       #MyBoolsinWord[" + str((int(ActVariableBitNumber)-8)) + "] := #\""+ ActVariablePLCName +"\";    //EPICSName: "+ActVariableEPICSName)
 			IsDouble = False
 			EndString = "\"PLCToEPICS\".\"Word\"[#PLCToEPICSDataBlockOffset + "+str(ActVariableArrayIndex) +"] := #MyWord;"
-	if variable.is_parameter() or variable.is_command():
+	elif variable.is_parameter() or variable.is_command():
 		if StartingRegister != ActVariableArrayIndex:
 			CloseLastVariable()
 			StartingRegister = ActVariableArrayIndex
@@ -173,7 +173,7 @@ def AddBYTE(variable, InArrayName, InArrayNum, StartingRegister):
 			DevTypeBODY_CODE.append("       #MyBytesinWord[1] := #\""+ ActVariablePLCName +"\";    //EPICSName: "+ActVariableEPICSName)
 			IsDouble = False
 			EndString = "\"PLCToEPICS\".\"Word\"[#PLCToEPICSDataBlockOffset + "+str(ActVariableArrayIndex) +"] := #MyWord;"
-	if variable.is_parameter() or variable.is_command():
+	elif variable.is_parameter() or variable.is_command():
 		if StartingRegister != ActVariableArrayIndex:
 			CloseLastVariable()
 			StartingRegister = ActVariableArrayIndex
@@ -221,7 +221,7 @@ def AddINT(variable, InArrayName, InArrayNum, StartingRegister):
 		if ActVariableBitNumber == 0:
 			IsDouble = False
 			EndString = "\"PLCToEPICS\".\"Word\"[#PLCToEPICSDataBlockOffset + "+str(ActVariableArrayIndex) +"] := #MyWordinInt;"
-	if variable.is_parameter() or variable.is_command():
+	elif variable.is_parameter() or variable.is_command():
 		if StartingRegister != ActVariableArrayIndex:
 			CloseLastVariable()
 			StartingRegister = ActVariableArrayIndex
@@ -264,7 +264,7 @@ def AddWORD(variable, InArrayName, InArrayNum, StartingRegister):
 		if ActVariableBitNumber == 0:
 			IsDouble = False
 			EndString = "\"PLCToEPICS\".\"Word\"[#PLCToEPICSDataBlockOffset + "+str(ActVariableArrayIndex) +"] := #MyWord;"
-	if variable.is_parameter() or variable.is_command():
+	elif variable.is_parameter() or variable.is_command():
 		if StartingRegister != ActVariableArrayIndex:
 			CloseLastVariable()
 			StartingRegister = ActVariableArrayIndex
@@ -307,7 +307,7 @@ def AddDINT(variable, InArrayName, InArrayNum, StartingRegister):
 			IsDouble = True
 			EndString  = "\"PLCToEPICS\".\"Word\"[#PLCToEPICSDataBlockOffset + "+str(ActVariableArrayIndex) +"] := #MyWordsinDint[0];"
 			EndString2 = "\"PLCToEPICS\".\"Word\"[#PLCToEPICSDataBlockOffset + "+str(ActVariableArrayIndex+1) +"] := #MyWordsinDint[1];"
-	if variable.is_parameter() or variable.is_command():
+	elif variable.is_parameter() or variable.is_command():
 		if StartingRegister != ActVariableArrayIndex:
 			CloseLastVariable()
 			StartingRegister = ActVariableArrayIndex
@@ -354,7 +354,7 @@ def AddDWORD(variable, InArrayName, InArrayNum, StartingRegister):
 			IsDouble = True
 			EndString  = "\"PLCToEPICS\".\"Word\"[#PLCToEPICSDataBlockOffset + "+str(ActVariableArrayIndex) +"] := #MyWordsinDWord[0];"
 			EndString2 = "\"PLCToEPICS\".\"Word\"[#PLCToEPICSDataBlockOffset + "+str(ActVariableArrayIndex+1) +"] := #MyWordsinDWord[1];"
-	if variable.is_parameter() or variable.is_command():
+	elif variable.is_parameter() or variable.is_command():
 		raise IFA.FatalException("DWORD is not supported for ModbusTCP")
 
 	return (InArrayNum, StartingRegister)
@@ -387,7 +387,7 @@ def AddREAL(variable, InArrayName, InArrayNum, StartingRegister):
 			IsDouble = True
 			EndString  = "\"PLCToEPICS\".\"Word\"[#PLCToEPICSDataBlockOffset + "+str(ActVariableArrayIndex) +"] := #MyWordsinReal[0];"
 			EndString2 = "\"PLCToEPICS\".\"Word\"[#PLCToEPICSDataBlockOffset + "+str(ActVariableArrayIndex+1) +"] := #MyWordsinReal[1];"
-	if variable.is_parameter() or variable.is_command():
+	elif variable.is_parameter() or variable.is_command():
 		if StartingRegister != ActVariableArrayIndex:
 			CloseLastVariable()
 			StartingRegister = ActVariableArrayIndex
@@ -434,20 +434,20 @@ def AddTIME(variable, InArrayName, InArrayNum, StartingRegister):
 			IsDouble = True
 			EndString  = "\"PLCToEPICS\".\"Word\"[#PLCToEPICSDataBlockOffset + "+str(ActVariableArrayIndex) +"] := #MyWordsinTime[0];"
 			EndString2 = "\"PLCToEPICS\".\"Word\"[#PLCToEPICSDataBlockOffset + "+str(ActVariableArrayIndex+1) +"] := #MyWordsinTime[1];"
-	if variable.is_parameter() or variable.is_command():
+	elif variable.is_parameter() or variable.is_command():
 		if StartingRegister != ActVariableArrayIndex:
 			CloseLastVariable()
 			StartingRegister = ActVariableArrayIndex
 			DevTypeBODY_CODE.append("")
-			DevTypeBODY_CODE.append("       #MyDInt	:= 0;")
-			DevTypeBODY_CODE.append("       #MyWordsinDint[0]	:= \"EPICSToPLC\".\"Word\"[#EPICSToPLCDataBlockOffset + "+str(ActVariableArrayIndex) +"];")
-			DevTypeBODY_CODE.append("       #MyWordsinDint[1]	:= \"EPICSToPLC\".\"Word\"[#EPICSToPLCDataBlockOffset + "+str(ActVariableArrayIndex+1) +"];")
+			DevTypeBODY_CODE.append("       #MyTime	:= 0;")
+			DevTypeBODY_CODE.append("       #MyWordsinTime[0]	:= \"EPICSToPLC\".\"Word\"[#EPICSToPLCDataBlockOffset + "+str(ActVariableArrayIndex) +"];")
+			DevTypeBODY_CODE.append("       #MyWordsinTime[1]	:= \"EPICSToPLC\".\"Word\"[#EPICSToPLCDataBlockOffset + "+str(ActVariableArrayIndex+1) +"];")
 			if variable.is_command():
 				DevTypeBODY_CODE.append("       IF (NOT \"Utilities\".TestInProgress) THEN")
 				DevTypeBODY_CODE.append("        	\"EPICSToPLC\".\"Word\"[#EPICSToPLCDataBlockOffset + "+str(ActVariableArrayIndex) +"] := 0;")
 				DevTypeBODY_CODE.append("        	\"EPICSToPLC\".\"Word\"[#EPICSToPLCDataBlockOffset + "+str(ActVariableArrayIndex+1) +"] := 0;")
 				DevTypeBODY_CODE.append("       END_IF;")
-			DevTypeBODY_CODE.append("       #\""+ ActVariablePLCName +"\" := #MyDInt;    //EPICSName: "+ActVariableEPICSName)
+			DevTypeBODY_CODE.append("       #\""+ ActVariablePLCName +"\" := #MyTime;    //EPICSName: "+ActVariableEPICSName)
 			IsDouble = True
 			EndString = ""
 
@@ -479,10 +479,11 @@ def AddSTRING(variable, InArrayName, InArrayNum, StartingRegister):
 			CloseLastVariable()
 			StartingRegister = ActVariableArrayIndex
 			DevTypeBODY_CODE.append("")
+			# This clearing is also essential to have a terminating zero in place in case the string is shorter than the allowed maximum
 			DevTypeBODY_CODE.append("       // Clear the buffer of any residual data, but skip the first word as that is the actual and maximum length")
 			DevTypeBODY_CODE.append("       FOR #i:=1 TO 20 DO")
 			DevTypeBODY_CODE.append("            #MyWordsinString[#i] := 0;")
-			DevTypeBODY_CODE.append("       END_FOR;			")
+			DevTypeBODY_CODE.append("       END_FOR;")
 			DevTypeBODY_CODE.append("       #MyString := #\"" + ActVariablePLCName + "\";  //EPICSName: " + ActVariableEPICSName)
 			if ActStringLength > 1:
 				DevTypeBODY_CODE.append("       FOR #i:=0 TO " + str(ActStringLength - 2) + " DO")
@@ -493,8 +494,36 @@ def AddSTRING(variable, InArrayName, InArrayNum, StartingRegister):
 				DevTypeBODY_CODE.append("       \"PLCToEPICS\".\"Word\"[#PLCToEPICSDataBlockOffset + " + str(ActVariableArrayIndex) + " + " + str(ActStringLength - 1) + "] := 0;")
 			else:
 				DevTypeBODY_CODE.append("       \"PLCToEPICS\".\"Word\"[#PLCToEPICSDataBlockOffset + " + str(ActVariableArrayIndex) + " + " + str(ActStringLength - 1) + "] := #MyWordsinString[" + str(ActStringLength) + "] & 16#FF00;")
-	if variable.is_parameter() or variable.is_command():
-		raise IFA.FatalException("STRING is not supported for ModbusTCP")
+	elif variable.is_parameter() or variable.is_command():
+		if StartingRegister != ActVariableArrayIndex:
+			CloseLastVariable()
+			StartingRegister = ActVariableArrayIndex
+			DevTypeBODY_CODE.append("")
+			if ActStringLength > 0:
+				DevTypeBODY_CODE.append("       #i := 0;")
+				DevTypeBODY_CODE.append("       WHILE TRUE DO")
+				DevTypeBODY_CODE.append("            IF #i = 20 THEN")
+				DevTypeBODY_CODE.append("                 #i := 39;")
+				DevTypeBODY_CODE.append("                 EXIT;")
+				DevTypeBODY_CODE.append("            END_IF;")
+				DevTypeBODY_CODE.append("            #MyWordsinString[#i + 1] := \"EPICSToPLC\".\"Word\"[#EPICSToPLCDataBlockOffset + " + str(ActVariableArrayIndex) + " + #i];")
+				DevTypeBODY_CODE.append("            //Check if there is a terminating zero and store the string length in bytes")
+				DevTypeBODY_CODE.append("            IF (#MyWordsinString[#i + 1] & 16#FF00) = 0 THEN")
+				DevTypeBODY_CODE.append("                 #i := #i * 2;")
+				DevTypeBODY_CODE.append("                 EXIT;")
+				DevTypeBODY_CODE.append("            ELSIF (#MyWordsinString[#i + 1] & 16#00FF) = 0 THEN")
+				DevTypeBODY_CODE.append("                 #i := #i * 2 + 1;")
+				DevTypeBODY_CODE.append("                 EXIT;")
+				DevTypeBODY_CODE.append("            END_IF;")
+				DevTypeBODY_CODE.append("            #i := #i + 1;")
+				DevTypeBODY_CODE.append("       END_WHILE;")
+			DevTypeBODY_CODE.append("       // Set the length of #MyString")
+			DevTypeBODY_CODE.append("       #MyWordsinString[0] := (#MyWordsinString[0] & 16#FF00) OR #i;")
+			if variable.is_command():
+				DevTypeBODY_CODE.append("       IF (NOT \"Utilities\".TestInProgress) THEN")
+				DevTypeBODY_CODE.append("            \"EPICSToPLC\".\"Word\"[#EPICSToPLCDataBlockOffset + " + str(ActVariableArrayIndex) + "] := 0;")
+				DevTypeBODY_CODE.append("       END_IF;")
+			DevTypeBODY_CODE.append("       #\""+ ActVariablePLCName +"\" := #MyString;    //EPICSName: "+ActVariableEPICSName)
 
 	return (InArrayNum, StartingRegister)
 
@@ -659,34 +688,34 @@ def WriteEPICS_Debugger():
 	ExternalSourceFile.append("	//Author: Miklos Boros (miklos.boros@esss.se), Copyrigth 2017-2020 by European Spallation Source, Lund")
 	ExternalSourceFile.append("	//This block was generated by PLCFactory")
 	ExternalSourceFile.append("	//Description: This FB checks the EPICS configuration and outputs the result into EPICS_DebuggerResult.")
-	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("")
 	ExternalSourceFile.append("	//DO NOT Modify this block!!!")
-	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("")
 	ExternalSourceFile.append("	//AllOK will be evaluated in this code and passed to the EPICS_CommunicationOK signal that can be used by the PLC logic")
 	ExternalSourceFile.append("	#AllOK := TRUE;")
 
-	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("")
 	ExternalSourceFile.append("	#GetChecksum_Instance(Scope:=#scope,")
 	ExternalSourceFile.append("	                      Done=>#done,")
 	ExternalSourceFile.append("	                      Busy=>#busy,")
 	ExternalSourceFile.append("	                      Error=>#error,")
 	ExternalSourceFile.append("	                      Status=>#memErrStatus,")
 	ExternalSourceFile.append("	                      Checksum:=\"EPICS_DebuggerResult\".EPICS_Debugger_Checksum);")
-	ExternalSourceFile.append("	")
-	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("")
+	ExternalSourceFile.append("")
 	ExternalSourceFile.append("	#CheckUtilitiesTON(IN:=\"Utilities\".Square_100ms,")
 	ExternalSourceFile.append("	                   PT:=T#200ms,")
 	ExternalSourceFile.append("	                   Q=>#UtilSquareErrorTON);")
-	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("")
 	ExternalSourceFile.append("	#CheckUtilitiesTON2(IN := NOT \"Utilities\".Square_100ms,")
 	ExternalSourceFile.append("	                   PT := T#200ms,")
 	ExternalSourceFile.append("	                   Q => #UtilSquareErrorTON2);")
-	ExternalSourceFile.append("	")
-	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("")
+	ExternalSourceFile.append("")
 	ExternalSourceFile.append("	#ModBus_TON(IN := #ModBus_wordsave = \"EPICSToPLC\".\"Word\"[2],")
 	ExternalSourceFile.append("	            PT := T#5s);")
-	ExternalSourceFile.append("	")
-	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("")
+	ExternalSourceFile.append("")
 	ExternalSourceFile.append("	IF (\"Utilities\".AlwaysOn = FALSE) THEN")
 	ExternalSourceFile.append("	    \"EPICS_DebuggerResult\".#EPICS_Debugger_UtilitiesCall := 'ERROR: FunctionBlock: \"_UilitiesFB\" is called with a wrong InstanceDB. Call it with the existing iDB named: \"Utilities\" AND check if the System Memory bits and the System Clock byte is enabled!';")
 	ExternalSourceFile.append("         #AllOK := FALSE;")
@@ -713,7 +742,7 @@ def WriteEPICS_Debugger():
 	ExternalSourceFile.append("	    \"EPICS_DebuggerResult\".#EPICS_Debugger_IOCHash := 'ERROR: IOC and PLC hash are NOT equal!';")
 	ExternalSourceFile.append("         #AllOK := FALSE;")
 	ExternalSourceFile.append("	END_IF;")
-	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("")
 	ExternalSourceFile.append("	IF (#ModBus_TON.Q) THEN")
 	ExternalSourceFile.append("	    \"EPICS_DebuggerResult\".#EPICS_Debugger_ModBusHeartBeat := 'ERROR: The IOC is not sending any HeartBeat via ModBus!';")
 	ExternalSourceFile.append("         #AllOK := FALSE;")
@@ -722,9 +751,9 @@ def WriteEPICS_Debugger():
 	ExternalSourceFile.append("	    \"EPICS_DebuggerResult\".#EPICS_Debugger_ModBusHeartBeat := 'OK: ModBus HeartBeat is received as expected.';")
 	ExternalSourceFile.append("	    #ModBusOK := TRUE;")
 	ExternalSourceFile.append("	END_IF;")
-	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("")
 	ExternalSourceFile.append("	#S7ConnTON(IN := NOT \"_CommsPLC_EPICS_DB\".SendDone, PT := T#3s);")
-	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("")
 	ExternalSourceFile.append("	IF (\"_CommsPLC_EPICS_DB\".BytesToSend > 0) THEN")
 	ExternalSourceFile.append("	    ")
 	ExternalSourceFile.append("	    IF (#S7ConnTON.Q) THEN")
@@ -740,36 +769,36 @@ def WriteEPICS_Debugger():
 	ExternalSourceFile.append("	    \"EPICS_DebuggerResult\".EPICS_Debugger_S7Connection := 'OK: EPICS S7 disabled, there is no Status variable to send.';")
 	ExternalSourceFile.append("	    #S7OK := TRUE;")
 	ExternalSourceFile.append("	END_IF;")
-	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("")
 	ExternalSourceFile.append("	IF (#ModBusOK AND #S7OK) THEN")
 	ExternalSourceFile.append("	    \"EPICS_DebuggerResult\".EPICS_Debugger_EPICS_GeneralState := 'OK. EPICS IOC communication is ONLINE.';")
 	ExternalSourceFile.append("	END_IF;")
-	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("")
 	ExternalSourceFile.append("	IF (#ModBusOK AND NOT #S7OK) THEN")
 	ExternalSourceFile.append("	    \"EPICS_DebuggerResult\".EPICS_Debugger_EPICS_GeneralState := 'ERROR. ModBus seems to be working but S7 TCP is blocked. Try to check your PLC router IP.';")
 	ExternalSourceFile.append("         #AllOK := FALSE;")
 	ExternalSourceFile.append("	END_IF;")
-	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("")
 	ExternalSourceFile.append("	IF (NOT #ModBusOK AND #S7OK) THEN")
 	ExternalSourceFile.append("	    \"EPICS_DebuggerResult\".EPICS_Debugger_EPICS_GeneralState := 'ERROR. ModBus seems to be offline. Waiting for IOC to finish connecting to the PLC.';")
 	ExternalSourceFile.append("         #AllOK := FALSE;")
 	ExternalSourceFile.append("	END_IF;")
-	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("")
 	ExternalSourceFile.append("	IF ( NOT #ModBusOK AND NOT #S7OK) THEN")
 	ExternalSourceFile.append("	    \"EPICS_DebuggerResult\".EPICS_Debugger_EPICS_GeneralState := 'ERROR. Both ModBus and S7 TCP seems to be offline. Check if your IOC is running and if it is connected to the right PLC interface. Your HardwareID comes from CCDB!';")
 	ExternalSourceFile.append("         #AllOK := FALSE;")
 	ExternalSourceFile.append("	END_IF;")
-	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("")
 	ExternalSourceFile.append("	\"EPICS_DebuggerResult\".EPICS_ModbusPort := \"_CommsPLC_EPICS_DB\".MBPort;")
 	ExternalSourceFile.append("	\"EPICS_DebuggerResult\".EPICS_S7Port := \"_CommsPLC_EPICS_DB\".S7Port;")
 	ExternalSourceFile.append("	\"EPICS_DebuggerResult\".EPICS_PLC_EthernetInterface :=  \"_CommsPLC_EPICS_DB\".InterfaceID;")
-	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("")
 	ExternalSourceFile.append("	#ModBus_wordsave := \"EPICSToPLC\".\"Word\"[2];")
-	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("")
 	ExternalSourceFile.append("	//Put the Overall result to the Globl DB")
 	ExternalSourceFile.append("	\"EPICS_DebuggerResult\".EPICS_CommunicationOK := #AllOK;")
-	ExternalSourceFile.append("	")
-	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("")
+	ExternalSourceFile.append("")
 	ExternalSourceFile.append("END_FUNCTION_BLOCK")
 
 	ExternalSourceFile.append("DATA_BLOCK \"EPICS_DebuggerFB_iDB\"")
@@ -791,11 +820,11 @@ def WriteEPICS_Debugger():
 	ExternalSourceFile.append("	//Author: Miklos Boros (miklos.boros@esss.se), Copyrigth 2017-2020 by European Spallation Source, Lund")
 	ExternalSourceFile.append("	//This block was generated by PLCFactory")
 	ExternalSourceFile.append("	//Description: This OB is a cyclic OB called in every PLC cycle and EPICS_DebuggerFB checks the EPICS configuration.")
-	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("")
 	ExternalSourceFile.append("	//DO NOT Modify this block!!!")
 	ExternalSourceFile.append("	\"EPICS_DebuggerFB_iDB\"();")
-	ExternalSourceFile.append("	")
-	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("")
+	ExternalSourceFile.append("")
 	ExternalSourceFile.append("END_ORGANIZATION_BLOCK")
 
 
@@ -928,25 +957,25 @@ def WriteUtilitiesCode(TIAVersion):
 	ExternalSourceFile.append("	//* Startup Delay")
 	ExternalSourceFile.append("	//* Pulses (different frequences)")
 	ExternalSourceFile.append("	//* etc.")
-	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("")
 	ExternalSourceFile.append("	//When using This block in your program, name the instance DB \"Utilities\" AND THEN you will be able TO use tags like \"Utilities.AlwaysOn\" in the rest OF your program.")
-	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("")
 	ExternalSourceFile.append("	//This block relies On information provided BY the CPU. This needs TO be enabled in the CPU hardware configuration under System AND Clock Memory.")
 	ExternalSourceFile.append("	//Enable both functions AND pick memory bytes you'd like TO use (defauls are %MB1 AND %MB0 respectively).")
 	ExternalSourceFile.append("	//THEN connect the selected Byte TO the inputs OF This block.")
 	ExternalSourceFile.append("	//")
-	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("")
 	ExternalSourceFile.append("	//Bit TRUE for only the first scan of the PLC")
 	ExternalSourceFile.append("	#FirstScan := #CPUSytemMemoryBits.%X0;")
-	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("")
 	ExternalSourceFile.append("	//Bit always TRUE")
 	ExternalSourceFile.append("	#AlwaysOn := #CPUSytemMemoryBits.%X2;")
 	ExternalSourceFile.append("	#AlwaysTrue := #CPUSytemMemoryBits.%X2;")
-	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("")
 	ExternalSourceFile.append("	//Bit always FALSE")
 	ExternalSourceFile.append("	#AlwaysOff := #CPUSytemMemoryBits.%X3;")
 	ExternalSourceFile.append("	#AlwaysFalse := #CPUSytemMemoryBits.%X3;")
-	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("")
 	ExternalSourceFile.append("	//Bit initially FALSE, turning TRUE after preset delay")
 	if TIAVersion == 13:
 		ExternalSourceFile.append("	#StartupDelayTmr(IN := #AlwaysTrue,")
@@ -956,55 +985,55 @@ def WriteUtilitiesCode(TIAVersion):
 		ExternalSourceFile.append("	#StartupDelayTmr.TON(IN := #AlwaysTrue,")
 		ExternalSourceFile.append("	                     PT := #StartupDelaySP,")
 		ExternalSourceFile.append("	                     Q => #StartupDelayDn);")
-	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("")
 	ExternalSourceFile.append("	//Bit TRUE every 100 ms FOR one PLC scan")
 	ExternalSourceFile.append("	#Square_100ms := #CPUClockMemoryBits.%X0;")
 	ExternalSourceFile.append("	\"UTIL_P_TRIG\"(\"i_Input Bit\" := #Square_100ms,")
 	ExternalSourceFile.append("	              \"iq_Trigger Bit\" := #Square_100msONS,")
 	ExternalSourceFile.append("	              \"iq_Pulse Bit\" := #Pulse_100ms);")
-	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("")
 	ExternalSourceFile.append("	//Bit TRUE every 200 ms FOR one PLC scan")
 	ExternalSourceFile.append("	#Square_200ms := #CPUClockMemoryBits.%X1;")
 	ExternalSourceFile.append("	\"UTIL_P_TRIG\"(\"i_Input Bit\" := #Square_200ms,")
 	ExternalSourceFile.append("	              \"iq_Trigger Bit\" := #Square_200msONS,")
 	ExternalSourceFile.append("	              \"iq_Pulse Bit\" := #Pulse_200ms);")
-	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("")
 	ExternalSourceFile.append("	//Bit TRUE every 400 ms FOR one PLC scan")
 	ExternalSourceFile.append("	#Square_400ms := #CPUClockMemoryBits.%X2;")
 	ExternalSourceFile.append("	\"UTIL_P_TRIG\"(\"i_Input Bit\" := #Square_400ms,")
 	ExternalSourceFile.append("	              \"iq_Trigger Bit\" := #Square_400msONS,")
 	ExternalSourceFile.append("	              \"iq_Pulse Bit\" := #Pulse_400ms);")
-	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("")
 	ExternalSourceFile.append("	//Bit TRUE every 500 ms FOR one PLC scan")
 	ExternalSourceFile.append("	#Square_500ms := #CPUClockMemoryBits.%X3;")
 	ExternalSourceFile.append("	\"UTIL_P_TRIG\"(\"i_Input Bit\" := #Square_500ms,")
 	ExternalSourceFile.append("	              \"iq_Trigger Bit\" := #Square_500msONS,")
 	ExternalSourceFile.append("	              \"iq_Pulse Bit\" := #Pulse_500ms);")
-	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("")
 	ExternalSourceFile.append("	//Bit TRUE every 800 ms FOR one PLC scan")
 	ExternalSourceFile.append("	#Square_800ms := #CPUClockMemoryBits.%X4;")
 	ExternalSourceFile.append("	\"UTIL_P_TRIG\"(\"i_Input Bit\" := #Square_800ms,")
 	ExternalSourceFile.append("	              \"iq_Trigger Bit\" := #Square_800msONS,")
 	ExternalSourceFile.append("	              \"iq_Pulse Bit\" := #Pulse_800ms);")
-	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("")
 	ExternalSourceFile.append("	//Bit TRUE every 1 s FOR one PLC scan")
 	ExternalSourceFile.append("	#Square_1s := #CPUClockMemoryBits.%X5;")
 	ExternalSourceFile.append("	\"UTIL_P_TRIG\"(\"i_Input Bit\" := #Square_1s,")
 	ExternalSourceFile.append("	              \"iq_Trigger Bit\" := #Square_1sONS,")
 	ExternalSourceFile.append("	              \"iq_Pulse Bit\" := #Pulse_1s);")
-	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("")
 	ExternalSourceFile.append("	//Bit TRUE every 1600 ms FOR one PLC scan")
 	ExternalSourceFile.append("	#Square_1600ms := #CPUClockMemoryBits.%X6;")
 	ExternalSourceFile.append("	\"UTIL_P_TRIG\"(\"i_Input Bit\" := #Square_1600ms,")
 	ExternalSourceFile.append("	              \"iq_Trigger Bit\" := #Square_1600msONS,")
 	ExternalSourceFile.append("	              \"iq_Pulse Bit\" := #Pulse_1600ms);")
-	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("")
 	ExternalSourceFile.append("	//Bit TRUE every 2s FOR one PLC scan")
 	ExternalSourceFile.append("	#Square_2s := #CPUClockMemoryBits.%X7;")
 	ExternalSourceFile.append("	\"UTIL_P_TRIG\"(\"i_Input Bit\" := #Square_2s,")
 	ExternalSourceFile.append("	              \"iq_Trigger Bit\" := #Square_2sONS,")
 	ExternalSourceFile.append("	              \"iq_Pulse Bit\" := #Pulse_2s);")
-	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("")
 	ExternalSourceFile.append("END_FUNCTION_BLOCK")
 
 	ExternalSourceFile.append("DATA_BLOCK \"Utilities\"")
@@ -1037,7 +1066,7 @@ def WriteStandardPLCCode(TIAVersion):
 	ExternalSourceFile.append("")
 	ExternalSourceFile.append("BEGIN")
 	ExternalSourceFile.append("	//Prositive edge generator for SCL")
-	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("")
 	ExternalSourceFile.append("	IF #\"i_Input Bit\" AND #\"iq_Trigger Bit\"")
 	ExternalSourceFile.append("	THEN")
 	ExternalSourceFile.append("	    #\"iq_Pulse Bit\" := FALSE;")
@@ -1063,7 +1092,7 @@ def WriteStandardPLCCode(TIAVersion):
 	ExternalSourceFile.append("")
 	ExternalSourceFile.append("BEGIN")
 	ExternalSourceFile.append("")
-	ExternalSourceFile.append("END_DATA_BLOCK	")
+	ExternalSourceFile.append("END_DATA_BLOCK")
 
 	ExternalSourceFile.append("DATA_BLOCK \"PLCToEPICS\"")
 	ExternalSourceFile.append("{ S7_Optimized_Access := 'FALSE' }")
@@ -1123,28 +1152,28 @@ def WriteStandardPLCCode(TIAVersion):
 	ExternalSourceFile.append("	//")
 	ExternalSourceFile.append("	//The block is fully self-contained, i.e. you should be able TO simple insert it in your program (AND call it OF course) AND provide some inputs TO it")
 	ExternalSourceFile.append("	//")
-	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("")
 	ExternalSourceFile.append("	//Set up connections (Ethernet port ID)")
 	ExternalSourceFile.append("	#SendConnData.InterfaceId := #InterfaceID;")
 	ExternalSourceFile.append("	#RcvConnData.InterfaceId := #InterfaceID;")
-	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("")
 	ExternalSourceFile.append("	//Set up connections (Connection ID) (separate connections for s7 and Modbus)")
 	ExternalSourceFile.append("	#SendConnData.ID := INT_TO_WORD(IN:= #S7ConnectionID);")
 	ExternalSourceFile.append("	#RcvConnData.ID := INT_TO_WORD(IN := #MBConnectionID);")
-	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("")
 	ExternalSourceFile.append("	//Set up connections (Connection type)")
 	ExternalSourceFile.append("	#SendConnData.ConnectionType := 11;")
 	ExternalSourceFile.append("	#RcvConnData.ConnectionType := 11;")
-	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("")
 	ExternalSourceFile.append("	//Set up connections (Active connection establishment)")
 	ExternalSourceFile.append("	IF NOT #SendConnData.ActiveEstablished THEN")
 	ExternalSourceFile.append("	    #RcvConnData.ActiveEstablished := false;")
 	ExternalSourceFile.append("	END_IF;")
-	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("")
 	ExternalSourceFile.append("	//Set up connections (Local port)")
 	ExternalSourceFile.append("	#SendConnData.LocalPort := INT_TO_UINT(IN:= #S7Port);")
 	ExternalSourceFile.append("	#RcvConnData.LocalPort := INT_TO_UINT(IN := #MBPort);")
-	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("")
 	ExternalSourceFile.append("	//PLC -> EPICS communication. Data is sent using open user communication (s7plc driver in EPICS)")
 	ExternalSourceFile.append("	#TSEND_C_DB(REQ:=#SendTrigger,")
 	ExternalSourceFile.append("	            CONT:=TRUE,")
@@ -1155,7 +1184,7 @@ def WriteStandardPLCCode(TIAVersion):
 	ExternalSourceFile.append("	            STATUS=>#SendStatus,")
 	ExternalSourceFile.append("	            CONNECT:=#SendConnData,")
 	ExternalSourceFile.append("	            DATA:=#PLCToEPICSData);")
-	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("")
 	ExternalSourceFile.append("	//EPICS <- EPICS communication. Data is received using modbus server on the PLC (modbus driver in EPICS)")
 	ExternalSourceFile.append("	#MB_SERVER_DB(DISCONNECT:=NOT #Enable,")
 	ExternalSourceFile.append("	              NDR=>#RcvNewDataReady,")
@@ -1164,7 +1193,7 @@ def WriteStandardPLCCode(TIAVersion):
 	ExternalSourceFile.append("	              STATUS=>#RcvStatus,")
 	ExternalSourceFile.append("	              MB_HOLD_REG:=#EPICSToPLCData,")
 	ExternalSourceFile.append("	              CONNECT:=#RcvConnData);")
-	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("")
 	ExternalSourceFile.append("END_FUNCTION_BLOCK")
 
 	ExternalSourceFile.append("DATA_BLOCK \"_CommsPLC_EPICS_DB\"")
@@ -1191,7 +1220,7 @@ def WriteStandardPLCCode(TIAVersion):
 	ExternalSourceFile.append("	        \"PLCToEPICS\".\"Word\"[2] := 0;")
 	ExternalSourceFile.append("	    END_IF;")
 	ExternalSourceFile.append("	END_IF;")
-	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("")
 	ExternalSourceFile.append("	// Call the comms block to provide PLC<->EPICS comms")
 	ExternalSourceFile.append("	\"_CommsPLC_EPICS_DB\"(Enable := \"Utilities\".AlwaysOn,")
 	ExternalSourceFile.append("	                     SendTrigger := \"Utilities\".Pulse_200ms,")
@@ -1203,8 +1232,8 @@ def WriteStandardPLCCode(TIAVersion):
 	ExternalSourceFile.append("	                     MBPort := 502,")
 	ExternalSourceFile.append("	                     PLCToEPICSData := \"PLCToEPICS\".\"Word\",")
 	ExternalSourceFile.append("	                     EPICSToPLCData := \"EPICSToPLC\".\"Word\");")
-	ExternalSourceFile.append("	")
-	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("")
+	ExternalSourceFile.append("")
 	ExternalSourceFile.append("END_FUNCTION")
 
 	WriteEPICS_Debugger()
@@ -1217,9 +1246,9 @@ def WriteStandardPLCCode(TIAVersion):
 	ExternalSourceFile.append("	//This is an aggregator function, it will call all the other comms functions required:")
 	ExternalSourceFile.append("	//1. PLC/EPICS")
 	ExternalSourceFile.append("	//2. Any other comms")
-	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("")
 	ExternalSourceFile.append("	\"_CommsEPICS\"();")
-	ExternalSourceFile.append("	")
+	ExternalSourceFile.append("")
 	ExternalSourceFile.append("END_FUNCTION")
 
 
