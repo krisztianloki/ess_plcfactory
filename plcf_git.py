@@ -87,7 +87,10 @@ def check_for_updates(data_dir, product):
         pass
 
     print("Checking for updates...")
-    remote_ref = get_remote_ref()
+    try:
+        remote_ref = get_remote_ref()
+    except KeyboardInterrupt:
+        remote_ref = None
     if remote_ref is None:
         print("Could not check for updates")
         return False
