@@ -485,14 +485,17 @@ class STATUS_BLOCK(BLOCK):
 # Special class to handle the similarities between CMD_BLOCK and PARAM_BLOCK
 #
 class MODBUS(object):
+    _int32_types   = [ "INT32_BE",   "INT32_LE" ]
+    _float32_types = [ "FLOAT32_BE", "FLOAT32_LE" ]
+
     _endian_dependent_type_pairs = dict(
 # DWORD and UDINT are unsigned types, but MODBUS does not support writing (or reading) unsigned 32bit integers
 # so make it an error to use them
-#                    DWORD = [ "INT32_BE",   "INT32_LE" ],
-#                    UDINT = [ "INT32_BE",   "INT32_LE" ],
-                    DINT  = [ "INT32_BE",   "INT32_LE" ],
-                    REAL  = [ "FLOAT32_BE", "FLOAT32_LE" ],
-                    TIME  = [ "INT32_BE",   "INT32_LE" ])
+#                    DWORD = _int32_types,
+#                    UDINT = _int32_types,
+                    DINT   = _int32_types,
+                    REAL   = _float32_types,
+                    TIME   = _int32_types)
 
 
     _valid_type_pairs = dict(_endian_dependent_type_pairs,
@@ -544,7 +547,14 @@ class MODBUS(object):
         if epics_type not in self._endian_specific_epics_types:
             return super(MODBUS, self).endian_correct_epics_type(epics_type)
 
-        return epics_type[0:-2] + "[PLCF#'BE' if '^(PLC-EPICS-COMMS:Endianness)' == 'BigEndian' else 'LE']"
+        if epics_type in self._int32_types:
+            pairs = self._int32_types
+        elif epics_type in self._float32_types:
+            pairs = self._float32_types
+        else:
+            raise IfDefInternalError("Cannot determine endian correct type of {}".format(epics_type))
+
+        return "[PLCF#'{BE}' if '^(PLC-EPICS-COMMS:Endianness)' == 'BigEndian' else '{LE}']".format(BE = pairs[0], LE = pairs[1])
 
 
     def link_offset(self, var):
