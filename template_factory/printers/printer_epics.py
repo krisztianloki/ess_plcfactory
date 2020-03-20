@@ -167,18 +167,18 @@ class EPICS(EPICS_BASE):
         return "EPICS-DB"
 
 
-    def field_inp(self, inst_io, offset, var_type, link_extra):
-        return '@{inst_io}/{offset} T={var_type}{link_extra}'.format(inst_io    = inst_io,
-                                                                     offset     = offset,
-                                                                     var_type   = var_type,
-                                                                     link_extra = link_extra)
+    def field_inp(self, inst_io, offset, dtyp_var_type, link_extra):
+        return '@{inst_io}/{offset} T={dtyp_var_type}{link_extra}'.format(inst_io       = inst_io,
+                                                                          offset        = offset,
+                                                                          dtyp_var_type = dtyp_var_type,
+                                                                          link_extra    = link_extra)
 
 
-    def field_out(self, inst_io, offset, var_type, link_extra):
-        return '@{inst_io}($(PLCNAME)write, {offset}, {link_extra}){var_type}'.format(inst_io    = inst_io,
-                                                                                      offset     = offset,
-                                                                                      var_type   = var_type,
-                                                                                      link_extra = link_extra)
+    def field_out(self, inst_io, offset, dtyp_var_type, link_extra):
+        return '@{inst_io}($(PLCNAME)write, {offset}, {link_extra}){dtyp_var_type}'.format(inst_io       = inst_io,
+                                                                                           offset        = offset,
+                                                                                           dtyp_var_type = dtyp_var_type,
+                                                                                           link_extra    = link_extra)
 
 
     def _toEPICS(self, var, inst_slot = "[PLCF#INSTALLATION_SLOT]", test = False):
@@ -193,10 +193,10 @@ class EPICS(EPICS_BASE):
                                                           pv_name    = var._build_pv_name(self._if_def.inst_slot()),
                                                           alias      = var._build_pv_alias(self._if_def.inst_slot()),
                                                           dtyp       = var.dtyp(),
-                                                          inp_out    = var.inp_out(inst_io    = var.inst_io(),
-                                                                                   offset     = var.link_offset(),
-                                                                                   var_type   = var.endian_correct_var_type(),
-                                                                                   link_extra = var.link_extra() + var._get_user_link_extra()),
+                                                          inp_out    = var.inp_out(inst_io       = var.inst_io(),
+                                                                                   offset        = var.link_offset(),
+                                                                                   dtyp_var_type = var.endian_correct_dtyp_var_type(),
+                                                                                   link_extra    = var.link_extra() + var._get_user_link_extra()),
                                                           pv_extra   = pv_extra))
 
 

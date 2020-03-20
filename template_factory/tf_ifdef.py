@@ -1571,7 +1571,7 @@ class BASE_TYPE(SOURCE):
         if e is None:
             e = block.plc_type_to_epics_type(self._plc_type)
 
-        self._var_type       = e
+        self._dtyp_var_type  = e
 
         self._block          = block
         self._name           = name
@@ -1658,12 +1658,12 @@ class BASE_TYPE(SOURCE):
         return self._pvname
 
 
-    def var_type(self):
-        return self._var_type
+    def dtyp_var_type(self):
+        return self._dtyp_var_type
 
 
-    def endian_correct_var_type(self):
-        return self._block.endian_correct_epics_type(self.var_type())
+    def endian_correct_dtyp_var_type(self):
+        return self._block.endian_correct_epics_type(self.dtyp_var_type())
 
 
     def datablock_name(self):
@@ -1874,11 +1874,11 @@ class BITS(object):
 
         if block.optimize() and block._block_offset % 2:
             # There is space for 8 bits only
-            self._max_num_bits = 8
-            self._var_type     = "UINT8"
+            self._max_num_bits  = 8
+            self._dtyp_var_type = "UINT8"
         else:
-            self._max_num_bits = 16
-            self._var_type     = "UINT16"
+            self._max_num_bits  = 16
+            self._dtyp_var_type = "UINT16"
         self._num_bits     = 0
         self._started      = True
         self._block        = block
@@ -1921,8 +1921,8 @@ class BITS(object):
         self._num_bits += num
 
 
-    def var_type(self):
-        return self._var_type
+    def dtyp_var_type(self):
+        return self._dtyp_var_type
 
 
     def compute_offset(self, byte):
@@ -1954,9 +1954,9 @@ class BITS(object):
 
         # Optimize if bits fit into one byte and next var is a byte
         if self._block.optimize() and self._num_bits <= 8 and next_var_width is not None and next_var_width == 1:
-            self._var_type = "UINT8"
+            self._dtyp_var_type = "UINT8"
 
-        byte_width   = _bytes_in_type(self.var_type())
+        byte_width   = _bytes_in_type(self.dtyp_var_type())
         self._offset = self._block.offset_for(byte_width)
 
         self.compute_offset(byte_width)
@@ -1966,8 +1966,7 @@ class BITS(object):
 
 
 class BIT(BASE_TYPE):
-    pv_types    = { BLOCK.CMD : "bo",   BLOCK.PARAM : "bo",   BLOCK.STATUS : "bi" }
-    var_types   = { BLOCK.CMD : "",     BLOCK.PARAM : "",     BLOCK.STATUS : "WORD" }
+    pv_types       = { BLOCK.CMD : "bo",   BLOCK.PARAM : "bo",   BLOCK.STATUS : "bi" }
 
     @staticmethod
     def skip(bit_def, num):
@@ -2029,11 +2028,11 @@ class BIT(BASE_TYPE):
         return self._bit_def.link_extra(self)
 
 
-    def var_type(self):
+    def dtyp_var_type(self):
         if self.is_command() or self.is_parameter():
             return ""
 
-        return self._bit_def.var_type()
+        return self._bit_def.dtyp_var_type()
 
 
 
@@ -2075,7 +2074,7 @@ class ANALOG(BASE_TYPE):
 
 
     def dtyp(self):
-        if not self.is_status() and self._var_type in self._block.valid_type_pairs()["REAL"]:
+        if not self.is_status() and self._dtyp_var_type in self._block.valid_type_pairs()["REAL"]:
             return "asynFloat64"
 
         return super(ANALOG, self).dtyp()
@@ -2186,6 +2185,7 @@ class STRING(BASE_TYPE):
         else:
             max_len = STRING.default_len()
 
+        # Include the terminating zero byte in the dimension calculation
         self._max_dim = max_len + 1
         super(STRING, self).__init__(source, block, name, "STRING", keyword_params)
 
