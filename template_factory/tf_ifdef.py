@@ -1550,6 +1550,7 @@ class BASE_TYPE(SOURCE):
     def init():
         BASE_TYPE.templates = dict()
         BASE_TYPE.pv_names  = set()
+        BASE_TYPE.plc_names = set()
 
 
     def __init__(self, source, block, name, plc_var_type, keyword_params):
@@ -1616,7 +1617,14 @@ class BASE_TYPE(SOURCE):
         if self._pvname in BASE_TYPE.pv_names:
             raise IfDefSyntaxError("PV Names must be unique")
 
+        if self._name == "":
+            raise IfDefSyntaxError("Empty PLC variable name")
+
+        if self._name in BASE_TYPE.plc_names:
+            raise IfDefSyntaxError("PLC variable names must be unique")
+
         BASE_TYPE.pv_names.add(self._pvname)
+        BASE_TYPE.plc_names.add(self._name)
 
 
     @staticmethod
