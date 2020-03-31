@@ -1110,7 +1110,9 @@ class IF_DEF(object):
         return self._from_plc_words_length
 
 
-    def inst_slot(self):
+    def inst_slot(self, nonnull = True):
+        if not nonnull and self._inst_slot == IF_DEF.DEFAULT_INSTALLATION_SLOT:
+            return None
         return self._inst_slot
 
 
@@ -1859,7 +1861,7 @@ class BASE_TYPE(SOURCE):
             pv_name = self.pv_name()
 
         if inst_slot is None:
-            inst_slot = "[PLCF#INSTALLATION_SLOT]"
+            inst_slot = IF_DEF.DEFAULT_INSTALLATION_SLOT
         if inst_slot.startswith("[PLCF#"):
             return "[PLCF#ext.check_pv_length('{}:{}')]".format(inst_slot[6:-1], pv_name)
 

@@ -49,20 +49,34 @@ class PRINTER(object):
         self._helpers        = None
         self._root_inst_slot = None
 
+        self._device         = None
+        self._plcf           = None
+
 
     def _check_if_list(self, output):
         assert isinstance(output, list),    func_param_msg("output", "list")
 
 
+    def _parse_keyword_args(self, keyword_params):
+        self._device = keyword_params.get("DEVICE", None)
+        self._plcf   = keyword_params.get("PLCF", None)
+
+
     def plcf(self, plcf_expr):
         assert isinstance(plcf_expr, str),    func_param_msg("plcf_expr", "str")
 
-        return "[PLCF#{plcf}]".format(plcf = plcf_expr)
+        plcf_expr = "[PLCF#{plcf}]".format(plcf = plcf_expr)
+        if self._plcf is None:
+            return plcf_expr
+
+        return self._plcf.process(plcf_expr)
 
 
     def inst_slot(self, if_def = None):
         if if_def is not None:
-            return if_def.inst_slot()
+            slot = if_def.inst_slot(nonnull = False)
+            if slot is not None:
+                return slot
 
         return self.plcf("INSTALLATION_SLOT")
 
@@ -157,11 +171,15 @@ class PRINTER(object):
         self._helpers        = keyword_params.get("HELPERS", None)
         self._root_inst_slot = keyword_params.get("ROOT_INSTALLATION_SLOT", None)
 
+        self._parse_keyword_args(keyword_params)
+
         return self
 
 
     def body(self, if_def, output, **keyword_params):
         self._check_if_list(output)
+
+        self._parse_keyword_args(keyword_params)
 
         if isinstance(if_def, IF_DEF):
             self._ifdef_body(if_def, output, **keyword_params)
@@ -179,6 +197,8 @@ class PRINTER(object):
 
     def footer(self, output, **keyword_params):
         self._check_if_list(output)
+
+        self._parse_keyword_args(keyword_params)
 
         return self
 
