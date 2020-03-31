@@ -21,7 +21,6 @@ from tf_ifdef import IfDefInternalError, SOURCE, VERBATIM, BLOCK, CMD_BLOCK, STA
 def printer():
     return [ (EPICS.name(), EPICS),
              (EPICS_TEST.name(), EPICS_TEST),
-             (UPLOAD_PARAMS.name(), UPLOAD_PARAMS),
              (EPICS_OPC.name(), EPICS_OPC) ]
 
 
@@ -60,10 +59,19 @@ class EPICS_BASE(PRINTER):
 	info("plc_variable", "{plc_variable}")"""
 
 
+    UPLOAD_PARAMS = "UploadParametersS"
+
+    MAX_LNK = 6
+
+
     def __init__(self, test = False):
         super(EPICS_BASE, self).__init__(comments = True, show_origin = True, preserve_empty_lines = True)
         self._if_def = None
         self.DISABLE_TEMPLATE = self.DISABLE_TEMPLATE.format(CP = " CP" if test else "")
+
+        self._fo_name = '_UploadParamS{foc}-FO'
+        self._params  = []
+        self._uploads = []
 
 
     def comment(self):
@@ -112,7 +120,7 @@ class EPICS_BASE(PRINTER):
         if not var.is_parameter():
             return
 
-        self._params.extend([ var ])
+        self._params.append(var)
 
 
     def _body_source(self, var, output):
@@ -123,32 +131,61 @@ class EPICS_BASE(PRINTER):
         if len(self._params) == 0:
             return
 
-        fo_name = '_UploadParamS{foc}-FO'
+        self._uploads.append("{}:{}".format(self.inst_slot(if_def), self.UPLOAD_PARAMS))
+
+        self._gen_param_fanouts(self._params, self.inst_slot(if_def), output)
+
+
+    def _gen_param_fanouts(self, param_list, inst_slot, output, footer = False):
         foc = 0
         lnk = 1
-        for param in self._params:
-            if lnk == 6:
+
+        if footer and param_list:
+            self._append("""
+""", output)
+
+        for upload in param_list:
+            if lnk == self.MAX_LNK:
                 foc += 1
                 self._append("""	field(LNK{lnk}, "{inst_slot}:{upload}")
 }}
-""".format(lnk       = str(lnk),
-           inst_slot = self.inst_slot(),
-           upload    = fo_name.format(foc = str(foc))), output)
+""".format(lnk       = lnk,
+           inst_slot = inst_slot,
+           upload    = self._fo_name.format(foc = foc)), output)
+
                 lnk = 1
 
             if lnk == 1:
                 self._append("""record(fanout, "{inst_slot}:{upload}") {{
-""".format(inst_slot = self.inst_slot(),
-           upload    = 'UploadParametersS' if foc == 0 else fo_name.format(foc = str(foc))), output)
+""".format(inst_slot = inst_slot,
+           upload    = self.UPLOAD_PARAMS if foc == 0 else self._fo_name.format(foc = foc)), output)
 
-            self._append("""	field(LNK{lnk}, "{inst_slot}:{param}")
-""".format(lnk       = str(lnk),
-           inst_slot = self.inst_slot(),
-           param     = param.pv_name()), output)
+            self._append("""	field(LNK{lnk}, "{upload}")
+""".format(lnk       = lnk,
+           upload    = upload if footer else "{}:{}".format(inst_slot, upload.pv_name())), output)
 
             lnk += 1
 
+        if footer and foc == 0 and lnk == 1:
+            # Create an empty UploadParamsS if there are no parameters
+            epics_db_footer = """
+record(fanout, "{inst_slot}:{upload}") {{
+""".format(inst_slot = inst_slot,
+           upload    = self.UPLOAD_PARAMS)
+
+            self._append(epics_db_footer, output)
+
         self._append("}", output)
+
+
+
+    #
+    # FOOTER
+    #
+    def footer(self, output, **keyword_params):
+        super(EPICS_BASE, self).footer(output, **keyword_params)
+
+        self._gen_param_fanouts(self._uploads, self.root_inst_slot(), output, True)
 
 
 
@@ -181,7 +218,7 @@ class EPICS(EPICS_BASE):
                                                                                            link_extra    = link_extra)
 
 
-    def _toEPICS(self, var, inst_slot = "[PLCF#INSTALLATION_SLOT]", test = False):
+    def _toEPICS(self, var):
         pv_extra = self.DISABLE_TEMPLATE + var.build_pv_extra() + EPICS_BASE.PLC_INFO_FIELDS.format(plc_datablock = self._if_def.DEFAULT_DATABLOCK_NAME,
                                                                                                     plc_variable  = var.name())
         if var.is_parameter() or self._test:
@@ -403,6 +440,7 @@ record(ai, "{root_inst_slot}:HeartbeatFromPLCR") {{
            status_cnt      = STATUS_BLOCK.counter_keyword())
 
         self._append(epics_db_header, output)
+
         return self
 
 
@@ -651,84 +689,6 @@ record(calcout, "{root_inst_slot}:iRuinHash") {{
 
 
 
-class UPLOAD_PARAMS(PRINTER):
-    def __init__(self):
-        super(UPLOAD_PARAMS, self).__init__()
-
-        self._fo_name = '_UploadParamS{foc}-FO'
-        self._foc = 0
-        self._lnk = 1
-
-
-    @staticmethod
-    def name():
-        return "UPLOAD-PARAMS"
-
-
-    #
-    # HEADER
-    #
-    def header(self, output, **keyword_params):
-        super(UPLOAD_PARAMS, self).header(output, **keyword_params).add_filename_header(output, extension = "db")
-        epics_db_header = """
-record(fanout, "{root_inst_slot}:UploadParametersS") {{
-""".format(root_inst_slot = self.root_inst_slot())
-
-        self._append(epics_db_header, output)
-        return self
-
-
-    #
-    # BODY
-    #
-    def _ifdef_body(self, if_def, output, **keyword_params):
-        self._output = output
-
-        self._params = []
-        try:
-            # Check for parameter block and that its length is greater than zero;
-            #  cannot check if it is empty since the 'define_parameter_block()' also
-            #  ends up as an (SOURCE) interface (along with other possible helpers)
-            if if_def.parameter_block().length() > 0:
-                self._LNKx(output)
-        except AttributeError:
-            # No parameter block
-            pass
-
-
-    def _LNKx(self, output):
-        if self._lnk == 6:
-            self._foc += 1
-            self._append("""	field(LNK{lnk}, "{root_inst_slot}:{upload}")
-}}
-""".format(lnk            = str(self._lnk),
-           root_inst_slot = self.root_inst_slot(),
-           upload         = self._fo_name.format(foc = str(self._foc))), output)
-
-            self._lnk = 1
-
-        if self._lnk == 1 and self._foc:
-            self._append("""record(fanout, "{root_inst_slot}:{upload}") {{
-""".format(root_inst_slot = self.root_inst_slot(),
-           upload         = 'UploadParametersS' if self._foc == 0 else self._fo_name.format(foc = str(self._foc))), output)
-
-        self._append("""	field(LNK{lnk}, "{inst_slot}:UploadParametersS")
-""".format(lnk       = str(self._lnk),
-           inst_slot = self.inst_slot()), output)
-
-        self._lnk += 1
-
-
-    #
-    # FOOTER
-    #
-    def footer(self, output, **keyword_params):
-        super(UPLOAD_PARAMS, self).footer(output, **keyword_params)
-        self._append("}", output)
-
-
-
-
 #
 # OPC-UA EPICS output
 #
@@ -755,7 +715,7 @@ class EPICS_OPC(EPICS_BASE):
                                                                                       monitor    = monitor)
 
 
-    def _toEPICS(self, var, inst_slot = "[PLCF#INSTALLATION_SLOT]", test = False):
+    def _toEPICS(self, var):
         pv_extra = self.DISABLE_TEMPLATE + var.build_pv_extra() + EPICS_BASE.PLC_INFO_FIELDS.format(plc_datablock = var.datablock_name(),
                                                                                                     plc_variable  = var.name())
         return (var.source(),

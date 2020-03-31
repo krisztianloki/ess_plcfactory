@@ -668,11 +668,7 @@ def create_eee(modulename, snippet):
     #
     # Copy files
     #
-    with open(os.path.join(makedir("db"), modulename + ".db"), "w") as dbfile:
-        for parts in [ output_files.get('EPICS-DB', output_files.get('EPICS-OPC-DB')), output_files['UPLOAD-PARAMS'] ]:
-            with open(parts) as partfile:
-                copyfileobj(partfile, dbfile)
-        output_files['EEE-DB'] = dbfile.name
+    m_cp(output_files.get('EPICS-DB', output_files.get('EPICS-OPC-DB')), "db", modulename + ".db")
 
     try:
         m_cp(output_files['EPICS-TEST-DB'],           "db",      modulename + "-test.db")
@@ -839,11 +835,7 @@ def create_e3(modulename, snippet):
     #
     # Copy files
     #
-    with open(os.path.join(makedir("db"), modulename + ".db"), "w") as dbfile:
-        for parts in [ output_files.get('EPICS-DB', output_files.get('EPICS-OPC-DB')), output_files['UPLOAD-PARAMS'] ]:
-            with open(parts) as partfile:
-                copyfileobj(partfile, dbfile)
-        output_files['E3-DB'] = dbfile.name
+    m_cp(output_files.get('EPICS-DB', output_files.get('EPICS-OPC-DB')), "db", modulename + ".db")
 
     try:
         m_cp(output_files['EPICS-TEST-DB'],           "db",      modulename + "-test.db")
@@ -1405,9 +1397,6 @@ def main(argv):
 
     if (args.plc_only_diag or args.plc_no_diag == False) and beckhoff:
         raise PLCFArgumentError('PLCFactory cannot (yet?) generate diagnostics code for Beckhoff PLCs')
-
-    if "EPICS-DB" in templateIDs:
-        templateIDs.add("UPLOAD-PARAMS")
 
     if eee and "EPICS-TEST-DB" in templateIDs:
         templateIDs.add("AUTOSAVE-TEST")
