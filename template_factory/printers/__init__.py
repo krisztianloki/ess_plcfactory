@@ -62,14 +62,24 @@ class PRINTER(object):
         self._plcf   = keyword_params.get("PLCF", None)
 
 
+    def expand(self, string):
+        """
+        Expand string as a PLCF# expression
+        """
+        if string and self._plcf:
+            return self._plcf.process(string)
+
+        return string
+
+
     def plcf(self, plcf_expr):
+        """
+        Return a PLCF# expression with plcf_expr. Will be processed/expanded if possible
+        """
         assert isinstance(plcf_expr, str),    func_param_msg("plcf_expr", "str")
 
         plcf_expr = "[PLCF#{plcf}]".format(plcf = plcf_expr)
-        if self._plcf is None:
-            return plcf_expr
-
-        return self._plcf.process(plcf_expr)
+        return self.expand(plcf_expr)
 
 
     def inst_slot(self, if_def = None):

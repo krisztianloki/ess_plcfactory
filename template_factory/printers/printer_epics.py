@@ -56,6 +56,7 @@ class EPICS_BASE(PRINTER):
 
 
     UPLOAD_PARAMS = "UploadParametersS"
+    UPLOAD_STAT   = "UploadStatR"
 
     LNKx    = [ '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F' ]
     MAX_LNK = len(LNKx)
@@ -64,24 +65,75 @@ class EPICS_BASE(PRINTER):
     def __init__(self, test = False):
         super(EPICS_BASE, self).__init__(comments = True, show_origin = True, preserve_empty_lines = True)
         self._if_def = None
-        self.DISABLE_TEMPLATE = self.DISABLE_TEMPLATE.format(CP = " CP" if test else "")
+        self.INDISABLE_TEMPLATE = self.DISABLE_TEMPLATE.format(CP = " CP" if test else "")
+        self.OUTDISABLE_TEMPLATE = self.DISABLE_TEMPLATE.format(CP = "")
 
-        self._fo_name = '_UploadParamS{foc}-FO'
-        self._params  = []
-        self._uploads = []
+        self._fo_name    = '_UploadParamS{foc}-FO'
+        self._params     = []
+        self._last_param = None
+        self._uploads    = []
+
+
+    #
+    # HEADER
+    #
+    def header(self, output, **keyword_params):
+        super(EPICS_BASE, self).header(output, **keyword_params)
+
+        epics_db_header = """
+record(stringin, "{root_inst_slot}:ModVersionR")
+{{
+	field(DISP,	"1")
+	field(VAL,	"$(MODVERSION=N/A)")
+	field(PINI,	"YES")
+}}
+
+record(stringin, "{root_inst_slot}:PLCFCommitR")
+{{
+	field(DISP,	"1")
+#{plcf_commit}
+	field(VAL,	"{plcf_commit_39}")
+	field(PINI,	"YES")
+	info("plcf_commit", "{plcf_commit}")
+}}
+
+record(bi, "{root_inst_slot}:iOne")
+{{
+	field(DISP,	"1")
+	field(PINI,	"YES")
+	field(VAL,	"1")
+}}
+
+record(longin, "{root_inst_slot}:iTwo")
+{{
+	field(DISP,	"1")
+	field(PINI,	"YES")
+	field(VAL,	"2")
+}}
+""".format(root_inst_slot  = self.root_inst_slot(),
+           plcf_commit     = keyword_params.get("COMMIT_ID", "N/A"),
+           plcf_commit_39  = keyword_params.get("COMMIT_ID", "N/A")[:39])
+
+        self._append(epics_db_header, output)
+
+        return self
 
 
     def comment(self):
         return "#"
 
 
-    def inpv_template(self, test = False):
+    def inpv_template(self, test = False, sdis = False):
+        if sdis:
+            return self.INDISABLE_TEMPLATE
         if test:
             return self.TEST_PV_TEMPLATE
         return self.INPV_TEMPLATE
 
 
-    def outpv_template(self, test = False):
+    def outpv_template(self, test = False, sdis = False):
+        if sdis:
+            return self.OUTDISABLE_TEMPLATE
         if test:
             return self.TEST_PV_TEMPLATE
         return self.OUTPV_TEMPLATE
@@ -118,6 +170,9 @@ class EPICS_BASE(PRINTER):
             return
 
         self._params.append(var)
+
+        # Have to resolve PLCF# expressions _now_ otherwise we'd end up with root_inst_slot in footer()
+        self._last_param = (var._build_pv_name(self.inst_slot(self._if_def)), self.expand(var.get_pv_field("FLNK")))
 
 
     def _body_source(self, var, output):
@@ -181,6 +236,82 @@ record(fanout, "{inst_slot}:{upload}")
 
         self._gen_param_fanouts(self._uploads, self.root_inst_slot(), output, True)
 
+        # Generate parameter uploading status monitoring
+        self._append("""
+record(bo, "{root_inst_slot}:iInitUploadStat")
+{{
+	field(DESC, "Initialize parameter uploading status")
+	field(DOL,  "{root_inst_slot}:iOne")
+	field(OMSL, "closed_loop")
+	field(OUT,  "{root_inst_slot}:{upload_stat} PP")
+
+}}
+
+record(longout, "{root_inst_slot}:iDoneUploadStat")
+{{
+	field(DESC, "Done parameter uploading status")
+	field(DOL,  "{root_inst_slot}:iTwo")
+	field(OMSL, "closed_loop")
+	field(OUT,  "{root_inst_slot}:{upload_stat} PP")
+
+}}
+
+record(mbbi, "{root_inst_slot}:{upload_stat}")
+{{
+	field(DESC, "Parameter uploading status")
+	field(ZRVL, "0")
+	field(ZRST, "Never uploaded")
+
+	field(ONVL, "1")
+	field(ONST, "Uploading...")
+
+	field(TWVL, "2")
+	field(TWST, "Uploaded")
+
+	field(VAL,  "0")
+	field(PINI, "YES")
+}}
+
+record(fanout, "{root_inst_slot}:{upload}")
+{{
+	field(LNK0, "{root_inst_slot}:iInitUploadStat")
+	field(SHFT, "0")
+""".format(root_inst_slot = self.root_inst_slot(),
+           upload_stat    = self.UPLOAD_STAT,
+           upload         = self.UPLOAD_PARAMS), output)
+
+        if self._last_param:
+            if self._last_param[1]:
+                # Very last parameter has custom FLNK
+                self._append("""}}
+record(fanout, "{root_inst_slot}:iCustomFLNK")
+{{
+	field(LNK1, "{custom_flnk}")
+	field(FLNK, "{root_inst_slot}:iDoneUploadStat")
+}}
+
+record("*", "{last_param}")
+{{
+	field(FLNK, "{root_inst_slot}:iCustomFLNK")
+}}
+""".format(root_inst_slot = self.root_inst_slot(),
+           custom_flnk    = self._last_param[1],
+           last_param     = self._last_param[0]), output)
+            else:
+                # No custom FLNK for very last parameter
+                self._append("""}}
+
+record("*", "{last_param}")
+{{
+	field(FLNK, "{root_inst_slot}:iDoneUploadStat")
+}}""".format(root_inst_slot = self.root_inst_slot(),
+             last_param     = self._last_param[0]), output)
+        else:
+            # No parameters, append LNK1 to root_inst_slot:UploadParametersS
+            self._append("""
+	field(LNK1, "{root_inst_slot}:iDoneUploadStat")
+}}""".format(root_inst_slot = self.root_inst_slot()), output)
+
 
 
 
@@ -213,8 +344,8 @@ class EPICS(EPICS_BASE):
 
 
     def _toEPICS(self, var):
-        pv_extra = self.DISABLE_TEMPLATE + var.build_pv_extra() + EPICS_BASE.PLC_INFO_FIELDS.format(plc_datablock = self._if_def.DEFAULT_DATABLOCK_NAME,
-                                                                                                    plc_variable  = var.name())
+        pv_extra = var.pv_template(sdis = True) + var.build_pv_extra() + EPICS_BASE.PLC_INFO_FIELDS.format(plc_datablock = self._if_def.DEFAULT_DATABLOCK_NAME,
+                                                                                                           plc_variable  = var.name())
         if var.is_parameter() or self._test:
             pv_extra = pv_extra + """
 	info(autosaveFields_pass0, "VAL")"""
@@ -237,21 +368,6 @@ class EPICS(EPICS_BASE):
     def header(self, output, **keyword_params):
         super(EPICS, self).header(output, **keyword_params).add_filename_header(output, extension = "db")
         epics_db_header = """
-record(stringin, "{root_inst_slot}:ModVersionR")
-{{
-	field(DISP,	"1")
-	field(VAL,	"$(MODVERSION=N/A)")
-	field(PINI,	"YES")
-}}
-
-record(stringin, "{root_inst_slot}:PLCFCommitR")
-{{
-	field(DISP,	"1")
-#{plcf_commit}
-	field(VAL,	"{plcf_commit_39}")
-	field(PINI,	"YES")
-	info("plcf_commit", "{plcf_commit}")
-}}
 
 #########################################################
 ########## EPICS <-> PLC connection management ##########
@@ -369,12 +485,6 @@ record(calcout, "{root_inst_slot}:iCheckHash")
 	field(OOPT,	"On Change")
 	field(OUT,	"{root_inst_slot}:PLCHashCorrectR PP")
 }}
-record(bi, "{root_inst_slot}:iOne")
-{{
-	field(DISP,	"1")
-	field(PINI,	"YES")
-	field(VAL,	"1")
-}}
 record(bo, "{root_inst_slot}:iGotHeartbeat")
 {{
 	field(DOL,	"{root_inst_slot}:iOne")
@@ -456,8 +566,6 @@ record(ai, "{root_inst_slot}:HeartbeatFromPLCR")
 #COUNTER {cmd_cnt} = [PLCF#{cmd_cnt} + 10];
 #COUNTER {status_cnt} = [PLCF#{status_cnt} + 10];
 """.format(root_inst_slot  = self.root_inst_slot(),
-           plcf_commit     = keyword_params.get("COMMIT_ID", "N/A"),
-           plcf_commit_39  = keyword_params.get("COMMIT_ID", "N/A")[:39],
            cmd_cnt         = CMD_BLOCK.counter_keyword(),
            status_cnt      = STATUS_BLOCK.counter_keyword())
 
@@ -549,24 +657,9 @@ class EPICS_TEST(EPICS):
     # HEADER
     #
     def header(self, output, **keyword_params):
-        #Have to call PRINTER.header explicitly
-        PRINTER.header(self, output, **keyword_params).add_filename_header(output, extension = "db")
+        #Have to call EPICS_BASE.header explicitly; we don't want EPICS.header
+        EPICS_BASE.header(self, output, **keyword_params).add_filename_header(output, extension = "db")
         epics_db_header = """
-record(stringin, "{root_inst_slot}:ModVersionR")
-{{
-	field(DISP,	"1")
-	field(VAL,	"$(MODVERSION=N/A)")
-	field(PINI,	"YES")
-}}
-
-record(stringin, "{root_inst_slot}:PLCFCommitR")
-{{
-	field(DISP,	"1")
-#{plcf_commit}
-	field(VAL,	"{plcf_commit_39}")
-	field(PINI,	"YES")
-	info("plcf_commit", "{plcf_commit}")
-}}
 
 #########################################################
 ########## EPICS <-> PLC connection management ##########
@@ -627,12 +720,6 @@ record(calcout, "{root_inst_slot}:iCheckHash")
 	field(CALC,	"A == B && C == 0")
 	field(OOPT,	"On Change")
 	field(OUT,	"{root_inst_slot}:PLCHashCorrectR PP")
-}}
-record(bi, "{root_inst_slot}:iOne")
-{{
-	field(DISP,	"1")
-	field(PINI,	"YES")
-	field(VAL,	"1")
 }}
 record(bo, "{root_inst_slot}:iGotHeartbeat")
 {{
@@ -723,9 +810,7 @@ record(calcout, "{root_inst_slot}:iRuinHash")
 	field(CALC,	"A * -1")
 	field(OUT,	"{root_inst_slot}:CommsHashFromPLCR PP")
 }}
-""".format(root_inst_slot = self.root_inst_slot(),
-           plcf_commit    = keyword_params.get("COMMIT_ID", "N/A"),
-           plcf_commit_39 = keyword_params.get("COMMIT_ID", "N/A")[:39])
+""".format(root_inst_slot = self.root_inst_slot())
 
         self._append(epics_db_header, output)
         return self
