@@ -162,6 +162,8 @@ class DummyHash(object):
 
 class SOURCE(object):
     def __init__(self, source, comment = False):
+        super(SOURCE, self).__init__()
+
         if isinstance(source, tuple):
             source, sourcenum = source
         else:
@@ -214,7 +216,7 @@ class PRINTER_METADATA(SOURCE):
             printers = [ printers ]
         assert isinstance(printers, list), func_param_msg("printers", "list")
 
-        SOURCE.__init__(self, source)
+        super(PRINTER_METADATA, self).__init__(source)
 
         self._printers     = printers
         self._metadata     = metadata
@@ -241,7 +243,7 @@ class VERBATIM(SOURCE):
         assert isinstance(source, tuple),  func_param_msg("source",   "tuple")
         assert isinstance(verbatim, str),  func_param_msg("verbatim", "string")
 
-        SOURCE.__init__(self, source)
+        super(VERBATIM, self).__init__(source)
 
         self._verbatim = verbatim
 
@@ -256,7 +258,7 @@ class VERBATIM(SOURCE):
 #
 class fakeBLOCK(SOURCE):
     def __init__(self):
-        SOURCE.__init__(self, "")
+        super(fakeBLOCK, self).__init__("")
 
         self._ifaces = []
 
@@ -285,7 +287,7 @@ class BLOCK(SOURCE):
     PARAM  = "PARAMETER"
 
     def __init__(self, source, block_type, optimize):
-        SOURCE.__init__(self, source)
+        super(BLOCK, self).__init__(source)
 
         BITS.end()
 
@@ -468,7 +470,7 @@ class STATUS_BLOCK(BLOCK):
 
 
     def __init__(self, source, optimize):
-        BLOCK.__init__(self, source, BLOCK.STATUS, optimize)
+        super(STATUS_BLOCK, self).__init__(source, BLOCK.STATUS, optimize)
 
 
     def link_offset(self, var):
@@ -579,7 +581,7 @@ class CMD_BLOCK(MODBUS, BLOCK):
 
 
     def __init__(self, source, optimize):
-        BLOCK.__init__(self, source, BLOCK.CMD, optimize)
+        super(CMD_BLOCK, self).__init__(source, BLOCK.CMD, optimize)
 
 
 
@@ -590,7 +592,7 @@ class PARAM_BLOCK(MODBUS, BLOCK):
 
 
     def __init__(self, source, optimize):
-        BLOCK.__init__(self, source, BLOCK.PARAM, optimize)
+        super(PARAM_BLOCK, self).__init__(source, BLOCK.PARAM, optimize)
 
 
 
@@ -667,6 +669,8 @@ class OVERLAP(BLOCK):
 
 class IF_DEF_INTERFACE_FUNC(object):
     def __init__(self, is_hashed, var):
+        super(IF_DEF_INTERFACE_FUNC, self).__init__()
+
         self._var    = var
         var._hashed  = is_hashed
 
@@ -756,6 +760,7 @@ class IF_DEF(object):
 
     def __init__(self, OPTIMIZE = False, **keyword_params):
         assert isinstance(OPTIMIZE, bool)
+        super(IF_DEF, self).__init__()
 
         BASE_TYPE.init()
 
@@ -1392,7 +1397,7 @@ class IF_DEF(object):
 
 
     @ifdef_interface
-    def add_enum(self, name, plc_var_type, nobt = 16, shift = 0, **keyword_params):
+    def add_enum(self, name, plc_var_type, nobt = -1, shift = 0, **keyword_params):
         keyword_params = self._handle_extra_params(keyword_params)
 
         if not isinstance(name, str):
@@ -1400,16 +1405,13 @@ class IF_DEF(object):
         if not isinstance(plc_var_type, str):
             raise IfDefSyntaxError("PLC type must be a string!")
 
-        _test_and_set_pv(keyword_params, "NOBT", nobt)
-        _test_and_set_pv(keyword_params, "SHFT", shift)
-
         block = self._active_block()
-        var = ENUM(self._source, block, name, plc_var_type, keyword_params)
+        var = ENUM(self._source, block, name, plc_var_type, nobt, shift, keyword_params)
         return self._add(var)
 
 
     @ifdef_interface
-    def add_bitmask(self, name, plc_var_type, nobt = 16, shift = 0, **keyword_params):
+    def add_bitmask(self, name, plc_var_type, nobt = -1, shift = 0, **keyword_params):
         keyword_params = self._handle_extra_params(keyword_params)
 
         if not isinstance(name, str):
@@ -1417,11 +1419,8 @@ class IF_DEF(object):
         if not isinstance(plc_var_type, str):
             raise IfDefSyntaxError("PLC type must be a string!")
 
-        _test_and_set_pv(keyword_params, "NOBT", nobt)
-        _test_and_set_pv(keyword_params, "SHFT", shift)
-
         block = self._active_block()
-        var = BITMASK(self._source, block, name, plc_var_type, keyword_params)
+        var = BITMASK(self._source, block, name, plc_var_type, nobt, shift, keyword_params)
         return self._add(var)
 
 
@@ -1554,7 +1553,7 @@ class BASE_TYPE(SOURCE):
 
 
     def __init__(self, source, block, name, plc_var_type, keyword_params):
-        SOURCE.__init__(self, source)
+        super(BASE_TYPE, self).__init__(source)
 
         assert isinstance(block,        BLOCK),                              func_param_msg("block",          "BLOCK")
         assert isinstance(name,         str),                                func_param_msg("name",           "string")
@@ -1755,6 +1754,14 @@ class BASE_TYPE(SOURCE):
         return self._overlapped
 
 
+    def get_pv_field(self, field):
+        return self._keyword_params.get(self.PV_PREFIX + field)
+
+
+    def set_pv_field(self, field, value):
+        self._keyword_params[self.PV_PREFIX + field] = value
+
+
     def get_parameter(self, param_name, *val_if_not_found):
         if len(val_if_not_found):
             return self._keyword_params.get(param_name, val_if_not_found[0])
@@ -1891,6 +1898,7 @@ class BITS(object):
 
     def __init__(self, block):
         assert isinstance(block,    BLOCK),   func_param_msg("block", "BLOCK")
+        super(BITS, self).__init__()
 
         BITS.end()
 
@@ -2005,7 +2013,7 @@ class BIT(BASE_TYPE):
         # BASE_TYPE.__init__ must be after self initialization
         #
         # 'WORD' is used as a placeholder only
-        BASE_TYPE.__init__(self, source, bit_def._block, name, "WORD", keyword_params)
+        super(BIT, self).__init__(source, bit_def._block, name, "WORD", keyword_params)
 
 
     def _end_bits(self):
@@ -2060,7 +2068,7 @@ class BIT(BASE_TYPE):
 
 class ALARM(BIT):
     def __init__(self, source, bit_def, name, severity, message, keyword_params):
-        BIT.__init__(self, source, bit_def, name, keyword_params)
+        super(ALARM, self).__init__(source, bit_def, name, keyword_params)
 
         self._severity = severity
         self._message  = message
@@ -2092,7 +2100,7 @@ class ANALOG(BASE_TYPE):
             except KeyError:
                 pass
 
-        BASE_TYPE.__init__(self, source, block, name, plc_var_type, keyword_params)
+        super(ANALOG, self).__init__(source, block, name, plc_var_type, keyword_params)
 
 
     def dtyp(self):
@@ -2107,7 +2115,29 @@ class ANALOG(BASE_TYPE):
 
 
 
-class ENUM(BASE_TYPE):
+class nobt_helper(object):
+    NOBT = "NOBT"
+    SHFT = "SHFT"
+
+    def _set_nobt(self, nobt, shift, keyword_params):
+        _test_and_set_pv(keyword_params, self.NOBT, nobt)
+        _test_and_set_pv(keyword_params, self.SHFT, shift)
+
+
+    def _check_nobt(self):
+        nobt = int(self.get_pv_field(self.NOBT))
+        calc_nobt = _bits_in_type(self.plc_type())
+
+        if nobt == -1:
+            nobt = max(16, calc_nobt)
+        elif calc_nobt < nobt:
+            print(self._add_warning("NOBT ({}) is higher than width ({}) of PLC data type '{}'".format(nobt, calc_nobt, self.plc_type())))
+
+        self.set_pv_field(self.NOBT, nobt)
+
+
+
+class ENUM(BASE_TYPE, nobt_helper):
     class VLST(object):
         _st = BASE_TYPE.PV_PREFIX + "{}ST"
         _vl = BASE_TYPE.PV_PREFIX + "{}VL"
@@ -2148,11 +2178,13 @@ class ENUM(BASE_TYPE):
              VLST(14, "FT"),
              VLST(15, "FF") ]
 
-    def __init__(self, source, block, name, plc_var_type, keyword_params):
+    def __init__(self, source, block, name, plc_var_type, nobt, shift, keyword_params):
         for vlst in ENUM.vlst:
             if vlst.st() in keyword_params:
                 _test_and_set(keyword_params, vlst.vl(), vlst.idx())
-        BASE_TYPE.__init__(self, source, block, name, plc_var_type, keyword_params)
+        self._set_nobt(nobt, shift, keyword_params)
+        super(ENUM, self).__init__(source, block, name, plc_var_type, keyword_params)
+        self._check_nobt()
 
 
     def pv_type(self):
@@ -2160,11 +2192,13 @@ class ENUM(BASE_TYPE):
 
 
 
-class BITMASK(BASE_TYPE):
+class BITMASK(BASE_TYPE, nobt_helper):
     pv_types = { BLOCK.CMD : "mbboDirect",   BLOCK.PARAM : "mbboDirect",   BLOCK.STATUS : "mbbiDirect" }
 
-    def __init__(self, source, block, name, plc_var_type, keyword_params):
-        BASE_TYPE.__init__(self, source, block, name, plc_var_type, keyword_params)
+    def __init__(self, source, block, name, plc_var_type, nobt, shift, keyword_params):
+        self._set_nobt(nobt, shift, keyword_params)
+        super(BITMASK, self).__init__(source, block, name, plc_var_type, keyword_params)
+        self._check_nobt()
 
 
     def pv_type(self):
