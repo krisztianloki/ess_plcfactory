@@ -46,7 +46,9 @@ def taint_message():
     if not tainted:
         return
     print("""
-Your working copy is not clean; warranty is void.
++++++++++++++++++++++++++++++++++++++++++++++++++++++
++ Your working copy is not clean; warranty is void. +
++++++++++++++++++++++++++++++++++++++++++++++++++++++
 """, file = sys.stderr)
 
 
@@ -1506,6 +1508,8 @@ def main(argv):
 """)
     except KeyError:
         pass
+
+    taint_message()
 
     print("--- %.1f seconds ---\n" % (time.time() - start_time))
 
