@@ -384,7 +384,7 @@ record(bi, "{root_inst_slot}:ModbusConnectedR")
 	field(ONAM,	"Connected")
 	field(ZNAM,	"Disconnected")
 	field(ZSV,      "MAJOR")
-	field(FLNK,	"{root_inst_slot}:CommsHashToPLCS")
+	field(FLNK,	"{root_inst_slot}:CommsHashToPLCS.PROC CA")
 }}
 record(bi, "{root_inst_slot}:S7ConnectedR")
 {{
