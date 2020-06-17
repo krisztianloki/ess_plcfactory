@@ -182,6 +182,9 @@ def openHeaderFooter(device, tag, templateID):
                                        custom_filter = matchingArtifact,
                                        filter_args = ((tag, TEMPLATE_TAG), templateID))
 
+    if not filename:
+        return []
+
     with open(filename) as f:
         lines = f.readlines()
 
