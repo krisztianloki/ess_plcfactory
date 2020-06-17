@@ -233,7 +233,7 @@ def createFilename(cplcf, header):
 
     # default filename is chosen when no custom filename is specified
     if tagPos == -1:
-        header = [ '{} [PLCF#INSTALLATION_SLOT]_[PLCF#DEVICE_TYPE]_template-[PLCF#TEMPLATE_ID]_[PLCF#TIMESTAMP].scl'.format(tag) ]
+        header = [ '{} [PLCF#INSTALLATION_SLOT]_[PLCF#DEVICE_TYPE]-[PLCF#TEMPLATE]_[PLCF#TIMESTAMP].scl'.format(tag) ]
         tagPos = 0
 
     filename = header[tagPos]
