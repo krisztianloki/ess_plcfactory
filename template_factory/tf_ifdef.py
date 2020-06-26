@@ -1863,9 +1863,15 @@ class BASE_TYPE(SOURCE):
         if inst_slot is None:
             inst_slot = IF_DEF.DEFAULT_INSTALLATION_SLOT
         if inst_slot.startswith("[PLCF#"):
-            return "[PLCF#ext.check_pv_length('{}:{}')]".format(inst_slot[6:-1], pv_name)
+            inst_slot = inst_slot[6:-1]
 
-        return "{}:{}".format(inst_slot, pv_name)
+        assert '[PLCF#' not in inst_slot
+
+        if '$' not in inst_slot:
+            return "[PLCF#ext.check_pv_length(ext.extra_colon('{}')+':{}')]".format(inst_slot, pv_name)
+
+        assert False, (inst_slot, pv_name)
+        return "{}{}:{}".format(inst_slot, ':' if ':' not in inst_slot and '$' not in inst_slot else '', pv_name)
 
 
     def bit_number(self):

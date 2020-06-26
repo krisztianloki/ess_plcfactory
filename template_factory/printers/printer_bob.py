@@ -151,11 +151,13 @@ class BOB(PRINTER):
         group_width      = BOB.GROUP_WIDTH;
         group_height     = BOB.GROUP_HEIGHT;
 
+        inst_slot = self.inst_slot(if_def)
+
         self._append("""  <widget type="group" version="2.0.0">
     <name>{group}</name>
     <x>{x}</x>
     <y>{y}</y>
-    <transparent>true</transparent>""".format(group = self.inst_slot(),
+    <transparent>true</transparent>""".format(group = inst_slot,
                                               x     = self._x,
                                               y     = self._y), output)
 
@@ -176,7 +178,7 @@ class BOB(PRINTER):
 
             if var.is_status():
                 self._append(BOB.TEXTUPDATE.format(name    = var.name(),
-                                                   pv_name = "{}:{}".format(self.inst_slot(), var.pv_name()),
+                                                   pv_name = self.create_pv_name(inst_slot, var),
                                                    x       = label_x + BOB.HSPACE_1 + BOB.LABEL_WIDTH,
                                                    y       = y,
                                                    width   = BOB.TEXTUPDATE_WIDTH), output)
@@ -184,21 +186,21 @@ class BOB(PRINTER):
             else:
                 if isinstance(var, BIT):
                     self._append(BOB.ACTIONBUTTON.format(name    = var.name(),
-                                                         pv_name = "{}:{}".format(self.inst_slot(), var.pv_name()),
+                                                         pv_name = self.create_pv_name(inst_slot, var),
                                                          x       = label_x + BOB.HSPACE_1 + BOB.LABEL_WIDTH,
                                                          y       = y,
                                                          width   = BOB.ACTIONBUTTON_WIDTH), output)
                     width = BOB.LABEL_WIDTH + BOB.HSPACE_1 + BOB.ACTIONBUTTON_WIDTH
                 elif isinstance(var, ENUM):
                     self._append(BOB.COMBOBOX.format(name    = var.name(),
-                                                     pv_name = "{}:{}".format(self.inst_slot(), var.pv_name()),
+                                                     pv_name = self.create_pv_name(inst_slot, var),
                                                      x       = label_x + BOB.HSPACE_1 + BOB.LABEL_WIDTH,
                                                      y       = y,
                                                      width   = BOB.COMBOBOX_WIDTH), output)
                     width = BOB.LABEL_WIDTH + BOB.HSPACE_1 + BOB.COMBOBOX_WIDTH
                 else:
                     self._append(BOB.TEXTENTRY.format(name    = var.name(),
-                                                      pv_name = "{}:{}".format(self.inst_slot(), var.pv_name()),
+                                                      pv_name = self.create_pv_name(inst_slot, var),
                                                       x       = label_x + BOB.HSPACE_1 + BOB.LABEL_WIDTH,
                                                       y       = y,
                                                       width   = BOB.TEXTENTRY_WIDTH), output)

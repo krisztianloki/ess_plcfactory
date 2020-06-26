@@ -51,16 +51,15 @@ class ARCHIVE(PRINTER):
     # BODY
     #
     def _ifdef_body(self, if_def, output, **keyword_params):
-        inst_slot = self.inst_slot()
+        inst_slot = self.inst_slot(if_def)
         self._append("#" * 60, output)
         for var in if_def.interfaces():
             if isinstance(var, BASE_TYPE) and var.get_parameter("ARCHIVE", False):
                 desc = self._get_desc(var)
                 if desc:
                     self._append("# {}".format(desc), output)
-                self._append("{inst_slot}:{name}{policy}".format(inst_slot = inst_slot,
-                                                                 name      = var.pv_name(),
-                                                                 policy    = self._archive(var)), output)
+                self._append("{pv}{policy}".format(pv     = self.create_pv_name(inst_slot, var),
+                                                   policy = self._archive(var)), output)
 
 
     def _archive(self, var):

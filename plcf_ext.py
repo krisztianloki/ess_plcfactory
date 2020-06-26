@@ -46,6 +46,10 @@ def e3_snippet():
 
 
 
+def extra_colon(slot):
+    return slot if ':' in slot else "{}:".format(slot)
+
+
 class PVLengthException(PLCFExtException):
     pass
 

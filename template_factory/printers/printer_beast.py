@@ -59,6 +59,7 @@ class BEAST(BEAST_BASE):
         except KeyError:
             device = "Unknown device"
 
+        inst_slot = self.inst_slot(if_def)
         for var in if_def.alarms():
             if not printed:
                 printed = True
@@ -69,9 +70,8 @@ class BEAST(BEAST_BASE):
 """.format(separator = "#" * (4 + len(device)),
            device    = device), output)
 
-            self._append("""pv("{inst_slot}:{pv_name}")
-\tdescription("{desc}")""".format(inst_slot = self.inst_slot(),
-                                  pv_name   = var.pv_name(),
+            self._append("""pv("{pv}")
+\tdescription("{desc}")""".format(pv        = self.create_pv_name(inst_slot, var),
                                   desc      = var.get_parameter("PV_DESC", "")), output)
 
 

@@ -433,7 +433,10 @@ def processTemplateID(templateID, devices):
                 print("Generating template from Definition File...")
                 ifdef.calculate_hash(hashobj)
                 template = []
-                templatePrinter.body(ifdef, template, DEVICE = device, PLCF = cplcf)
+                try:
+                    templatePrinter.body(ifdef, template, DEVICE = device, PLCF = cplcf)
+                except tf.TemplatePrinterException as e:
+                    raise ProcessTemplateException(device.name(), templateID, e)
 
         # Try to download template from artifact
         if template is None:
@@ -448,7 +451,10 @@ def processTemplateID(templateID, devices):
         if template is None and templatePrinter is not None and not templatePrinter.needs_ifdef():
             print("Using default built-in template...")
             template = []
-            templatePrinter.body(None, template)
+            try:
+                templatePrinter.body(None, template)
+            except tf.TemplatePrinterException as e:
+                raise ProcessTemplateException(device.name(), templateID, e)
 
         if template is not None:
             # process template and add result to output

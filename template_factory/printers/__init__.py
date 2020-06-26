@@ -7,6 +7,11 @@ import os.path
 
 
 
+class TemplatePrinterException(Exception):
+    pass
+
+
+
 def get_printer(printer):
     for (n, c) in _available_printers:
         if n is not None and n == printer:
@@ -86,9 +91,31 @@ class PRINTER(object):
         if if_def is not None:
             slot = if_def.inst_slot(nonnull = False)
             if slot is not None:
-                return slot
+                return self.expand(slot)
 
         return self.plcf("INSTALLATION_SLOT")
+
+
+    def create_pv_name(self, slot, property_part):
+        # slot can be an already expanded [PLCF#INSTALLATION_SLOT] or [PLCF#ROOT_INSTALLATION_SLOT] expression
+        if isinstance(slot, str):
+            slot_str = slot
+        # or a method that we have to call to get the expanded version
+        else:
+            slot_str = self.slot()
+
+        # if property_part is not a string then assume it is a BASE_TYPE
+        if not isinstance(property_part, str):
+            property_part = property_part.pv_name()
+
+        if '[PLCF#' in slot_str:
+            return self.plcf('ext.check_pv_length(ext.extra_colon("{slot}")+":{property}")'.format(slot = slot_str[6:-1], property = property_part))
+
+        pv_name = "{slot}{extra_colon}:{property}".format(slot = slot_str, extra_colon = ':' if ':' not in slot_str and '$' not in slot_str else '', property = property_part)
+        if len(pv_name) > 60:
+            raise TemplatePrinterException("The PV name '{pv_name}' is longer than permitted ({act_len} / 60)".format(pv_name = pv_name, act_len = len(pv_name)))
+
+        return pv_name
 
 
     def root_inst_slot(self):
