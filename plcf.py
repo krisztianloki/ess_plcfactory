@@ -217,7 +217,7 @@ class PLCF(object):
            (expression.startswith("'") and expression.endswith("'") and expression.count("'") == 2):
             wasquoted = expression[0]
 
-        if expression.startswith("ext."):
+        if "ext." in expression: #expression.startswith("ext."):
             try:
                 #Evaluate ext module call
                 result = eval(expression, self._evalenv)
