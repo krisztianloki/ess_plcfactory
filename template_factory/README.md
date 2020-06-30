@@ -72,7 +72,7 @@ Because in the current implementation every interface definition is a special su
 ## Defining the device name A.K.A. installation slot (CCDB-term)
 
 While it is neither necessary nor recommended to override the default device name (retreived from CCDB by PLCFactory) it is still possible to do so. One use case is the Vacuum Mobile Pumping Kart project; it consists of about a dozen karts with completely identical PLCs (hardware and software wise). Overriding the device name enables the reuse of a base MobilePumpingKart module; just use a macro like `$(VMPG_INSTANCE)`.
-This feature should be used with caution: if there are more than one devices with the same Interface Definition the same device name will be used for all of them - except of course the name is dynamic; like a CCDB property that is unique for every device (use PLCF# expressions to reference CCDB properties).
+This feature should be used with caution: if there are more than one devices with the same Interface Definition then the same device name will be used for all of them - that is why if the specified device name is not a macro (does not begin with a '$' sign) then it is automatically treated as a CCDB property.
 
 **`define_installation_slot("<device_name>")`**
 

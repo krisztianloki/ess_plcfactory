@@ -52,14 +52,16 @@ class PLCF(object):
 
     @staticmethod
     def __specialProperties(device):
-        sp = { 'TIMESTAMP'              : glob.timestamp,
-               'ROOT_INSTALLATION_SLOT' : glob.root_installation_slot
+        sp = { 'TIMESTAMP'                 :  glob.timestamp,
+               'ROOT_INSTALLATION_SLOT'    :  plcf_ext.extra_colon(glob.root_installation_slot),
+               'RAW_ROOT_INSTALLATION_SLOT' : glob.root_installation_slot
              }
 
         if device is not None:
-            sp.update({ 'INSTALLATION_SLOT'      : device.name(),
-                        'INSTALLATION_SLOT_DESC' : device.description(),
-                        'DEVICE_TYPE'            : device.deviceType(),
+            sp.update({ 'INSTALLATION_SLOT'       : plcf_ext.extra_colon(device.name()),
+                        'RAW_INSTALLATION_SLOT'   : device.name(),
+                        'INSTALLATION_SLOT_DESC'  : device.description(),
+                        'DEVICE_TYPE'             : device.deviceType(),
                       })
 
         return sp

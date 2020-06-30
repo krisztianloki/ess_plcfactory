@@ -23,14 +23,18 @@ In general, though, it is the responsibility of the user who creates template fi
 
 Keywords are reserved terms. Currently, PLCF# has the following keywords:
 
-- `INSTALLATION_SLOT`
-- `INSTALLATION_SLOT_DESC`
+- `INSTALLATION_SLOT`		expands to the "colon-correct" version of the _active_ CCDB slot
+- `INSTALLATION_SLOT_DESC`	expands to the description of the _active_ CCDB slot
+- `RAW_INSTALLATION_SLOT`	expands to the "raw" version of the _active_ CCDB slot
+- `ROOT_INSTALLATION_SLOT`	expands to the "colon-correct" version of the CCDB slot specified with the -d/--device option
+- `RAW_ROOT_INSTALLATION_SLOT`	expands to the "raw" version of the CCDB slot specified with the -d/--device
 - `TEMPLATE`
 - `TIMESTAMP`
 - `DEVICE_TYPE`
 - `Counter`
 - `Counter<N>`
 
+"colon-correct" means that if the slot consists only of System-Subsystem then an extra colon will be appended.
 Currently, PLCF# recognises `Counter1` up to and including `Counter9`. In case you need to use more counters, modify the line `numOfCounters = 9` in `plcfactory.py`.
 
 ## Inbuilt and user-defined functions

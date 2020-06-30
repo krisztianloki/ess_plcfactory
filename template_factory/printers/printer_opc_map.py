@@ -85,7 +85,7 @@ class OPC_MAP_XLS(PRINTER):
                 ws = self._wb.create_sheet(var.datablock_name())
                 self._initialize_ws(ws)
 
-            cols = [ var.name(), var.plc_type(), var._build_pv_name(if_def.inst_slot()), var.pv_type() ]
+            cols = [ var.name(), var.plc_type(), self.create_pv_name(self.inst_slot(if_def), var), var.pv_type() ]
             try:
                 cplcf = keyword_params["PLCF"]
                 ws.append([ cplcf.process(x) for x in cols ])

@@ -105,7 +105,7 @@ MODBUS_PORT
 {mbport}
 PLC_PULSE
 {plcpulse}
-""".format(inst_slot                = self.inst_slot(),
+""".format(inst_slot                = self.raw_inst_slot(),
            plc_type                 = keyword_params.get("PLC_TYPE", "SIEMENS"),
            max_io_devices           = self.property_default("PLC-DIAG:Max-IO-Devices", 10),
            max_local_modules        = self.property_default("PLC-DIAG:Max-Local-Modules", 30),
@@ -140,7 +140,7 @@ PLCTOEPICSDATABLOCKOFFSET
 {plctoepicsdatablockoffset}
 #COUNTER {cmd_cnt} = [PLCF# {cmd_cnt} + {epicstoplclength}];
 #COUNTER {status_cnt} = [PLCF# {status_cnt} + {plctoepicslength}];
-""".format(inst_slot                 = self.inst_slot(),
+""".format(inst_slot                 = self.raw_inst_slot(),
            type                      = self.plcf("DEVICE_TYPE"),
            datablock                 = if_def.DEFAULT_DATABLOCK_NAME,
            epicstoplcdatablockoffset = self.plcf("^(EPICSToPLCDataBlockStartOffset) + {cmd_cnt}".format(cmd_cnt = CMD_BLOCK.counter_keyword())),

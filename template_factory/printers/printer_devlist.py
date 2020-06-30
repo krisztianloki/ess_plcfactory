@@ -43,4 +43,4 @@ class DEVLIST(PRINTER):
 
 
     def _any_body(self, output, **keyword_params):
-        self._append(self.inst_slot(), output)
+        self._append(self.raw_inst_slot(), output)

@@ -5,6 +5,12 @@ import glob
 import importlib
 import os.path
 
+try:
+    from plcf_ext import PLCFExtException
+except ImportError:
+    class PLCFExtException(Exception):
+        pass
+
 
 
 class TemplatePrinterException(Exception):
@@ -87,42 +93,53 @@ class PRINTER(object):
         return self.expand(plcf_expr)
 
 
-    def inst_slot(self, if_def = None):
+    def __inst_slot(self, default_slot, if_def):
         if if_def is not None:
             slot = if_def.inst_slot(nonnull = False)
             if slot is not None:
-                return self.expand(slot)
+                if slot[0] == '$':
+                    return slot
 
-        return self.plcf("INSTALLATION_SLOT")
+                return self.plcf(slot)
+
+        return self.plcf(default_slot)
+
+
+    def inst_slot(self, if_def = None):
+        return self.__inst_slot("INSTALLATION_SLOT", if_def)
+
+
+    def raw_inst_slot(self, if_def = None):
+        return self.__inst_slot("RAW_INSTALLATION_SLOT", if_def)
 
 
     def create_pv_name(self, slot, property_part):
-        # slot can be an already expanded [PLCF#INSTALLATION_SLOT] or [PLCF#ROOT_INSTALLATION_SLOT] expression
-        if isinstance(slot, str):
-            slot_str = slot
-        # or a method that we have to call to get the expanded version
-        else:
-            slot_str = self.slot()
-
         # if property_part is not a string then assume it is a BASE_TYPE
         if not isinstance(property_part, str):
             property_part = property_part.pv_name()
 
-        if '[PLCF#' in slot_str:
-            return self.plcf('ext.check_pv_length(ext.extra_colon("{slot}")+":{property}")'.format(slot = slot_str[6:-1], property = property_part))
+        if slot.startswith('[PLCF#'):
+            slot = slot[6:-1]
 
-        pv_name = "{slot}{extra_colon}:{property}".format(slot = slot_str, extra_colon = ':' if ':' not in slot_str and '$' not in slot_str else '', property = property_part)
-        if len(pv_name) > 60:
-            raise TemplatePrinterException("The PV name '{pv_name}' is longer than permitted ({act_len} / 60)".format(pv_name = pv_name, act_len = len(pv_name)))
+        try:
+            return self.plcf('ext.check_pv_length("{slot}"+":{property}")'.format(slot = slot, property = property_part))
+        except PLCFExtException as e:
+            raise TemplatePrinterException(e)
 
-        return pv_name
+
+    def __root_inst_slot(self, default_slot):
+        if self._root_inst_slot is None:
+            return self.plcf(default_slot)
+        else:
+            return self._root_inst_slot
 
 
     def root_inst_slot(self):
-        if self._root_inst_slot is None:
-            return self.plcf("ROOT_INSTALLATION_SLOT")
-        else:
-            return self._root_inst_slot
+        return self.__root_inst_slot("ROOT_INSTALLATION_SLOT")
+
+
+    def raw_root_inst_slot(self):
+        return self.__root_inst_slot("RAW_ROOT_INSTALLATION_SLOT")
 
 
     def template(self):
@@ -138,7 +155,7 @@ class PRINTER(object):
             return custom
 
         if inst_slot is None:
-            inst_slot = self.root_inst_slot()
+            inst_slot = self.raw_root_inst_slot()
 
         if template is True:
             template = "-{}".format(self.template())

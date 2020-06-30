@@ -233,7 +233,7 @@ def createFilename(cplcf, header):
 
     # default filename is chosen when no custom filename is specified
     if tagPos == -1:
-        header = [ '{} [PLCF#INSTALLATION_SLOT]_[PLCF#DEVICE_TYPE]-[PLCF#TEMPLATE]_[PLCF#TIMESTAMP].scl'.format(tag) ]
+        header = [ '{} [PLCF#RAW_INSTALLATION_SLOT]_[PLCF#DEVICE_TYPE]-[PLCF#TEMPLATE]_[PLCF#TIMESTAMP].scl'.format(tag) ]
         tagPos = 0
 
     filename = header[tagPos]
@@ -1020,7 +1020,7 @@ THE FOLLOWING FILES WERE NOT CHECKED:
 
 
 def record_args(root_device):
-    creator = os.path.join(OUTPUT_DIR, createFilename(getPLCF(root_device), ["#FILENAME [PLCF#INSTALLATION_SLOT]-creator-[PLCF#TIMESTAMP]"]))
+    creator = os.path.join(OUTPUT_DIR, createFilename(getPLCF(root_device), ["#FILENAME [PLCF#RAW_INSTALLATION_SLOT]-creator-[PLCF#TIMESTAMP]"]))
     with open(creator, 'w') as f:
         print("""#!/bin/sh
 

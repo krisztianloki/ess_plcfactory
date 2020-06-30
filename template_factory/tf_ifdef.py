@@ -735,8 +735,8 @@ def ifdef_interface(func):
 
 
 class IF_DEF(object):
-    DEFAULT_INSTALLATION_SLOT = "[PLCF#INSTALLATION_SLOT]"
-    DEFAULT_DATABLOCK_NAME    = "DEV_{}_iDB".format(DEFAULT_INSTALLATION_SLOT)
+    DEFAULT_INSTALLATION_SLOT = "INSTALLATION_SLOT"
+    DEFAULT_DATABLOCK_NAME    = "DEV_[PLCF#{}]_iDB".format("RAW_INSTALLATION_SLOT")
     __CACHE                = dict()
 
 
@@ -1111,8 +1111,10 @@ class IF_DEF(object):
 
 
     def inst_slot(self, nonnull = True):
+        # If nonnull is False and we are using the default installation slot, then return None
         if not nonnull and self._inst_slot == IF_DEF.DEFAULT_INSTALLATION_SLOT:
             return None
+
         return self._inst_slot
 
 
@@ -1845,33 +1847,15 @@ class BASE_TYPE(SOURCE):
             return ""
 
 
-    def _build_pv_alias(self, inst_slot):
+    def _build_pv_alias(self, create_pv_name, inst_slot):
         fmt = "\talias(\"{}\")"
         if BASE_TYPE.PV_ALIAS in self._keyword_params:
             # empty line
             # aliases
             # empty line
-            return "\n".join([''] + map(lambda alias : fmt.format(self._build_pv_name(inst_slot, alias)), self._keyword_params[BASE_TYPE.PV_ALIAS]) + [''])
+            return "\n".join([''] + map(lambda alias : fmt.format(create_pv_name(inst_slot, alias)), self._keyword_params[BASE_TYPE.PV_ALIAS]) + [''])
 
         return ""
-
-
-    def _build_pv_name(self, inst_slot, pv_name = None):
-        if pv_name is None:
-            pv_name = self.pv_name()
-
-        if inst_slot is None:
-            inst_slot = IF_DEF.DEFAULT_INSTALLATION_SLOT
-        if inst_slot.startswith("[PLCF#"):
-            inst_slot = inst_slot[6:-1]
-
-        assert '[PLCF#' not in inst_slot
-
-        if '$' not in inst_slot:
-            return "[PLCF#ext.check_pv_length(ext.extra_colon('{}')+':{}')]".format(inst_slot, pv_name)
-
-        assert False, (inst_slot, pv_name)
-        return "{}{}:{}".format(inst_slot, ':' if ':' not in inst_slot and '$' not in inst_slot else '', pv_name)
 
 
     def bit_number(self):

@@ -47,7 +47,7 @@ def e3_snippet():
 
 
 def extra_colon(slot):
-    return slot if ':' in slot else "{}:".format(slot)
+    return slot if ':' in slot or slot[0] == '$' else "{}:".format(slot)
 
 
 class PVLengthException(PLCFExtException):
@@ -58,7 +58,7 @@ class PVLengthException(PLCFExtException):
 def check_pv_length(pv_name):
     assert isinstance(pv_name, str)
 
-    if (len(pv_name) <= 60):
+    if ('$' in pv_name or len(pv_name) <= 60):
         return pv_name
 
     raise PVLengthException("The PV name '{pv_name}' is longer than permitted ({act_len} / 60)".format(pv_name = pv_name, act_len = len(pv_name)))

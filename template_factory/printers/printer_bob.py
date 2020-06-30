@@ -157,7 +157,7 @@ class BOB(PRINTER):
     <name>{group}</name>
     <x>{x}</x>
     <y>{y}</y>
-    <transparent>true</transparent>""".format(group = inst_slot,
+    <transparent>true</transparent>""".format(group = self.raw_inst_slot(if_def),
                                               x     = self._x,
                                               y     = self._y), output)
 

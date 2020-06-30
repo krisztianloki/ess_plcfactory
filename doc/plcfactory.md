@@ -123,19 +123,19 @@ Keep in mind that every counter is implicitly (!) initialised to `0`, meaning th
 
 In order to create a custom filename for the output file, a header file needs to be provided. It has to contain, as the very first line, a definition of the desired name for the output file. The expected format is as follows:
 
-`#FILENAME [PLCF#INSTALLATION_SLOT]-[PLCF#TEMPLATE]-[PLCF#TIMESTAMP].scl`
+`#FILENAME [PLCF#RAW_INSTALLATION_SLOT]-[PLCF#TEMPLATE]-[PLCF#TIMESTAMP].scl`
 
 Note that certain characters in the resulting file name may get changed if they are not allowed in file names by the underlying operating system. For instance, on OSX, the colon (`:`) sign is turned into a slash (`/`).
 
 The definition needs to start with `#FILENAME`. The following four keywords are implemented:
 
-`INSTALLATION_SLOT`: installation slot taken from the invocation of `plcfactory.py`
+`RAW_INSTALLATION_SLOT`: installation slot taken from the invocation of `plcfactory.py`
 
-`DEVICE_TYPE`:       device type retrieved from CCDB
+`DEVICE_TYPE`:           device type retrieved from CCDB
 
-`TEMPLATE`:          template number; taken from provided argument
+`TEMPLATE`:              template number; taken from provided argument
 
-`TIMESTAMP`:         date and time of programm invocation, using current system time
+`TIMESTAMP`:             date and time of programm invocation, using current system time
 
 In order to add further fields, modify the function definition of `createFilename()` in the file `plcfactory.py`.
 

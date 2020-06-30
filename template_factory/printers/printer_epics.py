@@ -160,7 +160,7 @@ record(longin, "{root_inst_slot}:iTwo")
 ##########
 ########## {inst_slot} {dir} ##########
 ##########
-""".format(inst_slot = self.inst_slot(),
+""".format(inst_slot = self.raw_inst_slot(),
            dir = comment)))
 
 
@@ -172,7 +172,7 @@ record(longin, "{root_inst_slot}:iTwo")
         self._params.append(var)
 
         # Have to resolve PLCF# expressions _now_ otherwise we'd end up with root_inst_slot in footer()
-        self._last_param = (var._build_pv_name(self.inst_slot(self._if_def)), self.expand(var.get_pv_field("FLNK")))
+        self._last_param = (self.create_pv_name(self.inst_slot(self._if_def), var), self.expand(var.get_pv_field("FLNK")))
 
 
     def _body_source(self, var, output):
@@ -352,8 +352,8 @@ class EPICS(EPICS_BASE):
 
         return (var.source(),
                 var.pv_template(test = self._test).format(recordtype = var.pv_type(),
-                                                          pv_name    = var._build_pv_name(self._if_def.inst_slot()),
-                                                          alias      = var._build_pv_alias(self._if_def.inst_slot()),
+                                                          pv_name    = self.create_pv_name(self.inst_slot(self._if_def), var),
+                                                          alias      = var._build_pv_alias(self.create_pv_name, self.inst_slot(self._if_def)),
                                                           dtyp       = var.dtyp(),
                                                           inp_out    = var.inp_out(inst_io       = var.inst_io(),
                                                                                    offset        = var.link_offset(),
@@ -589,7 +589,7 @@ record(ai, "{root_inst_slot}:HeartbeatFromPLCR")
 ##########
 ########## {inst_slot} ##########
 ##########
-""".format(inst_slot = self.inst_slot()))
+""".format(inst_slot = self.raw_inst_slot()))
         self._body_verboseheader(if_def._cmd_block(), output)
         self._body_verboseheader(if_def._param_block(), output)
         self._body_verboseheader(if_def._status_block(), output)
@@ -848,8 +848,8 @@ class EPICS_OPC(EPICS_BASE):
                                                                                                     plc_variable  = var.name())
         return (var.source(),
                 var.pv_template().format(recordtype = var.pv_type(),
-                                         pv_name    = var._build_pv_name(self._if_def.inst_slot()),
-                                         alias      = var._build_pv_alias(self._if_def.inst_slot()),
+                                         pv_name    = self.create_pv_name(self.inst_slot(self._if_def), var),
+                                         alias      = var._build_pv_alias(self.create_pv_name, self.inst_slot(self._if_def)),
                                          dtyp       = "OPCUA",
                                          inp_out    = var.inp_out(inst_io   = '$(SUBSCRIPTION)',
                                                                   datablock = var.datablock_name(),
@@ -930,7 +930,7 @@ record(ao, "{root_inst_slot}:CommsHashToPLCS")
 ########## {inst_slot} ##########
 ##########
 
-""".format(inst_slot = self.inst_slot()))
+""".format(inst_slot = self.raw_inst_slot()))
 
         self._params = []
         for src in if_def.interfaces():

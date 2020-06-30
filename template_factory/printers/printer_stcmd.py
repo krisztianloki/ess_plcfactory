@@ -84,13 +84,13 @@ class MACROS(object):
     def _declare_macros(self, if_def, output):
         if not self._root_macro:
             self._root_macro = True
-            if self.root_inst_slot()[0] == '$':
-                self._macros.append(self.root_inst_slot())
+            if self.raw_root_inst_slot()[0] == '$':
+                self._macros.append(self.raw_root_inst_slot())
                 self._append("""
 # @field {}
 # @type STRING
 # PLC device name
-""".format(self.macro_name(self.root_inst_slot())), output)
+""".format(self.macro_name(self.raw_root_inst_slot())), output)
 
         for macro in if_def.macros():
             self._macros.append(macro)
@@ -178,7 +178,7 @@ class ST_CMD(eee, MACROS, PRINTER):
         return """# Load plc interface database
 dbLoadRecords("{modulename}.db", "{PLC_MACRO}={plcname}, MODVERSION=$({modversion}), S7_PORT={s7_port}, MODBUS_PORT={modbus_port}{macros}")""".format(
             PLC_MACRO   = plc_macro,
-            plcname     = self.root_inst_slot(),
+            plcname     = self.raw_root_inst_slot(),
             modulename  = self.modulename(),
             modversion  = self._modversion(),
             s7_port     = self.plcf("PLC-EPICS-COMMS: S7Port"),
@@ -228,7 +228,7 @@ drvModbusAsynConfigure("{plcname}write", "{plcname}", 0, 16, -1, 20, 0, 0, "S7-1
            bigendian     = self.plcf("1 if 'PLC-EPICS-COMMS:Endianness' == 'BigEndian' else 0"),
            modulename    = self.modulename(),
            modversion    = self._modversion(),
-           plcname       = self.root_inst_slot(),
+           plcname       = self.raw_root_inst_slot(),
            dbloadrecords = self._dbLoadRecords("PLCNAME")
           )
 
@@ -252,7 +252,7 @@ opcuaCreateSubscription("{plcname}", "{plcname}-session", $(PUBLISHING_INTERVAL)
 {dbloadrecords}
 """.format(modulename    = self.modulename(),
            modversion    = self._modversion(),
-           plcname       = self.root_inst_slot(),
+           plcname       = self.raw_root_inst_slot(),
            dbloadrecords = self._dbLoadRecords("SUBSCRIPTION")
           )
 
