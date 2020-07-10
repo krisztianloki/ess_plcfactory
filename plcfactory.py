@@ -959,11 +959,12 @@ def create_previous_files():
         output_files["PREVIOUS_FILES"] = fname
 
 
-def verify_output(strictness):
+def verify_output(strictness, ignore):
     if strictness == 0 or (previous_files is None and strictness < 3):
         return
 
     ignored_templates = [ 'PREVIOUS_FILES', 'CREATOR', 'CCDB-DUMP' ]
+    ignored_templates.extend(ignore.split(','))
     for template in ignored_templates:
         previous_files.pop(template, None)
 
@@ -1316,6 +1317,13 @@ def main(argv):
                         nargs    = '?')
 
     parser.add_argument(
+                        '--verify-ignore',
+                        dest     = "verify_ignore",
+                        help     = 'ignore the specified templates while verifying. Comma separated list',
+                        type     = str,
+                        default  = "")
+
+    parser.add_argument(
                         '--tag',
                         help     = 'tag to use if more than one matching artifact is found',
                         type     = str)
@@ -1476,7 +1484,7 @@ def main(argv):
 
     # Verify created files: they should be the same as the ones from the last run
     if args.verify:
-        verify_output(args.verify)
+        verify_output(args.verify, args.verify_ignore)
 
     create_previous_files()
     write_data_files()
