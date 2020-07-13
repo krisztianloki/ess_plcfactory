@@ -14,7 +14,7 @@ __license__    = "GPLv3"
 
 
 from . import PRINTER
-from tf_ifdef import SOURCE, BLOCK, CMD_BLOCK, STATUS_BLOCK, BASE_TYPE, BIT, ALARM
+from tf_ifdef import IfDefSyntaxError, SOURCE, BLOCK, CMD_BLOCK, STATUS_BLOCK, BASE_TYPE, BIT, ALARM, TIME
 
 
 def printer():
@@ -32,6 +32,10 @@ ARRAY_INDEX
 {array_index}
 BIT_NUMBER
 {bit_number}
+"""
+
+_iff_time_template = """{base}EGU
+{egu}
 """
 
 _iff_beast_template = """{base}BEAST
@@ -188,6 +192,21 @@ PLCTOEPICSDATABLOCKOFFSET
                                    type        = var.plc_type() if var.dimension() == 1 else "{}[{}]".format(var.plc_type(), var.dimension()),
                                    array_index = str(var.offset() // 2),
                                    bit_number  = bit_number)
+
+        if isinstance(var, TIME):
+            egu = var.get_pv_field("EGU").lower()
+            if egu not in ["ms", "s", "m", "h"]:
+                if egu == "msec":
+                    egu = "ms"
+                elif egu == "sec":
+                    egu = "s"
+                elif egu == "min":
+                    egu = "m";
+                else:
+                    raise IfDefSyntaxError("Unknown time unit: " + egu)
+
+            return _iff_time_template.format(base = ifa,
+                                             egu  = egu)
 
         if not isinstance(var, ALARM):
             return ifa

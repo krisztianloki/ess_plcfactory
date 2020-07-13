@@ -1393,11 +1393,17 @@ class IF_DEF(object):
 
     @ifdef_interface
     def add_time(self, name, **keyword_params):
+        keyword_params = self._handle_extra_params(keyword_params)
+
         if not isinstance(name, str):
             raise IfDefSyntaxError("Name must be a string!")
 
-        keyword_params[BASE_TYPE.PV_PREFIX + "EGU"] = "ms"
-        return self.add_analog(name, "TIME", **keyword_params)
+        if BASE_TYPE.PV_EGU not in keyword_params:
+            keyword_params[BASE_TYPE.PV_EGU] = "ms"
+
+        block = self._active_block()
+        var = TIME(self._source, block, name, keyword_params)
+        return self._add(var)
 
 
     @ifdef_interface
@@ -2104,6 +2110,12 @@ class ANALOG(BASE_TYPE):
 
     def pv_type(self):
         return ANALOG.pv_types[self.block_type()]
+
+
+
+class TIME(ANALOG):
+    def __init__(self, source, block, name, keyword_params):
+        super(TIME, self).__init__(source, block, name, "TIME", keyword_params)
 
 
 

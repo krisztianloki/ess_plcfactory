@@ -8,7 +8,7 @@ class IFA(object):
                                          ARRAY_INDEX = int,
                                          BIT_NUMBER  = int)
 
-    valid_variable_entries = set([ 'BEAST', 'ARCHIVE' ])
+    valid_variable_entries = set([ 'BEAST', 'ARCHIVE', 'EGU' ])
     valid_variable_entries.update(set(mandatory_variable_properties.keys()))
 
     mandatory_device_properties = dict(DEVICE                    = str,

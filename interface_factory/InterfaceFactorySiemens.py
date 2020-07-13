@@ -439,7 +439,7 @@ def AddTIME(variable, InArrayName, InArrayNum, StartingRegister):
 			CloseLastVariable()
 			StartingRegister = ActVariableArrayIndex
 			DevTypeBODY_CODE.append("")
-			DevTypeBODY_CODE.append("       #MyTime	:= 0;")
+			DevTypeBODY_CODE.append("       #MyTime	:= T#0" + variable.properties["EGU"] + ";")
 			DevTypeBODY_CODE.append("       #MyWordsinTime[0]	:= \"EPICSToPLC\".\"Word\"[#EPICSToPLCDataBlockOffset + "+str(ActVariableArrayIndex) +"];")
 			DevTypeBODY_CODE.append("       #MyWordsinTime[1]	:= \"EPICSToPLC\".\"Word\"[#EPICSToPLCDataBlockOffset + "+str(ActVariableArrayIndex+1) +"];")
 			if variable.is_command():
