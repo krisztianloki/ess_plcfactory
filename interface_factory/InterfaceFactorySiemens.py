@@ -35,12 +35,6 @@ _ExternalRead    = "ExternalAccessible := 'True'; ExternalVisible := 'False'; Ex
 #_NoExternal      = "S7_HMI_Accessible := 'False'; S7_HMI_Visible := 'False';"
 NoExternal       = "{ " + _NoExternal + " }"
 ExternalRead     = "{ " + _ExternalRead + " }"
-ActualDeviceName = ""
-ActualDeviceType = ""
-EPICSTOPLCLENGTH = ""
-PLCTOEPICSLENGTH = ""
-EPICSTOPLCDATABLOCKOFFSET = ""
-PLCTOEPICSDATABLOCKOFFSET = ""
 
 DeviceTypeList = []
 
@@ -1340,12 +1334,6 @@ def ProcessIFADevTypes(OutputDir, TIAVersion, CommsTest):
 	ProcessedDeviceNum = 0
 
 	global ExternalSourceFile
-	global ActualDeviceName
-	global ActualDeviceType
-	global EPICSTOPLCLENGTH
-	global PLCTOEPICSLENGTH
-	global EPICSTOPLCDATABLOCKOFFSET
-	global PLCTOEPICSDATABLOCKOFFSET
 	global DeviceTypeList
 	DeviceTypeList = []
 
