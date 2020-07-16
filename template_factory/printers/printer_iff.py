@@ -38,12 +38,6 @@ _iff_time_template = """{base}EGU
 {egu}
 """
 
-_iff_beast_template = """{base}BEAST
-{alarm_message}
-ARCHIVE
-{should_archive}
-"""
-
 
 
 #
@@ -205,15 +199,10 @@ PLCTOEPICSDATABLOCKOFFSET
                 else:
                     raise IfDefSyntaxError("Unknown time unit: " + egu)
 
-            return _iff_time_template.format(base = ifa,
-                                             egu  = egu)
+            ifa = _iff_time_template.format(base = ifa,
+                                            egu  = egu)
 
-        if not isinstance(var, ALARM):
-            return ifa
-
-        return _iff_beast_template.format(base           = ifa,
-                                          alarm_message  = var.message(),
-                                          should_archive = "TRUE" if var.archive() else "FALSE")
+        return ifa
 
 
     #
