@@ -493,14 +493,8 @@ def processTemplateID(templateID, devices):
         print("There were no templates for ID = {}.\n".format(tagged_templateID))
         return
 
-    # Process counters; initialize
-    numOfCounters = 9
-    counters      = dict()
-
-    for n in range(numOfCounters):
-        counters["Counter" + str(n + 1)] = 0
-
-    (output, counters) = plcf.PLCF.evalCounters(output, counters)
+    # Process counters
+    (output, _) = plcf.PLCF.evalCounters(output)
 
     eol = getEOL(header)
     #write file

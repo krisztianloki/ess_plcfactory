@@ -45,10 +45,13 @@ class PLCFEvalException(PLCFException):
 
 
 class PLCF(object):
-    plcf_tag     = "[PLCF#"
-    plcf_tag_len = len(plcf_tag)
-    plcf_up      = "^("
-    plcf_up_len  = len(plcf_up)
+    plcf_tag         = "[PLCF#"
+    plcf_tag_len     = len(plcf_tag)
+    plcf_up          = "^("
+    plcf_up_len      = len(plcf_up)
+    plcf_counter_tag = "#COUNTER"
+    plcf_counter     = "Counter"
+    num_of_counters  = 9
 
     @staticmethod
     def __specialProperties(device):
@@ -65,6 +68,14 @@ class PLCF(object):
                       })
 
         return sp
+
+
+    @staticmethod
+    def get_counter(idx):
+        if idx > PLCF.num_of_counters or idx < 1:
+            raise IndexError("Counter index must be between 1..{}".format(PLCF.num_of_counters))
+
+        return "{}{}".format(PLCF.plcf_counter, idx)
 
 
     def __init__(self, device):
@@ -130,7 +141,7 @@ class PLCF(object):
         return map(lambda x: self.processLine(x), line_or_lines)
 
 
-    # extracts a PLFCLang expression from a line in a template,
+    # extracts a PLCFLang expression from a line in a template,
     # evaluates the expression, and returns a new line with
     # the result of the evaluation
     def processLine(self, line):
@@ -147,7 +158,7 @@ class PLCF(object):
             reduced = self._evaluateExpression(expression)
 
             # maintain PLCF tag if a counter variable is part of the expression
-            if 'Counter' in reduced:
+            if PLCF.hasCounter(reduced):
                 result += line[:start] + self.plcf_tag + reduced + "]"
             else:
                 result += line[:start] + reduced
@@ -243,15 +254,45 @@ class PLCF(object):
 
 
     @staticmethod
-    def evalCounters(lines, counters):
+    def hasCounter(line, counter = None):
+        try:
+            start = line.index(counter if counter else PLCF.plcf_counter)
+        except ValueError:
+            return False
+
+        # Check if the preceding character is alphanumeric, if it is, then the "Counter" is part of a word
+        if start and line[start - 1].isalnum():
+            return False
+
+        try:
+            if counter:
+                # Check if the following character is alphanumeric, if it is, then the counter is part of a word
+                if line[start + len(counter)].isalnum():
+                    return False
+            else:
+                # Counter is not explicitly specified but check if the following character is a number, if not then the counter is not ours
+                if not line[start + len(PLCF.plcf_counter)].isdigit():
+                    return False
+        except IndexError:
+            return False
+
+        return True
+
+
+    @staticmethod
+    def evalCounters(lines):
         assert isinstance(lines, list)
-        assert isinstance(counters, dict)
+
+        counters      = dict()
+
+        for n in range(PLCF.num_of_counters):
+            counters[PLCF.plcf_counter + str(n + 1)] = 0
 
         output = []
 
         for line in lines:
             if PLCF.plcf_tag in line:
-                if "#COUNTER" not in line:
+                if PLCF.plcf_counter_tag not in line:
                     line = PLCF._evalCounter(line, counters)
                 else:
                     (counters, line) = PLCF._evalCounterIncrease(line, counters)
@@ -271,7 +312,8 @@ class PLCF(object):
 
         # substitutions
         for key in counters.keys():
-            (line, _) = PLCF.substitute(line, key, str(counters[key]))
+            if PLCF.hasCounter(line, key):
+                (line, _) = PLCF.substitute(line, key, str(counters[key]))
 
         # evaluation
         (_, line) = PLCF._processLineCounter(line)

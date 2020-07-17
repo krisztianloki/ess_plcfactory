@@ -14,6 +14,11 @@ import copy
 from collections import OrderedDict
 #import inspect
 
+try:
+    from plcf import PLCF
+except ImportError:
+    pass
+
 
 
 # Data types for S7 PLCs
@@ -431,7 +436,10 @@ class STATUS_BLOCK(BLOCK):
 
     @staticmethod
     def counter_keyword():
-        return "Counter2"
+        try:
+            return PLCF.get_counter(2)
+        except:
+            return "Counter2"
 
 
     @staticmethod
@@ -515,7 +523,10 @@ class MODBUS(object):
 
     @staticmethod
     def counter_keyword():
-        return "Counter1"
+        try:
+            return PLCF.get_counter(1)
+        except:
+            return "Counter1"
 
 
     @staticmethod
