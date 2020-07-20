@@ -78,6 +78,16 @@ class PLCF(object):
         return "{}{}".format(PLCF.plcf_counter, idx)
 
 
+    @staticmethod
+    def initializeCounters():
+        counters = dict()
+
+        for n in range(PLCF.num_of_counters):
+            counters[PLCF.plcf_counter + str(n + 1)] = 0
+
+        return counters
+
+
     def __init__(self, device):
         self._device  = device
         self._evalenv = { "ext": plcf_ext }
@@ -255,38 +265,63 @@ class PLCF(object):
 
     @staticmethod
     def hasCounter(line, counter = None):
-        try:
-            start = line.index(counter if counter else PLCF.plcf_counter)
-        except ValueError:
-            return False
+        start = -1;
+        while True:
+            try:
+                start = line.index(counter if counter else PLCF.plcf_counter, start + 1)
+            except ValueError:
+                return False
 
-        # Check if the preceding character is alphanumeric, if it is, then the "Counter" is part of a word
-        if start and line[start - 1].isalnum():
-            return False
+            # Check if the preceding character is alphanumeric, if it is, then the "Counter" is part of a word
+            if start and line[start - 1].isalnum():
+                continue
 
-        try:
-            if counter:
+            try:
+                if counter is None:
+                    # Counter is not explicitly specified but check if the following character is a number, if not then the counter is not ours
+                    if not line[start + len(PLCF.plcf_counter)].isdigit():
+                        continue
+
+                    # Let's define a counter and check with that too
+                    counter = PLCF.plcf_counter + "1"
+            except IndexError as e:
+                # End-of-string, there was nothing after PLCF.plcf_counter
+                return False
+
+            try:
                 # Check if the following character is alphanumeric, if it is, then the counter is part of a word
                 if line[start + len(counter)].isalnum():
-                    return False
-            else:
-                # Counter is not explicitly specified but check if the following character is a number, if not then the counter is not ours
-                if not line[start + len(PLCF.plcf_counter)].isdigit():
-                    return False
-        except IndexError:
-            return False
+                    continue
+            except IndexError as e:
+                # End-of-string, it was a counter
+                return True
 
-        return True
+            return True
+
+
+    @staticmethod
+    def wordIndex(line, word):
+        start = -1
+        while True:
+            start = line.index(word, start + 1)
+
+            # Check if the preceding character is alphanumeric, if it is, then "word" is part of a word
+            if start and line[start - 1].isalnum():
+                continue
+
+            try:
+                # Check if the next character is alphanumeric; if it isn't then "word" is a standalone word
+                if not line[start + len(word)].isalnum():
+                    return start
+            except IndexError:
+                return start
 
 
     @staticmethod
     def evalCounters(lines):
         assert isinstance(lines, list)
 
-        counters      = dict()
-
-        for n in range(PLCF.num_of_counters):
-            counters[PLCF.plcf_counter + str(n + 1)] = 0
+        counters = PLCF.initializeCounters()
 
         output = []
 
@@ -312,8 +347,10 @@ class PLCF(object):
 
         # substitutions
         for key in counters.keys():
-            if PLCF.hasCounter(line, key):
-                (line, _) = PLCF.substitute(line, key, str(counters[key]))
+            try:
+                (line, _) = PLCF.substituteWord(line, key, str(counters[key]))
+            except ValueError:
+                pass
 
         # evaluation
         (_, line) = PLCF._processLineCounter(line)
@@ -334,7 +371,10 @@ class PLCF(object):
             post = line[pos:]
 
             for key in counters.keys():
-                (post, _) = PLCF.substitute(post, key, str(counters[key]))
+                try:
+                    (post, _) = PLCF.substituteWord(post, key, str(counters[key]))
+                except ValueError:
+                    pass
 
             line = pre + post
 
@@ -438,10 +478,26 @@ class PLCF(object):
             return (expr, len(expr))
 
         start           = expr.find(variable)
-        end             = start + len(variable)
+        pos_after_value = start + len(value)
+
+        return (expr.replace(variable, value, 1), pos_after_value)
+
+
+    @staticmethod
+    def substituteWord(expr, word, value):
+        assert isinstance(expr,   str)
+        assert isinstance(word,   str)
+        assert isinstance(value,  str)
+
+        if word not in expr:
+            return (expr, len(expr))
+
+        start           = PLCF.wordIndex(expr, word)
+        end             = start + len(word)
         pos_after_value = start + len(value)
 
         return (expr[:start] + value + expr[end:], pos_after_value)
+
 
     # checks for basic validity of expression by determining whether
     # open and closed parentheses match
@@ -475,71 +531,5 @@ class PLCF(object):
 
 
 if __name__ == "__main__":
-    class FakeDevice(object):
-        def name(self):
-            return "FakeDevice"
-        def description(self):
-            return "FakeDescription"
-        def deviceType(self):
-            return "FakeDeviceType"
-        def propertiesDict(self):
-            return { "infinity": "infinity",
-                     "lonG"    : "lonG", "lonGer": "lonGer", "lengthy": "lonG",
-                     "short"   : "shorter", "shorter" : "tiny",
-                     "template": "beast-template",
-                     "A"       : "AB", "AB": "AC"}
-        def backtrack(self, prop):
-            return prop
-
-
-    cplcf = PLCF(FakeDevice())
-
-    def noException(line):
-        print("Checking {}... {}".format(line, cplcf.processLine(line)))
-
-
-    def match(line, expected):
-        print("Checking {}...".format(line), end = '')
-        result = cplcf.processLine(line)
-        if result == expected:
-            print(result)
-        else:
-            print()
-            raise RuntimeError("Test failed for {}:\nexpected {}\ngot      {}".format(line, expected, result))
-
-    def expectException(line):
-        try:
-            print("Checking {}...".format(line))
-            cplcf.processLine(line)
-            raise RuntimeError("Test failed for {}".format(line))
-        except (PLCFException, AssertionError):
-            pass
-
-    noException("[PLCF#]")
-
-    expectException("[PLCF#")
-
-    expectException("[PLCF#[]")
-
-#    noException("[PLCF#(]")
-    expectException("[PLCF#(]")
-
-    noException("[PLCF#^(this is (a) weird property)]")
-
-    expectException("[PLCF#(property]")
-
-    expectException("[PLCF#ext.(]")
-
-    expectException("[PLCF#ext.fn(()]")
-
-    match("[PLCF#infinity]", "infinity")
-
-    match("[PLCF#lengthyer]", "lonGer")
-
-    match("[PLCF#lengthyer lengthy]", "lonGer lonG")
-
-    match("[PLCF#short]", "tiny")
-
-    match("[PLCF#template template short]", "beast-template beast-template tiny")
-
-#    match("[PLCF#A]", "AC")
+    import test_plcf
+    test_plcf.unittest.main()
