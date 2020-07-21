@@ -30,6 +30,7 @@ class PLCFException(Exception):
     pass
 
 
+
 class PLCFEvalException(PLCFException):
     def __init__(self, expression, exception, *args):
         super(PLCFEvalException, self).__init__(*args)
@@ -41,6 +42,11 @@ class PLCFEvalException(PLCFException):
         return "The following exception occured during the evaluation of '{expr}': {exc}: {msg}".format(expr = self.expression,
                                                                                                         exc  = type(self.exception).__name__,
                                                                                                         msg  = str(self.exception))
+
+
+
+class PLCFNoWordException(PLCFException):
+    pass
 
 
 
@@ -123,14 +129,14 @@ class PLCF(object):
             self._properties = dict(device.propertiesDict())
         else:
             self._properties = dict()
-        self._keys = self._properties.keys()
+        self._keys = list(self._properties.keys())
 
         sp   = self.__specialProperties(device)
         # Pre-register a TEMPLATE property without an actual value
-        keys = sp.keys()
+        keys = list(sp.keys())
         keys.append('TEMPLATE')
 
-        if set(keys) <= set(self._keys):
+        if not set(keys).isdisjoint((self._keys)):
             raise PLCFException("Redefinition of the following reserved properties is not allowed: {}".format(set(self._keys).intersection(set(keys))))
 
         self._keys.extend(keys)
@@ -221,17 +227,21 @@ class PLCF(object):
         expression = self._evalUp(expression)
 
         for elem in self._keys:
-            if elem in expression:
-                value                = self._properties.get(elem)
-                (tmp, pos_after_val) = self.substitute(expression, elem, value)
-                # If the substitution string ('value') contains the key ('elem') then check if the result contains other keys than 'elem'
-                # In other words: try to avoid an infinite recursion
-                if elem in value and self._check_infinite_recursion(tmp, elem):
-                    tmp = tmp[:pos_after_val] + self._evaluateExpression(tmp[pos_after_val:])
-                    expression = self._evalUp(tmp)
-                    break
-                # recursion to take care of multiple occurrences of variables
-                return self._evaluateExpression(tmp)
+            try:
+                if elem in expression:
+                    value                = self._properties.get(elem)
+                    (tmp, pos_after_val) = self.substituteWord(expression, elem, value)
+                    # If the substitution string ('value') contains the key ('elem') then check if the result contains other keys than 'elem'
+                    # In other words: try to avoid an infinite recursion
+                    # Not sure if this can still happen now that we don't substitute inside words but let's keep it here for now
+                    if elem in value and self._check_infinite_recursion(tmp, elem):
+                        tmp = tmp[:pos_after_val] + self._evaluateExpression(tmp[pos_after_val:])
+                        expression = self._evalUp(tmp)
+                        break
+                    # recursion to take care of multiple occurrences of variables
+                    return self._evaluateExpression(tmp)
+            except PLCFNoWordException:
+                pass
 
         # evaluation happens after all substitutions have been performed
         wasquoted = False
@@ -264,6 +274,11 @@ class PLCF(object):
 
 
     @staticmethod
+    def isWordChar(char):
+        return char.isalnum() or char == '_'
+
+
+    @staticmethod
     def hasCounter(line, counter = None):
         start = -1;
         while True:
@@ -273,7 +288,7 @@ class PLCF(object):
                 return False
 
             # Check if the preceding character is alphanumeric, if it is, then the "Counter" is part of a word
-            if start and line[start - 1].isalnum():
+            if start and PLCF.isWordChar(line[start - 1]):
                 continue
 
             try:
@@ -290,7 +305,7 @@ class PLCF(object):
 
             try:
                 # Check if the following character is alphanumeric, if it is, then the counter is part of a word
-                if line[start + len(counter)].isalnum():
+                if PLCF.isWordChar(line[start + len(counter)]):
                     continue
             except IndexError as e:
                 # End-of-string, it was a counter
@@ -303,15 +318,18 @@ class PLCF(object):
     def wordIndex(line, word):
         start = -1
         while True:
-            start = line.index(word, start + 1)
+            try:
+                start = line.index(word, start + 1)
+            except ValueError as e:
+                raise PLCFNoWordException(e)
 
             # Check if the preceding character is alphanumeric, if it is, then "word" is part of a word
-            if start and line[start - 1].isalnum():
+            if start and PLCF.isWordChar(line[start - 1]):
                 continue
 
             try:
                 # Check if the next character is alphanumeric; if it isn't then "word" is a standalone word
-                if not line[start + len(word)].isalnum():
+                if not PLCF.isWordChar(line[start + len(word)]):
                     return start
             except IndexError:
                 return start
@@ -349,7 +367,7 @@ class PLCF(object):
         for key in counters.keys():
             try:
                 (line, _) = PLCF.substituteWord(line, key, str(counters[key]))
-            except ValueError:
+            except PLCFNoWordException:
                 pass
 
         # evaluation
@@ -373,7 +391,7 @@ class PLCF(object):
             for key in counters.keys():
                 try:
                     (post, _) = PLCF.substituteWord(post, key, str(counters[key]))
-                except ValueError:
+                except PLCFNoWordException:
                     pass
 
             line = pre + post
@@ -469,21 +487,6 @@ class PLCF(object):
 
     # substitutes a variable in an expression with the provided value
     @staticmethod
-    def substitute(expr, variable, value):
-        assert isinstance(expr,     str)
-        assert isinstance(variable, str)
-        assert isinstance(value,    str)
-
-        if variable not in expr:
-            return (expr, len(expr))
-
-        start           = expr.find(variable)
-        pos_after_value = start + len(value)
-
-        return (expr.replace(variable, value, 1), pos_after_value)
-
-
-    @staticmethod
     def substituteWord(expr, word, value):
         assert isinstance(expr,   str)
         assert isinstance(word,   str)
@@ -532,4 +535,4 @@ class PLCF(object):
 
 if __name__ == "__main__":
     import test_plcf
-    test_plcf.unittest.main()
+    test_plcf.unittest.main(test_plcf)

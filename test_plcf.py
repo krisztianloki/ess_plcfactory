@@ -31,6 +31,19 @@ class FakeDevice(object):
 
 
 
+class ReservedPropertiesDevice(FakeDevice):
+    def __init__(self, res_property):
+        self._res_prop = dict()
+        self._res_prop[res_property] = "A"
+
+
+    def propertiesDict(self):
+        propdict = super(ReservedPropertiesDevice, self).propertiesDict()
+        propdict.update(self._res_prop)
+        return propdict
+
+
+
 class TestPLCF(unittest.TestCase):
     def setUp(self):
         plcf_glob.root_installation_slot = "root_slot"
@@ -42,27 +55,45 @@ class TestPLCF(unittest.TestCase):
         pass
 
 
+    def testGetCounter(self):
+        self.assertEqual(plcf.PLCF.get_counter(1), "{}1".format(plcf.PLCF.plcf_counter))
+        with self.assertRaises(IndexError):
+            plcf.PLCF.get_counter(0)
+        with self.assertRaises(IndexError):
+            plcf.PLCF.get_counter(plcf.PLCF.num_of_counters + 1)
+
+
+    def testReservedProperties(self):
+        for prop in plcf.PLCF._PLCF__specialProperties(self.device):
+            with self.assertRaises(plcf.PLCFException):
+                cplcf = plcf.PLCF(ReservedPropertiesDevice(prop))
+
+
     def testEmptyPLCF(self):
         line = "[PLCF#]"
-        self.assertEqual(self.cplcf.processLine(line), "")
+        self.assertEqual(self.cplcf.process(line), "")
 
 
     def testUnclosedPLCF(self):
         line = "[PLCF#"
         with self.assertRaises(plcf.PLCFException):
-            self.cplcf.processLine(line)
+            self.cplcf.process(line)
 
 
     def testSquareBracketInPLCF(self):
         line = "[PLCF#[]"
         with self.assertRaises(plcf.PLCFException):
-            self.cplcf.processLine(line)
+            self.cplcf.process(line)
 
 
     def testParenInPLCF(self):
         line = "[PLCF#(]"
         with self.assertRaises(AssertionError):
-            self.cplcf.processLine(line)
+            self.cplcf.process(line)
+
+        line = "[PLCF#[]"
+        with self.assertRaises(plcf.PLCFException):
+            self.cplcf.process(line)
 
 
 #    noException("[PLCF#^(this is (a) weird property)]")
@@ -70,25 +101,25 @@ class TestPLCF(unittest.TestCase):
     def testParenPropertyInPLCF(self):
         line = "[PLCF#(property]"
         with self.assertRaises(AssertionError):
-            self.cplcf.processLine(line)
+            self.cplcf.process(line)
 
 
     def testParenExtInPLCF(self):
         line = "[PLCF#ext.(]"
         with self.assertRaises(AssertionError):
-            self.cplcf.processLine(line)
+            self.cplcf.process(line)
 
 
     def testUnclosedParenExtInPLCF(self):
         line = "[PLCF#ext.fn(()]"
         with self.assertRaises(AssertionError):
-            self.cplcf.processLine(line)
+            self.cplcf.process(line)
 
 
     def testNoSuchPropertyInPLCF(self):
         prop = "infinity"
         line = "[PLCF#{}]".format(prop)
-        self.assertEqual(self.cplcf.processLine(line), prop)
+        self.assertEqual(self.cplcf.process(line), prop)
 
 
 #    match("[PLCF#lengthyer]", "lonGer")
@@ -98,22 +129,22 @@ class TestPLCF(unittest.TestCase):
     def testPropertyInPLCF(self):
         line   = "[PLCF#short]"
         result = "tiny"
-        self.assertEqual(self.cplcf.processLine(line), result)
+        self.assertEqual(self.cplcf.process(line), result)
         line   = "[PLCF#forty-two]"
         result = "42"
-        self.assertEqual(self.cplcf.processLine(line), result)
+        self.assertEqual(self.cplcf.process(line), result)
 
 
     def testMultiplePropertyAppearanceInPLCF(self):
         line   = "[PLCF#template template short]"
         result = "beast-template beast-template tiny"
-        self.assertEqual(self.cplcf.processLine(line), result)
+        self.assertEqual(self.cplcf.process(line), result)
 
 
-#    def testRecursivePropertySubst(self):
-#        line   = "[PLCF#A]"
-#        result = self.device.propertiesDict()["A"]
-#        self.assertEqual(self.cplcf.processLine(line), result)
+    def testRecursivePropertySubst(self):
+        line   = "[PLCF#A]"
+        result = self.device.propertiesDict()[self.device.propertiesDict()["A"]]
+        self.assertEqual(self.cplcf.process(line), result)
 
 
     def testCounterInPLCF(self):
@@ -172,8 +203,8 @@ class TestPLCF(unittest.TestCase):
         counters = plcf.PLCF.initializeCounters()
         counters[counter] = 42
         self.assertTrue(plcf.PLCF.hasCounter(line))
-        self.assertEqual(self.cplcf.processLine(line), "[PLCF#42 + {}]".format(counter))
-        line = self.cplcf.processLine(line)
+        self.assertEqual(self.cplcf.process(line), "[PLCF#42 + {}]".format(counter))
+        line = self.cplcf.process(line)
         self.assertTrue(plcf.PLCF.hasCounter(line))
         self.assertEqual(plcf.PLCF._evalCounter(line, counters), str(42 + counters[counter]))
 
@@ -182,7 +213,7 @@ class TestPLCF(unittest.TestCase):
     def testBacktrackInPLCF(self):
         expr = "^(EPICSToPLCDataBlockStartOffset)"
         line = "[PLCF#{}]".format(expr)
-        self.assertEqual(self.cplcf.processLine(line), "42")
+        self.assertEqual(self.cplcf.process(line), "42")
 
 
     def testBacktrackAndCounterInPLCF(self):
@@ -192,7 +223,7 @@ class TestPLCF(unittest.TestCase):
         counters = plcf.PLCF.initializeCounters()
         counters[counter] = 42
         self.assertTrue(plcf.PLCF.hasCounter(line))
-        self.assertEqual(self.cplcf.processLine(line), "[PLCF#{} + {}]".format(42, counter))
+        self.assertEqual(self.cplcf.process(line), "[PLCF#{} + {}]".format(42, counter))
 
 
     def testNoCounterInPLCF(self):
@@ -200,8 +231,14 @@ class TestPLCF(unittest.TestCase):
         line = "[PLCF#{}]".format(expr)
         self.assertFalse(plcf.PLCF.hasCounter(expr))
         self.assertFalse(plcf.PLCF.hasCounter(line))
-        with self.assertRaises(ValueError):
+        with self.assertRaises(plcf.PLCFNoWordException):
             plcf.PLCF.wordIndex(line, "Counter4")
+        self.assertEqual(plcf.PLCF._evalCounter(line, plcf.PLCF.initializeCounters()), expr)
+
+        expr = "Counter1_Cmd"
+        line = "[PLCF#{}]".format(expr)
+        self.assertFalse(plcf.PLCF.hasCounter(expr))
+        self.assertFalse(plcf.PLCF.hasCounter(line))
         self.assertEqual(plcf.PLCF._evalCounter(line, plcf.PLCF.initializeCounters()), expr)
 
         expr = "Counter1Cmd"
@@ -261,8 +298,24 @@ class TestPLCF(unittest.TestCase):
 
         word = "word"
         line = "This is myword"
-        with self.assertRaises(ValueError):
+        with self.assertRaises(plcf.PLCFNoWordException):
             plcf.PLCF.substituteWord(line, word, "Sparta")
+
+
+    def testQuoted(self):
+        word = "'True'"
+        line = "[PLCF#{}]".format(word)
+        self.assertEqual(self.cplcf.process(line), word)
+
+
+    def testExt(self):
+        word = "filename"
+        line = "[PLCF#ext.to_filename('{}')]".format(word)
+        self.assertEqual(self.cplcf.process(line), word)
+
+        line = "[PLCF#ext.to_filename({})]".format(word)
+        with self.assertRaises(plcf.PLCFEvalException):
+            self.cplcf.process(line)
 
 
 
