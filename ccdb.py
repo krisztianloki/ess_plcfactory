@@ -186,6 +186,10 @@ class CCDB(CC):
         self._verify_ssl_cert = verify_ssl_cert
 
 
+    def url(self):
+        return self._base_url
+
+
     def download_from_ccdb(self, url, save_as):
         return CC.download(self._base_url + url, save_as, verify_ssl_cert = self._verify_ssl_cert)
 

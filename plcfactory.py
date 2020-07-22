@@ -87,7 +87,7 @@ del parent_dir
 import plcf_glob as glob
 import plcf
 from plcf_ext import PLCFExtException
-from   ccdb import CCDB
+from   cc import CC
 import helpers
 
 
@@ -525,7 +525,7 @@ def processDevice(deviceName, templateIDs):
 
     try:
         device = glob.ccdb.device(deviceName)
-    except CCDB.NoSuchDeviceException:
+    except CC.NoSuchDeviceException:
         print("""
 ERROR:
 Device '{}' not found.
@@ -1322,7 +1322,7 @@ def main(argv):
                         type    = str
                        )
 
-    CCDB.addArgs(parser)
+    CC.addArgs(parser)
 
     parser.add_argument(
                         '--verify',
@@ -1455,17 +1455,14 @@ def main(argv):
 
     banner()
 
-    if args.ccdb:
-        from cc import CC
-        glob.ccdb = CC.load(args.ccdb)
-    elif args.ccdb_test:
+    if args.ccdb_test:
         from ccdb import CCDB_TEST
         glob.ccdb = CCDB_TEST(clear_templates = args.clear_ccdb_cache)
     elif args.ccdb_devel:
         from ccdb import CCDB_DEVEL
         glob.ccdb = CCDB_DEVEL(clear_templates = args.clear_ccdb_cache)
     else:
-        glob.ccdb = CCDB(clear_templates = args.clear_ccdb_cache)
+        glob.ccdb = CC.open(args.ccdb, clear_templates = args.clear_ccdb_cache)
 
     if args.output_dir[0] == '+':
         OUTPUT_DIR = os.path.join(OUTPUT_DIR, args.output_dir[1:])
@@ -1477,7 +1474,7 @@ def main(argv):
         OUTPUT_DIR = args.output_dir
 
     if device_tag:
-        OUTPUT_DIR = os.path.join(OUTPUT_DIR, helpers.sanitizeFilename(CCDB.TAG_SEPARATOR.join([ "", "tag", device_tag ])))
+        OUTPUT_DIR = os.path.join(OUTPUT_DIR, helpers.sanitizeFilename(CC.TAG_SEPARATOR.join([ "", "tag", device_tag ])))
     helpers.makedirs(OUTPUT_DIR)
 
     read_data_files()
@@ -1496,7 +1493,7 @@ def main(argv):
     # create a factory of CCDB
     try:
         output_files["CCDB-FACTORY"] = root_device.toFactory(device, OUTPUT_DIR, git_tag = epi_version, script = "-".join([ device, glob.timestamp ]))
-    except CCDB.Exception:
+    except CC.Exception:
         pass
 
     # Verify created files: they should be the same as the ones from the last run

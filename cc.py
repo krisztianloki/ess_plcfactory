@@ -577,8 +577,8 @@ class CC(object):
         ccdb_flavors.add_argument(
                                   '--ccdb',
                                   dest     = "ccdb",
-                                  help     = 'use a CCDB dump as backend',
-                                  metavar  = 'directory-to-CCDB-dump / name-of-.ccdb.zip',
+                                  help     = 'use a CCDB dump or custom URL as backend',
+                                  metavar  = 'directory-to-CCDB-dump / name-of-.ccdb.zip / URL to CCDB REST interface',
                                   type     = str,
                                   required = False)
 
@@ -1001,6 +1001,15 @@ factory.save("{filename}")""".format(factory_options = 'git_tag = "{}"'.format(g
             dumpfile.write(template, os_path.join("ccdb", template))
 
         return filename
+
+
+    @staticmethod
+    def open(name = None, **kwargs):
+        if name is not None and os_path.exists(name):
+            return CC.load(name)
+
+        from ccdb import CCDB
+        return CCDB(name, **kwargs)
 
 
     @staticmethod
