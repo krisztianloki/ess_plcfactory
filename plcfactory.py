@@ -523,7 +523,30 @@ def processDevice(deviceName, templateIDs):
         print("Obtaining controls tree...", end = '')
         sys.stdout.flush()
 
-    device = glob.ccdb.device(deviceName)
+    try:
+        device = glob.ccdb.device(deviceName)
+    except CCDB.NoSuchDeviceException:
+        print("""
+ERROR:
+Device '{}' not found.
+Please check the list of devices in CCDB, and keep
+in mind that device names are case-sensitive.
+Maybe you meant one of the following devices:
+(Accesing CCDB, may take a few seconds...)""".format(deviceName))
+        (filtered, top10) = glob.ccdb.getTopXSimilarDevices(deviceName)
+        if not top10:
+            print("""
+No devices found.""")
+        else:
+            print("""
+Most similar device names in CCDB {}(max. 10):""".format("in chosen slot " if filtered else ""))
+            for dev in top10:
+                print(dev)
+
+        print("""
+Exiting.
+""")
+        exit(1)
 
     # Get the EPICSModule and EPICSSnippet properties
     dev_props = device.properties()

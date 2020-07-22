@@ -91,6 +91,11 @@ class CC(object):
 
 
 
+    class NoSuchDeviceException(Exception):
+        pass
+
+
+
     class BasicAuth(requests.auth.AuthBase):
         def __init__(self, username = None):
             super(CC.BasicAuth, self).__init__()
@@ -800,6 +805,21 @@ class CC(object):
         assert isinstance(deviceName, str)
 
         raise NotImplementedError
+
+
+    def getTopXSimilarDevices(self, deviceName, X = 10):
+        """
+            Returns the topX most similar device names in the database
+
+            Returns a tuple (filtered, topX):
+             - filtered; boolean if the list is filtred to the same System-Subsystem as deviceName
+             - topX; a list of device names
+        """
+        (filtered, topX) = self.getSimilarDevices(deviceName)
+        if topX:
+            topX = list(map(lambda x: x[1], topX[:X]))
+
+        return (filtered, topX)
 
 
     def toFactory(self, filename, directory = ".", git_tag = None, script = None, root = None):

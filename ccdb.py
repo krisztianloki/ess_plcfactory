@@ -210,13 +210,15 @@ class CCDB(CC):
 
         # keep only device
         slot = deviceName.split(":")
+        candidates = None
         if len(slot) > 1:
-            slot = slot[0].lower()
+            slot       = slot[0].lower()
             candidates = filter(lambda x: x.lower().startswith(slot), allDevices)
-            filtered = True
-        else:
+            filtered   = True
+
+        if not candidates:
             candidates = allDevices
-            filtered = False
+            filtered   = False
 
         # compute Levenshtein distances
         return (filtered, sorted(map(lambda x: (levenshtein.distance(deviceName, x), x), candidates)))
@@ -248,27 +250,7 @@ class CCDB(CC):
             try:
                 device = self.tostring(tmpDict["installationSlots"])
                 if not device:
-                    print("""ERROR:
-Device '{}' not found.
-Please check the list of devices in CCDB, and keep
-in mind that device names are case-sensitive.
-Maybe you meant one of the following devices:
-(Accesing CCDB, may take a few seconds...)""".format(deviceName))
-
-                    (filtered, top10) = self.getSimilarDevices(deviceName)
-                    if not top10:
-                        print("""
-No devices found.""")
-                    else:
-                        print("""
-Most similar device names in CCDB {}(max. 10):""".format("in chosen slot " if filtered else ""))
-                        for (score, dev) in top10[:10]:
-                            print(dev)
-
-                    print("""
-Exiting.
-""")
-                    exit(1)
+                    raise CC.NoSuchDeviceException(deviceName)
 
                 if len(device) > 1:
                     raise CC.Exception("More than one device found with the same name: {}".format(deviceName))
