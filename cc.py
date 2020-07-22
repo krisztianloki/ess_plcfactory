@@ -47,6 +47,7 @@ class CC(object):
     TEMPLATE_DIR    = "templates"
     TAG_SEPARATOR   = "__"
     GIT_SUFFIX      = ".git"
+    DEVICE_DICT     = "device.dict"
     paths_cached    = dict()
     sessions_cached = dict()
     repos_cached    = dict()
@@ -996,7 +997,7 @@ factory.save("{filename}")""".format(factory_options = 'git_tag = "{}"'.format(g
         filename = os_path.join(directory, helpers.sanitizeFilename(filename))
         dumpfile = zipfile.ZipFile(filename, "w", zipfile.ZIP_DEFLATED)
 
-        dumpfile.writestr(os_path.join("ccdb", "device.dict"), str(self._devices))
+        dumpfile.writestr(os_path.join("ccdb", CC.DEVICE_DICT), str(self._devices))
         for template in self.Artifact.downloadedArtifacts:
             dumpfile.write(template, os_path.join("ccdb", template))
 
