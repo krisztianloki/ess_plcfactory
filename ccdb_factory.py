@@ -12,7 +12,10 @@ __license__    = "GPLv3"
 
 import sys
 if sys.version_info.major != 2:
-    raise RuntimeError("CCDBFactory supports Python-2.x only. You are running " + sys.version)
+    print("""
+Python-3 support is experimental
+""", file = sys.stderr)
+#    raise RuntimeError("CCDBFactory supports Python-2.x only. You are running " + sys.version)
 
 # Python libraries
 import os
@@ -132,7 +135,7 @@ class CCDB_Factory(CC):
             super(CCDB_Factory.Device, self).__init__(dict(CCDB_Factory.Device.default_device_dict), ccdb = ccdb)
             self._slot["name"] = deviceName
             if deviceType is not None:
-                self._slot["deviceType"] = deviceName
+                self._slot["deviceType"] = deviceType
 
 
         def _artifact(self, a):
@@ -375,7 +378,7 @@ class CCDB_Factory(CC):
 
 
     def save(self, filename, *pargs, **kwargs):
-        for device in self._devices.itervalues():
+        for device in self._devices.values():
             device.save(self._git_tag)
 
         return super(CCDB_Factory, self).save(filename, *pargs, **kwargs)
