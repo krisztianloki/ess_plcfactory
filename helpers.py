@@ -31,9 +31,22 @@ except NameError:
 
 
 
+class BusyException(OSError):
+    pass
+
+
 def rmdirs(path):
+    #
+    # Python3(.6?) has a weird interaction with VirtualBox shared folders where shutil.rmtree returns OSError(26) (text file busy) errors
+    # So we, check if the exception is OSError(26) and handle that outside of shutil.rmtree() with os.rmdir() and then retry shutil.rmtree
+    #
     from shutil import rmtree
     def onrmtreeerror(func, e_path, exc_info):
+        if exc_info[0] is OSError and exc_info[1].errno == 26:
+            be = BusyException(exc_info[1])
+            be.filename = e_path
+            raise be
+
         if e_path != path:
             raise
 
@@ -46,7 +59,12 @@ def rmdirs(path):
         if exc_info[1].errno != 2:
             raise
 
-    rmtree(path, onerror = onrmtreeerror)
+    while True:
+        try:
+            rmtree(path, onerror = onrmtreeerror)
+            return
+        except BusyException as e:
+            os.rmdir(e.filename)
 
 
 def makedirs(path):
