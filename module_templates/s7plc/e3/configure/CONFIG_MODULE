@@ -3,9 +3,9 @@ EPICS_MODULE_NAME:=[PLCF#ext.e3_modulename()]
 
 E3_MODULE_VERSION:=plcfactory
 
-MODBUS_DEP_VERSION:=2.11.0p
+MODBUS_DEP_VERSION:=3.0.0
 S7PLC_DEP_VERSION:=1.4.1
-CALC_DEP_VERSION:=3.7.1
+CALC_DEP_VERSION:=3.7.3
 
 #
 # In most case, we don't need to touch the following variables.
