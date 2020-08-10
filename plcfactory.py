@@ -533,7 +533,7 @@ Please check the list of devices in CCDB, and keep
 in mind that device names are case-sensitive.
 Maybe you meant one of the following devices:
 (Accesing CCDB, may take a few seconds...)""".format(deviceName))
-        (filtered, top10) = glob.ccdb.getTopXSimilarDevices(deviceName)
+        (filtered, top10) = glob.ccdb.getSimilarDeviceNames(deviceName)
         if not top10:
             print("""
 No devices found.""")

@@ -15,7 +15,6 @@ from ast import literal_eval as ast_literal_eval
 
 # PLC Factory modules
 from   cc import CC
-import levenshtein
 
 
 
@@ -111,18 +110,18 @@ class CCDB(CC):
 
 
         def _controls(self):
-            return map(lambda dn: self.ccdb.device(dn), self._ensure(self._slot.get("controls", []), []))
+            return map(lambda dn: self.ccdb.device(dn), self._ensure(self._slot.get("controls", []), list))
 
 
         def _controlledBy(self, filter_by_controlled_tree):
-            return filter(lambda nn: nn is not None, map(lambda dn: self.ccdb.device(dn, filter_by_controlled_tree), self._ensure(self._slot.get("controlledBy", []), [])))
+            return filter(lambda nn: nn is not None, map(lambda dn: self.ccdb.device(dn, filter_by_controlled_tree), self._ensure(self._slot.get("controlledBy", []), list)))
 
 
         def _properties(self):
             if self._props is not None:
                 return self._props
 
-            props = self._ensure(self._slot.get("properties", []), [])
+            props = self._ensure(self._slot.get("properties", []), list, False)
             self._props = OrderedDict()
             for prop in props:
                 name  = prop.get("name")
@@ -164,7 +163,7 @@ class CCDB(CC):
             if self._arts is not None:
                 return self._arts
 
-            self._arts = map(lambda a: self._artifact(a), self._ensure(self._slot.get("artifacts", []), []))
+            self._arts = self._ensure(map(lambda a: self._artifact(a), self._ensure(self._slot.get("artifacts", []), list)), list)
 
             return self._arts
 
@@ -198,9 +197,7 @@ class CCDB(CC):
         return CC.download(url, save_as, verify_ssl_cert = True)
 
 
-    def getSimilarDevices(self, deviceName):
-        assert isinstance(deviceName, str)
-
+    def getAllDeviceNames(self):
         url = self._base_url + "slotNames/"
 
         result  = self._get(url)
@@ -212,20 +209,7 @@ class CCDB(CC):
         # convert unicode to String
         allDevices = map(lambda x: str(x), allDevices)
 
-        # keep only device
-        slot = deviceName.split(":")
-        candidates = None
-        if len(slot) > 1:
-            slot       = slot[0].lower()
-            candidates = filter(lambda x: x.lower().startswith(slot), allDevices)
-            filtered   = True
-
-        if not candidates:
-            candidates = allDevices
-            filtered   = False
-
-        # compute Levenshtein distances
-        return (filtered, sorted(map(lambda x: (levenshtein.distance(deviceName, x), x), candidates)))
+        return allDevices
 
 
     def deviceName(self, deviceName):

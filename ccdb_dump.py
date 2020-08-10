@@ -58,7 +58,7 @@ class CCDB_Dump(object):
             raise CC.DownloadException(url = url, code = "Inconsistent CCDB dump: this artifact was not downloaded")
 
 
-        def getSimilarDevices(self, deviceName):
+        def getAllDeviceNames(self):
             return list(self._devices.keys())
 
 
@@ -67,7 +67,8 @@ class CCDB_Dump(object):
                 deviceDict = ast.literal_eval(devicedict)
             except Exception as e:
                 raise CC.Exception(e)
-            for (key, value) in deviceDict.iteritems():
+
+            for (key, value) in deviceDict.items():
                 self._devices[key] = CCDB.Device(value, ccdb = self)
 
 
@@ -110,7 +111,7 @@ class CCDB_Dump(object):
             self._rootpath = "ccdb"
 
             try:
-                self._createDevices(self._zipfile.read(os_path.join(self._rootpath, CC.DEVICE_DICT)))
+                self._createDevices(self._zipfile.read(os_path.join(self._rootpath, CC.DEVICE_DICT)).decode())
             except KeyError:
                 raise CC.Exception("Required file '{}' does not exist!".format(CC.DEVICE_DICT))
 
@@ -125,7 +126,7 @@ class CCDB_Dump(object):
             try:
                 with self._zipfile.open(os_path.join(self._rootpath, save_as)) as r:
                     with open(save_as, "w") as w:
-                        w.writelines(r)
+                        w.writelines(map(lambda x: x.decode(), r))
             except KeyError as e:
                 raise CC.DownloadException(url = url, code = e.args[0])
             except Exception as e:

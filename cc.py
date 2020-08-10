@@ -39,6 +39,7 @@ except ImportError:
 
 # PLC Factory modules
 import helpers
+import levenshtein
 import plcf_git as git
 
 
@@ -305,14 +306,16 @@ class CC(object):
 
 
         @staticmethod
-        def _ensure(var, default):
+        def _ensure(var, default, convert_to_default = True):
             #
             # Do not return None
             #
             if var is not None:
-                return var
+                if isinstance(var, default) or not convert_to_default:
+                    return var
+                return default(var)
 
-            return default
+            return default()
 
 
         # Returns: {}
@@ -334,60 +337,62 @@ class CC(object):
 
 
         # Returns: []
-        def controls(self):
-            return self._ensure(self._controls(), [])
+        def controls(self, convert = True):
+            return self._ensure(self._controls(), list, convert)
 
 
         # Returns: []
-        def controlledBy(self, filter_by_controlled_tree = False):
-            ctrldBy = self._ensure(self._controlledBy(filter_by_controlled_tree), [])
+        def controlledBy(self, filter_by_controlled_tree = False, convert = True):
+            ctrldBy = self._controlledBy(filter_by_controlled_tree)
             if not filter_by_controlled_tree:
-                return ctrldBy
-            return filter(lambda d: d.isInControlledTree(), ctrldBy)
+                return self._ensure(ctrldBy, list, convert)
+            return self._ensure(filter(lambda d: d.isInControlledTree(), ctrldBy), list, convert)
 
 
         # Returns: {}
-        def properties(self):
-            return self._ensure(self._properties(), [])
+        def properties(self, convert = True):
+            return self._ensure(self._properties(), dict, convert)
 
 
         # Returns: {}
         def propertiesDict(self, prefixToIgnore = True):
-            return self._ensure(self._propertiesDict(), {})
+            return self._ensure(self._propertiesDict(), dict)
 
 
         # Returns: ""
         def deviceType(self):
-            return self._ensure(self._deviceType(), "")
+            return self._ensure(self._deviceType(), str)
 
 
         # Returns: ""
         def description(self):
-            return self._ensure(self._description(), "")
+            return self._ensure(self._description(), str)
 
 
         # Returns: []
-        def artifacts(self):
-            return self._ensure(self._artifacts(), [])
+        def artifacts(self, convert = True):
+            return self._ensure(self._artifacts(), list, convert)
 
 
         # Returns: []
-        def artifactNames(self):
-            return map(lambda an: an.name(), filter(lambda fa: fa.is_file(), self.artifacts()))
+        def artifactNames(self, convert = True):
+            return self._ensure(map(lambda an: an.name(), filter(lambda fa: fa.is_file(), self.artifacts(convert = False))), list, convert)
 
 
         # Returns: []
-        def externalLinks(self):
-            return filter(lambda u: u.is_uri(), self.artifacts())
+        def externalLinks(self, convert = True):
+            return self._ensure(filter(lambda u: u.is_uri(), self.artifacts(convert = False)), list, convert)
 
 
         # Returns: ""
         def backtrack(self, prop):
-            return self._ensure(self._backtrack(prop), "")
+            return self._ensure(self._backtrack(prop), str)
 
 
         def defaultFilename(self, extension):
-            if not extension.startswith('.'):
+            if extension is None:
+                extension = ""
+            elif not extension.startswith('.'):
                 extension = '.{}'.format(extension)
 
             return helpers.sanitizeFilename(self.deviceType().upper() + extension)
@@ -407,18 +412,26 @@ class CC(object):
 
 
         # Returns the filename or None
-        def downloadArtifact(self, extension, device_tag = None, filetype = '', custom_filter = None, filter_args = None):
+        def downloadArtifact(self, extension, device_tag = None, filetype = '', custom_filter = None, filter_args = ()):
             if custom_filter is None:
+                def filter_device_tags(artifact):
+                    return CC.TAG_SEPARATOR not in artifact.filename()
+
+                def no_filter(artifact):
+                    return True
+
                 if not extension.startswith('.'):
                     extension = '.{}'.format(extension)
 
                 if device_tag:
                     # whatever__devicetag.extension
                     suffix = "".join([ CC.TAG_SEPARATOR, device_tag, extension ])
+                    custom_filter = no_filter
                 else:
                     suffix = extension
+                    custom_filter = filter_device_tags
 
-                defs = filter(lambda a: a.is_file() and a.filename().endswith(suffix), self.artifacts())
+                defs = filter(lambda a: a.is_file() and a.filename().endswith(suffix) and custom_filter(a), self.artifacts())
             else:
                 defs = filter(lambda a: a.is_file() and custom_filter(a, *filter_args), self.artifacts())
 
@@ -465,7 +478,7 @@ class CC(object):
                     return None
 
                 if len(defs) > 1:
-                    raise CC.ArtifactException("More than one {filetype} External Links were found for {device}: {urls}".format(filetype = filetype, device = self.name(), urls = map(lambda u: u.uri(), defs)), self.name())
+                    raise CC.ArtifactException("More than one {filetype} External Links were found for {device}: {urls}".format(filetype = filetype, device = self.name(), urls = list(map(lambda u: u.uri(), defs))), self.name())
 
                 return defs[0].downloadExternalLink(self.defaultFilename(extension), extension, filetype = filetype, git_tag = git_tag)
 
@@ -789,7 +802,7 @@ class CC(object):
             return self._propDict[deviceName, prefixToIgnore]
 
         result = {}
-        for (name, value) in device.properties().iteritems():
+        for (name, value) in device.properties().items():
             # remove prefix if it exists
             if name.startswith(prefixToIgnore):
                 name = name[len(prefixToIgnore):]
@@ -802,13 +815,12 @@ class CC(object):
 
 
     # Returns: []
-    def getSimilarDevices(self, deviceName):
-        assert isinstance(deviceName, str)
-
+    def getAllDeviceNames(self):
         raise NotImplementedError
 
 
-    def getTopXSimilarDevices(self, deviceName, X = 10):
+    # Returns: []
+    def getSimilarDeviceNames(self, deviceName, X = 10):
         """
             Returns the topX most similar device names in the database
 
@@ -816,11 +828,25 @@ class CC(object):
              - filtered; boolean if the list is filtred to the same System-Subsystem as deviceName
              - topX; a list of device names
         """
-        (filtered, topX) = self.getSimilarDevices(deviceName)
-        if topX:
-            topX = list(map(lambda x: x[1], topX[:X]))
+        allDevices = self.getAllDeviceNames()
 
-        return (filtered, topX)
+        # keep only device
+        slot = deviceName.split(":")
+        candidates = None
+        if len(slot) > 1:
+            slot       = slot[0].lower()
+            candidates = filter(lambda x: x.lower().startswith(slot), allDevices)
+            filtered   = True
+
+        if not candidates:
+            candidates = allDevices
+            filtered   = False
+
+        # compute Levenshtein distances
+        if candidates:
+            candidates = list(map(lambda f: f[1], sorted(map(lambda x: (levenshtein.distance(deviceName, x), x), candidates))[:X]))
+
+        return (filtered, candidates)
 
 
     def toFactory(self, filename, directory = ".", git_tag = None, script = None, root = None):
@@ -988,14 +1014,16 @@ factory.save("{filename}")""".format(factory_options = 'git_tag = "{}"'.format(g
 
 
     def save(self, filename, directory = "."):
-        assert isinstance(filename, str)
-
         import zipfile
-        if not filename.endswith(".ccdb.zip"):
-            filename += ".ccdb.zip"
+        if isinstance(filename, str):
+            if not filename.endswith(".ccdb.zip"):
+                filename += ".ccdb.zip"
 
-        filename = os_path.join(directory, helpers.sanitizeFilename(filename))
-        dumpfile = zipfile.ZipFile(filename, "w", zipfile.ZIP_DEFLATED)
+            filename = os_path.join(directory, helpers.sanitizeFilename(filename))
+            dumpfile = zipfile.ZipFile(filename, "w", zipfile.ZIP_DEFLATED)
+        else:
+            dumpfile = zipfile.ZipFile(filename, "w", zipfile.ZIP_DEFLATED)
+            filename = filename.name
 
         dumpfile.writestr(os_path.join("ccdb", CC.DEVICE_DICT), str(self._devices))
         for template in self.Artifact.downloadedArtifacts:
