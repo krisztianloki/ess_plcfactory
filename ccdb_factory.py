@@ -340,6 +340,8 @@ class CCDB_Factory(CC):
         if local_file is None:
             local_file = name
 
+        if os.path.isdir(local_file):
+            local_file = os.path.join(local_file, name)
         CCDB_Factory.checkIfExists(local_file)
 
         artifactDict = dict(CCDB_Factory.default_artifact_dict)
