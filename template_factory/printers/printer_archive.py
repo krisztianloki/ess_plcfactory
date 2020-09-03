@@ -45,6 +45,25 @@ class ARCHIVE(PRINTER):
         # No need to initialize anything
         #
         super(ARCHIVE, self).header(output, **keyword_params).add_filename_header(output, extension = "archive")
+        if keyword_params.get("PLC_TYPE", False):
+            self._append("## {root_inst_slot}".format(root_inst_slot = self.root_inst_slot()), output)
+            def archive(var, desc):
+                self._append("""# {desc}
+{root_inst_slot}:{var}""".format(desc           = desc,
+                                 root_inst_slot = self.root_inst_slot(),
+                                 var            = var), output)
+
+            archive("ModVersionR", "The module version")
+            archive("ModbusConnectedR", "Modbus connection state")
+            archive("S7ConnectedR", "S7 connection state")
+            archive("PLCAddr-RB", "Address of the PLC")
+            archive("ConnectedR", "Global connection state")
+            archive("PLCHashCorrectR", "Hash correctness state")
+            archive("AliveR", "PLC liveliness")
+            archive("iCommsHashToPLC", "IOC Hash")
+            archive("CommsHashFromPLCR", "PLC Hash")
+            self._append("########################################", output)
+
 
 
     #
