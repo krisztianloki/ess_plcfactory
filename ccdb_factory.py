@@ -108,7 +108,10 @@ class CCDB_Factory(CC):
                 copy2(self._artifact["full_path"], save_as)
             else:
                 try:
-                    copy2(self._artifact["full_path"], save_as)
+                    full_path = self._artifact["full_path"]
+                    if os.path.isdir(full_path):
+                        full_path = os.path.join(full_path, os.path.basename(save_as))
+                    copy2(full_path, save_as)
                 except KeyError:
                     super(CCDB_Factory.Artifact, self)._download(save_as)
 
@@ -220,6 +223,8 @@ class CCDB_Factory(CC):
             if local_file is None:
                 local_file = name
 
+            if os.path.isdir(local_file):
+                local_file = os.path.join(local_file, name)
             CCDB_Factory.checkIfExists(local_file)
 
             artifactDict = dict(CCDB_Factory.default_artifact_dict)
@@ -236,7 +241,8 @@ class CCDB_Factory(CC):
             artifactDict["name"] = name
             artifactDict["uri"]  = uri
             if local_file is not None:
-                CCDB_Factory.checkIfExists(local_file)
+                if not os.path.isdir(local_file):
+                    CCDB_Factory.checkIfExists(local_file)
                 artifactDict["full_path"] = local_file
 
             self.__addArtifact(artifactDict)
@@ -356,7 +362,8 @@ class CCDB_Factory(CC):
         artifactDict["uri"]  = uri
         artifactDict["name"] = name
         if local_file is not None:
-            CCDB_Factory.checkIfExists(local_file)
+            if not os.path.isdir(local_file):
+                CCDB_Factory.checkIfExists(local_file)
             artifactDict["full_path"] = local_file
 
         self.__addArtifact(deviceType, artifactDict)
