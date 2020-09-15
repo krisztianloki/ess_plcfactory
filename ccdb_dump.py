@@ -126,7 +126,13 @@ class CCDB_Dump(object):
             try:
                 with self._zipfile.open(os_path.join(self._rootpath, save_as)) as r:
                     with open(save_as, "w") as w:
-                        w.writelines(map(lambda x: x.decode(), r))
+                        try:
+                            "".decode()
+                            # Python2
+                            w.writelines(map(lambda x: x.decode('utf-8').encode('utf-8'), r))
+                        except AttributeError:
+                            # Python3
+                            w.writelines(map(lambda x: x.decode(), r))
             except KeyError as e:
                 raise CC.DownloadException(url = url, code = e.args[0])
             except Exception as e:

@@ -123,22 +123,34 @@ class ArtifactDB(TmpDB):
     spec                = foobar
     speced_epi_file     = foobar + ".alarms"
 
-    def __init__(self):
+    def __init__(self, utf = False):
         super(ArtifactDB, self).__init__()
 
-        self.artifact_txt        = os.path.join(tempfile.gettempdir(), ArtifactDB.artifact_txt)
-        self.artifact_py         = os.path.join(tempfile.gettempdir(), ArtifactDB.artifact_py)
-        self.test_artifact_txt   = os.path.join(tempfile.gettempdir(), ArtifactDB.test_artifact_txt)
-        self.device_artifact_txt = os.path.join(tempfile.gettempdir(), ArtifactDB.device_artifact_txt)
-        self.device_artifact_py  = os.path.join(tempfile.gettempdir(), ArtifactDB.device_artifact_py)
-        self.epi_file            = os.path.join(tempfile.gettempdir(), ArtifactDB.epi_file)
-        self.test_epi_file       = os.path.join(tempfile.gettempdir(), ArtifactDB.test_epi_file)
-        self.speced_epi_file     = os.path.join(tempfile.gettempdir(), ArtifactDB.speced_epi_file)
+        prefix = "utf_" if utf else ""
+        self.artifact_txt        = os.path.join(tempfile.gettempdir(), prefix + ArtifactDB.artifact_txt)
+        self.artifact_py         = os.path.join(tempfile.gettempdir(), prefix + ArtifactDB.artifact_py)
+        self.test_artifact_txt   = os.path.join(tempfile.gettempdir(), prefix + ArtifactDB.test_artifact_txt)
+        self.device_artifact_txt = os.path.join(tempfile.gettempdir(), prefix + ArtifactDB.device_artifact_txt)
+        self.device_artifact_py  = os.path.join(tempfile.gettempdir(), prefix + ArtifactDB.device_artifact_py)
+        self.epi_file            = os.path.join(tempfile.gettempdir(), prefix + ArtifactDB.epi_file)
+        self.test_epi_file       = os.path.join(tempfile.gettempdir(), prefix + ArtifactDB.test_epi_file)
+        self.speced_epi_file     = os.path.join(tempfile.gettempdir(), prefix + ArtifactDB.speced_epi_file)
 
         self.artifacts = [ArtifactDB.artifact_py, ArtifactDB.artifact_txt, ArtifactDB.test_artifact_txt, ArtifactDB.device_artifact_txt, ArtifactDB.device_artifact_py]
         self.links     = [ArtifactDB.epi_file, ArtifactDB.test_epi_file, ArtifactDB.speced_epi_file, __file__, __file__]
 
-        shutil.copy(__file__, self.artifact_txt)
+        if utf:
+            with open(__file__) as of:
+                with open(self.artifact_txt, "w") as uof:
+                    uof.writelines(of)
+                    try:
+                        # Python 3
+                        print("0=close, 1=open1, 2=open2," + u"\u2026", file = uof)
+                    except UnicodeEncodeError:
+                        # Python 2
+                        print("0=close, 1=open1, 2=open2," + u"\u2026".encode('utf-8'), file = uof)
+        else:
+            shutil.copy(__file__, self.artifact_txt)
 
         with open(self.artifact_txt) as af:
             with open(self.artifact_py, "w") as paf:
@@ -203,6 +215,7 @@ class TestCCDBDump(unittest.TestCase):
         cls.ONE_DEVICE_ZIP   = OneDeviceDB()
         cls.MULTI_DEVICE_ZIP = MultiDeviceDB()
         cls.ARTIFACT_ZIP     = ArtifactDB()
+        cls.UTF_ARTIFACT_ZIP = ArtifactDB(True)
 
 
     @classmethod
@@ -211,6 +224,7 @@ class TestCCDBDump(unittest.TestCase):
         cls.ONE_DEVICE_ZIP.clear()
         cls.MULTI_DEVICE_ZIP.clear()
         cls.ARTIFACT_ZIP.clear()
+        cls.UTF_ARTIFACT_ZIP.clear()
 
 
     def _unzip(self, filename, directory):
@@ -348,7 +362,7 @@ class TestCCDBDump(unittest.TestCase):
         self._testDownload(cc_obj)
 
 
-    def _testArtifact(self, cc_obj):
+    def _testArtifact(self, cc_obj, test_obj):
         self.assertEqual(cc_obj.getSimilarDeviceNames("")[1], ["device"])
         with self.assertRaises(ccdb_dump.CC.Exception):
             cc_obj.device("no-such-device")
@@ -361,34 +375,34 @@ class TestCCDBDump(unittest.TestCase):
         self.assertTrue(artifacts)
         self.assertIsInstance(artifacts, list)
         # Right now artifacts include external links too
-        self.assertEqual(len(artifacts), len(self.ARTIFACT_ZIP.artifacts) + len(self.ARTIFACT_ZIP.links))
+        self.assertEqual(len(artifacts), len(test_obj.artifacts) + len(test_obj.links))
         externalLinks = device.externalLinks()
         self.assertTrue(externalLinks)
         self.assertIsInstance(externalLinks, list)
-        self.assertEqual(len(externalLinks), len(self.ARTIFACT_ZIP.links))
+        self.assertEqual(len(externalLinks), len(test_obj.links))
         artifact = artifacts[0]
         self.assertTrue(artifact)
         self.assertIsInstance(artifact, ccdb_dump.CC.Artifact)
         self.assertTrue(artifact.is_file())
-        self.assertEqual(sorted(device.artifactNames()), sorted(self.ARTIFACT_ZIP.artifacts))
+        self.assertEqual(sorted(device.artifactNames()), sorted(test_obj.artifacts))
 
         # Check simple extension
         fname = device.downloadArtifact(ArtifactDB.pyext)
         self.assertTrue(fname)
         self.assertEqual(os.path.basename(fname), ArtifactDB.artifact_py)
-        self.assertTrue(filecmp.cmp(fname, self.ARTIFACT_ZIP.artifact_py, shallow = 0), "Files are not identical: {} vs {}".format(fname, self.ARTIFACT_ZIP.artifact_py))
+        self.assertTrue(filecmp.cmp(fname, test_obj.artifact_py, shallow = False), "Files are not identical: {} vs {}".format(fname, test_obj.artifact_py))
 
         # Check device precedence extension
         fname = device.downloadArtifact(ArtifactDB.txtext)
         self.assertTrue(fname)
         self.assertEqual(os.path.basename(fname), ArtifactDB.device_artifact_txt)
-        self.assertTrue(filecmp.cmp(fname, self.ARTIFACT_ZIP.device_artifact_txt, shallow = 0), "Files are not identical: {} vs {}".format(fname, self.ARTIFACT_ZIP.device_artifact_txt))
+        self.assertTrue(filecmp.cmp(fname, test_obj.device_artifact_txt, shallow = False), "Files are not identical: {} vs {}".format(fname, test_obj.device_artifact_txt))
 
         # Check extension with device tag
         fname = device.downloadArtifact(ArtifactDB.txtext[1:], device_tag = ArtifactDB.tag)
         self.assertTrue(fname)
         self.assertEqual(os.path.basename(fname), ArtifactDB.test_artifact_txt)
-        self.assertTrue(filecmp.cmp(fname, self.ARTIFACT_ZIP.test_artifact_txt, shallow = 0), "Files are not identical: {} vs {}".format(fname, self.ARTIFACT_ZIP.test_artifact_txt))
+        self.assertTrue(filecmp.cmp(fname, test_obj.test_artifact_txt, shallow = False), "Files are not identical: {} vs {}".format(fname, test_obj.test_artifact_txt))
 
         # Check non existent artifact
         self.assertIsNone(device.downloadArtifact("no-such-extension"))
@@ -414,17 +428,17 @@ class TestCCDBDump(unittest.TestCase):
         # Check external link
         fname = device.downloadExternalLink(ArtifactDB.epi, "def")
         self.assertTrue(fname)
-        self.assertTrue(filecmp.cmp(fname, self.ARTIFACT_ZIP.epi_file, shallow = 0), "Files are not identical: {} vs {}".format(fname, self.ARTIFACT_ZIP.epi_file))
+        self.assertTrue(filecmp.cmp(fname, test_obj.epi_file, shallow = 0), "Files are not identical: {} vs {}".format(fname, test_obj.epi_file))
 
         # Check external link with device tag
         fname = device.downloadExternalLink(ArtifactDB.epi, "def", device_tag = ArtifactDB.tag)
         self.assertTrue(fname)
-        self.assertTrue(filecmp.cmp(fname, self.ARTIFACT_ZIP.test_epi_file, shallow = 0), "Files are not identical: {} vs {}".format(fname, self.ARTIFACT_ZIP.test_epi_file))
+        self.assertTrue(filecmp.cmp(fname, test_obj.test_epi_file, shallow = 0), "Files are not identical: {} vs {}".format(fname, test_obj.test_epi_file))
 
         # Check external link with specified filename
         fname = device.downloadExternalLink(ArtifactDB.beast, "alarms")
         self.assertTrue(fname)
-        self.assertTrue(filecmp.cmp(fname, self.ARTIFACT_ZIP.speced_epi_file, shallow = 0), "Files are not identical: {} vs {}".format(fname, self.ARTIFACT_ZIP.speced_epi_file))
+        self.assertTrue(filecmp.cmp(fname, test_obj.speced_epi_file, shallow = 0), "Files are not identical: {} vs {}".format(fname, test_obj.speced_epi_file))
 
 
     def _testDownload(self, cc_obj):
@@ -452,7 +466,12 @@ class TestCCDBDump(unittest.TestCase):
 
     def testArtifactZip(self):
         cc_obj = ccdb_dump.CCDB_Dump.load(str(self.ARTIFACT_ZIP))
-        self._testArtifact(cc_obj)
+        self._testArtifact(cc_obj, self.ARTIFACT_ZIP)
+
+
+    def testUTFArtifactZip(self):
+        cc_obj = ccdb_dump.CCDB_Dump.load(str(self.UTF_ARTIFACT_ZIP))
+        self._testArtifact(cc_obj, self.UTF_ARTIFACT_ZIP)
 
 
     def testEmptyDir(self):
@@ -480,7 +499,14 @@ class TestCCDBDump(unittest.TestCase):
         with mkdtemp() as tmpdirpath:
             self._unzip(str(self.ARTIFACT_ZIP), tmpdirpath)
             cc_obj = ccdb_dump.CCDB_Dump.load(tmpdirpath)
-            self._testArtifact(cc_obj)
+            self._testArtifact(cc_obj, self.ARTIFACT_ZIP)
+
+
+    def testUTFArtifactDir(self):
+        with mkdtemp() as tmpdirpath:
+            self._unzip(str(self.UTF_ARTIFACT_ZIP), tmpdirpath)
+            cc_obj = ccdb_dump.CCDB_Dump.load(tmpdirpath)
+            self._testArtifact(cc_obj, self.UTF_ARTIFACT_ZIP)
 
 
 
@@ -540,7 +566,7 @@ class TestCCDB(unittest.TestCase):
 
         # TODO: should download the actual .def file and filecmp
         self.assertIsInstance(device.downloadExternalLink("EPI", "def"), str)
-        self.assertIsInstance(device.downloadExternalLink("EPI", "def", git_tag = "v4.0.0"), str)
+        self.assertIsInstance(device.downloadExternalLink("EPI", "def", git_tag = "v4.0.1"), str)
         self.assertIsInstance(device.downloadExternalLink("EPI", "def", device_tag = "MPSVAC"), str)
         self.assertIsNone(device.downloadExternalLink("EPI", "def", device_tag = "no-such-tag"))
 
