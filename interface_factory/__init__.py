@@ -395,19 +395,24 @@ After pre-processing the .IFA file there were no DEVICES inside!
 """)
 
 
+    @staticmethod
+    def consolidate_tia_version(tia_version):
+        from .InterfaceFactorySiemens import consolidate_tia_version as ctv
+        return ctv(tia_version)
 
 
-def produce(OutputDir, IfaPath, **kwargs):
-    ifa = IFA(IfaPath)
+    @staticmethod
+    def produce(OutputDir, IfaPath, **kwargs):
+        ifa = IFA(IfaPath)
 
-    factory = None
-    if ifa.PLC_TYPE == "SIEMENS":
-        from .InterfaceFactorySiemens import produce
-        factory = produce
-    elif ifa.PLC_TYPE == "BECKHOFF":
-        from .InterfaceFactoryBeckhoff import produce
-        factory = produce
-    else:
-        raise IFA.FatalException("Unsupported PLC_TYPE", ifa.PLC_TYPE)
+        factory = None
+        if ifa.PLC_TYPE == "SIEMENS":
+            from .InterfaceFactorySiemens import produce
+            factory = produce
+        elif ifa.PLC_TYPE == "BECKHOFF":
+            from .InterfaceFactoryBeckhoff import produce
+            factory = produce
+        else:
+            raise IFA.FatalException("Unsupported PLC_TYPE", ifa.PLC_TYPE)
 
-    return factory(OutputDir, ifa, **kwargs)
+        return factory(OutputDir, ifa, **kwargs)

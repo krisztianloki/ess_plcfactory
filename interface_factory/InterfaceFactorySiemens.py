@@ -1673,6 +1673,27 @@ def ProcessIFADevTypes(OutputDir, TIAVersion, CommsTest):
 	print("Total", str(len(DeviceTypeList)), "device type(s) generated.\n")
 
 
+def consolidate_tia_version(tia_version):
+    if tia_version is not None and isinstance(tia_version, str):
+        tia13   = set({"13",   "v13",   "tia13",   "tiav13"})
+        tia14   = set({"14",   "v14",   "tia14",   "tiav14"})
+        tia15   = set({"15",   "v15",   "tia15",   "tiav15"})
+        tia15_1 = set({"15.1", "v15.1", "tia15.1", "tiav15.1"})
+
+        if tia_version in tia13:
+            tia_version = 13
+        elif tia_version in tia14:
+            tia_version = 14
+        elif tia_version in tia15:
+            tia_version = 15
+        elif tia_version in tia15_1:
+            tia_version = 15.1
+        else:
+            raise IFA.FatalException("Unsopperted TIA version: " + tia_version)
+
+    return tia_version
+
+
 def produce(OutputDir, _ifa, **kwargs):
 	global ifa
 	global verify
@@ -1695,8 +1716,7 @@ def produce(OutputDir, _ifa, **kwargs):
 	ExternalSourceFile = []
 
 	TIAVersion = kwargs.get('TIAVersion', 14)
-	if TIAVersion not in [13, 14, 15]:
-		raise IFA.FatalException("Unsupported TIA-Portal version {}".format(TIAVersion))
+	TIAVersion = consolidate_tia_version(TIAVersion)
 	onlydiag   = kwargs.get('onlydiag', False)
 	nodiag     = kwargs.get('nodiag', False)
 	Direct     = kwargs.get('direct', False)

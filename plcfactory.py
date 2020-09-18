@@ -1066,6 +1066,9 @@ def banner():
 
 class PLCFArgumentError(Exception):
     def __init__(self, status, message = None):
+        if message is None and isinstance(status, str):
+            message = status
+            status  = 1
         self.status  = status
         self.message = message
 
@@ -1230,25 +1233,13 @@ def main(argv):
         print(tf.available_printers())
         return
 
-    def consolidate_tia_version(tia_version):
-        if tia_version is not None and isinstance(tia_version, str):
-            tia13 = set({"13", "v13", "tia13", "tiav13"})
-            tia14 = set({"14", "v14", "tia14", "tiav14"})
-            tia15 = set({"15", "v15", "tia15", "tiav15"})
-
-            if tia_version in tia13:
-                tia_version = 13
-            elif tia_version in tia14:
-                tia_version = 14
-            elif tia_version in tia15:
-                tia_version = 15
-            else:
-                raise PLCFArgumentError(1, "Invalid TIA version: " + tia_version)
-
-        return tia_version
-
     if args.siemens is not None:
+        from interface_factory import IFA
         tia_version  = args.siemens.lower()
+        try:
+            tia_version  = IFA.consolidate_tia_version(tia_version)
+        except IFA.FatalException as e:
+            raise PLCFArgumentError(e.message)
         siemens      = True
     else:
         tia_version = None
@@ -1258,7 +1249,6 @@ def main(argv):
 
     opc = args.opc
 
-    tia_version = consolidate_tia_version(tia_version)
 
     # Second pass
     #  get EEE and E3
@@ -1407,8 +1397,7 @@ def main(argv):
         plc = True
 
     if not plc and (eee or e3):
-        print("Generating EEE or E3 modules is only supported with PLC integration")
-        exit(1)
+        raise PLCFArgumentError("Generating EEE or E3 modules is only supported with PLC integration")
 
     if eee:
         default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "AUTOSAVE-ST-CMD", "AUTOSAVE", "BEAST", "BEAST-TEMPLATE" ] )
@@ -1418,8 +1407,7 @@ def main(argv):
 
     if default_printers:
         if not default_printers <= set(tf.available_printers()):
-            print("Your PLCFactory does not support generating the following necessary templates:", list(default_printers - set(tf.available_printers())))
-            exit(1)
+            raise PLCFArgumentError("Your PLCFactory does not support generating the following necessary templates:", list(default_printers - set(tf.available_printers())))
 
         templateIDs = default_printers | set(args.template)
     else:
@@ -1486,9 +1474,9 @@ def main(argv):
     root_device = processDevice(device, list(templateIDs))
 
     if siemens or args.plc_only_diag or beckhoff:
-        from interface_factory import produce as ifa_produce
+        from interface_factory import IFA
 
-        output_files.update(ifa_produce(OUTPUT_DIR, output_files["IFA"], TIAVersion = tia_version, nodiag = args.plc_no_diag, onlydiag = args.plc_only_diag, commstest = args.plc_test, verify = args.verify, readonly = args.plc_readonly))
+        output_files.update(IFA.produce(OUTPUT_DIR, output_files["IFA"], TIAVersion = tia_version, nodiag = args.plc_no_diag, onlydiag = args.plc_only_diag, commstest = args.plc_test, verify = args.verify, readonly = args.plc_readonly))
 
     # create a factory of CCDB
     try:
