@@ -1094,14 +1094,16 @@ def main(argv):
 
         plc_args = plc_group.add_mutually_exclusive_group()
 
+        default_tia = "TIAv15.1"
+
         plc_args.add_argument(
                               '--plc-siemens',
                               '--plc-interface',
                               dest    = "siemens",
-                              help    = 'use the default templates for Siemens PLCs and generate interface PLC comms. The default TIA version is TIAv14',
+                              help    = 'use the default templates for Siemens PLCs and generate interface PLC comms. The default TIA version is {}'.format(default_tia),
                               metavar = 'TIA-Portal-version',
                               nargs   = "?",
-                              const   = 'TIAv14',
+                              const   = default_tia,
                               type    = str
                              )
 
