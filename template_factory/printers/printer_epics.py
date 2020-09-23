@@ -543,14 +543,37 @@ record(ao, "{root_inst_slot}:HeartbeatToPLCS")
 ########################################################
 ########## PLC -> EPICS comms management data ##########
 ########################################################
-record(ai, "{root_inst_slot}:CommsHashFromPLCR")
+# This iS7CommsHash/iMBCommsHash/iIsMBHash magic is needed because moving the HASH to the modbus map
+#  does not change the HASH itself so the new SCL is not necessarily downloaded to the PLC
+record(ai, "{root_inst_slot}:iS7CommsHash")
 {{
-	field(DESC,	"Comms hash from PLC")
+	field(DESC,	"Comms hash from PLC using S7 stream")
 	field(SCAN,	"I/O Intr")
 	field(DTYP,	"S7plc")
 	field(INP,	"@$(PLCNAME)/[PLCF#PLCToEPICSDataBlockStartOffset] T=INT32")
+	field(FLNK,	"{root_inst_slot}:CommsHashFromPLCR")
+}}
+record(ai, "{root_inst_slot}:iMBCommsHash")
+{{
+	field(DESC,	"Comms hash from PLC using MB map")
+	field(SCAN,	"I/O Intr")
 	field(DTYP,	"asynInt32")
 	field(INP,	"@asyn($(PLCNAME)read, 3, 100)INT32_[PLCF#'BE' if 'PLC-EPICS-COMMS:Endianness' == 'BigEndian' else 'LE']")
+	field(FLNK,	"{root_inst_slot}:iIsMBHash")
+}}
+record(calcout, "{root_inst_slot}:iIsMBHash")
+{{
+	field(INPA,	"{root_inst_slot}:iMBCommsHash")
+	field(CALC,	"A != 0")
+# Make sure to process it even if it is being processed right now
+	field(OUT,	"{root_inst_slot}:CommsHashFromPLCR.PROC CA")
+}}
+record(sel, "{root_inst_slot}:CommsHashFromPLCR")
+{{
+	field(DESC,	"Comms hash from PLC")
+	field(NVL,	"{root_inst_slot}:iIsMBHash")
+	field(INPA,	"{root_inst_slot}:iS7CommsHash MSS")
+	field(INPB,	"{root_inst_slot}:iMBCommsHash MSS")
 	field(FLNK,	"{root_inst_slot}:iCheckHash")
 }}
 record(ai, "{root_inst_slot}:HeartbeatFromPLCR")
