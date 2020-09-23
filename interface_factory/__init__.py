@@ -2,6 +2,13 @@ from __future__ import print_function
 from __future__ import absolute_import
 
 class IFA(object):
+    EPICSTOPLC_HASH      = 0
+    EPICSTOPLC_HEARTBEAT = 2
+    EPICSTOPLC_READ_HASH = 3
+
+    PLCTOEPICS_HASH      = 0
+    PLCTOEPICS_HEARTBEAT = 2
+
     mandatory_variable_properties = dict(VARIABLE    = str,
                                          EPICS       = str,
                                          TYPE        = str,

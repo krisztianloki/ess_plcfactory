@@ -549,6 +549,8 @@ record(ai, "{root_inst_slot}:CommsHashFromPLCR")
 	field(SCAN,	"I/O Intr")
 	field(DTYP,	"S7plc")
 	field(INP,	"@$(PLCNAME)/[PLCF#PLCToEPICSDataBlockStartOffset] T=INT32")
+	field(DTYP,	"asynInt32")
+	field(INP,	"@asyn($(PLCNAME)read, 3, 100)INT32_[PLCF#'BE' if 'PLC-EPICS-COMMS:Endianness' == 'BigEndian' else 'LE']")
 	field(FLNK,	"{root_inst_slot}:iCheckHash")
 }}
 record(ai, "{root_inst_slot}:HeartbeatFromPLCR")

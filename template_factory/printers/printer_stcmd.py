@@ -220,6 +220,13 @@ modbusInterposeConfig("{plcname}", 0, $(RECVTIMEOUT), 0)
 # Data segment      : 20 words
 drvModbusAsynConfigure("{plcname}write", "{plcname}", 0, 16, -1, 20, 0, 0, "S7-1500")
 
+# Slave address     : 0
+# Function code     : 3 - Read Multiple Registers
+# Addressing        : Relative ({start_offset})
+# Data segment      : 10 words
+# Polling           : 1000 msec
+drvModbusAsynConfigure("{plcname}read", "{plcname}", 0, 3, {start_offset}, 10, 0, 1000, "S7-1500")
+
 {dbloadrecords}
 """.format(s7drvport     = self.plcf("PLC-EPICS-COMMS: S7Port"),
            modbusdrvport = self.plcf("PLC-EPICS-COMMS: MBPort"),
@@ -229,7 +236,8 @@ drvModbusAsynConfigure("{plcname}write", "{plcname}", 0, 16, -1, 20, 0, 0, "S7-1
            modulename    = self.modulename(),
            modversion    = self._modversion(),
            plcname       = self.raw_root_inst_slot(),
-           dbloadrecords = self._dbLoadRecords("PLCNAME")
+           dbloadrecords = self._dbLoadRecords("PLCNAME"),
+           start_offset  = self.plcf("EPICSToPLCDataBlockStartOffset")
           )
 
         self._append(st_cmd_footer, output)
