@@ -479,9 +479,13 @@ record(bi, "{root_inst_slot}:AliveR")
 record(calcout, "{root_inst_slot}:iCheckHash")
 {{
 	field(INPA,	"{root_inst_slot}:iCommsHashToPLC")
-	field(INPB,	"{root_inst_slot}:CommsHashFromPLCR")
-	field(INPC,	"{root_inst_slot}:CommsHashFromPLCR.STAT")
-	field(CALC,	"A == B && C == 0")
+	field(INPB,	"{root_inst_slot}:iIsMBHash")
+	field(INPC,	"{root_inst_slot}:iS7CommsHash")
+	field(INPD,	"{root_inst_slot}:iMBCommsHash")
+	field(INPE,	"{root_inst_slot}:iS7CommsHash.STAT")
+	field(INPF,	"{root_inst_slot}:iMBCommsHash.STAT")
+# if we have the HASH in the modbus map it should be the same as the one from the S7 stream
+	field(CALC,	"A == C && (B ? C == D : 1) && E == 0 && F == 0")
 	field(OOPT,	"On Change")
 	field(OUT,	"{root_inst_slot}:PLCHashCorrectR PP")
 }}
@@ -545,6 +549,8 @@ record(ao, "{root_inst_slot}:HeartbeatToPLCS")
 ########################################################
 # This iS7CommsHash/iMBCommsHash/iIsMBHash magic is needed because moving the HASH to the modbus map
 #  does not change the HASH itself so the new SCL is not necessarily downloaded to the PLC
+# AND making sure that iS7CommsHash == iMBCommsHash is a good check to make sure that the size of
+#  the S7 stream is correctly set
 record(ai, "{root_inst_slot}:iS7CommsHash")
 {{
 	field(DESC,	"Comms hash from PLC using S7 stream")
