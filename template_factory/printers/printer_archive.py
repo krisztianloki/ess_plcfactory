@@ -46,6 +46,7 @@ class ARCHIVE(PRINTER):
         #
         super(ARCHIVE, self).header(output, **keyword_params).add_filename_header(output, extension = "archive")
         if keyword_params.get("PLC_TYPE", False):
+            self._append("#" * 60, output)
             self._append("## {root_inst_slot}".format(root_inst_slot = self.root_inst_slot()), output)
             def archive(var, desc):
                 self._append("""# {desc}
@@ -62,7 +63,6 @@ class ARCHIVE(PRINTER):
             archive("AliveR", "PLC liveliness")
             archive("iCommsHashToPLC", "IOC Hash")
             archive("CommsHashFromPLCR", "PLC Hash")
-            self._append("########################################", output)
 
 
 
@@ -71,9 +71,13 @@ class ARCHIVE(PRINTER):
     #
     def _ifdef_body(self, if_def, output, **keyword_params):
         inst_slot = self.inst_slot(if_def)
-        self._append("#" * 60, output)
+        separator = False
         for var in if_def.interfaces():
             if isinstance(var, BASE_TYPE) and var.get_parameter("ARCHIVE", False):
+                if not separator:
+                    self._append("#" * 60, output)
+                    self._append("## {inst_slot}".format(inst_slot = inst_slot), output)
+                    separator = True
                 desc = self._get_desc(var)
                 if desc:
                     self._append("# {}".format(desc), output)

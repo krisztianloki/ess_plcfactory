@@ -1381,14 +1381,14 @@ def main(argv):
     default_printers = set(["DEVICE-LIST"])
 
     if siemens:
-        default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "IFA", "BEAST", "BEAST-TEMPLATE" ] )
+        default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "IFA", "ARCHIVE", "BEAST", "BEAST-TEMPLATE" ] )
         plc = True
 
     ifdef_params["PLC_READONLY"] = args.plc_readonly
     ifdef_params["EXPERIMENTAL"] = args.experimental
 
     if beckhoff:
-        default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "IFA", "BEAST", "BEAST-TEMPLATE" ] )
+        default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "IFA", "ARCHIVE", "BEAST", "BEAST-TEMPLATE" ] )
         ifdef_params["PLC_TYPE"] = "BECKHOFF"
         plc = True
 
