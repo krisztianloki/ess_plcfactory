@@ -1,4 +1,5 @@
 #!/usr/bin/env python2
+# vim: set fileencoding=utf-8 :
 
 from __future__ import print_function
 from __future__ import absolute_import
@@ -7,15 +8,15 @@ from __future__ import absolute_import
 
 __author__     = "Gregor Ulm"
 __copyright__  = "Copyright 2016, European Spallation Source, Lund"
-__credits__    = [ "Gregor Ulm"
-                 , "David Brodrick"
-                 , "Nick Levchenko"
-                 , "Francois Bellorini"
-                 , "Ricardo Fernandes"
+__credits__    = [ "Gregor Ulm",
+                   "David Brodrick",
+                   "Nick Levchenko",
+                   "Francois Bellorini",
+                   "Ricardo Fernandes"
                  ]
 __license__    = "GPLv3"
-__maintainer__ = "Gregor Ulm"
-__email__      = "gregor.ulm@esss.se"
+__maintainer__ = "Krisztián Löki"
+__email__      = "krisztian.loki@ess.eu"
 __status__     = "Production"
 __env__        = "Python version 2.7"
 __product__    = "ics_plc_factory"
@@ -29,12 +30,11 @@ import argparse
 import datetime
 import filecmp
 import os
-import errno
 import time
 import hashlib
 import zlib
-from shutil import copy2, copyfileobj
-from ast    import literal_eval as ast_literal_eval
+from shutil import copy2
+from ast import literal_eval as ast_literal_eval
 
 import plcf_git as git
 
@@ -52,7 +52,7 @@ def taint_message():
 """, file = sys.stderr)
 
 
-if git.get_status() == False:
+if git.get_status() is False:
     tainted = True
     taint_message()
 
@@ -87,7 +87,7 @@ del parent_dir
 import plcf_glob as glob
 import plcf
 from plcf_ext import PLCFExtException
-from   cc import CC
+from cc import CC
 import helpers
 
 
@@ -226,7 +226,7 @@ def matchingArtifact(artifact, tag, templateID):
 
 
 def createFilename(cplcf, header):
-    assert isinstance(header,     list)
+    assert isinstance(header, list)
 
     tag    = "#FILENAME"
     tagPos = findTag(header, tag)
@@ -252,7 +252,7 @@ def findTag(lines, tag):
         return tagPos
 
     assert isinstance(lines, list)
-    assert isinstance(tag,   str )
+    assert isinstance(tag,   str)
 
     for i in range(len(lines)):
         if lines[i].startswith(tag):
@@ -374,8 +374,8 @@ def getPLCF(device):
 
 
 def processTemplateID(templateID, devices):
-    assert isinstance(templateID,      str)
-    assert isinstance(devices,         list)
+    assert isinstance(templateID, str)
+    assert isinstance(devices,    list)
 
     start_time = time.time()
 
@@ -497,8 +497,8 @@ def processTemplateID(templateID, devices):
     (output, _) = plcf.PLCF.evalCounters(output)
 
     eol = getEOL(header)
-    #write file
-    with open(outputFile,'w') as f:
+    # write file
+    with open(outputFile, 'w') as f:
         for line in output:
             line = line.rstrip()
             if not line.startswith("#COUNTER") \
@@ -624,6 +624,7 @@ def create_zipfile(zipit):
     z = zipfile.ZipFile(zipit, "w", zipfile.ZIP_DEFLATED)
 
     tostrip = OUTPUT_DIR + os.path.sep
+
     def removeoutdir(path):
         try:
             return path[path.index(tostrip) + len(tostrip):]
@@ -685,7 +686,6 @@ def create_eee(modulename, snippet):
         helpers.makedirs(od)
         return od
 
-    from shutil import copy2, copyfileobj
     def m_cp(f, d, newname):
         of = os.path.join(makedir(d), newname)
         copy2(f, of)
@@ -999,7 +999,7 @@ def verify_output(strictness, ignore):
             not_checked[template] = output
             continue
 
-        #compare prev and output
+        # compare prev and output
         try:
             if filecmp.cmp(prev, output, shallow = 0):
                 previous_files.pop(template)
@@ -1223,7 +1223,7 @@ def main(argv):
                         '--device',
                         help     = 'device / installation slot',
                         const    = None
-                        )
+                       )
 
     # First pass
     #  get the device
@@ -1294,7 +1294,7 @@ def main(argv):
                         '--device',
                         help     = 'device / installation slot',
                         required = True
-                        )
+                       )
 
     parser.add_argument(
                         '--zip',
@@ -1418,10 +1418,10 @@ def main(argv):
     if opc and "OPC-MAP.XLS" in tf.available_printers():
         templateIDs.update( [ "OPC-MAP.XLS" ] )
 
-    if (args.plc_only_diag or args.plc_no_diag == False) and not siemens:
+    if (args.plc_only_diag or args.plc_no_diag is False) and not siemens:
         raise PLCFArgumentError('--plc-only-diag requires --plc-interface/--plc-siemens')
 
-    if (args.plc_only_diag or args.plc_no_diag == False) and beckhoff:
+    if (args.plc_only_diag or args.plc_no_diag is False) and beckhoff:
         raise PLCFArgumentError('PLCFactory cannot (yet?) generate diagnostics code for Beckhoff PLCs')
 
     if eee and "EPICS-TEST-DB" in templateIDs:

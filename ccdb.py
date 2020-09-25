@@ -14,7 +14,7 @@ from collections import OrderedDict
 from ast import literal_eval as ast_literal_eval
 
 # PLC Factory modules
-from   cc import CC
+from cc import CC
 
 
 
@@ -70,7 +70,7 @@ class CCDB(CC):
                 return self._device.ccdb.download_from_ccdb(url, save_as)
             elif self.is_git():
                 # Remove the "filename" part from saveas to get the directory where the repo needs to be cloned into
-                cwd = self.saveas()[:-len(self.saveas_filename())-1]
+                cwd = self.saveas()[:-len(self.saveas_filename()) - 1]
                 return self._device.ccdb.git_download(self.saveas_url(), cwd, self.saveas_version())
             else:
                 return self._device.ccdb.download(self.saveas_url(), save_as)
@@ -265,7 +265,7 @@ class CCDB(CC):
 
 
     def _get(self, url):
-        return CC.get(url, headers = { 'Accept' : 'application/json' }, verify = self._verify_ssl_cert)
+        return CC.get(url, headers = { 'Accept': 'application/json' }, verify = self._verify_ssl_cert)
 
 
 

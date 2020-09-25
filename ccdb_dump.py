@@ -9,10 +9,10 @@ __license__    = "GPLv3"
 
 # Python libraries
 import ast
-from   os import path as os_path
+from os import path as os_path
 
 # PLC Factory modules
-from   cc import CC
+from cc import CC
 from ccdb import CCDB
 
 

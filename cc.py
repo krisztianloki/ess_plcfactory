@@ -9,10 +9,10 @@ __license__    = "GPLv3"
 
 
 # Python libraries
-from   os import path     as os_path
+from os import path as os_path
 import getpass
 try:
-    from   urlparse import urlsplit
+    from urlparse import urlsplit
 except ImportError:
     from urllib.parse import urlsplit
 
@@ -110,8 +110,8 @@ class CC(object):
 
         def __eq__(self, other):
             return all([
-                         self.username == getattr(other, 'username', None),
-                         self.password == getattr(other, 'password', None)
+                        self.username == getattr(other, 'username', None),
+                        self.password == getattr(other, 'password', None)
                        ])
 
 
@@ -548,7 +548,7 @@ class CC(object):
 
 
         def toFactory(self, filename, directory = ".", git_tag = None, script = None):
-            return self.ccdb.toFactory(filename, directory, git_tag = git_tag, root = self, script = script);
+            return self.ccdb.toFactory(filename, directory, git_tag = git_tag, root = self, script = script)
 
 
 
@@ -575,7 +575,7 @@ class CC(object):
         ccdb_flavors.add_argument(
                                   '--ccdb-devel',
                                   dest     = "ccdb_devel",
-                                  help     = argparse.SUPPRESS, #selects CCDB development database
+                                  help     = argparse.SUPPRESS,  # selects CCDB development database
                                   action   = 'store_true',
                                   required = False)
 
@@ -686,11 +686,11 @@ class CC(object):
                 raise CC.Exception("Unhandled type", type(string), string)
         except NameError:
             # Sadly, the 'from None' part is not valid in Python2
-            raise CC.Exception("Unhandled type", type(string), string)# from None
+            raise CC.Exception("Unhandled type", type(string), string)  # from None
 
         try:
             return string.encode("unicode-escape").decode("string-escape").decode("utf-8").encode("utf-8")
-        except UnicodeDecodeError as e:
+        except UnicodeDecodeError:
             return string.encode("utf-8")
 
 
@@ -790,7 +790,8 @@ class CC(object):
 
     # Returns: {}
     def _propertiesDict(self, device, prefixToIgnore = "PLCF#"):
-        if prefixToIgnore == True:
+        # Not using 'if prefixToIgnore:' because we really want to check if it is a boolean and true
+        if prefixToIgnore is True:
             prefixToIgnore = "PLCF#"
 
         if prefixToIgnore == "":
@@ -1049,7 +1050,7 @@ factory.save("{filename}")""".format(factory_options = 'git_tag = "{}"'.format(g
 
 
     def _backtrack(self, device, prop):
-        assert isinstance(prop,   str)
+        assert isinstance(prop, str)
 
         deviceName = device.name()
 
@@ -1099,8 +1100,8 @@ factory.save("{filename}")""".format(factory_options = 'git_tag = "{}"'.format(g
             else:
                 c = elem.controlledBy(True)
                 if c is not None:
-                  leftToProcess = c + leftToProcess
-                  count        += 1
+                    leftToProcess = c + leftToProcess
+                    count        += 1
 
 
     def computeHash(self, hashobj):

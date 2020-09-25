@@ -22,7 +22,7 @@ import os
 from shutil import copy2
 
 # PLCFactory modules
-from cc   import CC
+from cc import CC
 from ccdb import CCDB
 
 
@@ -31,13 +31,13 @@ class CCDB_Factory(CC):
     default_artifact_dict = {"kind": "TYPE",
                              "description": "",
                              "type": "FILE",
-                             "uri":  None,
+                             "uri" : None,
                              "name": None}
 
     default_link_dict     = {"kind": "TYPE",
                              "description": "",
                              "type": "URI",
-                             "uri":  None,
+                             "uri" : None,
                              "name": None}
 
     default_prop_dict     = {"dataType": "String",
