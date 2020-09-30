@@ -48,6 +48,7 @@ class CC(object):
     TEMPLATE_DIR    = "templates"
     TAG_SEPARATOR   = "__"
     GIT_SUFFIX      = ".git"
+    CCDB_ZIP_SUFFIX = ".ccdb.zip"
     DEVICE_DICT     = "device.dict"
     paths_cached    = dict()
     sessions_cached = dict()
@@ -137,6 +138,8 @@ class CC(object):
         downloadedArtifacts = list()
 
         def __init__(self, device):
+            super(CC.Artifact, self).__init__()
+
             self._device = device
 
             self._saveas         = None
@@ -283,7 +286,7 @@ class CC(object):
 
             # check if filename has already been downloaded
             if os_path.exists(save_as):
-                return save_as
+                return CC.DownloadedArtifact(self)
 
             try:
                 self._download(save_as)
@@ -292,7 +295,39 @@ class CC(object):
 
             CC.Artifact.downloadedArtifacts.append(save_as)
 
-            return save_as
+            return CC.DownloadedArtifact(self)
+
+
+
+    class DownloadedArtifact(object):
+        def __init__(self, artifact):
+            super(CC.DownloadedArtifact, self).__init__()
+
+            self._epi_url        = artifact.filename() if artifact.is_file() else artifact.uri()
+            self._epi_version    = None if artifact.is_file() else artifact._saveasversion
+            self._filename       = artifact._saveasfilename
+            self._url            = None if artifact.is_file() else artifact._saveasurl
+            self._saved_as       = artifact.saveas()
+
+
+        def saved_as(self):
+            return self._saved_as
+
+
+        def filename(self):
+            return self._filename
+
+
+        def url(self):
+            return self._url
+
+
+        def epi_url(self):
+            return self._epi_url
+
+
+        def epi_version(self):
+            return self._epi_version
 
 
 
@@ -300,6 +335,8 @@ class CC(object):
         ccdb = None
 
         def __init__(self, ccdb):
+            super(CC.Device, self).__init__()
+
             self._inControlledTree = False
             if ccdb is not None:
                 self.ccdb = ccdb
@@ -553,8 +590,9 @@ class CC(object):
 
 
     def __init__(self, clear_templates = True):
-        self._clear_templates = clear_templates
+        super(CC, self).__init__()
 
+        self._clear_templates = clear_templates
         self.__clear()
 
 
@@ -1017,8 +1055,8 @@ factory.save("{filename}")""".format(factory_options = 'git_tag = "{}"'.format(g
     def save(self, filename, directory = "."):
         import zipfile
         if isinstance(filename, str):
-            if not filename.endswith(".ccdb.zip"):
-                filename += ".ccdb.zip"
+            if not filename.endswith(CC.CCDB_ZIP_SUFFIX):
+                filename += CC.CCDB_ZIP_SUFFIX
 
             filename = os_path.join(directory, helpers.sanitizeFilename(filename))
             dumpfile = zipfile.ZipFile(filename, "w", zipfile.ZIP_DEFLATED)
@@ -1035,8 +1073,11 @@ factory.save("{filename}")""".format(factory_options = 'git_tag = "{}"'.format(g
 
     @staticmethod
     def open(name = None, **kwargs):
-        if name is not None and os_path.exists(name):
-            return CC.load(name)
+        if name is not None:
+            if os_path.exists(name):
+                return CC.load(name)
+            elif name.endswith(CC.CCDB_ZIP_SUFFIX):
+                raise CC.Exception("Cannot find " + name)
 
         from ccdb import CCDB
         return CCDB(name, **kwargs)

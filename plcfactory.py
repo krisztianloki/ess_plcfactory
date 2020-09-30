@@ -63,6 +63,8 @@ tf_dir     = os.path.join(parent_dir, 'template_factory')
 sys.path.append(tf_dir)
 del tf_dir
 
+from tf_ifdef import IF_DEF
+
 try:
     import tf
 except AttributeError as e:
@@ -177,15 +179,15 @@ def openHeaderFooter(device, tag, templateID):
     assert isinstance(tag,        str)
     assert isinstance(templateID, str)
 
-    filename = device.downloadArtifact(extension = ".txt",
+    artifact = device.downloadArtifact(extension = ".txt",
                                        filetype = "{} for {}".format("_".join([ tag, TEMPLATE_TAG, templateID ]), templateID),
                                        custom_filter = matchingArtifact,
                                        filter_args = ((tag, TEMPLATE_TAG), templateID))
 
-    if not filename:
+    if not artifact:
         return []
 
-    with open(filename) as f:
+    with open(artifact.saved_as()) as f:
         lines = f.readlines()
 
     return lines
@@ -194,10 +196,15 @@ def openHeaderFooter(device, tag, templateID):
 def downloadTemplate(device, templateID):
     assert isinstance(templateID, str)
 
-    return device.downloadArtifact(extension = ".txt",
-                                   filetype = "{} for {}".format("_".join([ TEMPLATE_TAG, templateID ]), templateID),
-                                   custom_filter = matchingArtifact,
-                                   filter_args = (TEMPLATE_TAG, templateID))
+    artifact = device.downloadArtifact(extension = ".txt",
+                                       filetype = "{} for {}".format("_".join([ TEMPLATE_TAG, templateID ]), templateID),
+                                       custom_filter = matchingArtifact,
+                                       filter_args = (TEMPLATE_TAG, templateID))
+
+    if artifact is not None:
+        return artifact.saved_as()
+
+    return None
 
 
 def matchingArtifact(artifact, tag, templateID):
@@ -299,24 +306,27 @@ def getEOL(header):
 # Returns an interface definition object
 #
 def getIfDef(device):
-    filename = device.downloadArtifact(IFDEF_EXTENSION, device_tag, filetype = "Interface Definition")
-    if filename is None:
+    artifact = device.downloadArtifact(IFDEF_EXTENSION, device_tag, filetype = "Interface Definition")
+    if artifact is None:
         # No 'file' artifact found, let's see if there is a URL
-        filename = device.downloadExternalLink("EPI", IFDEF_EXTENSION, device_tag, "Interface Definition", git_tag = epi_version)
-        if filename is None:
+        artifact = device.downloadExternalLink("EPI", IFDEF_EXTENSION, device_tag, "Interface Definition", git_tag = epi_version)
+        if artifact is None:
             return None
 
     deviceType = device.deviceType()
+    filename   = artifact.saved_as()
 
     if deviceType in ifdefs:
+        # FIXME: understand what this really all means and compare the artifact and not the filename
+
         # check if the def file attached directly to a device is the same for every device with the same device type
-        # doing a simple check first to see if we need to check file contents at all
+        # doing a simple check first to see if we need to check file contents at all (version is encoded in the filename)
         if ifdefs[deviceType][0] == filename or filecmp.cmp(ifdefs[deviceType][0], filename, shallow = 0):
             return ifdefs[deviceType][1]
 
         raise PLCFactoryException("Different Interface Definitions for the same device type: {devtype}!".format(devtype = deviceType))
 
-    ifdef = tf.parseDef(filename, **ifdef_params)
+    ifdef = IF_DEF.parse(artifact, DEVICE_TYPE = deviceType, **ifdef_params)
 
     if ifdef is not None:
         ifdefs[deviceType] = (filename, ifdef)

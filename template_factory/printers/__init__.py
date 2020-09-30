@@ -299,7 +299,7 @@ class PRINTER(object):
         if from_inp is None:
             from_inp = ""
 
-        assert isinstance(result, str)
+        assert isinstance(result, str), type(result)
         self._append_origin(from_inp, output)
         if result != "":
             output += result.splitlines(True)

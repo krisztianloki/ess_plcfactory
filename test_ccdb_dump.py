@@ -387,19 +387,25 @@ class TestCCDBDump(unittest.TestCase):
         self.assertEqual(sorted(device.artifactNames()), sorted(test_obj.artifacts))
 
         # Check simple extension
-        fname = device.downloadArtifact(ArtifactDB.pyext)
+        dArtifact = device.downloadArtifact(ArtifactDB.pyext)
+        self.assertTrue(dArtifact)
+        fname = dArtifact.saved_as()
         self.assertTrue(fname)
         self.assertEqual(os.path.basename(fname), ArtifactDB.artifact_py)
         self.assertTrue(filecmp.cmp(fname, test_obj.artifact_py, shallow = False), "Files are not identical: {} vs {}".format(fname, test_obj.artifact_py))
 
         # Check device precedence extension
-        fname = device.downloadArtifact(ArtifactDB.txtext)
+        dArtifact = device.downloadArtifact(ArtifactDB.txtext)
+        self.assertTrue(dArtifact)
+        fname = dArtifact.saved_as()
         self.assertTrue(fname)
         self.assertEqual(os.path.basename(fname), ArtifactDB.device_artifact_txt)
         self.assertTrue(filecmp.cmp(fname, test_obj.device_artifact_txt, shallow = False), "Files are not identical: {} vs {}".format(fname, test_obj.device_artifact_txt))
 
         # Check extension with device tag
-        fname = device.downloadArtifact(ArtifactDB.txtext[1:], device_tag = ArtifactDB.tag)
+        dArtifact = device.downloadArtifact(ArtifactDB.txtext[1:], device_tag = ArtifactDB.tag)
+        self.assertTrue(dArtifact)
+        fname = dArtifact.saved_as()
         self.assertTrue(fname)
         self.assertEqual(os.path.basename(fname), ArtifactDB.test_artifact_txt)
         self.assertTrue(filecmp.cmp(fname, test_obj.test_artifact_txt, shallow = False), "Files are not identical: {} vs {}".format(fname, test_obj.test_artifact_txt))
@@ -426,17 +432,23 @@ class TestCCDBDump(unittest.TestCase):
             device.downloadExternalLink("BEAST TREE", "")
 
         # Check external link
-        fname = device.downloadExternalLink(ArtifactDB.epi, "def")
+        dArtifact = device.downloadExternalLink(ArtifactDB.epi, "def")
+        self.assertTrue(dArtifact)
+        fname = dArtifact.saved_as()
         self.assertTrue(fname)
         self.assertTrue(filecmp.cmp(fname, test_obj.epi_file, shallow = 0), "Files are not identical: {} vs {}".format(fname, test_obj.epi_file))
 
         # Check external link with device tag
-        fname = device.downloadExternalLink(ArtifactDB.epi, "def", device_tag = ArtifactDB.tag)
+        dArtifact = device.downloadExternalLink(ArtifactDB.epi, "def", device_tag = ArtifactDB.tag)
+        self.assertTrue(dArtifact)
+        fname = dArtifact.saved_as()
         self.assertTrue(fname)
         self.assertTrue(filecmp.cmp(fname, test_obj.test_epi_file, shallow = 0), "Files are not identical: {} vs {}".format(fname, test_obj.test_epi_file))
 
         # Check external link with specified filename
-        fname = device.downloadExternalLink(ArtifactDB.beast, "alarms")
+        dArtifact = device.downloadExternalLink(ArtifactDB.beast, "alarms")
+        self.assertTrue(dArtifact)
+        fname = dArtifact.saved_as()
         self.assertTrue(fname)
         self.assertTrue(filecmp.cmp(fname, test_obj.speced_epi_file, shallow = 0), "Files are not identical: {} vs {}".format(fname, test_obj.speced_epi_file))
 
@@ -565,9 +577,9 @@ class TestCCDB(unittest.TestCase):
         self.assertEqual(device.name(), devname)
 
         # TODO: should download the actual .def file and filecmp
-        self.assertIsInstance(device.downloadExternalLink("EPI", "def"), str)
-        self.assertIsInstance(device.downloadExternalLink("EPI", "def", git_tag = "v4.0.1"), str)
-        self.assertIsInstance(device.downloadExternalLink("EPI", "def", device_tag = "MPSVAC"), str)
+        self.assertIsInstance(device.downloadExternalLink("EPI", "def"), ccdb.CC.DownloadedArtifact)
+        self.assertIsInstance(device.downloadExternalLink("EPI", "def", git_tag = "v4.0.1"), ccdb.CC.DownloadedArtifact)
+        self.assertIsInstance(device.downloadExternalLink("EPI", "def", device_tag = "MPSVAC"), ccdb.CC.DownloadedArtifact)
         self.assertIsNone(device.downloadExternalLink("EPI", "def", device_tag = "no-such-tag"))
 
 

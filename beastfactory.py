@@ -29,7 +29,7 @@ import time
 
 # BEAST Factory modules
 from   beast_factory.bf_def import BEAST_DEF, BEASTDefException
-from   ccdb   import CCDB
+from   ccdb   import CC
 import helpers
 import plcf_git as git
 
@@ -86,7 +86,7 @@ class BEASTFactory(object):
                             required = is_config_mandatory(args.iocs) or is_config_mandatory(args.xmls)
                            )
 
-        CCDB.addArgs(parser)
+        CC.addArgs(parser)
 
         parser.add_argument(
                             '--tag',
@@ -113,17 +113,14 @@ class BEASTFactory(object):
 
         banner()
 
-        if args.ccdb:
-            from cc import CC
-            self._ccdb = CC.load(args.ccdb)
-        elif args.ccdb_test:
+        if args.ccdb_test:
             from ccdb import CCDB_TEST
             self._ccdb = CCDB_TEST(clear_templates = args.clear_ccdb_cache)
         elif args.ccdb_devel:
             from ccdb import CCDB_DEVEL
             self._ccdb = CCDB_DEVEL(clear_templates = args.clear_ccdb_cache)
         else:
-            self._ccdb = CCDB(clear_templates = args.clear_ccdb_cache)
+            self._ccdb = CC.open(args.ccdb, clear_templates = args.clear_ccdb_cache)
 
         if args.iocs:
             self.processIOCs(args.iocs)
@@ -162,17 +159,18 @@ class BEASTFactory(object):
     def _makeOutputDir(self, dirname):
         output_dir = os.path.join(self._output_dir, helpers.sanitizeFilename(dirname.lower()))
         if self._device_tag:
-            output_dir = os.path.join(output_dir, helpers.sanitizeFilename(CCDB.TAG_SEPARATOR.join([ "", "tag", self._device_tag ])))
+            output_dir = os.path.join(output_dir, helpers.sanitizeFilename(CC.TAG_SEPARATOR.join([ "", "tag", self._device_tag ])))
         helpers.makedirs(output_dir)
 
         return output_dir
 
 
     def _parseAlarmTree(self, ioc, merge_with):
-        alarm_tree = ioc.downloadExternalLink("BEAST TREE", ".alarm-tree", filetype = "Alarm tree", device_tag = self._device_tag)
-        if alarm_tree is None:
+        dArtifact = ioc.downloadExternalLink("BEAST TREE", ".alarm-tree", filetype = "Alarm tree", device_tag = self._device_tag)
+        if dArtifact is None:
             raise BEASTFactoryException("No alarm tree found")
 
+        alarm_tree = dArtifact.saved_as()
         print("Parsing {} of {}".format(alarm_tree, ioc.name()))
 
         # initialize beast definition parser
@@ -186,14 +184,16 @@ class BEASTFactory(object):
 
 
     def _parseAlarms(self, beast_def, device):
-        alarm_list = device.downloadExternalLink("BEAST TEMPLATE", ".alarms-template", filetype = "Alarm definition template", device_tag = self._device_tag)
-        if alarm_list:
+        dArtifact = device.downloadExternalLink("BEAST TEMPLATE", ".alarms-template", filetype = "Alarm definition template", device_tag = self._device_tag)
+        if dArtifact:
+            alarm_list = dArtifact.saved_as()
             print("Parsing {} of {}".format(alarm_list, device.name()))
             beast_def.parse(alarm_list, device = device)
             print()
 
-        alarm_list = device.downloadExternalLink("BEAST", ".alarms", filetype = "Alarm definition", device_tag = self._device_tag)
-        if alarm_list:
+        dArtifact = device.downloadExternalLink("BEAST", ".alarms", filetype = "Alarm definition", device_tag = self._device_tag)
+        if dArtifact:
+            alarm_list = dArtifact.saved_as()
             print("Parsing {} of {}".format(alarm_list, device.name()))
             beast_def.parse(alarm_list, device = device)
             print()
@@ -203,14 +203,14 @@ class BEASTFactory(object):
         if self._def_alarms is None:
             return
 
-        filename = device.downloadArtifact(".def", self._device_tag, filetype = "Interface Definition")
-        if filename is None:
+        dArtifact = device.downloadArtifact(".def", self._device_tag, filetype = "Interface Definition")
+        if dArtifact is None:
             # No 'file' artifact found, let's see if there is a URL
-            filename = device.downloadExternalLink("EPI", ".def", filetype = "Interface Definition", device_tag = self._device_tag)
-            if filename is None:
+            dArtifact = device.downloadExternalLink("EPI", ".def", filetype = "Interface Definition", device_tag = self._device_tag)
+            if dArtifact is None:
                 return
 
-        ifdef = IF_DEF.parse(filename, QUIET = True)
+        ifdef = IF_DEF.parse(dArtifact, QUIET = True)
 
         self._def_alarms.extend(map(lambda a: "{}:{}".format(device.name(), a.pv_name()), ifdef.alarms()))
 

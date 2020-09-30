@@ -19,6 +19,11 @@ try:
 except ImportError:
     pass
 
+try:
+    isinstance("aladar", basestring)
+except NameError:
+    basestring = str
+
 
 
 # Data types for S7 PLCs
@@ -753,6 +758,13 @@ class IF_DEF(object):
 
     @staticmethod
     def parse(def_file, **keyword_params):
+        # TODO: change to str once we moved to Python3
+        if isinstance(def_file, basestring):
+            artifact = keyword_params.get("ARTIFACT")
+        else:
+            artifact = def_file
+            def_file = artifact.saved_as()
+
         try:
             if not keyword_params.get("NO_CACHE", False):
                 return IF_DEF.__CACHE[def_file]
@@ -761,6 +773,7 @@ class IF_DEF(object):
 
         if_def = IF_DEF(**keyword_params)
 
+        if_def._artifact = artifact
         if_def._read_def(def_file)
         if_def._end()
 
@@ -789,6 +802,7 @@ class IF_DEF(object):
         self._optimize              = OPTIMIZE
         self._plc_array             = None
         self._filename              = None
+        self._artifact              = None
         self._inst_slot             = IF_DEF.DEFAULT_INSTALLATION_SLOT
         self._datablock_name        = IF_DEF.DEFAULT_DATABLOCK_NAME
         self._readonly              = keyword_params.get("PLC_READONLY", False)
