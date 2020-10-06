@@ -1517,6 +1517,8 @@ class BASE_TYPE(SOURCE):
     PV_ZNAM        = PV_PREFIX + "ZNAM"
     PV_DRVL        = PV_PREFIX + "DRVL"
     PV_DRVH        = PV_PREFIX + "DRVH"
+    PV_LOPR        = PV_PREFIX + "LOPR"
+    PV_HOPR        = PV_PREFIX + "HOPR"
 
     PV_ZRST        = PV_PREFIX + "ZRST"
     PV_ONST        = PV_PREFIX + "ONST"
@@ -1600,6 +1602,8 @@ class BASE_TYPE(SOURCE):
         """
         (p, e) = block.pair_types(self._keyword_params)
         if p is not None:
+            if p != plc_var_type:
+                raise IfDefSyntaxError("PLC variable type ({}) cannot be overriden with {}={} construct".format(plc_var_type, p, e))
             self._plc_type = p
         else:
             self._plc_type = plc_var_type
@@ -2099,17 +2103,34 @@ class ANALOG(BASE_TYPE):
     pv_types = { BLOCK.CMD : "ao",   BLOCK.PARAM : "ao",   BLOCK.STATUS : "ai" }
 
     def __init__(self, source, block, name, plc_var_type, keyword_params):
+        limit_warnings = []
         if block.is_cmd_block() or block.is_param_block():
             try:
                 limits = PLC_type_limits[plc_var_type]
+                # Set DRVL/DRVH limits
                 if keyword_params.get(BASE_TYPE.PV_DRVL, limits[0]) <= limits[0]:
+                    if keyword_params.get(BASE_TYPE.PV_DRVL, limits[0]) < limits[0]:
+                        limit_warnings.append("Specified DRVL ({}) is lower than limit ({}) of PLC data type '{}'".format(keyword_params[BASE_TYPE.PV_DRVL], limits[0], plc_var_type))
                     keyword_params[BASE_TYPE.PV_DRVL] = limits[0]
                 if keyword_params.get(BASE_TYPE.PV_DRVH, limits[1]) >= limits[1]:
+                    if keyword_params.get(BASE_TYPE.PV_DRVH, limits[1]) > limits[1]:
+                        limit_warnings.append("Specified DRVH ({}) is higher than limit ({}) of PLC data type '{}'".format(keyword_params[BASE_TYPE.PV_DRVH], limits[1], plc_var_type))
                     keyword_params[BASE_TYPE.PV_DRVH] = limits[1]
+                # Set LOPR/HOPR limits
+                if keyword_params.get(BASE_TYPE.PV_LOPR, limits[0]) <= limits[0]:
+                    if keyword_params.get(BASE_TYPE.PV_LOPR, limits[0]) < limits[0]:
+                        limit_warnings.append("Specified LOPR ({}) is lower than limit ({}) of PLC data type '{}'".format(keyword_params[BASE_TYPE.PV_LOPR], limits[0], plc_var_type))
+                    keyword_params[BASE_TYPE.PV_LOPR] = limits[0]
+                if keyword_params.get(BASE_TYPE.PV_HOPR, limits[1]) >= limits[1]:
+                    if keyword_params.get(BASE_TYPE.PV_HOPR, limits[1]) > limits[1]:
+                        limit_warnings.append("Specified HOPR ({}) is higher than limit ({}) of PLC data type '{}'".format(keyword_params[BASE_TYPE.PV_HOPR], limits[1], plc_var_type))
+                    keyword_params[BASE_TYPE.PV_HOPR] = limits[1]
             except KeyError:
                 pass
 
         super(ANALOG, self).__init__(source, block, name, plc_var_type, keyword_params)
+        for w in limit_warnings:
+            print(self._add_warning(w))
 
 
     def dtyp(self):
