@@ -553,12 +553,20 @@ Exiting.
     modulename = dev_props.get("EPICSModule", [])
     if len(modulename) == 1:
         modulename = modulename[0]
+        if modulename != helpers.sanitizeFilename(modulename):
+            print("Overriding modulename because it is not a valid filename")
     else:
-        modulename = helpers.sanitizeFilename(deviceName.lower())
+        modulename = deviceName.lower()
+
+    modulename = helpers.sanitizeFilename(modulename)
 
     snippet = dev_props.get("EPICSSnippet", [])
     if len(snippet) == 1:
         snippet = snippet[0]
+        validSnippet = helpers.sanitizeFilename(snippet)
+        if snippet != validSnippet:
+            print("Overriding snippet because it is not a valid filename")
+            snippet = validSnippet
     else:
         snippet = modulename
 
@@ -568,8 +576,8 @@ Exiting.
         glob.eee_snippet    = snippet
 
     if not glob.e3_modulename:
-        glob.e3_modulename = modulename
-        glob.e3_snippet    = snippet
+        glob.e3_modulename = modulename.replace('-', '_')
+        glob.e3_snippet    = snippet.replace('-', '_')
 
     cplcf = getPLCF(device)
 
@@ -857,7 +865,7 @@ def create_e3(modulename, snippet):
 
     e3_files.extend(m_copytree(module_dir("e3"), out_mdir))
 
-    out_sdir = os.path.join(out_mdir, "-".join([ modulename, "loc" ]))
+    out_sdir = os.path.join(out_mdir, modulename)
     helpers.makedirs(out_sdir)
 
     #
@@ -936,12 +944,13 @@ def create_e3(modulename, snippet):
     # Create script to run module with 'safe' defaults
     #
     with open(os.path.join(OUTPUT_DIR, "run_module.bash"), "w") as run:
+        iocsh_bash = """iocsh.bash -l {moduledir}/cellMods -r {modulename},plcfactory -c 'loadIocsh({snippet}.iocsh, "IPADDR=127.0.0.1, """.format(moduledir  = os.path.abspath(out_mdir),
+                                                                                                                                                   modulename = modulename,
+                                                                                                                                                   snippet    = snippet)
         if 'OPC' in ifdef_params['PLC_TYPE']:
-            print("""iocsh.bash -r {modulename},plcfactory -c 'loadIocsh({snippet}.iocsh, "IPADDR=127.0.0.1, PORT=4840, PUBLISHING_INTERVAL=200")'""".format(modulename = modulename,
-                                                                                                                                                             snippet    = snippet), file = run)
+            print(iocsh_bash + """PORT=4840, PUBLISHING_INTERVAL=200")'""", file = run)
         else:
-            print("""iocsh.bash -r {modulename},plcfactory -c 'loadIocsh({snippet}.iocsh, "IPADDR=127.0.0.1, RECVTIMEOUT=3000")'""".format(modulename = modulename,
-                                                                                                                                           snippet    = snippet), file = run)
+            print(iocsh_bash + """ RECVTIMEOUT=3000")'""", file = run)
 
     print("E3 Module created:", out_mdir)
     return out_mdir

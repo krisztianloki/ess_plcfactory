@@ -3,20 +3,21 @@ EPICS_MODULE_NAME:=[PLCF#ext.e3_modulename()]
 
 E3_MODULE_VERSION:=plcfactory
 
-MODBUS_DEP_VERSION:=3.0.0
-S7PLC_DEP_VERSION:=1.4.1
-CALC_DEP_VERSION:=3.7.3
+# Load the latest versions by default
+# Uncomment and change the versions if needed
+#MODBUS_DEP_VERSION:=3.1.0
+#S7PLC_DEP_VERSION:=1.4.1
+#CALC_DEP_VERSION:=3.7.3
 
 #
 # In most case, we don't need to touch the following variables.
 #
 
 E3_MODULE_NAME:=$(EPICS_MODULE_NAME)
-E3_MODULE_SRC_PATH:=$(EPICS_MODULE_NAME)-loc
+E3_MODULE_SRC_PATH:=$(EPICS_MODULE_NAME)
 E3_MODULE_MAKEFILE:=module.Makefile
 
-#
+
 -include $(TOP)/configure/CONFIG_OPTIONS
-# The definitions shown below can also be placed in an untracked CONFIG_MODULE*.local
+# The definitions shown below can also be placed in an untracked CONFIG_MODULE.local
 -include $(TOP)/configure/CONFIG_MODULE.local
-#

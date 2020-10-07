@@ -12,3 +12,5 @@ core.*
 .cvsignore
 *_old/
 *PVs.list
+*/*.Makefile
+.vscode

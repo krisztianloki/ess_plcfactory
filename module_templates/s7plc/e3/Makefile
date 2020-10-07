@@ -1,5 +1,5 @@
 #
-#  Copyright (c) 2018 - Present  European Spallation Source ERIC
+#  Copyright (c) 2019 - 2020, European Spallation Source ERIC
 #
 #  The program is free software: you can redistribute
 #  it and/or modify it under the terms of the GNU General Public License
@@ -15,14 +15,13 @@
 #  this program. If not, see https://www.gnu.org/licenses/gpl-2.0.txt
 #
 # 
-# Author  : Jeong Han Lee
-# email   : jeonghan.lee@gmail.com
-# Date    : 2018Oct27-1524-31CEST
-# version : 0.0.1
+# Author  : Krisztian Loki
+# email   : krisztian.loki@ess.eu
+# Date    : 2020-10-07
+# version : 0.0.0
 
 TOP:=$(CURDIR)
 
 include $(TOP)/configure/CONFIG
 
 include $(TOP)/configure/RULES
-
