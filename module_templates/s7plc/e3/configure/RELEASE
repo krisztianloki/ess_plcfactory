@@ -4,6 +4,18 @@ EPICS_BASE?=/epics/base-7.0.4
 E3_REQUIRE_NAME?=require
 E3_REQUIRE_VERSION?=3.3.0
 
+my_E3_REQUIRE_VERSION_PARTS:=$(subst ., ,$(E3_REQUIRE_VERSION))
+my_E3_REQUIRE_VERSION_MAJOR:=$(word 1,$(my_E3_REQUIRE_VERSION_PARTS))
+my_E3_REQUIRE_VERSION_MINOR:=$(word 2,$(my_E3_REQUIRE_VERSION_PARTS))
+ifeq "" "$(filter-out 1 2,$(my_E3_REQUIRE_VERSION_MAJOR))"
+  $(error At least require-3.3.0 is required)
+endif
+ifeq "" "$(filter-out 3,$(my_E3_REQUIRE_VERSION_MAJOR))"
+  ifeq "" "$(filter-out 1 2,$(my_E3_REQUIRE_VERSION_MINOR))"
+    $(error At least require-3.3.0 is required)
+  endif
+endif
+
 # The definitions shown below can also be placed in an untracked RELEASE.local
 -include $(TOP)/../../RELEASE.local
 -include $(TOP)/../RELEASE.local
