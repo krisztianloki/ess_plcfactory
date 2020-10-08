@@ -175,7 +175,7 @@ class ST_CMD(eee, MACROS, PRINTER):
 
 
     def _dbLoadRecords(self, plc_macro):
-        return """# Load plc interface database
+        return """#- Load plc interface database
 dbLoadRecords("{modulename}.db", "{PLC_MACRO}={plcname}, MODVERSION=$({modversion}), S7_PORT={s7_port}, MODBUS_PORT={modbus_port}{macros}")""".format(
             PLC_MACRO   = plc_macro,
             plcname     = self.raw_root_inst_slot(),
@@ -202,29 +202,29 @@ dbLoadRecords("{modulename}.db", "{PLC_MACRO}={plcname}, MODVERSION=$({modversio
         super(ST_CMD, self).footer(output, **keyword_parameters)
 
         st_cmd_footer = """
-# S7 port           : {s7drvport}
-# Input block size  : {insize} bytes
-# Output block size : 0 bytes
-# Endianness        : {endianness}
+#- S7 port           : {s7drvport}
+#- Input block size  : {insize} bytes
+#- Output block size : 0 bytes
+#- Endianness        : {endianness}
 s7plcConfigure("{plcname}", $(IPADDR), {s7drvport}, {insize}, 0, {bigendian}, $(RECVTIMEOUT), 0)
 
-# Modbus port       : {modbusdrvport}
+#- Modbus port       : {modbusdrvport}
 drvAsynIPPortConfigure("{plcname}", $(IPADDR):{modbusdrvport}, 0, 0, 1)
 
-# Link type         : TCP/IP (0)
+#- Link type         : TCP/IP (0)
 modbusInterposeConfig("{plcname}", 0, $(RECVTIMEOUT), 0)
 
-# Slave address     : 0
-# Function code     : 16 - Write Multiple Registers
-# Addressing        : Absolute (-1)
-# Data segment      : 20 words
+#- Slave address     : 0
+#- Function code     : 16 - Write Multiple Registers
+#- Addressing        : Absolute (-1)
+#- Data segment      : 20 words
 drvModbusAsynConfigure("{plcname}write", "{plcname}", 0, 16, -1, 20, 0, 0, "S7-1500")
 
-# Slave address     : 0
-# Function code     : 3 - Read Multiple Registers
-# Addressing        : Relative ({start_offset})
-# Data segment      : 10 words
-# Polling           : 1000 msec
+#- Slave address     : 0
+#- Function code     : 3 - Read Multiple Registers
+#- Addressing        : Relative ({start_offset})
+#- Data segment      : 10 words
+#- Polling           : 1000 msec
 drvModbusAsynConfigure("{plcname}read", "{plcname}", 0, 3, {start_offset}, 10, 0, 1000, "S7-1500")
 
 {dbloadrecords}
@@ -250,11 +250,11 @@ drvModbusAsynConfigure("{plcname}read", "{plcname}", 0, 3, {start_offset}, 10, 0
         super(ST_CMD, self).footer(output, **keyword_parameters)
 
         st_cmd_footer = """
-# Session name : {plcname}-session
+#- Session name : {plcname}-session
 opcuaCreateSession("{plcname}-session", "opc.tcp://$(IPADDR):$(PORT)")
 
-# Subscription       : {plcname}
-# Publising interval : $(PUBLISHING_INTERVAL)
+#- Subscription       : {plcname}
+#- Publising interval : $(PUBLISHING_INTERVAL)
 opcuaCreateSubscription("{plcname}", "{plcname}-session", $(PUBLISHING_INTERVAL))
 
 {dbloadrecords}
@@ -326,7 +326,7 @@ class ST_TEST_CMD(eee, MACROS, PRINTER):
         super(ST_TEST_CMD, self).footer(output, **keyword_parameters)
 
         st_cmd_footer = """
-# Load plc interface database
+#- Load plc interface database
 dbLoadRecords("{modulename}-test.db", "MODVERSION=$({modversion}){macros}")
 """.format(modulename = self.modulename(),
            modversion = self._modversion(),
@@ -361,20 +361,20 @@ def autosave_header(printer):
 
 def autosave_footer(printer):
     return """
-# Configure autosave
-# Number of sequenced backup files to write
+#- Configure autosave
+#- Number of sequenced backup files to write
 save_restoreSet_NumSeqFiles(1)
 
-# Specify directories in which to search for request files
+#- Specify directories in which to search for request files
 set_requestfile_path("$(REQUIRE_{modulename}_PATH)", "misc")
 
-# Specify where the save files should be
+#- Specify where the save files should be
 set_savefile_path("$(SAVEFILE_DIR)", "")
 
-# Specify what save files should be restored
+#- Specify what save files should be restored
 set_pass0_restoreFile("{modulename}{flavor}.sav")
 
-# Create monitor set
+#- Create monitor set
 doAfterIocInit("create_monitor_set('{modulename}{flavor}.req', 1, '')")
 """.format(modulename = printer.modulename(),
            flavor     = printer.flavor())
