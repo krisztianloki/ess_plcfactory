@@ -879,31 +879,36 @@ def create_e3(modulename, snippet):
         pass
 
     try:
-        m_cp(output_files['AUTOSAVE-IOCSH'],          "iocsh",   snippet + ".iocsh")
+        startup = 'AUTOSAVE-IOCSH'
+        m_cp(output_files[startup],                   "iocsh",   snippet + ".iocsh")
     except KeyError:
-        m_cp(output_files['IOCSH'],                   "iocsh",   snippet + ".iocsh")
+        startup = 'IOCSH'
+        m_cp(output_files[startup],                   "iocsh",   snippet + ".iocsh")
 
     test_cmd = True
     try:
-        m_cp(output_files['AUTOSAVE-TEST-IOCSH'],     "iocsh",   snippet + "-test.iocsh")
+        test_startup = 'AUTOSAVE-TEST-IOCSH'
+        m_cp(output_files[test_startup],              "iocsh",   snippet + "-test.iocsh")
     except KeyError:
         try:
-            m_cp(output_files['TEST-IOCSH'],          "iocsh",   snippet + "-test.iocsh")
+            test_startup = 'TEST-IOCSH'
+            m_cp(output_files[test_startup],          "iocsh",   snippet + "-test.iocsh")
         except KeyError:
             test_cmd = False
 
-    req_files    = []
-    try:
-        m_cp(output_files['AUTOSAVE'],                "misc",    modulename + ".req")
-        req_files.append(modulename + ".req")
-    except KeyError:
-        pass
-
-    try:
-        m_cp(output_files['AUTOSAVE-TEST'],           "misc",    modulename + "-test.req")
-        req_files.append(modulename + "-test.req")
-    except KeyError:
-        pass
+    # These are not needed for E3
+#    req_files    = []
+#    try:
+#        m_cp(output_files['AUTOSAVE'],                "misc",    modulename + ".req")
+#        req_files.append(modulename + ".req")
+#    except KeyError:
+#        pass
+#
+#    try:
+#        m_cp(output_files['AUTOSAVE-TEST'],           "misc",    modulename + "-test.req")
+#        req_files.append(modulename + "-test.req")
+#    except KeyError:
+#        pass
 
     m_cp(output_files["CREATOR"],                     "misc",    "creator")
 
@@ -940,17 +945,44 @@ def create_e3(modulename, snippet):
 
     output_files['E3'] = e3_files
 
+    macros          = ""
+    live_macros     = ""
+    test_macros     = ""
+    startup_printer = printers[startup]
+    macro_list      = startup_printer.macros()
+    if macro_list:
+        macros      = ", ".join(["{m}={m}".format(m = startup_printer.macro_name(macro)) for macro in macro_list])
+        live_macros = ", {}".format(macros)
+
+    #
+    # Create env.sh
+    #
+    with open(os.path.join(OUTPUT_DIR, "env.sh"), "w") as run:
+        print("""IOCNAME='{modulename}'""".format(modulename = modulename), file = run)
+
     #
     # Create script to run module with 'safe' defaults
     #
     with open(os.path.join(OUTPUT_DIR, "run_module.bash"), "w") as run:
-        iocsh_bash = """iocsh.bash -l {moduledir}/cellMods -r {modulename},plcfactory -c 'loadIocsh({snippet}.iocsh, "IPADDR=127.0.0.1, """.format(moduledir  = os.path.abspath(out_mdir),
-                                                                                                                                                   modulename = modulename,
-                                                                                                                                                   snippet    = snippet)
+        iocsh_bash = """iocsh.bash -l {moduledir}/cellMods -r {modulename},plcfactory -c 'loadIocsh({snippet}.iocsh, "IPADDR = 127.0.0.1, """.format(moduledir  = os.path.abspath(out_mdir),
+                                                                                                                                                     modulename = modulename,
+                                                                                                                                                     snippet    = snippet)
         if 'OPC' in ifdef_params['PLC_TYPE']:
-            print(iocsh_bash + """PORT=4840, PUBLISHING_INTERVAL=200")'""", file = run)
+            print(iocsh_bash + """PORT = 4840, PUBLISHING_INTERVAL = 200{macros}")'""".format(macros = live_macros), file = run)
         else:
-            print(iocsh_bash + """ RECVTIMEOUT=3000")'""", file = run)
+            print(iocsh_bash + """ RECVTIMEOUT = 3000{macros}")'""".format(macros = live_macros), file = run)
+
+    if test_cmd:
+        #
+        # Create script to run test version of module
+        #
+        with open(os.path.join(OUTPUT_DIR, "run_test_module.bash"), "w") as run:
+            if macros:
+                test_macros = ', "{}"'.format(macros)
+            print("""iocsh.bash -l {moduledir}/cellMods -r {modulename},plcfactory -c 'loadIocsh({snippet}-test.iocsh, "_={macros}")'""".format(moduledir  = os.path.abspath(out_mdir),
+                                                                                                                                                modulename = modulename,
+                                                                                                                                                snippet    = snippet,
+                                                                                                                                                macros     = test_macros), file = run)
 
     print("E3 Module created:", out_mdir)
     return out_mdir
@@ -1414,7 +1446,7 @@ def main(argv):
         default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "AUTOSAVE-ST-CMD", "AUTOSAVE", "BEAST", "BEAST-TEMPLATE" ] )
 
     if e3:
-        default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "IOCSH", "BEAST", "BEAST-TEMPLATE", ] )
+        default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "AUTOSAVE-IOCSH", "BEAST", "BEAST-TEMPLATE", ] )
 
     if default_printers:
         if not default_printers <= set(tf.available_printers()):
@@ -1433,18 +1465,25 @@ def main(argv):
     if (args.plc_only_diag or args.plc_no_diag is False) and beckhoff:
         raise PLCFArgumentError('PLCFactory cannot (yet?) generate diagnostics code for Beckhoff PLCs')
 
+    # FIXME: these tests should be put somewhere in the template_factory/printers section
     if eee and "EPICS-TEST-DB" in templateIDs:
         templateIDs.add("AUTOSAVE-TEST")
         templateIDs.add("AUTOSAVE-ST-TEST-CMD")
 
     if e3 and "EPICS-TEST-DB" in templateIDs:
-        templateIDs.add("TEST-IOCSH")
+        templateIDs.add("AUTOSAVE-TEST-IOCSH")
 
     if "ST-CMD" in templateIDs and "AUTOSAVE-ST-CMD" in templateIDs:
         templateIDs.remove("ST-CMD")
 
     if "ST-TEST-CMD" in templateIDs and "AUTOSAVE-ST-TEST-CMD" in templateIDs:
         templateIDs.remove("ST-TEST-CMD")
+
+    if "IOCSH" in templateIDs and "AUTOSAVE-IOCSH" in templateIDs:
+        templateIDs.remove("IOCSH")
+
+    if "TEST-IOCSH" in templateIDs and "AUTOSAVE-TEST-IOCSH" in templateIDs:
+        templateIDs.remove("TEST-IOCSH")
 
     if "EPICS-DB" in templateIDs and opc:
         templateIDs.add("EPICS-OPC-DB")

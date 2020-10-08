@@ -18,9 +18,11 @@ def printer():
     return [ (ST_CMD.name(), ST_CMD),
              (IOCSH.name(), IOCSH),
              (AUTOSAVE_ST_CMD.name(), AUTOSAVE_ST_CMD),
+             (AUTOSAVE_IOCSH.name(), AUTOSAVE_IOCSH),
              (ST_TEST_CMD.name(), ST_TEST_CMD),
              (TEST_IOCSH.name(), TEST_IOCSH),
-             (AUTOSAVE_ST_TEST_CMD.name(), AUTOSAVE_ST_TEST_CMD) ]
+             (AUTOSAVE_ST_TEST_CMD.name(), AUTOSAVE_ST_TEST_CMD),
+             (AUTOSAVE_TEST_IOCSH.name(), AUTOSAVE_TEST_IOCSH) ]
 
 
 
@@ -359,6 +361,21 @@ def autosave_header(printer):
 """.format(modulename = printer.modulename())
 
 
+
+def e3_autosave_header(printer):
+    return """# @field SAVEFILE_DIR
+# @type STRING
+# The directory where autosave should save files
+
+# @field REQUIRE_IOC
+# @runtime YES
+
+# @field IOCNAME
+# @runtime YES
+"""
+
+
+
 def autosave_footer(printer):
     return """
 #- Configure autosave
@@ -427,6 +444,54 @@ class AUTOSAVE_ST_CMD(ST_CMD):
 
 
 
+class AUTOSAVE_IOCSH(IOCSH):
+    def __init__(self, **keyword_parameters):
+        super(AUTOSAVE_IOCSH, self).__init__(**keyword_parameters)
+        self._has_params = False
+
+
+    @staticmethod
+    def name():
+        return "AUTOSAVE-IOCSH"
+
+
+    #
+    # HEADER
+    #
+    def header(self, output, **keyword_parameters):
+        super(AUTOSAVE_IOCSH, self).header(output, **keyword_parameters)
+
+        self._append(e3_autosave_header(self), output)
+
+
+    #
+    # BODY
+    #
+    def _ifdef_body(self, if_def, output, **keyword_parameters):
+        super(AUTOSAVE_IOCSH, self)._ifdef_body(if_def, output, **keyword_parameters)
+
+        if not self._has_params:
+            for src in if_def.interfaces():
+                if isinstance(src, BASE_TYPE) and src.is_parameter():
+                    self._has_params = True
+                    break
+
+
+    #
+    # FOOTER
+    #
+    def footer(self, output, **keyword_parameters):
+        super(AUTOSAVE_IOCSH, self).footer(output, **keyword_parameters)
+
+        if self._has_params:
+            self._append("""
+#- Load autosave config
+loadIocsh("autosave.iocsh", "AS_TOP = ${SAVEFILE_DIR=.}, IOCNAME = ${IOCNAME=${REQUIRE_IOC}}, NUM_SEQ = 1")
+""", output)
+
+
+
+
 class AUTOSAVE_ST_TEST_CMD(ST_TEST_CMD):
     def __init__(self):
         super(AUTOSAVE_ST_TEST_CMD, self).__init__()
@@ -453,3 +518,36 @@ class AUTOSAVE_ST_TEST_CMD(ST_TEST_CMD):
         super(AUTOSAVE_ST_TEST_CMD, self).footer(output, **keyword_parameters)
 
         self._append(autosave_footer(self), output)
+
+
+
+
+class AUTOSAVE_TEST_IOCSH(TEST_IOCSH):
+    def __init__(self):
+        super(AUTOSAVE_TEST_IOCSH, self).__init__()
+
+
+    @staticmethod
+    def name():
+        return "AUTOSAVE-TEST-IOCSH"
+
+
+    #
+    # HEADER
+    #
+    def header(self, output, **keyword_parameters):
+        super(AUTOSAVE_TEST_IOCSH, self).header(output, **keyword_parameters)
+
+        self._append(e3_autosave_header(self), output)
+
+
+    #
+    # FOOTER
+    #
+    def footer(self, output, **keyword_parameters):
+        super(AUTOSAVE_TEST_IOCSH, self).footer(output, **keyword_parameters)
+
+        self._append("""
+#- Load autosave config
+loadIocsh("autosave.iocsh", "AS_TOP = ${SAVEFILE_DIR=.}, IOCNAME = ${IOCNAME=${REQUIRE_IOC}-test}, NUM_SEQ = 1")
+""", output)
