@@ -964,9 +964,9 @@ def create_e3(modulename, snippet):
     # Create script to run module with 'safe' defaults
     #
     with open(os.path.join(OUTPUT_DIR, "run_module.bash"), "w") as run:
-        iocsh_bash = """iocsh.bash -l {moduledir}/cellMods -r {modulename},plcfactory -c 'loadIocsh({snippet}.iocsh, "IPADDR = 127.0.0.1, """.format(moduledir  = os.path.abspath(out_mdir),
-                                                                                                                                                     modulename = modulename,
-                                                                                                                                                     snippet    = snippet)
+        iocsh_bash = """iocsh.bash -l {moduledir}/cellMods -r {modulename},plcfactory -c 'iocshLoad($({modulename}_DIR)/{snippet}.iocsh, "IPADDR = 127.0.0.1, """.format(moduledir  = os.path.abspath(out_mdir),
+                                                                                                                                                                         modulename = modulename,
+                                                                                                                                                                         snippet    = snippet)
         if 'OPC' in ifdef_params['PLC_TYPE']:
             print(iocsh_bash + """PORT = 4840, PUBLISHING_INTERVAL = 200{macros}")'""".format(macros = live_macros), file = run)
         else:
@@ -979,10 +979,10 @@ def create_e3(modulename, snippet):
         with open(os.path.join(OUTPUT_DIR, "run_test_module.bash"), "w") as run:
             if macros:
                 test_macros = ', "{}"'.format(macros)
-            print("""iocsh.bash -l {moduledir}/cellMods -r {modulename},plcfactory -c 'loadIocsh({snippet}-test.iocsh, "_={macros}")'""".format(moduledir  = os.path.abspath(out_mdir),
-                                                                                                                                                modulename = modulename,
-                                                                                                                                                snippet    = snippet,
-                                                                                                                                                macros     = test_macros), file = run)
+            print("""iocsh.bash -l {moduledir}/cellMods -r {modulename},plcfactory -c 'iocshLoad($({modulename}_DIR)/{snippet}-test.iocsh, "_={macros}")'""".format(moduledir  = os.path.abspath(out_mdir),
+                                                                                                                                                                    modulename = modulename,
+                                                                                                                                                                    snippet    = snippet,
+                                                                                                                                                                    macros     = test_macros), file = run)
 
     print("E3 Module created:", out_mdir)
     return out_mdir

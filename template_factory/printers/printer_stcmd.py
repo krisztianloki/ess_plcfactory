@@ -486,7 +486,7 @@ class AUTOSAVE_IOCSH(IOCSH):
         if self._has_params:
             self._append("""
 #- Load autosave config
-loadIocsh("autosave.iocsh", "AS_TOP = ${SAVEFILE_DIR=.}, IOCNAME = ${IOCNAME=${REQUIRE_IOC}}, NUM_SEQ = 1")
+iocshLoad("${autosave_DIR}/autosave.iocsh", "AS_TOP = ${SAVEFILE_DIR=.}, IOCNAME = ${IOCNAME=${REQUIRE_IOC}}, NUM_SEQ = 1")
 """, output)
 
 
@@ -549,5 +549,5 @@ class AUTOSAVE_TEST_IOCSH(TEST_IOCSH):
 
         self._append("""
 #- Load autosave config
-loadIocsh("autosave.iocsh", "AS_TOP = ${SAVEFILE_DIR=.}, IOCNAME = ${IOCNAME=${REQUIRE_IOC}-test}, NUM_SEQ = 1")
+iocshLoad("${autosave_DIR}/autosave.iocsh", "AS_TOP = ${SAVEFILE_DIR=.}, IOCNAME = ${IOCNAME=${REQUIRE_IOC}-test}, NUM_SEQ = 1")
 """, output)
