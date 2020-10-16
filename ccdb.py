@@ -60,14 +60,21 @@ class CCDB(CC):
             return self._artifact["kind"] == "TYPE"
 
 
-        def _download(self, save_as):
+        def prepare_to_download(self):
             if self.is_file():
                 if self.is_perdevtype():
-                    self._saveasurl = "/".join([ "deviceTypes", self._device.deviceType(), "download", self.filename() ])
+                    self._saveasurl = CCDB.urljoin("deviceTypes", self._device.deviceType(), "download", self.filename())
                 else:
-                    self._saveasurl = "/".join([ "slots", self._device.name(), "download", self.filename() ])
+                    self._saveasurl = CCDB.urljoin("slots", self._device.name(), "download", self.filename())
 
-                return self._device.ccdb.download_from_ccdb(self._saveasurl, save_as)
+                self._saveasurl = CCDB.urljoin(self._device.ccdb.rest_url(), self._saveasurl)
+            else:
+                super(CCDB.Artifact, self).prepare_to_download()
+
+
+        def _download(self, save_as):
+            if self.is_file():
+                return self._device.ccdb.download_from_ccdb(self, save_as)
             elif self.is_git():
                 # Remove the "filename" part from saveas to get the directory where the repo needs to be cloned into
                 cwd = self.saveas()[:-len(self.saveas_filename()) - 1]
@@ -78,6 +85,29 @@ class CCDB(CC):
 
         def _type(self):
             return self._artifact["type"]
+
+
+
+    class DeviceType(CC.DeviceType):
+        def __init__(self, name, ccdb = None):
+            super(CCDB.DeviceType, self).__init__(ccdb)
+            self._name = name
+
+
+        def __str__(self):
+            return self.name()
+
+
+        def __repr__(self):
+            return str(self)
+
+
+        def name(self):
+            return self._name
+
+
+        def url(self):
+            return CCDB.urljoin(self.ccdb.url(), "device-types.xhtml?name={}".format(CCDB.urlquote(self.name())))
 
 
 
@@ -101,12 +131,20 @@ class CCDB(CC):
             return self._slot[item]
 
 
+        def url(self):
+            return CCDB.urljoin(self.ccdb.url(), "?name={}".format(CCDB.urlquote(self.name())))
+
+
         def keys(self):
             return self._slot.keys()
 
 
         def name(self):
             return self._slot["name"]
+
+
+        def type(self):
+            return CCDB.DeviceType(self.deviceType(), self.ccdb)
 
 
         def _controls(self):
@@ -178,9 +216,11 @@ class CCDB(CC):
         CCDB.Device.ccdb = self
 
         if url is None:
-            self._base_url = "https://ccdb.esss.lu.se/rest/"
+            self._base_url = "https://ccdb.esss.lu.se"
         else:
             self._base_url = url
+
+        self._rest_url = self.urljoin(self._base_url, "rest")
 
         self._verify_ssl_cert = verify_ssl_cert
 
@@ -189,8 +229,16 @@ class CCDB(CC):
         return self._base_url
 
 
-    def download_from_ccdb(self, url, save_as):
-        return CC.download(self._base_url + url, save_as, verify_ssl_cert = self._verify_ssl_cert)
+    def rest_url(self):
+        return self._rest_url
+
+
+    def download_from_ccdb(self, artifact_or_url, save_as):
+        if isinstance(artifact_or_url, CCDB.Artifact):
+            url = artifact_or_url._saveasurl
+        else:
+            url = self.urljoin(self._rest_url, url)
+        return CC.download(url, save_as, verify_ssl_cert = self._verify_ssl_cert)
 
 
     def download(self, url, save_as):
@@ -198,7 +246,7 @@ class CCDB(CC):
 
 
     def getAllDeviceNames(self):
-        url = self._base_url + "slotNames/"
+        url = self.urljoin(self._rest_url, "slotNames")
 
         result  = self._get(url)
         tmpList = filter(lambda x: x["slotType"] == "SLOT", json.loads(result.text)["names"])
@@ -226,7 +274,7 @@ class CCDB(CC):
         deviceName = self.deviceName(deviceName)
 
         if deviceName not in self._devices:
-            url     = self._base_url + "slots/" + deviceName
+            url     = self.urljoin(self._rest_url, "slots", deviceName)
 
             result = self._get(url)
 
@@ -250,7 +298,7 @@ class CCDB(CC):
             if not self._devices:
                 # If this is the first device, assume this is the root device, so
                 # Greedily request transitive controls information
-                url    = "".join([ self._base_url, "slots/", deviceName, "/controls/?transitive=", str(True) ])
+                url    = self.urljoin(self._rest_url, "slots", deviceName, "controls/?transitive=True")
 
                 result = self._get(url)
                 if result.status_code == 200:
@@ -273,7 +321,7 @@ class CCDB(CC):
 class CCDB_TEST(CCDB):
     def __init__(self, **kwargs):
         kwargs["verify_ssl_cert"] = False
-        CCDB.__init__(self, "https://ics-services.esss.lu.se/ccdb-test/rest/", **kwargs)
+        CCDB.__init__(self, "https://ics-services.esss.lu.se/ccdb-test", **kwargs)
 
 
 
@@ -281,4 +329,4 @@ class CCDB_TEST(CCDB):
 class CCDB_DEVEL(CCDB):
     def __init__(self, **kwargs):
         kwargs["verify_ssl_cert"] = False
-        CCDB.__init__(self, "https://icsvd-app01.esss.lu.se:8443/ccdb-test/rest/", **kwargs)
+        CCDB.__init__(self, "https://icsvd-app01.esss.lu.se:8443/ccdb-test", **kwargs)

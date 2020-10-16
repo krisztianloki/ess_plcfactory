@@ -55,6 +55,10 @@ class TestPLCF(unittest.TestCase):
         pass
 
 
+    def process(self, line):
+        return self.cplcf.process(line)
+
+
     def testGetCounter(self):
         self.assertEqual(plcf.PLCF.get_counter(1), "{}1".format(plcf.PLCF.plcf_counter))
         with self.assertRaises(IndexError):
@@ -71,29 +75,29 @@ class TestPLCF(unittest.TestCase):
 
     def testEmptyPLCF(self):
         line = "[PLCF#]"
-        self.assertEqual(self.cplcf.process(line), "")
+        self.assertEqual(self.process(line), "")
 
 
     def testUnclosedPLCF(self):
         line = "[PLCF#"
         with self.assertRaises(plcf.PLCFException):
-            self.cplcf.process(line)
+            self.process(line)
 
 
     def testSquareBracketInPLCF(self):
         line = "[PLCF#[]"
         with self.assertRaises(plcf.PLCFException):
-            self.cplcf.process(line)
+            self.process(line)
 
 
     def testParenInPLCF(self):
         line = "[PLCF#(]"
         with self.assertRaises(AssertionError):
-            self.cplcf.process(line)
+            self.process(line)
 
         line = "[PLCF#[]"
         with self.assertRaises(plcf.PLCFException):
-            self.cplcf.process(line)
+            self.process(line)
 
 
 #    noException("[PLCF#^(this is (a) weird property)]")
@@ -101,25 +105,25 @@ class TestPLCF(unittest.TestCase):
     def testParenPropertyInPLCF(self):
         line = "[PLCF#(property]"
         with self.assertRaises(AssertionError):
-            self.cplcf.process(line)
+            self.process(line)
 
 
     def testParenExtInPLCF(self):
         line = "[PLCF#ext.(]"
         with self.assertRaises(AssertionError):
-            self.cplcf.process(line)
+            self.process(line)
 
 
     def testUnclosedParenExtInPLCF(self):
         line = "[PLCF#ext.fn(()]"
         with self.assertRaises(AssertionError):
-            self.cplcf.process(line)
+            self.process(line)
 
 
     def testNoSuchPropertyInPLCF(self):
         prop = "infinity"
         line = "[PLCF#{}]".format(prop)
-        self.assertEqual(self.cplcf.process(line), prop)
+        self.assertEqual(self.process(line), prop)
 
 
 #    match("[PLCF#lengthyer]", "lonGer")
@@ -129,22 +133,22 @@ class TestPLCF(unittest.TestCase):
     def testPropertyInPLCF(self):
         line   = "[PLCF#short]"
         result = "tiny"
-        self.assertEqual(self.cplcf.process(line), result)
+        self.assertEqual(self.process(line), result)
         line   = "[PLCF#forty-two]"
         result = "42"
-        self.assertEqual(self.cplcf.process(line), result)
+        self.assertEqual(self.process(line), result)
 
 
     def testMultiplePropertyAppearanceInPLCF(self):
         line   = "[PLCF#template template short]"
         result = "beast-template beast-template tiny"
-        self.assertEqual(self.cplcf.process(line), result)
+        self.assertEqual(self.process(line), result)
 
 
     def testRecursivePropertySubst(self):
         line   = "[PLCF#A]"
         result = self.device.propertiesDict()[self.device.propertiesDict()["A"]]
-        self.assertEqual(self.cplcf.process(line), result)
+        self.assertEqual(self.process(line), result)
 
 
     def testCounterInPLCF(self):
@@ -203,8 +207,8 @@ class TestPLCF(unittest.TestCase):
         counters = plcf.PLCF.initializeCounters()
         counters[counter] = 42
         self.assertTrue(plcf.PLCF.hasCounter(line))
-        self.assertEqual(self.cplcf.process(line), "[PLCF#42 + {}]".format(counter))
-        line = self.cplcf.process(line)
+        self.assertEqual(self.process(line), "[PLCF#42 + {}]".format(counter))
+        line = self.process(line)
         self.assertTrue(plcf.PLCF.hasCounter(line))
         self.assertEqual(plcf.PLCF._evalCounter(line, counters), str(42 + counters[counter]))
 
@@ -213,7 +217,7 @@ class TestPLCF(unittest.TestCase):
     def testBacktrackInPLCF(self):
         expr = "^(EPICSToPLCDataBlockStartOffset)"
         line = "[PLCF#{}]".format(expr)
-        self.assertEqual(self.cplcf.process(line), "42")
+        self.assertEqual(self.process(line), "42")
 
 
     def testBacktrackAndCounterInPLCF(self):
@@ -223,7 +227,7 @@ class TestPLCF(unittest.TestCase):
         counters = plcf.PLCF.initializeCounters()
         counters[counter] = 42
         self.assertTrue(plcf.PLCF.hasCounter(line))
-        self.assertEqual(self.cplcf.process(line), "[PLCF#{} + {}]".format(42, counter))
+        self.assertEqual(self.process(line), "[PLCF#{} + {}]".format(42, counter))
 
 
     def testNoCounterInPLCF(self):
@@ -305,17 +309,31 @@ class TestPLCF(unittest.TestCase):
     def testQuoted(self):
         word = "'True'"
         line = "[PLCF#{}]".format(word)
-        self.assertEqual(self.cplcf.process(line), word)
+        self.assertEqual(self.process(line), word)
 
 
     def testExt(self):
         word = "filename"
         line = "[PLCF#ext.to_filename('{}')]".format(word)
-        self.assertEqual(self.cplcf.process(line), word)
+        self.assertEqual(self.process(line), word)
 
         line = "[PLCF#ext.to_filename({})]".format(word)
         with self.assertRaises(plcf.PLCFEvalException):
-            self.cplcf.process(line)
+            self.process(line)
+
+        line = "[PLCF#ext.to_filename('{}') + ext.to_filename('{}')]".format(word, word)
+        self.assertEqual(self.process(line), word+word)
+
+        line = '[PLCF#"PLCFactory" if ext.plcfactory_origin() == "None" else "[PLCFactory](ext.plcfactory_origin())"]'
+        self.assertEqual(self.process(line), "PLCFactory")
+
+        line = "[PLCF#ext.plcfactory_origin()]"
+        self.assertEqual(self.process(line), "None")
+
+        plcf_glob.origin = "https://gitlab"
+        line = '[PLCF#"PLCFactory" if ext.plcfactory_origin() == "None" else "[PLCFactory]({})".format(ext.plcfactory_origin())]'
+        self.assertEqual(self.process(line), "[PLCFactory]({})".format(plcf_glob.origin))
+
 
 
 

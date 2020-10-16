@@ -11,10 +11,6 @@ __license__    = "GPLv3"
 # Python libraries
 from os import path as os_path
 import getpass
-try:
-    from urlparse import urlsplit
-except ImportError:
-    from urllib.parse import urlsplit
 
 try:
     import requests
@@ -245,7 +241,7 @@ class CC(object):
                         filename += extension
 
                 # Check if the specified filename is valid
-                if filename != helpers.sanitizeFilename(filename):
+                if filename != helpers.sanitize_path(filename):
                     raise CC.ArtifactException("Invalid filename in External Link for {device}: {name}".format(device = self._device.name(), name = filename), self._device.name(), filename)
             else:
                 base = linkfile
@@ -261,27 +257,33 @@ class CC(object):
             self._saveasversion  = git_tag
             self._saveasfilename = filename
 
-            # NOTE: we _must not_ use CC.TEMPLATE_DIR here,
-            # CCDB_Dump relies on creating an instance variant of TEMPLATE_DIR to point it to its own templates directory
-            if not self.is_git():
-                url = "/".join([ self.uri(), "raw", git_tag ])
-                self._saveasurl      = "/".join([ url, filename ])
-                self._saveas         = CC.saveas(self.uniqueID(), filename, os_path.join(self._device.ccdb.TEMPLATE_DIR, CC.urlToPath(url)))
-            else:
-                # Make sure that only one version is requested of the same repo
-                # This is a limitation of the current implementation
-                if CC.repos_cached.get(self.uri(), git_tag) != git_tag:
-                    raise CC.ArtifactException("Cannot mix different versions/branches of the same repository: {}".format(self.uri()))
-
-                self._saveasurl      = self.uri()
-                # We could remove the '.git' extension from the url but I see no point in doing that
-                self._saveas         = CC.saveas(self.uniqueID(), filename, os_path.join(self._device.ccdb.TEMPLATE_DIR, CC.urlToPath(self.uri())))
-
             return self.download()
+
+
+        def prepare_to_download(self):
+            if self.is_uri():
+                git_tag  = self.saveas_version()
+                filename = self.saveas_filename()
+                # NOTE: we _must not_ use CC.TEMPLATE_DIR here,
+                # CCDB_Dump relies on creating an instance variant of TEMPLATE_DIR to point it to its own templates directory
+                if not self.is_git():
+                    url = CC.urljoin(self.uri(), "raw", git_tag)
+                    self._saveasurl      = CC.urljoin(url, filename)
+                    self._saveas         = CC.saveas(self.uniqueID(), filename, os_path.join(self._device.ccdb.TEMPLATE_DIR, CC.url_to_path(url)))
+                else:
+                    # Make sure that only one version is requested of the same repo
+                    # This is a limitation of the current implementation
+                    if CC.repos_cached.get(self.uri(), git_tag) != git_tag:
+                        raise CC.ArtifactException("Cannot mix different versions/branches of the same repository: {}".format(self.uri()))
+
+                    self._saveasurl      = self.uri()
+                    # We could remove the '.git' extension from the url but I see no point in doing that
+                    self._saveas         = CC.saveas(self.uniqueID(), filename, os_path.join(self._device.ccdb.TEMPLATE_DIR, CC.url_to_path(self.uri())))
 
 
         # Returns: "", the downloaded filename
         def download(self):
+            self.prepare_to_download()
             save_as  = self.saveas()
 
             # check if filename has already been downloaded
@@ -303,11 +305,13 @@ class CC(object):
         def __init__(self, artifact):
             super(CC.DownloadedArtifact, self).__init__()
 
-            self._epi_url        = artifact.filename() if artifact.is_file() else artifact.uri()
+            self._epi            = None if artifact.is_file() else artifact.name()
+            self._epi_url        = None if artifact.is_file() else artifact.uri()
             self._epi_version    = None if artifact.is_file() else artifact._saveasversion
-            self._filename       = artifact._saveasfilename
-            self._url            = None if artifact.is_file() else artifact._saveasurl
+            self._filename       = artifact.saveas_filename()
+            self._url            = artifact.saveas_url()
             self._saved_as       = artifact.saveas()
+            self._perdevtype     = artifact.is_perdevtype()
 
 
         def saved_as(self):
@@ -322,12 +326,39 @@ class CC(object):
             return self._url
 
 
+        def epi(self):
+            return self._epi
+
+
         def epi_url(self):
             return self._epi_url
 
 
         def epi_version(self):
             return self._epi_version
+
+
+        def is_perdevtype(self):
+            return self._perdevtype
+
+
+
+    class DeviceType(object):
+        ccdb = None
+
+        def __init__(self, ccdb):
+            super(CC.DeviceType, self).__init__()
+
+            if ccdb is not None:
+                self.ccdb = ccdb
+
+
+        def name(self):
+            raise NotImplementedError
+
+
+        def url(self):
+            return None
 
 
 
@@ -340,6 +371,10 @@ class CC(object):
             self._inControlledTree = False
             if ccdb is not None:
                 self.ccdb = ccdb
+
+
+        def url(self):
+            return None
 
 
         @staticmethod
@@ -362,6 +397,11 @@ class CC(object):
 
         # Returns: ""
         def name(self):
+            raise NotImplementedError
+
+
+        # Returns: DeviceType
+        def type(self):
             raise NotImplementedError
 
 
@@ -557,9 +597,12 @@ class CC(object):
                     controlled_devices[device_type] = [ dev ]
 
             if verbose:
-                print("\r" + "#" * 60)
-                print("Device at root: " + self.name() + "\n")
-                print(self.name() + " controls: ")
+                if verbose is True:
+                    print("\r" + "#" * 60)
+                    print("Device at root: " + self.name() + "\n")
+                    print(self.name() + " controls: ")
+                else:
+                    verbose(self, 'root')
 
             # sort items into a list
             def sortkey(device):
@@ -567,15 +610,21 @@ class CC(object):
             pool = list()
             for device_type in sorted(controlled_devices):
                 if verbose:
-                    print("\t- " + device_type)
+                    if verbose is True:
+                        print("\t- " + device_type)
+                    else:
+                        verbose(controlled_devices[device_type][0].type(), 'device_type')
 
                 for dev in sorted(controlled_devices[device_type], key=sortkey):
                     pool.append(dev)
                     dev.putInControlledTree()
                     if verbose:
-                        print("\t\t-- " + dev.name())
+                        if verbose is True:
+                            print("\t\t-- " + dev.name())
+                        else:
+                            verbose(dev, 'device')
 
-            if verbose:
+            if verbose is True:
                 print("\n")
 
             if include_self:
@@ -646,44 +695,23 @@ class CC(object):
 
 
     @staticmethod
-    def urlComps(url):
-        url_comps = urlsplit(url)
-
-        comps = url_comps.netloc + url_comps.path
-        return comps.split('/')
+    def urlsplit(url):
+        return helpers.urlsplit(url)
 
 
     @staticmethod
-    def urlToFilename(url):
-        """
-        Returns the last component of a URL. It is assumed to be the filename
-        """
-        comps = CC.urlComps(url)
-        # assume the last component is a filename
-        return comps[-1]
+    def urlquote(string):
+        return helpers.urlquote(string)
 
 
     @staticmethod
-    def urlToDir(url):
-        """
-        Returns the url without the protocol and the last component as that one is assumed to be a filename
-        """
-        comps = CC.urlComps(url)
-
-        # ignore the last component, it is assumed to be a filename
-        del comps[-1]
-
-        return os_path.join(*map(lambda sde: helpers.sanitizeFilename(sde), comps))
+    def url_to_path(url):
+        return helpers.url_to_path(url)
 
 
     @staticmethod
-    def urlToPath(url):
-        """
-        Returns the url without the protocol
-        """
-        comps = CC.urlComps(url)
-
-        return os_path.join(*map(lambda sde: helpers.sanitizeFilename(sde), comps))
+    def urljoin(base, path, *more):
+        return helpers.urljoin(base, path, *more)
 
 
     @staticmethod
@@ -691,10 +719,10 @@ class CC(object):
         try:
             return CC.paths_cached[uniqueID, filename, directory]
         except KeyError:
-            dtdir = os_path.join(directory, helpers.sanitizeFilename(uniqueID))
+            dtdir = os_path.join(directory, helpers.sanitize_path(uniqueID))
             if CreateDir:
                 helpers.makedirs(dtdir)
-            path = os_path.normpath(os_path.join(dtdir, helpers.sanitizeFilename(filename)))
+            path = os_path.normpath(os_path.join(dtdir, helpers.sanitize_path(filename)))
             CC.paths_cached[uniqueID, filename, directory] = path
             return path
 
@@ -734,7 +762,7 @@ class CC(object):
 
     @staticmethod
     def get(url, auth = None, **keyword_params):
-        netloc = urlsplit(url).netloc
+        netloc = CC.urlsplit(url).netloc
 
         try:
             (session, auth) = CC.sessions_cached[netloc]
@@ -804,6 +832,10 @@ class CC(object):
     # clear whatever we have. let other implementations override
     def clear(self):
         self.__clear()
+
+
+    def url(self):
+        return None
 
 
     # Returns: CC.Device
@@ -1041,7 +1073,7 @@ factory.save("{filename}")""".format(factory_options = 'git_tag = "{}"'.format(g
         if not script.endswith("_ccdb.py"):
             script += "_ccdb.py"
 
-        script = os_path.join(directory, helpers.sanitizeFilename(script))
+        script = os_path.join(directory, helpers.sanitize_path(script))
         with open(script, "w") as f:
             print(fact, file = f)
 
@@ -1058,7 +1090,7 @@ factory.save("{filename}")""".format(factory_options = 'git_tag = "{}"'.format(g
             if not filename.endswith(CC.CCDB_ZIP_SUFFIX):
                 filename += CC.CCDB_ZIP_SUFFIX
 
-            filename = os_path.join(directory, helpers.sanitizeFilename(filename))
+            filename = os_path.join(directory, helpers.sanitize_path(filename))
             dumpfile = zipfile.ZipFile(filename, "w", zipfile.ZIP_DEFLATED)
         else:
             dumpfile = zipfile.ZipFile(filename, "w", zipfile.ZIP_DEFLATED)

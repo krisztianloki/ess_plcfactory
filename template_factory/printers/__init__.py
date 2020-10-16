@@ -224,6 +224,7 @@ class PRINTER(object):
         self._output_dir     = keyword_params.get("OUTPUT_DIR", ".")
         self._helpers        = keyword_params.get("HELPERS", None)
         self._root_inst_slot = keyword_params.get("ROOT_INSTALLATION_SLOT", None)
+        self._root_device    = keyword_params.get("ROOT_DEVICE", None)
 
         self._parse_keyword_args(keyword_params)
 

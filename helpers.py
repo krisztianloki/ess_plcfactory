@@ -11,9 +11,16 @@ __license__    = "GPLv3"
 import os
 import unicodedata
 try:
-    from   urlparse import urlsplit
+    from urllib.parse import urlsplit, urlunsplit
 except ImportError:
-    from urllib.parse import urlsplit
+    from urlparse import urlsplit, urlunsplit
+
+try:
+    from urllib.parse import quote as urlquote, splituser
+except ImportError:
+    from urllib import quote as urlquote, splituser
+
+from posixpath import join as posixpathjoin
 
 # Fake a WindowsError exception under non-Windows machines
 try:
@@ -68,6 +75,9 @@ def rmdirs(path):
 
 
 def makedirs(path):
+    """
+    Helper that ignores already existing directory error
+    """
     try:
         os.makedirs(path)
     except OSError:
@@ -75,33 +85,53 @@ def makedirs(path):
             raise
 
 
+def sanitize_path(path):
+    """
+    Helper that sanitizes path; replaces accented characters and removes invalid ones
+    """
+    path = tounicode(path)
+
+    # replace accented characters with the unaccented equivalent
+    path = unicodedata.normalize("NFKD", path).encode("ASCII", "ignore")
+
+    if isinstance(path, bytes) and not isinstance(path, str):
+        # Only needed for Python3
+        path = path.decode()
+
+    invalid_chars = '<>:"/\\|?*'
+    def sanP(p):
+        (head, tail) = os.path.split(p)
+        if not head:
+            return "".join(map(lambda x: '_' if x in invalid_chars else x, p))
+        tail = "".join(map(lambda x: '_' if x in invalid_chars else x, tail))
+        return os.path.join(sanP(head), tail)
+
+    return sanP(path)
+
+
 def sanitizeFilename(filename):
-    # Only needed for Python2
-    try:
-        if isinstance(filename, str):
-            filename = filename.decode("utf-8")
-    except AttributeError:
-        # Python3 string does not have decode()
-        pass
+    """
+    Helper that sanitizes filename; replaces accented characters and removes invalid ones
+
+    It will also replace path separators!
+    """
+    filename = tounicode(filename)
 
     # replace accented characters with the unaccented equivalent
     filename = unicodedata.normalize("NFKD", filename).encode("ASCII", "ignore")
 
     if isinstance(filename, bytes) and not isinstance(filename, str):
-        # Only needef for Python3
+        # Only needed for Python3
         filename = filename.decode()
 
-    def sanP(p):
-        (head, tail) = os.path.split(p)
-        if not head:
-            return "".join(map(lambda x: '_' if x in '<>:"/\|?*' else x, p))
-        head = "".join(map(lambda x: '_' if x in '<>:"/\|?*' else x, head))
-        return os.path.join(head, sanP(tail))
-
-    return sanP(filename)
+    invalid_chars = '<>:"/\\|?*'
+    return "".join(map(lambda x: '_' if x in invalid_chars else x, filename))
 
 
 def create_data_dir(product):
+    """
+    Creates 'data directory' under ~/.local/share
+    """
     dname = os.path.join(os.path.expanduser("~"), ".local", "share", product)
     makedirs(dname)
 
@@ -109,6 +139,9 @@ def create_data_dir(product):
 
 
 def tounicode(string):
+    """
+    Converts string to unicode (Not needed for Python3)
+    """
     try:
         # Python2 shortcut
         if isinstance(string, unicode):
@@ -118,3 +151,45 @@ def tounicode(string):
         return string
 
     return string.decode("utf-8")
+
+
+def url_strip_user(url):
+    """
+    Removes the 'username@' part of a URL
+
+
+    https://krisztianloki@gitlab.esss.lu.se/icshwi/plcfactory.git ==> https://gitlab.esss.lu.se/icshiw/plcfactory.git
+    """
+    comps = urlsplit(url)
+    netloc = splituser(comps.netloc)[1]
+    return urlunsplit((comps[0], netloc, comps[2], comps[3], comps[4]))
+
+
+def url_to_path(url):
+    """
+    Returns the url without the protocol sanitized (invalid characters removed) as a path
+
+
+    https://gitlab.esss.lu.se/icshwi/linac-vac-plc-def/raw/master/blob/VACUUM_VAC-PLCIO.def ==> gitlab.esss.lu.se/icshwi/linac-vac-plc-def/raw/master/blob/VACUUM_VAC-PLCIO.def
+    """
+
+    comps = urlsplit(url)
+    comps = splituser(comps.netloc)[1] + comps.path
+    comps = comps.split('/')
+
+    return os.path.join(*map(lambda sde: sanitizeFilename(sde), comps))
+
+
+def urljoin(part1, part2, *more):
+    """
+    Join paths to form a URL
+
+    NOT using urljoin because it ignores any path component in part1
+    """
+    if part2[0] == '/':
+        part2 = part2[1:]
+
+    if more:
+        part2 = posixpathjoin(part2, *[ m[1:] if m[0] =='/' else m for m in more])
+
+    return posixpathjoin(part1, part2)

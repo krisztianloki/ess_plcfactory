@@ -29,6 +29,20 @@ class CCDB_Dump(object):
 
 
     class Dump(CCDB):
+        class DeviceType(CCDB.DeviceType):
+            def url(self):
+                return None
+
+
+        class Device(CCDB.Device):
+            def url(self):
+                return None
+
+
+            def type(self):
+                return CCDB_Dump.Dump.DeviceType(self.deviceType(), self.ccdb)
+
+
         def __init__(self):
             super(CCDB_Dump.Dump, self).__init__()
             CCDB.Device.ccdb = self
@@ -69,7 +83,7 @@ class CCDB_Dump(object):
                 raise CC.Exception(e)
 
             for (key, value) in deviceDict.items():
-                self._devices[key] = CCDB.Device(value, ccdb = self)
+                self._devices[key] = self.Device(value, ccdb = self)
 
 
         def _device(self, deviceName):
@@ -101,6 +115,10 @@ class CCDB_Dump(object):
             self.TEMPLATE_DIR = os_path.join(self._rootpath, CC.TEMPLATE_DIR)
 
 
+        def url(self):
+            return "CCDB Directory at " + self._rootpath
+
+
 
     class ZipDump(Dump):
         def __init__(self, filename):
@@ -109,11 +127,16 @@ class CCDB_Dump(object):
             import zipfile
             self._zipfile  = zipfile.ZipFile(filename, "r")
             self._rootpath = "ccdb"
+            self._zipfilename = filename
 
             try:
                 self._createDevices(self._zipfile.read(os_path.join(self._rootpath, CC.DEVICE_DICT)).decode())
             except KeyError:
                 raise CC.Exception("Required file '{}' does not exist!".format(CC.DEVICE_DICT))
+
+
+        def url(self):
+            return "CCDB Zip file at " + self._zipfilename
 
 
         # extract artifact and save as save_as

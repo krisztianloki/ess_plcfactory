@@ -346,7 +346,7 @@ def getHeader(device, templateID, plcf):
         print("Using built-in template header")
         printers[templateID] = templatePrinter
         header = []
-        templatePrinter.header(header, PLCF = plcf, OUTPUT_DIR = OUTPUT_DIR, HELPERS = helpers, **ifdef_params)
+        templatePrinter.header(header, ROOT_DEVICE = device, PLCF = plcf, OUTPUT_DIR = OUTPUT_DIR, HELPERS = helpers, **ifdef_params)
     else:
         header = openHeaderFooter(device, HEADER_TAG, templateID)
 
@@ -637,7 +637,7 @@ def create_zipfile(zipit):
     if not zipit.endswith(".zip"):
         zipit += ".zip"
 
-    zipit = helpers.sanitizeFilename(zipit)
+    zipit = helpers.sanitize_path(zipit)
 
     z = zipfile.ZipFile(zipit, "w", zipfile.ZIP_DEFLATED)
 
@@ -783,6 +783,13 @@ def create_eee(modulename, snippet):
         except:
             helpers.rmdirs(os.path.join(miscdir, "ccdb"))
             print("Cannot copy CCDB dump to EEE module")
+
+    #
+    # Copy the README file to the modname directory
+    #
+    readme = os.path.join(out_mdir, "PLCFactory.md")
+    copy2(output_files["README"], readme)
+    eee_files.append(readme)
 
     #
     # Modify Makefile if needed
@@ -953,6 +960,13 @@ def create_e3(modulename, snippet):
             print("Cannot copy CCDB dump to E3 module")
 
 
+    #
+    # Copy the README file to the modname directory
+    #
+    readme = os.path.join(out_sdir, "README.md")
+    copy2(output_files["README"], readme)
+    e3_files.append(readme)
+
     output_files['E3'] = e3_files
 
     macros          = ""
@@ -1036,6 +1050,28 @@ def verify_output(strictness, ignore):
     for template in ignored_templates:
         previous_files.pop(template, None)
 
+    def my_filecmp(f1, f2):
+        if filecmp.cmp(f1, f2, shallow = 0):
+            return True
+
+        # The files are different, let's try again skipping comment lines
+        with open(f1, "r") as fp1, open(f2, "r") as fp2:
+            while True:
+                l1 = fp1.readline(1024)
+                l2 = fp2.readline(1024)
+
+                while l1 and l1[0] == '#':
+                    l1 = fp1.readline()
+
+                while l2 and l2[0] == '#':
+                    l2 = fp2.readline()
+
+                if l1 != l2:
+                    return False
+
+                if not l1:
+                    return True
+
     # Compare files in output_files to those in previous_files
     # previous_files will contain files that are not the same
     # not_checked will contain files that are not found / not generated
@@ -1052,7 +1088,7 @@ def verify_output(strictness, ignore):
 
         # compare prev and output
         try:
-            if filecmp.cmp(prev, output, shallow = 0):
+            if my_filecmp(prev, output):
                 previous_files.pop(template)
         except OSError as e:
             if e.errno == 2:
@@ -1424,12 +1460,17 @@ def main(argv):
 
     ifdef_params["ROOT_INSTALLATION_SLOT"] = glob.root_installation_slot
 
+    glob.commit_id = commit_id if not args.verify else "N/A"
+    glob.branch    = branch if not args.verify else "N/A"
+    glob.cmdline   = " ".join(sys.argv) if not args.verify else "N/A"
+    glob.origin    = git.get_origin()
+
     global device_tag
     device_tag = args.tag
     global epi_version
     epi_version = args.epi_version
 
-    default_printers = set(["DEVICE-LIST"])
+    default_printers = set(["DEVICE-LIST", "README"])
 
     if siemens:
         default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "IFA", "ARCHIVE", "BEAST", "BEAST-TEMPLATE" ] )
@@ -1590,7 +1631,9 @@ def main(argv):
 
     taint_message()
 
-    print("--- %.1f seconds ---\n" % (time.time() - start_time))
+    print("--- %.1f seconds ---" % (time.time() - start_time))
+    # As requested by Miklos :)
+    print("---  ✨ 🍰 ✨ \n")
 
 
 

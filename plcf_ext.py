@@ -15,14 +15,34 @@ class PLCFExtException(Exception):
 
 
 
-# simple example:
-def foo(x):
-    assert isinstance(x, int)
+def plcfactory_cmdline():
+    """
+    Returns the command line that was used to run PLCFactory
+    """
+    return plcf_glob.cmdline
 
-    return x * x * x
+
+def plcfactory_branch():
+    """
+    Returns the git branch of PLCFactory
+    """
+    return plcf_glob.branch
 
 
-# add whatever you need here:
+def plcfactory_commit_id():
+    """
+    Returns the git commit id of PLCFactory
+    """
+    return plcf_glob.commit_id
+
+
+def plcfactory_origin():
+    """
+    Returns the git url of PLCFactory
+    """
+    return plcf_glob.origin
+
+
 def to_filename(x):
     assert isinstance(x, str)
 

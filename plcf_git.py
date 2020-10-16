@@ -34,6 +34,14 @@ def checkout(cwd, version):
         raise
 
 
+def get_origin():
+    try:
+        output = subprocess.check_output(shlex_split("git ls-remote --get-url origin"), cwd = __git_dir)
+        return output.strip()
+    except subprocess.CalledProcessError:
+        return None
+
+
 def get_current_branch():
     try:
         return subprocess.check_output(shlex_split("git rev-parse --abbrev-ref HEAD"), cwd = __git_dir).strip()

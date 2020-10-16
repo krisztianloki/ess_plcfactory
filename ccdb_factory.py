@@ -83,8 +83,11 @@ class CCDB_Factory(CC):
 
 
     class Artifact(CCDB.Artifact):
+        prepare_to_download = CC.Artifact.prepare_to_download
+
         def save(self, git_tag = None):
             if self.is_file():
+                self._saveasurl = self._artifact["full_path"]
                 self.download()
             else:
                 name = self.name()
@@ -255,6 +258,7 @@ class CCDB_Factory(CC):
         self._git_tag    = git_tag
         self._artifacts  = dict()
         self._properties = dict()
+        self._saved_as   = None
 
 
     def addPLC(self, deviceName):
@@ -382,11 +386,16 @@ class CCDB_Factory(CC):
             self._properties[deviceType] = [ propDict ]
 
 
+    def url(self):
+        return "CCDB Factory at " + str(self._saved_as)
+
+
     def dump(self, filename, *pargs, **kwargs):
         return self.save(filename, *pargs, **kwargs)
 
 
     def save(self, filename, *pargs, **kwargs):
+        self._saved_as = filename
         for device in self._devices.values():
             device.save(self._git_tag)
 
