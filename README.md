@@ -83,7 +83,9 @@ PLC Factory is capable of integrating (and generating code for) the following PL
 
     *   _TIA Portal v13_
     *   _TIA Portal v14_
-  
+    *   _TIA Portal v15_
+    *   _TIA Portal v15.1_
+
 *   **Beckhoff** (selected with the `--plc-beckhoff` option)
 
     *   _TwinCAT 3_
@@ -92,7 +94,7 @@ PLC Factory is capable of integrating (and generating code for) the following PL
 
 *   **--plc-siemens**=<tia_version>
     *   \[OPTIONAL\]
-    *   Generate the EPICS db, the communication and the data (de)serialization PLC code for the specified TIA version. The default version is _TIA Portal v14_
+    *   Generate the EPICS db, the communication and the data (de)serialization PLC code for the specified TIA version. The default version is _TIA Portal v15.1_
     *   `--plc-siemens`
     *   `--plc-siemens=13`
 *   **--plc-interface**=<tia_version>
@@ -174,6 +176,9 @@ The following output types can be automatically generated from **Interface Defin
 *   DEVICE-LIST
     *    The list of devices that were processed. Always generated.
     *    `<device>-template-DEVICE-LIST-<timestamp>.txt`
+*   README
+    *    A README.md about the devices that were processed. Always generated.
+    *    `<device>-template-README-<timestamp>.md`
 *   ARCHIVE
     *    The list of PVs that has to be archived. Can be added to the archiver repository: `https://gitlab.esss.lu.se/ics-infrastructure/epicsarchiver-config.git`
     *    `<device>-template-ARCHIVE-<timestamp>.archive`
