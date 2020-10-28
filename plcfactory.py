@@ -40,22 +40,38 @@ import plcf_git as git
 
 
 tainted = False
+master_branch = True
 
 
 def taint_message():
-    if not tainted:
-        return
-    print("""
+    ret = False
+    if not master_branch:
+        ret = True
+        print("""
++*+*+*+*+*+*+*+*+*+*+*+*+*+*+*+*+*+*+*+*+*+*+*+*+*+*+
+* You are not on branch 'master'; warranty is void. *
++*+*+*+*+*+*+*+*+*+*+*+*+*+*+*+*+*+*+*+*+*+*+*+*+*+*+
+""", file = sys.stderr)
+
+    if tainted:
+        ret = True
+        print("""
 +++++++++++++++++++++++++++++++++++++++++++++++++++++
 + Your working copy is not clean; warranty is void. +
 +++++++++++++++++++++++++++++++++++++++++++++++++++++
 """, file = sys.stderr)
 
+    return ret
+
 
 if git.get_status() is False:
     tainted = True
-    taint_message()
 
+if git.get_current_branch() != "master":
+    master_branch = False
+
+
+taint_message()
 
 # Template Factory
 parent_dir = os.path.abspath(os.path.dirname(__file__))
@@ -1629,11 +1645,13 @@ def main(argv):
     except KeyError:
         pass
 
-    taint_message()
-
     print("--- %.1f seconds ---" % (time.time() - start_time))
-    # As requested by Miklos :)
-    print("---  ✨ 🍰 ✨ \n")
+
+    if not taint_message():
+        # As requested by Miklos :)
+        print("---  ✨ 🍰 ✨ \n")
+    else:
+        print("--- No cake for you!\n")
 
 
 
