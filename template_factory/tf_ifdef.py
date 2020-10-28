@@ -1615,7 +1615,8 @@ class BASE_TYPE(SOURCE):
             if not pv_.startswith(BASE_TYPE.PV_PREFIX):
                 continue
 
-            if len(keyword_params[pv_].splitlines()) > 1:
+            val = str(keyword_params[pv_])
+            if len(val.splitlines()) > 1:
                 raise IfDefSyntaxError("{} cannot span multiple lines".format(pv_))
 
         """
