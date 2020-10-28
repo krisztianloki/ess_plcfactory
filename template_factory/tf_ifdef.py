@@ -1611,6 +1611,13 @@ class BASE_TYPE(SOURCE):
             if param in self._keyword_params:
                 raise IfDefSyntaxError(param + " is reserved!")
 
+        for pv_ in keyword_params.keys():
+            if not pv_.startswith(BASE_TYPE.PV_PREFIX):
+                continue
+
+            if len(keyword_params[pv_].splitlines()) > 1:
+                raise IfDefSyntaxError("{} cannot span multiple lines".format(pv_))
+
         """
            Check for PLC_TYPE="{S7PLCTYPE|MODBUSTYPE}"
         """
