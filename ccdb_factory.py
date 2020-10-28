@@ -61,7 +61,7 @@ class CCDB_Factory(CC):
                 dataType = "Strings List"
 
         if dataType is None:
-            raise RuntimeError("Unable to auto-detect dataType for {}".format(value))
+            raise CC.Exception("Unable to auto-detect dataType for {}".format(value))
 
         return dataType
 
@@ -69,7 +69,7 @@ class CCDB_Factory(CC):
     @staticmethod
     def checkIfExists(filename):
         if not os.access(filename, os.R_OK):
-            raise RuntimeError("Cannot find file '{}'".format(filename))
+            raise CC.Exception("Cannot find file '{}'".format(filename))
 
 
 
@@ -78,7 +78,7 @@ class CCDB_Factory(CC):
         if isinstance(artifacts, list):
             for art in artifacts:
                 if art["kind"] == artifact["kind"] and art["name"] == artifact["name"]:
-                    raise RuntimeError("Duplicate entries: ", art, artifact)
+                    raise CC.Exception("Duplicate entries: {} and {}".format(art, artifact))
 
 
 
@@ -100,7 +100,7 @@ class CCDB_Factory(CC):
                 elif name.startswith("BEAST"):
                     extension = ".alarms"
                 else:
-                    raise RuntimeError("Unable to auto-detect extension for {}".format(name))
+                    raise CC.Exception("Unable to auto-detect extension for {}".format(name))
 
                 # git-tag
                 self.downloadExternalLink(self._device.defaultFilename(extension), extension, git_tag)

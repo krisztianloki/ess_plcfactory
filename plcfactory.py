@@ -24,7 +24,9 @@ __product__    = "ics_plc_factory"
 # Python libraries
 import sys
 if sys.version_info.major != 2:
-    raise RuntimeError("PLCFactory supports Python-2.x only. You are running " + sys.version)
+    raise RuntimeError("""
+PLCFactory supports Python-2.x only. You are running {}
+""".format(sys.version))
 
 import argparse
 import datetime
@@ -135,6 +137,15 @@ if commit_id is not None:
 
 class PLCFactoryException(Exception):
     status = 1
+    def __str__(self):
+        if self.message is not None:
+            return """
+{banner}
+{msg}
+{banner}
+""".format(banner = "*" * max(map(lambda x: len(x), self.message.splitlines())), msg = self.message)
+        else:
+            return super(PLCFactoryException, self).__str__()
 
 
 
@@ -144,11 +155,7 @@ class ProcessTemplateException(PLCFactoryException):
         self.device    = device
         self.template  = template
         self.exception = exception
-
-
-    def __str__(self):
-        return """
-The following exception occured during the processing of template '{template}' on device '{device}':
+        self.message = """The following exception occured during the processing of template '{template}' on device '{device}':
 {exc}: {msg}""".format(template = self.template,
                        device   = self.device,
                        exc      = type(self.exception).__name__,
@@ -471,7 +478,7 @@ def processTemplateID(templateID, devices):
                 template_seen = True
 
         if def_seen and template_seen and not can_combine:
-            raise RuntimeError("Cannot combine Interface Definitions and ordinary templates with {}".format(templateID))
+            raise PLCFactoryException("Cannot combine Interface Definitions and ordinary templates with {}".format(templateID))
 
         # Try to check if we have a default template printer implementation
         if template is None and templatePrinter is not None and not templatePrinter.needs_ifdef():
@@ -628,7 +635,7 @@ PLC-EPICS-COMMS:Endianness: [PLCF#PLC-EPICS-COMMS:Endianness]"""
     try:
         cur_hash = hash_per_template["IFA"]
         if cur_hash[0] != hash_per_template["EPICS-DB"][0]:
-            raise RuntimeError("Hash mismatch detected between EPICS and PLC. Please file a bug report")
+            raise PLCFactoryException("Hash mismatch detected between EPICS and PLC. Please file a bug report")
     except KeyError:
         # Fall back to the current hash
         cur_hash = (hashobj.getHash(), hashobj.getCRC32())
@@ -640,7 +647,7 @@ PLC-EPICS-COMMS:Endianness: [PLCF#PLC-EPICS-COMMS:Endianness]"""
         prev_hash = prev_hashes[device.name()]
         # Check if CRC32 is the same but the actual hash is different
         if prev_hash[0] is not None and prev_hash[0] != cur_hash[0] and prev_hash[1] == cur_hash[1]:
-            raise RuntimeError("CRC32 collision detected. Please file a bug report")
+            raise PLCFactoryException("CRC32 collision detected. Please file a bug report")
     except (KeyError, TypeError):
         pass
 
@@ -1167,13 +1174,15 @@ def banner():
 
 
 
-class PLCFArgumentError(Exception):
+class PLCFArgumentError(PLCFactoryException):
     def __init__(self, status, message = None):
-        if message is None and isinstance(status, str):
-            message = status
-            status  = 1
-        self.status  = status
-        self.message = message
+        if message is None:
+            if isinstance(status, str):
+                message = status
+                status = 1
+        super(PLCFArgumentError, self).__init__(message)
+        self.status = status
+
 
 
 class PLCFArgumentParser(argparse.ArgumentParser):
@@ -1182,10 +1191,8 @@ class PLCFArgumentParser(argparse.ArgumentParser):
 
 
     def exit(self, status = 0, message = None):
-        if message:
-            self._print_message(message, sys.stderr)
+        raise PLCFArgumentError(status, message)
 
-        raise PLCFArgumentError(status)
 
 
 def main(argv):
@@ -1517,7 +1524,7 @@ def main(argv):
 
     if default_printers:
         if not default_printers <= set(tf.available_printers()):
-            raise PLCFArgumentError("Your PLCFactory does not support generating the following necessary templates:", list(default_printers - set(tf.available_printers())))
+            raise PLCFArgumentError("Your PLCFactory does not support generating the following necessary templates: {}".format(list(default_printers - set(tf.available_printers()))))
 
         templateIDs = default_printers | set(args.template)
     else:
@@ -1659,9 +1666,7 @@ def main(argv):
 if __name__ == "__main__":
     try:
         main(sys.argv[1:])
-    except PLCFArgumentError as e:
-        print(e.message, file = sys.stderr)
-        exit(e.status)
     except PLCFactoryException as e:
-        print(e)
+        if e.status:
+            print(e, file = sys.stderr)
         exit(e.status)

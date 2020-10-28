@@ -53,6 +53,15 @@ class CC(object):
 
     class Exception(Exception):
         """Base class for Controls and Configuration exceptions"""
+        def __str__(self):
+            if self.message:
+                return """
+{banner}
+{msg}
+{banner}
+""".format(banner = "*" * max(map(lambda x: len(x), self.message.splitlines())), msg = self.message)
+            else:
+                return super(CC.Exception, self).__str__()
 
 
 
@@ -61,11 +70,8 @@ class CC(object):
             super(CC.DownloadException, self).__init__()
             self.url  = url
             self.code = code
-
-
-        def __str__(self):
-            return "Cannot download {url}: error {code}".format(url  = self.url,
-                                                                code = self.code)
+            if url is not None:
+                self.message = "Cannot download {url}: error {code}".format(url = self.url, code = self.code)
 
 
 
@@ -76,17 +82,13 @@ class CC(object):
 
             if isinstance(dloadexception, CC.DownloadException):
                 super(CC.ArtifactException, self).__init__(url = dloadexception.url, code = dloadexception.code)
-                self.msg = "Cannot get artifact {art} of {device}: error {code} ({url})".format(device = self.deviceName,
-                                                                                                art    = self.filename,
-                                                                                                code   = self.code,
-                                                                                                url    = self.url)
+                self.message = "Cannot get artifact {art} of {device}: error {code} ({url})".format(device = self.deviceName,
+                                                                                                    art    = self.filename,
+                                                                                                    code   = self.code,
+                                                                                                    url    = self.url)
             else:
                 super(CC.ArtifactException, self).__init__(None, None)
-                self.msg = dloadexception
-
-
-        def __str__(self):
-            return self.msg
+                self.message = dloadexception
 
 
 
@@ -749,10 +751,10 @@ class CC(object):
             # Have to check for unicode type in Python2
             # isinstance(string, str) above is enough in Python3
             if not isinstance(string, unicode):
-                raise CC.Exception("Unhandled type", type(string), string)
+                raise CC.Exception("Unhandled type {}: {}".format(type(string), string))
         except NameError:
             # Sadly, the 'from None' part is not valid in Python2
-            raise CC.Exception("Unhandled type", type(string), string)  # from None
+            raise CC.Exception("Unhandled type {}: {}".format(type(string), string))  # from None
 
         try:
             return string.encode("unicode-escape").decode("string-escape").decode("utf-8").encode("utf-8")
@@ -1241,6 +1243,6 @@ factory.save("{filename}")""".format(factory_options = 'git_tag = "{}"'.format(g
                         continue
                 except:
                     pass
-                raise CC.Exception("Input error", type(head))
+                raise CC.Exception("Input error {}".format(type(head)))
 
         return res
