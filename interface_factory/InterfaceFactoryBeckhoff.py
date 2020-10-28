@@ -579,7 +579,7 @@ def Write_DevType():
 
 	global MaxStatusReg
 	global MaxCommandReg
-	externalPath = os.path.join(OutputDirectory,basedir,"EPICS","EPICS types", "FB_DEVTYPE_"+ActualDeviceType+".TcPOU")
+	externalPath = os.path.join(OutputDirectory,basedir,"EPICS","EPICS types", "FB_DEVTYPE_"+helpers.sanitizeFilename(ActualDeviceType)+".TcPOU")
 	with open(externalPath, 'wb') as externalScl:
 		#DevTypeHeader
 		for line in DevTypeHeader:
