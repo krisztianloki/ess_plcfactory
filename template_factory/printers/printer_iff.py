@@ -139,7 +139,7 @@ PLCTOEPICSDATABLOCKOFFSET
 #COUNTER {cmd_cnt} = [PLCF# {cmd_cnt} + {epicstoplclength}];
 #COUNTER {status_cnt} = [PLCF# {status_cnt} + {plctoepicslength}];
 """.format(inst_slot                 = self.raw_inst_slot(),
-           type                      = self.plcf("DEVICE_TYPE"),
+           type                      = self._device.deviceType() if if_def._artifact.is_perdevtype() else self._device.name(),
            datablock                 = if_def.DEFAULT_DATABLOCK_NAME,
            epicstoplcdatablockoffset = self.plcf("^(EPICSToPLCDataBlockStartOffset) + {cmd_cnt}".format(cmd_cnt = CMD_BLOCK.counter_keyword())),
            plctoepicsdatablockoffset = self.plcf("^(PLCToEPICSDataBlockStartOffset) + {status_cnt}".format(status_cnt = STATUS_BLOCK.counter_keyword())),

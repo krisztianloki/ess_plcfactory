@@ -119,10 +119,6 @@ class CCDB(CC):
             self._arts  = None
 
 
-        def __str__(self):
-            return self.name()
-
-
         def __repr__(self):
             return str(self._slot)
 

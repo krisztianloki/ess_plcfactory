@@ -329,30 +329,35 @@ def getEOL(header):
 # Returns an interface definition object
 #
 def getIfDef(device):
+    # If a definition file is already downloaded (and parsed) for this device then we must use that one
+    try:
+        return ifdefs[device.name()]
+    except KeyError:
+        pass
+
     artifact = device.downloadArtifact(IFDEF_EXTENSION, device_tag, filetype = "Interface Definition")
     if artifact is None:
         # No 'file' artifact found, let's see if there is a URL
         artifact = device.downloadExternalLink("EPI", IFDEF_EXTENSION, device_tag, "Interface Definition", git_tag = epi_version)
         if artifact is None:
+            # No def file is present, do not check again
+            ifdefs[device.name()] = None
             return None
 
-    deviceType = device.deviceType()
-    filename   = artifact.saved_as()
+    # If a definition file is already downloaded and parsed then we just use that one
+    try:
+        ifdef = ifdefs[artifact]
+        ifdefs[device.name()] = ifdef
 
-    if deviceType in ifdefs:
-        # FIXME: understand what this really all means and compare the artifact and not the filename
+        return ifdef
+    except KeyError:
+        pass
 
-        # check if the def file attached directly to a device is the same for every device with the same device type
-        # doing a simple check first to see if we need to check file contents at all (version is encoded in the filename)
-        if ifdefs[deviceType][0] == filename or filecmp.cmp(ifdefs[deviceType][0], filename, shallow = 0):
-            return ifdefs[deviceType][1]
-
-        raise PLCFactoryException("Different Interface Definitions for the same device type: {devtype}!".format(devtype = deviceType))
-
-    ifdef = IF_DEF.parse(artifact, DEVICE_TYPE = deviceType, **ifdef_params)
+    ifdef = IF_DEF.parse(artifact, **ifdef_params)
 
     if ifdef is not None:
-        ifdefs[deviceType] = (filename, ifdef)
+        ifdefs[artifact] = ifdef
+        ifdefs[device.name()] = ifdef
 
     return ifdef
 
@@ -1631,7 +1636,10 @@ def main(argv):
         create_zipfile(args.zipit)
 
     has_warns = False
-    for (fname, ifdef) in ifdefs.itervalues():
+    for ifdef in ifdefs.itervalues():
+        if ifdef is None:
+            continue
+
         for warn in ifdef.warnings():
             if not has_warns:
                 has_warns = True

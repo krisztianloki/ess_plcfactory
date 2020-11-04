@@ -110,13 +110,20 @@ Command line:
     #
     def _ifdef_body(self, if_def, output, **keyword_params):
         deviceType = self._device.deviceType()
-        if deviceType in self._device_types:
+        artifact = if_def._artifact
+        if artifact.is_perdevtype() and deviceType in self._device_types:
             return
 
-        self._device_types.append(deviceType)
-        self._append("""### Device Type {typ}
+        if artifact.is_perdevtype():
+            self._device_types.append(deviceType)
+            self._append("""### Device Type {}
 
-""".format(typ = deviceType), output)
+""".format(deviceType), output)
+        else:
+            self._append("""### Device {}
+
+""".format(self._device.name()), output)
+
         self.artifact_details(if_def._artifact, output)
         self._append("""
 

@@ -1696,7 +1696,7 @@ def consolidate_tia_version(tia_version):
         elif tia_version in tia15_1:
             tia_version = 15.1
         else:
-            raise IFA.FatalException("Unsopperted TIA version: " + tia_version)
+            raise IFA.FatalException("Unsupported TIA version: " + tia_version)
 
     return tia_version
 
