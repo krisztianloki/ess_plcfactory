@@ -57,10 +57,6 @@ class IFF(PRINTER):
         return "IFA"
 
 
-    def property_default(self, prop_name, default):
-        return self.plcf("'{prop_name}' if not '{prop_name}'.startswith('{prefix_prop_name}') else {default}".format(prop_name = prop_name, prefix_prop_name = prop_name.split(':')[0], default = default))
-
-
     #
     # HEADER
     #
@@ -70,8 +66,9 @@ class IFF(PRINTER):
         #
         super(IFF, self).header(output, **keyword_params).add_filename_header(output, extension = "ifa")
 
-        if keyword_params.get("PLC_TYPE", "SIEMENS") == "SIEMENS":
-            plcpulse = self.property_default("PLC-EPICS-COMMS: PLCPulse", "'Pulse_200ms'")
+        plc_type = keyword_params.get("PLC_TYPE", "SIEMENS")
+        if plc_type == "SIEMENS":
+            plcpulse = self.get_property("PLC-EPICS-COMMS: PLCPulse", "'Pulse_200ms'")
         else:
             plcpulse = 0
 
@@ -104,15 +101,15 @@ MODBUS_PORT
 PLC_PULSE
 {plcpulse}
 """.format(inst_slot                = self.raw_inst_slot(),
-           plc_type                 = keyword_params.get("PLC_TYPE", "SIEMENS"),
-           max_io_devices           = self.property_default("PLC-DIAG:Max-IO-Devices", 10),
-           max_local_modules        = self.property_default("PLC-DIAG:Max-Local-Modules", 30),
-           max_modules_in_io_device = self.property_default("PLC-DIAG:Max-Modules-In-IO-Device", 30),
+           plc_type                 = plc_type,
+           max_io_devices           = self.get_property("PLC-DIAG:Max-IO-Devices", 10),
+           max_local_modules        = self.get_property("PLC-DIAG:Max-Local-Modules", 30),
+           max_modules_in_io_device = self.get_property("PLC-DIAG:Max-Modules-In-IO-Device", 30),
            interfaceid              = self.plcf("PLC-EPICS-COMMS: InterfaceID"),
-           diagconnectionid         = self.property_default("PLC-EPICS-COMMS: DiagConnectionID", 254),
+           diagconnectionid         = self.get_property("PLC-EPICS-COMMS: DiagConnectionID", 254),
            s7connectionid           = self.plcf("PLC-EPICS-COMMS: S7ConnectionID"),
            mbconnectionid           = self.plcf("PLC-EPICS-COMMS: MBConnectionID"),
-           diagport                 = self.property_default("PLC-EPICS-COMMS: DiagPort", 2001),
+           diagport                 = self.get_property("PLC-EPICS-COMMS: DiagPort", 2001),
            s7port                   = self.plcf("PLC-EPICS-COMMS: S7Port"),
            mbport                   = self.plcf("PLC-EPICS-COMMS: MBPort"),
            plcpulse                 = plcpulse), output)
