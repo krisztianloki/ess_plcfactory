@@ -100,6 +100,8 @@ MODBUS_PORT
 {mbport}
 PLC_PULSE
 {plcpulse}
+GATEWAY_DATABLOCK
+{gateway_datablock}
 """.format(inst_slot                = self.raw_inst_slot(),
            plc_type                 = plc_type,
            max_io_devices           = self.get_property("PLC-DIAG:Max-IO-Devices", 10),
@@ -112,7 +114,8 @@ PLC_PULSE
            diagport                 = self.get_property("PLC-EPICS-COMMS: DiagPort", 2001),
            s7port                   = self.plcf("PLC-EPICS-COMMS: S7Port"),
            mbport                   = self.plcf("PLC-EPICS-COMMS: MBPort"),
-           plcpulse                 = plcpulse), output)
+           plcpulse                 = plcpulse,
+           gateway_datablock        = self.get_property("PLC-EPICS-COMMS: GatewayDatablock", "")), output)
 
 
     #

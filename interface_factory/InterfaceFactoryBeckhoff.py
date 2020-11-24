@@ -1399,6 +1399,9 @@ def produce(OutputDir, _ifa, **kwargs):
 
 	ifa = _ifa
 
+	if ifa.GATEWAY_DATABLOCK is not None:
+		raise IFA.FatalException("'gateway-mode' is not supported")
+
 	if verify:
 		basedir = "BECKHOFF_{}".format(glob.timestamp)
 	else:
