@@ -54,7 +54,7 @@ class CCDB_Dump(object):
 
 
         def dump(self, filename, dir = None):
-            return None
+            return self.save(filename, dir)
 
 
         # do not clear
@@ -162,3 +162,11 @@ class CCDB_Dump(object):
                 raise CC.DownloadException(url = url, code = repr(e))
 
             return save_as
+
+
+        # return zipfile
+        def save(self, filename, dir = None):
+            if isinstance(filename, str):
+                return self._zipfilename
+
+            return None
