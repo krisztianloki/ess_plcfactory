@@ -1150,6 +1150,7 @@ def ProcessIFADevTypes(OutputDir):
 		ActualDeviceNameWhite = ActualDeviceNameWhite.replace(".","")
 		ActualDeviceNameWhite = ActualDeviceNameWhite.replace("-","_")
 		ActualDeviceType = ActualDeviceType.replace("-","_")
+		ActualDeviceType = ActualDeviceType.replace(":","_")
 
 		if (int(EPICSTOPLCDATABLOCKOFFSET)<12288):
 			print("ERROR:")
