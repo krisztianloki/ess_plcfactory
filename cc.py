@@ -492,8 +492,8 @@ class CC(object):
 
 
         # Returns: ""
-        def backtrack(self, prop):
-            return self._ensure(self._backtrack(prop), str)
+        def backtrack(self, prop, ex_to_raise = None):
+            return self._ensure(self._backtrack(prop, ex_to_raise), str)
 
 
         def defaultFilename(self, extension):
@@ -1152,9 +1152,12 @@ factory.save("{filename}")""".format(factory_options = 'git_tag = "{}"'.format(g
         return CCDB_Dump.load(filename)
 
 
-    def _backtrack(self, device, prop):
+    def _backtrack(self, device, prop, ex_to_raise = None):
         assert isinstance(prop, str)
 
+        """
+        ex_to_raise: Exception to raise if property is not found
+        """
         deviceName = device.name()
 
         # starting by one device, looking for property X, find a device
@@ -1162,6 +1165,9 @@ factory.save("{filename}")""".format(factory_options = 'git_tag = "{}"'.format(g
 
         if (deviceName, prop) in self._backtrackCache:
             return self._backtrackCache[deviceName, prop]
+
+        if ex_to_raise is None:
+            ex_to_raise = CC.Exception
 
         # starting point: all devices 'device' is controlled by
         leftToProcess = device.controlledBy(True)
@@ -1180,8 +1186,7 @@ factory.save("{filename}")""".format(factory_options = 'git_tag = "{}"'.format(g
                 raise CC.Exception("Something went wrong; too many iterations in backtracking while searching for property " + prop)
 
             if len(leftToProcess) == 0:
-                print("error in  backtracking after {} iterations; probably invalid input while searching for property {}".format(count, prop))
-                return " ==== BACKTRACKING ERROR ==== "
+                raise ex_to_raise("No such backtrack property: {}".format(prop))
 
             elem = leftToProcess.pop()
 

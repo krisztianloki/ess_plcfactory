@@ -202,8 +202,8 @@ class CCDB(CC):
             return self._arts
 
 
-        def _backtrack(self, prop):
-            return self.ccdb._backtrack(self, prop)
+        def _backtrack(self, prop, ex_to_raise):
+            return self.ccdb._backtrack(self, prop, ex_to_raise)
 
 
 
