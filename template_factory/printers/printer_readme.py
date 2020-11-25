@@ -124,7 +124,7 @@ Command line:
 
 """.format(self._device.name()), output)
 
-        self.artifact_details(if_def._artifact, output)
+        self.artifact_details(artifact, output)
         self._append("""
 
 """, output)

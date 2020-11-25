@@ -964,9 +964,10 @@ class CC(object):
                 if not comment:
                     comment = True
                     out.append("# Properties")
+                # FIXME: we really shouldn't pass 'null' instead of None... but that is what CCDB gives us, so...
                 out.append(setProperty_str.format(var = var,
-                                                  k    = k,
-                                                  v    = v))
+                                                  k   = k,
+                                                  v   = "null" if v is None else v))
 
         def addDevice(dev, fact, var, output):
             devType = dev.deviceType()
