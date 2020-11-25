@@ -167,6 +167,8 @@ class CCDB(CC):
                     else:
                         value = ast_literal_eval(value)
                         assert isinstance(value, list)
+                elif value == "null":
+                    value = None
 
                 # sanity check against duplicate values, which would point to an
                 # issue with the entered data

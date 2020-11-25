@@ -68,7 +68,7 @@ class IFF(PRINTER):
 
         plc_type = keyword_params.get("PLC_TYPE", "SIEMENS")
         if plc_type == "SIEMENS":
-            plcpulse = self.get_property("PLC-EPICS-COMMS: PLCPulse", "'Pulse_200ms'")
+            plcpulse = self.get_property("PLC-EPICS-COMMS: PLCPulse", "Pulse_200ms")
         else:
             plcpulse = 0
 

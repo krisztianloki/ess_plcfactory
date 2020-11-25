@@ -102,13 +102,14 @@ class PRINTER(object):
 
     def get_property(self, prop_name, default):
         """
-        Returns the value of property 'prop_name' or default if not found
+        Returns the value of property 'prop_name' or default if not found or not set
 
         Raises TemplatePrinterException if there is no PLCF instance
         """
         if self._plcf:
             try:
-                return self._plcf.getProperty(prop_name)
+                prop_value = self._plcf.getProperty(prop_name)
+                return default if prop_value is None else prop_value
             except PLCFNoPropertyException:
                 return default
 
