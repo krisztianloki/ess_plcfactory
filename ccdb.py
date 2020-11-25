@@ -119,10 +119,6 @@ class CCDB(CC):
             self._arts  = None
 
 
-        def __str__(self):
-            return self.name()
-
-
         def __repr__(self):
             return str(self._slot)
 
@@ -171,6 +167,8 @@ class CCDB(CC):
                     else:
                         value = ast_literal_eval(value)
                         assert isinstance(value, list)
+                elif value == "null":
+                    value = None
 
                 # sanity check against duplicate values, which would point to an
                 # issue with the entered data
@@ -206,8 +204,8 @@ class CCDB(CC):
             return self._arts
 
 
-        def _backtrack(self, prop):
-            return self.ccdb._backtrack(self, prop)
+        def _backtrack(self, prop, ex_to_raise):
+            return self.ccdb._backtrack(self, prop, ex_to_raise)
 
 
 

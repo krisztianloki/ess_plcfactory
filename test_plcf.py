@@ -24,10 +24,12 @@ class FakeDevice(object):
                  "A"         : "AB", "AB": "AC"}
 
 
-    def backtrack(self, prop):
+    def backtrack(self, prop, ex_to_raise = None):
         if prop == "EPICSToPLCDataBlockStartOffset":
             return str(42)
-        return prop
+        if ex_to_raise is None:
+            ex_to_raise = plcf.PLCFNoBacktrackPropertyException
+        raise ex_to_raise("No such backtrack:" + prop)
 
 
 
@@ -324,15 +326,32 @@ class TestPLCF(unittest.TestCase):
         line = "[PLCF#ext.to_filename('{}') + ext.to_filename('{}')]".format(word, word)
         self.assertEqual(self.process(line), word+word)
 
-        line = '[PLCF#"PLCFactory" if ext.plcfactory_origin() == "None" else "[PLCFactory](ext.plcfactory_origin())"]'
+        line = '[PLCF#"PLCFactory" if ext.plcfactory_origin() == None else "[PLCFactory](ext.plcfactory_origin())"]'
         self.assertEqual(self.process(line), "PLCFactory")
 
         line = "[PLCF#ext.plcfactory_origin()]"
         self.assertEqual(self.process(line), "None")
 
         plcf_glob.origin = "https://gitlab"
-        line = '[PLCF#"PLCFactory" if ext.plcfactory_origin() == "None" else "[PLCFactory]({})".format(ext.plcfactory_origin())]'
+        line = '[PLCF#"PLCFactory" if ext.plcfactory_origin() == None else "[PLCFactory]({})".format(ext.plcfactory_origin())]'
         self.assertEqual(self.process(line), "[PLCFactory]({})".format(plcf_glob.origin))
+
+
+    def testGetProperty(self):
+        with self.assertRaises(plcf.PLCFException):
+            self.cplcf.getProperty("^(blabla")
+
+        with self.assertRaises(plcf.PLCFException):
+            self.cplcf.getProperty("^(bla)bla")
+
+        self.assertEqual(self.cplcf.getProperty("^(EPICSToPLCDataBlockStartOffset)"), "42")
+
+        with self.assertRaises(plcf.PLCFNoBacktrackPropertyException):
+            self.assertEqual(self.cplcf.getProperty("^(no-such-property)"), "42")
+
+        self.assertEqual(self.cplcf.getProperty("forty-two"), "42")
+        with self.assertRaises(plcf.PLCFNoPropertyException):
+            self.cplcf.getProperty("forty-three")
 
 
 

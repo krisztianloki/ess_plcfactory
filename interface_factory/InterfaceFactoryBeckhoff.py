@@ -1150,6 +1150,7 @@ def ProcessIFADevTypes(OutputDir):
 		ActualDeviceNameWhite = ActualDeviceNameWhite.replace(".","")
 		ActualDeviceNameWhite = ActualDeviceNameWhite.replace("-","_")
 		ActualDeviceType = ActualDeviceType.replace("-","_")
+		ActualDeviceType = ActualDeviceType.replace(":","_")
 
 		if (int(EPICSTOPLCDATABLOCKOFFSET)<12288):
 			print("ERROR:")
@@ -1397,6 +1398,9 @@ def produce(OutputDir, _ifa, **kwargs):
 	generated_files = dict()
 
 	ifa = _ifa
+
+	if ifa.GATEWAY_DATABLOCK is not None:
+		raise IFA.FatalException("'gateway-mode' is not supported")
 
 	if verify:
 		basedir = "BECKHOFF_{}".format(glob.timestamp)

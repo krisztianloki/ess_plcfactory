@@ -12,6 +12,13 @@ except ImportError:
         pass
 
 
+try:
+    from plcf import PLCFNoPropertyException
+except ImportError:
+    class PLCFNoPropertyException(Exception):
+        pass
+
+
 
 class TemplatePrinterException(Exception):
     pass
@@ -91,6 +98,22 @@ class PRINTER(object):
 
         plcf_expr = "[PLCF#{plcf}]".format(plcf = plcf_expr)
         return self.expand(plcf_expr)
+
+
+    def get_property(self, prop_name, default):
+        """
+        Returns the value of property 'prop_name' or default if not found or not set
+
+        Raises TemplatePrinterException if there is no PLCF instance
+        """
+        if self._plcf:
+            try:
+                prop_value = self._plcf.getProperty(prop_name)
+                return default if prop_value is None else prop_value
+            except PLCFNoPropertyException:
+                return default
+
+        raise TemplatePrinterException("No PLCF instance provided")
 
 
     def __inst_slot(self, default_slot, if_def):
@@ -227,6 +250,7 @@ class PRINTER(object):
         self._root_device    = keyword_params.get("ROOT_DEVICE", None)
 
         self._parse_keyword_args(keyword_params)
+        self._device = self._root_device
 
         return self
 

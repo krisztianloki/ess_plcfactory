@@ -46,7 +46,8 @@ class IFA(object):
                                     DIAG_PORT                = int,
                                     TOTALEPICSTOPLCLENGTH    = int,
                                     TOTALPLCTOEPICSLENGTH    = int,
-                                    PLC_PULSE                = str)
+                                    PLC_PULSE                = str,
+                                    GATEWAY_DATABLOCK        = str)
 
     valid_line_types = set(mandatory_ifa_properties.keys())
     valid_line_types.update(valid_device_entries)
@@ -309,7 +310,10 @@ Pre-parsing .ifa file...""".format(self.IfaPath))
                 try:
                     if linetype in IFA.mandatory_ifa_properties:
                         try:
-                            setattr(self, linetype, IFA.mandatory_ifa_properties[linetype](line))
+                            if line == "" or line == "None":
+                                setattr(self, linetype, None)
+                            else:
+                                setattr(self, linetype, IFA.mandatory_ifa_properties[linetype](line))
                         except (ValueError, TypeError):
                             raise IFA.FatalException("IFA keyword type mismatch: {keyword} should be {type}".format(keyword = linetype, type = IFA.mandatory_ifa_properties[linetype].__name__))
 

@@ -150,6 +150,13 @@ class CC(object):
             return self.name()
 
 
+        def __not_perdevtype(self):
+            """
+            This one is used in place of is_perdevtype if _saveasversion is device specific
+            """
+            return False
+
+
         def name(self):
             raise NotImplementedError
 
@@ -250,6 +257,9 @@ class CC(object):
 
             if git_tag is None:
                 git_tag = self._device.properties().get(base + " VERSION", "master")
+                # if we have a non-default, device specific version then the artifact is clearly non per-devtype
+                if git_tag != "master":
+                    self.is_perdevtype = self.__not_perdevtype
 
             print("Downloading {filetype} file {filename} (version {version}) from {url}".format(filetype = filetype,
                                                                                                  filename = filename,
@@ -275,6 +285,7 @@ class CC(object):
                 else:
                     # Make sure that only one version is requested of the same repo
                     # This is a limitation of the current implementation
+                    # When this is fixed make sure that is_perdevtype is still correct!
                     if CC.repos_cached.get(self.uri(), git_tag) != git_tag:
                         raise CC.ArtifactException("Cannot mix different versions/branches of the same repository: {}".format(self.uri()))
 
@@ -316,6 +327,15 @@ class CC(object):
             self._perdevtype     = artifact.is_perdevtype()
 
 
+        # Not really sure that _perdevtype is needed; Artifact.download() uses saveas() ie _saved_as only
+        def __eq__(self, other):
+            return self._saved_as == other._saved_as and self._perdevtype == other._perdevtype
+
+
+        def __hash__(self):
+            return hash((self._saved_as, self._perdevtype))
+
+
         def saved_as(self):
             return self._saved_as
 
@@ -355,6 +375,10 @@ class CC(object):
                 self.ccdb = ccdb
 
 
+        def __str__(self):
+            return self.name()
+
+
         def name(self):
             raise NotImplementedError
 
@@ -373,6 +397,10 @@ class CC(object):
             self._inControlledTree = False
             if ccdb is not None:
                 self.ccdb = ccdb
+
+
+        def __str__(self):
+            return self.name()
 
 
         def url(self):
@@ -464,8 +492,8 @@ class CC(object):
 
 
         # Returns: ""
-        def backtrack(self, prop):
-            return self._ensure(self._backtrack(prop), str)
+        def backtrack(self, prop, ex_to_raise = None):
+            return self._ensure(self._backtrack(prop, ex_to_raise), str)
 
 
         def defaultFilename(self, extension):
@@ -936,9 +964,10 @@ class CC(object):
                 if not comment:
                     comment = True
                     out.append("# Properties")
+                # FIXME: we really shouldn't pass 'null' instead of None... but that is what CCDB gives us, so...
                 out.append(setProperty_str.format(var = var,
-                                                  k    = k,
-                                                  v    = v))
+                                                  k   = k,
+                                                  v   = "null" if v is None else v))
 
         def addDevice(dev, fact, var, output):
             devType = dev.deviceType()
@@ -1124,9 +1153,12 @@ factory.save("{filename}")""".format(factory_options = 'git_tag = "{}"'.format(g
         return CCDB_Dump.load(filename)
 
 
-    def _backtrack(self, device, prop):
+    def _backtrack(self, device, prop, ex_to_raise = None):
         assert isinstance(prop, str)
 
+        """
+        ex_to_raise: Exception to raise if property is not found
+        """
         deviceName = device.name()
 
         # starting by one device, looking for property X, find a device
@@ -1134,6 +1166,9 @@ factory.save("{filename}")""".format(factory_options = 'git_tag = "{}"'.format(g
 
         if (deviceName, prop) in self._backtrackCache:
             return self._backtrackCache[deviceName, prop]
+
+        if ex_to_raise is None:
+            ex_to_raise = CC.Exception
 
         # starting point: all devices 'device' is controlled by
         leftToProcess = device.controlledBy(True)
@@ -1152,8 +1187,7 @@ factory.save("{filename}")""".format(factory_options = 'git_tag = "{}"'.format(g
                 raise CC.Exception("Something went wrong; too many iterations in backtracking while searching for property " + prop)
 
             if len(leftToProcess) == 0:
-                print("error in  backtracking after {} iterations; probably invalid input while searching for property {}".format(count, prop))
-                return " ==== BACKTRACKING ERROR ==== "
+                raise ex_to_raise("No such backtrack property: {}".format(prop))
 
             elem = leftToProcess.pop()
 

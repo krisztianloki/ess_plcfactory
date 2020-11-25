@@ -31,6 +31,26 @@ class PLCFException(Exception):
 
 
 
+class PLCFSyntaxError(PLCFException):
+    pass
+
+
+
+class PLCFNoWordException(PLCFException):
+    pass
+
+
+
+class PLCFNoPropertyException(PLCFException):
+    pass
+
+
+
+class PLCFNoBacktrackPropertyException(PLCFNoPropertyException):
+    pass
+
+
+
 class PLCFEvalException(PLCFException):
     def __init__(self, expression, exception, *args):
         super(PLCFEvalException, self).__init__(*args)
@@ -42,11 +62,6 @@ class PLCFEvalException(PLCFException):
         return "The following exception occured during the evaluation of '{expr}': {exc}: {msg}".format(expr = self.expression,
                                                                                                         exc  = type(self.exception).__name__,
                                                                                                         msg  = str(self.exception))
-
-
-
-class PLCFNoWordException(PLCFException):
-    pass
 
 
 
@@ -230,6 +245,8 @@ class PLCF(object):
             try:
                 if elem in expression:
                     value                = self._properties.get(elem)
+                    if value is None:
+                        raise PLCFException("Property '{}' has no value. Fix CCDB configuration: {}".format(elem, self._device.url()))
                     (tmp, pos_after_val) = self.substituteWord(expression, elem, value)
                     # If the substitution string ('value') contains the key ('elem') then check if the result contains other keys than 'elem'
                     # In other words: try to avoid an infinite recursion
@@ -271,6 +288,27 @@ class PLCF(object):
                 raise PLCFEvalException(expression, e) #from None
 
         return str(result)
+
+
+    def getProperty(self, prop):
+        """
+        Returns the value of property 'prop' or raises PLCFNoPropertyException if not found
+        """
+        if prop.startswith(self.plcf_up):
+            if prop.find(')') != len(prop) - 1:
+                raise PLCFSyntaxError("Invalid backtrack expression")
+            prop = prop[self.plcf_up_len : -1]
+            try:
+                return self._device.backtrack(prop, PLCFNoBacktrackPropertyException)
+            except PLCFNoBacktrackPropertyException as e:
+                raise e
+            except Exception as e:
+                raise PLCFException(e)
+
+        try:
+            return self._properties[prop]
+        except KeyError:
+            raise PLCFNoPropertyException(prop)
 
 
     @staticmethod
@@ -446,7 +484,7 @@ class PLCF(object):
         try:
             end = PLCF.findMatchingParenthesis(line[start:], '[]') + start
         except PLCFException as e:
-            raise PLCFException("Malformatted PLCF# expression ({error}) in line {line}".format(error = e.args[0], line = line))
+            raise PLCFSyntaxError("Malformatted PLCF# expression ({error}) in line {line}".format(error = e.args[0], line = line))
         assert end != -1, "Unclosed PLCF# expression in line {line}".format(line = line)
 
         expression = line[start + PLCF.plcf_tag_len : end]
@@ -475,10 +513,10 @@ class PLCF(object):
 
                     d.append([ci, i])
                 except IndexError:
-                    raise PLCFException('Too many closing parentheses')
+                    raise PLCFSyntaxError('Too many closing parentheses')
 
         if istart:  # check if stack is empty afterwards
-            raise PLCFException('Too many opening parentheses')
+            raise PLCFSyntaxError('Too many opening parentheses')
 
         d.sort()
 
@@ -488,9 +526,9 @@ class PLCF(object):
     # substitutes a variable in an expression with the provided value
     @staticmethod
     def substituteWord(expr, word, value):
-        assert isinstance(expr,   str)
-        assert isinstance(word,   str)
-        assert isinstance(value,  str)
+        assert isinstance(expr,   str), (expr, type(expr))
+        assert isinstance(word,   str), (expr, word, type(word))
+        assert isinstance(value,  str), (expr, word, value, type(value))
 
         if word not in expr:
             return (expr, len(expr))

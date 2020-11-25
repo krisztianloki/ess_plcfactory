@@ -57,10 +57,6 @@ class IFF(PRINTER):
         return "IFA"
 
 
-    def property_default(self, prop_name, default):
-        return self.plcf("'{prop_name}' if not '{prop_name}'.startswith('{prefix_prop_name}') else {default}".format(prop_name = prop_name, prefix_prop_name = prop_name.split(':')[0], default = default))
-
-
     #
     # HEADER
     #
@@ -70,8 +66,9 @@ class IFF(PRINTER):
         #
         super(IFF, self).header(output, **keyword_params).add_filename_header(output, extension = "ifa")
 
-        if keyword_params.get("PLC_TYPE", "SIEMENS") == "SIEMENS":
-            plcpulse = self.property_default("PLC-EPICS-COMMS: PLCPulse", "'Pulse_200ms'")
+        plc_type = keyword_params.get("PLC_TYPE", "SIEMENS")
+        if plc_type == "SIEMENS":
+            plcpulse = self.get_property("PLC-EPICS-COMMS: PLCPulse", "Pulse_200ms")
         else:
             plcpulse = 0
 
@@ -103,19 +100,22 @@ MODBUS_PORT
 {mbport}
 PLC_PULSE
 {plcpulse}
+GATEWAY_DATABLOCK
+{gateway_datablock}
 """.format(inst_slot                = self.raw_inst_slot(),
-           plc_type                 = keyword_params.get("PLC_TYPE", "SIEMENS"),
-           max_io_devices           = self.property_default("PLC-DIAG:Max-IO-Devices", 10),
-           max_local_modules        = self.property_default("PLC-DIAG:Max-Local-Modules", 30),
-           max_modules_in_io_device = self.property_default("PLC-DIAG:Max-Modules-In-IO-Device", 30),
+           plc_type                 = plc_type,
+           max_io_devices           = self.get_property("PLC-DIAG:Max-IO-Devices", 10),
+           max_local_modules        = self.get_property("PLC-DIAG:Max-Local-Modules", 30),
+           max_modules_in_io_device = self.get_property("PLC-DIAG:Max-Modules-In-IO-Device", 30),
            interfaceid              = self.plcf("PLC-EPICS-COMMS: InterfaceID"),
-           diagconnectionid         = self.property_default("PLC-EPICS-COMMS: DiagConnectionID", 254),
+           diagconnectionid         = self.get_property("PLC-EPICS-COMMS: DiagConnectionID", 254),
            s7connectionid           = self.plcf("PLC-EPICS-COMMS: S7ConnectionID"),
            mbconnectionid           = self.plcf("PLC-EPICS-COMMS: MBConnectionID"),
-           diagport                 = self.property_default("PLC-EPICS-COMMS: DiagPort", 2001),
+           diagport                 = self.get_property("PLC-EPICS-COMMS: DiagPort", 2001),
            s7port                   = self.plcf("PLC-EPICS-COMMS: S7Port"),
            mbport                   = self.plcf("PLC-EPICS-COMMS: MBPort"),
-           plcpulse                 = plcpulse), output)
+           plcpulse                 = plcpulse,
+           gateway_datablock        = self.get_property("PLC-EPICS-COMMS: GatewayDatablock", "")), output)
 
 
     #
@@ -139,7 +139,7 @@ PLCTOEPICSDATABLOCKOFFSET
 #COUNTER {cmd_cnt} = [PLCF# {cmd_cnt} + {epicstoplclength}];
 #COUNTER {status_cnt} = [PLCF# {status_cnt} + {plctoepicslength}];
 """.format(inst_slot                 = self.raw_inst_slot(),
-           type                      = self.plcf("DEVICE_TYPE"),
+           type                      = self._device.deviceType() if if_def._artifact.is_perdevtype() else "{}_as_{}".format(self._device.deviceType(), self._device.name()),
            datablock                 = if_def.DEFAULT_DATABLOCK_NAME,
            epicstoplcdatablockoffset = self.plcf("^(EPICSToPLCDataBlockStartOffset) + {cmd_cnt}".format(cmd_cnt = CMD_BLOCK.counter_keyword())),
            plctoepicsdatablockoffset = self.plcf("^(PLCToEPICSDataBlockStartOffset) + {status_cnt}".format(status_cnt = STATUS_BLOCK.counter_keyword())),
