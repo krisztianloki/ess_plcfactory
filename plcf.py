@@ -245,6 +245,8 @@ class PLCF(object):
             try:
                 if elem in expression:
                     value                = self._properties.get(elem)
+                    if value is None:
+                        raise PLCFException("Property '{}' has no value. Fix CCDB configuration: {}".format(elem, self._device.url()))
                     (tmp, pos_after_val) = self.substituteWord(expression, elem, value)
                     # If the substitution string ('value') contains the key ('elem') then check if the result contains other keys than 'elem'
                     # In other words: try to avoid an infinite recursion
@@ -524,9 +526,9 @@ class PLCF(object):
     # substitutes a variable in an expression with the provided value
     @staticmethod
     def substituteWord(expr, word, value):
-        assert isinstance(expr,   str)
-        assert isinstance(word,   str)
-        assert isinstance(value,  str)
+        assert isinstance(expr,   str), (expr, type(expr))
+        assert isinstance(word,   str), (expr, word, type(word))
+        assert isinstance(value,  str), (expr, word, value, type(value))
 
         if word not in expr:
             return (expr, len(expr))
