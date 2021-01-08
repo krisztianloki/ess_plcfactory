@@ -122,23 +122,27 @@ Adding more than one spare bit:
 
 ### Alarm variable
 
-The _`short_alarm_message`_ will end up in the PV's ONAM (or ZNAM) field
+Only allowed in a **STATUS** block
 
-A minor alarm if the value is 1:
+Creates a **BOOL** PLC variable and a **bi** EPICS record and sets the appropriate alarm state based on the value of the PV.
+
+A MINOR alarm if the value is 1:
 
 **`add_minor_alarm("<name>", "<short_alarm_message>")`**
 
-A major alarm if the value is 1:
+A MAJOR alarm if the value is 1:
 
 **`add_major_alarm("<name>", "<short_alarm_message>")`**
 
-A minor alarm if the value is 0:
+A MINOR alarm if the value is 0:
 
 **`add_minor_alarm("<name>", "<short_alarm_message>", ALARM_IF=False)`**
 
-A major alarm if the value is 0:
+A MAJOR alarm if the value is 0:
 
 **`add_major_alarm("<name>", "<short_alarm_message>", ALARM_IF=False)`**
+
+The _`short_alarm_message`_ will end up in the PV's ONAM (or ZNAM) field
 
 ### Enum variable
 

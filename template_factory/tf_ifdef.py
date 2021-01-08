@@ -1347,6 +1347,9 @@ class IF_DEF(object):
         if not isinstance(alarm_message, str):
             raise IfDefSyntaxError("Alarm message is missing: {func}(\"{name}\", \"Short alarm message\")".format(name = name, func = "add_minor_alarm" if sevr == "MINOR" else "add_major_alarm"))
 
+        if self._active_BLOCK is None or not self._active_BLOCK.is_status_block():
+            raise IfDefSyntaxError("Alarms can only be defined as STATUS variables!")
+
         if keyword_params.get("INVERSE_LOGIC", False) or keyword_params.get("ALARM_IF", True) == False:
             keyword_params.update(PV_ZSV  = sevr)
             _test_and_set_pv(keyword_params, "ZNAM", alarm_message)
