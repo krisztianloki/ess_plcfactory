@@ -753,7 +753,7 @@ def ifdef_interface(func):
 class IF_DEF(object):
     DEFAULT_INSTALLATION_SLOT = "INSTALLATION_SLOT"
     DEFAULT_DATABLOCK_NAME    = "DEV_[PLCF#{}]_iDB".format("RAW_INSTALLATION_SLOT")
-    __CACHE                = dict()
+    __CACHE                   = dict()
 
 
     @staticmethod
@@ -855,7 +855,7 @@ class IF_DEF(object):
                     words[5] = "({}".format(int(words[5][1:]) - 1)
                     e.args = (" ".join(words),)
                     raise IfDefSyntaxError(e)
-            raise e
+            raise
 
 
     def _status_block(self):
@@ -1373,6 +1373,71 @@ class IF_DEF(object):
         return self._add_alarm(name, "MAJOR", alarm_message, **keyword_params)
 
 
+    def _add_limit(self, name, plc_var_type, limit_severity, limit_type, **keyword_params):
+        if not isinstance(name, str):
+            raise IfDefSyntaxError("Name must be a string!")
+        if plc_var_type is not None and not isinstance(plc_var_type, str):
+            raise IfDefSyntaxError("PLC type must be a string!")
+
+        if self._active_BLOCK is None or not self._active_BLOCK.is_status_block():
+            raise IfDefSyntaxError("Limits can only be defined for analog STATUS variables!")
+
+        # Get the most recent variable; it must be an ANALOG. It is the one the alarm limits are meant for
+        # At most 4 limits can be defined (including this one) so the last 4 interface variable have to be checked
+        var = None
+        try:
+            sifaces = self._active_BLOCK.interfaces()
+            i = -1
+            while True:
+                var = sifaces[i]
+                i -= 1
+                if isinstance(var, ANALOG_LIMIT) or not isinstance(var, BASE_TYPE):
+                    continue
+                if isinstance(var, BASE_TYPE):
+                    break
+        except IndexError:
+            raise IfDefSyntaxError("Could not find variable this limit belongs to; you must add one with 'add_analog(...)' before adding a limit!")
+
+        if not isinstance(var, ANALOG):
+            raise IfDefSyntaxError("Limits can only be defined for analog variables!")
+
+        keyword_params = self._handle_extra_params(keyword_params)
+
+        # Set limit severity of _limited_ PV
+        var.set_pv_field(ANALOG_LIMIT.LIMIT_ALARM_FIELD[(limit_severity, limit_type)], limit_severity)
+
+        # Record which PV's limit this is
+        keyword_params[ANALOG_LIMIT.KW_LIMIT_PV] = var
+        # Record which limit field to set
+        keyword_params[ANALOG_LIMIT.KW_LIMIT_FIELD] = ANALOG_LIMIT.LIMIT_FIELD[(limit_severity, limit_type)]
+
+        if plc_var_type is None:
+            plc_var_type = var.plc_type()
+
+        var = ANALOG_LIMIT(self._source, self._active_BLOCK, name, plc_var_type, keyword_params)
+        return self._add(var)
+
+
+    @ifdef_interface
+    def add_minor_low_limit(self, name, plc_var_type = None, **keyword_params):
+        return self._add_limit(name, plc_var_type, ANALOG_LIMIT.MINOR_SEVERITY, ANALOG_LIMIT.LOW_LIMIT, **keyword_params)
+
+
+    @ifdef_interface
+    def add_major_low_limit(self, name, plc_var_type = None, **keyword_params):
+        return self._add_limit(name, plc_var_type, ANALOG_LIMIT.MAJOR_SEVERITY, ANALOG_LIMIT.LOW_LIMIT, **keyword_params)
+
+
+    @ifdef_interface
+    def add_minor_high_limit(self, name, plc_var_type = None, **keyword_params):
+        return self._add_limit(name, plc_var_type, ANALOG_LIMIT.MINOR_SEVERITY, ANALOG_LIMIT.HIGH_LIMIT, **keyword_params)
+
+
+    @ifdef_interface
+    def add_major_high_limit(self, name, plc_var_type = None, **keyword_params):
+        return self._add_limit(name, plc_var_type, ANALOG_LIMIT.MAJOR_SEVERITY, ANALOG_LIMIT.HIGH_LIMIT, **keyword_params)
+
+
     @ifdef_interface
     def skip_bit(self):
         return self.skip_digital()
@@ -1590,6 +1655,11 @@ class BASE_TYPE(SOURCE):
         BASE_TYPE.templates = dict()
         BASE_TYPE.pv_names  = set()
         BASE_TYPE.plc_names = set()
+
+
+    @staticmethod
+    def to_pv_field(field):
+        return BASE_TYPE.PV_PREFIX + field
 
 
     def __init__(self, source, block, name, plc_var_type, keyword_params):
@@ -2176,6 +2246,35 @@ class TIME(ANALOG):
 
 
 
+class ANALOG_LIMIT(ANALOG):
+    MAJOR_SEVERITY    = "MAJOR"
+    MINOR_SEVERITY    = "MINOR"
+    HIGH_LIMIT        = "HIGH"
+    LOW_LIMIT         = "LOW"
+    LIMIT_FIELD       = { (MAJOR_SEVERITY, LOW_LIMIT)  : "LOLO",
+                          (MINOR_SEVERITY, LOW_LIMIT)  : "LOW",
+                          (MAJOR_SEVERITY, HIGH_LIMIT) : "HIHI",
+                          (MINOR_SEVERITY, HIGH_LIMIT) : "HIGH" }
+    LIMIT_ALARM_FIELD = { (MAJOR_SEVERITY, LOW_LIMIT)  : "LLSV",
+                          (MINOR_SEVERITY, LOW_LIMIT)  : "LSV",
+                          (MAJOR_SEVERITY, HIGH_LIMIT) : "HHSV",
+                          (MINOR_SEVERITY, HIGH_LIMIT) : "HSV" }
+    KW_LIMIT_PV       = "_LIMIT_PV"
+    KW_LIMIT_FIELD    = "_LIMIT_FIELD"
+
+    def __init__(self, source, block, name, plc_var_type, keyword_params):
+        super(ANALOG_LIMIT, self).__init__(source, block, name, plc_var_type, keyword_params)
+
+
+    def limit_field(self):
+        return self.get_parameter(ANALOG_LIMIT.KW_LIMIT_FIELD)
+
+
+    def limit_pv(self):
+        return self.get_parameter(ANALOG_LIMIT.KW_LIMIT_PV)
+
+
+
 class nobt_helper(object):
     NOBT = "NOBT"
     SHFT = "SHFT"
@@ -2374,7 +2473,7 @@ def _test_and_set(keyword_params, key, value):
 
 
 def _test_and_set_pv(keyword_params, key, value):
-    _test_and_set(keyword_params, BASE_TYPE.PV_PREFIX + key, value)
+    _test_and_set(keyword_params, BASE_TYPE.to_pv_field(key), value)
 
 
 def _bits_in_type(var_type):

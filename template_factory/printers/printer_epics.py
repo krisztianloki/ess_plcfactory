@@ -10,7 +10,7 @@ __license__    = "GPLv3"
 
 
 from . import PRINTER
-from tf_ifdef import IfDefInternalError, SOURCE, VERBATIM, BLOCK, CMD_BLOCK, STATUS_BLOCK, BASE_TYPE
+from tf_ifdef import IfDefInternalError, SOURCE, VERBATIM, BLOCK, CMD_BLOCK, STATUS_BLOCK, BASE_TYPE, ANALOG_LIMIT
 
 
 
@@ -64,7 +64,6 @@ class EPICS_BASE(PRINTER):
 
     def __init__(self, test = False):
         super(EPICS_BASE, self).__init__(comments = True, show_origin = True, preserve_empty_lines = True)
-        self._if_def = None
         self.INDISABLE_TEMPLATE = self.DISABLE_TEMPLATE.format(CP = " CP" if test else "")
         self.OUTDISABLE_TEMPLATE = self.DISABLE_TEMPLATE.format(CP = "")
 
@@ -195,6 +194,10 @@ record(longin, "{root_inst_slot}:iTwo")
 
     def _body_var(self, var, output):
         self._append(self._toEPICS(var))
+
+        if isinstance(var, ANALOG_LIMIT):
+            self._set_alarm_limit(var, output)
+
         if not var.is_parameter():
             return
 
@@ -215,6 +218,24 @@ record(longin, "{root_inst_slot}:iTwo")
         self._uploads.append("{}:{}".format(self.inst_slot(if_def), self.UPLOAD_PARAMS))
 
         self._gen_param_fanouts(self._params, self.inst_slot(if_def), output)
+
+
+    def _set_alarm_limit(self, var, output):
+        limit = """
+record(ao, "{ilimiter}")
+{{
+	field(DESC, "Set alarm limit value")
+	field(DOL,  "{limiter} CP")
+	field(OUT,  "{limited}.{field}")
+	field(OMSL, "closed_loop"){disable_template}
+}}
+""".format(limiter   = self.create_pv_name(self.inst_slot(self._if_def), var),
+           ilimiter  = self.create_pv_name(self.inst_slot(self._if_def), "i" + var.pv_name()),
+           limited   = self.create_pv_name(self.inst_slot(self._if_def), var.limit_pv()),
+           field     = var.limit_field(),
+           disable_template = self.INDISABLE_TEMPLATE)
+
+        self._append(limit, output)
 
 
     def _gen_param_fanouts(self, param_list, inst_slot, output, footer = False):
@@ -641,7 +662,6 @@ record(ai, "{root_inst_slot}:HeartbeatFromPLCR")
     # BODY
     #
     def _ifdef_body(self, if_def, output, **keyword_params):
-        self._if_def = if_def
         self._output = output
 
         self._body_register_block_printer(if_def._cmd_block())
@@ -981,7 +1001,6 @@ record(ao, "{root_inst_slot}:CommsHashToPLCS")
     # BODY
     #
     def _ifdef_body(self, if_def, output, **keyword_params):
-        self._if_def = if_def
         self._output = output
 
         self._body_register_block_printer(if_def._cmd_block())

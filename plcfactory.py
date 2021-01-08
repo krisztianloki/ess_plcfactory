@@ -155,7 +155,7 @@ class ProcessTemplateException(PLCFactoryException):
         self.device    = device
         self.template  = template
         self.exception = exception
-        self.message = """The following exception occured during the processing of template '{template}' on device '{device}':
+        self.message = """The following exception occured during the processing of template '{template}' of device '{device}':
 {exc}: {msg}""".format(template = self.template,
                        device   = self.device,
                        exc      = type(self.exception).__name__,

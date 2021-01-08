@@ -102,6 +102,9 @@ After a block is defined it can be populated with variables. Adding a variable i
 
 **`add_digital("<name>")`**
 
+**NOTE**:\
+adding spare bits is deprecated and should not be used. It was introduced to support an old workflow.
+
 Adding a spare bit:
 
 **`add_digital()`**
@@ -115,6 +118,20 @@ Adding more than one spare bit:
 ### Analog variable
 
 **`add_analog("<name>", "<plc_type>")`**
+
+#### Analog variable alarm limits
+
+Only allowed in a **STATUS** block
+
+It is possible to specify limits for **analog status** variables and when the value of that variable is out of a limit EPICS will automatically put the PV into the relevant alarm state. There are 4 possible limits:
+1. Major low limit: **`add_major_low_limit("<name>", ["<plc_type>"])`**
+2. Minor low limit: **`add_minor_low_limit("<name>", ["<plc_type>"])`**
+3. Minor high limit: **`add_minor_high_limit("<name>", ["<plc_type>"])`**
+4. Major high limit: **`add_major_high_limit("<name>", ["<plc_type>"])`**
+
+The limits are enforced on the previously specified _analog_ variable (the _limited_ variable). If the `<plc_type>` is omitted it is taken from the _analog_ variable. Any number of limits can be defined. _Major low_ should be less then _minor low_ and _major high_ should be greater than _minor high_.
+
+**To be clear**: this creates a PLC variable and an EPICS record (one for every limit) and sets one of the HIHI,HIGH,LOLO,LOW fields of the _limited_ variable whenever the value of the limit record changes.
 
 ### Time variable
 
@@ -146,9 +163,13 @@ The _`short_alarm_message`_ will end up in the PV's ONAM (or ZNAM) field
 
 ### Enum variable
 
+Creates a PLC variable of type **<plc_type>** and an **mbbi** or **mbbo** EPICS record
+
 **`add_enum("<name>", "<plc_type">)`**
 
 ### Bitmask variable
+
+Creates a PLC variable of type **<plc_type>** and an **mbbiDirect** or **mbboDirect** EPICS record
 
 **`add_bitmask("<name>", "<plc_type">)`**
 
@@ -181,6 +202,17 @@ If **`PV_DESC=<desc>`** or **`ARCHIVE_DESC=<desc>`** is specified (**`ARCHIVE_DE
     *   **`set_defaults(add_minor_alarm, ALARM_IF=False)`**
 
 ## Examples
+
+### Limit examples
+
+*   `add_analog("Measurement",  "REAL")`
+    `add_minor_low_limit("Measurement_Minimum")`
+    *   Creates two variables: `Measurement` and `Measurement_Minimum` and sets the `LSV` field of `Measurement` to "MINOR" and the `LOW` field to the value of `Measurement_Minimum`
+
+*   `add_analog("Measurement",  "REAL")`
+    `add_minor_low_limit("Measurement_Minimum")`
+    `add_major_high_limit("Measurement_Maximum")`
+    *   Creates three variables: `Measurement`, `Measurement_Minimum`, and `Measurement_Maximum` and sets the `LSV` field of `Measurement` to "MINOR", the `HHSV` field to "MAJOR", the `LOW` field to the value of `Measurement_Minimum`, and the `HIHI` field to the value of `Measurement_Maximum`
 
 ### Archiving examples
 

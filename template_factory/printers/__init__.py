@@ -68,6 +68,7 @@ class PRINTER(object):
         self._root_inst_slot = None
 
         self._device         = None
+        self._if_def         = None
         self._plcf           = None
 
 
@@ -260,10 +261,14 @@ class PRINTER(object):
 
         self._parse_keyword_args(keyword_params)
 
+        self._if_def = if_def
+
         if isinstance(if_def, IF_DEF):
             self._ifdef_body(if_def, output, **keyword_params)
         else:
             self._any_body(output, **keyword_params)
+
+        self._if_def = None
 
 
     def _ifdef_body(self, if_def, output, **keyword_params):
