@@ -233,6 +233,65 @@ The following CCDB properties are used to control the integration parameters:
     *  Not implemented yet.
     *  The default is `2001`
 
+#### Automatically generated EPICS PVs
+
+The following PVs are automatically generated using the ESS name of the PLC as the `Sys-Subsys:Dis-Dev-Idx` prefix:
+
+*   `ModVersionR`
+    *  The version of the loaded E3 module
+    *  `stringin`
+*   `PLCFCommitR`
+    *  The commit hash of PLCFactory that was used for the integration
+    *  `stringin`
+*   `ModbusConnectedR`
+    *  Shows if the MODBUS channel connected
+    *  `bi`
+*   `S7ConnectedR`
+    *  Shows if the s7plc channel is connected
+    *  `bi`
+*   `ConnectedR`
+    *  Shows if both the MODBUS and s7plc channels are connected
+    *  `bi`
+*   `PLCAddr-RB`
+    *  Address of the PLC
+    *  `stringin`
+*   `PLCAddrS`
+    *  Set the address of the PLC
+    *  `stringout`
+*   `ModbusAddr-RB`
+    *  Address of the PLC in host:port format
+    *  `stringin`
+*   `S7Addr-RB`
+    *  Address of the PLC in host:port format
+    *  `stringin`
+*   `PLCHashCorrectR`
+    *  Shows if the comms hash is correct; the PLC and the IOC has the same version of the data structure
+    *  `bi`
+*   `AliveR`
+    *  Shows if the PLC is sending heartbeats; i.e. connected, the Hash is correct and communicating
+    *  `bi`
+*   `CommsHashToPLCS`
+    *  The comms hash **to** the PLC
+    *  `ao`
+*   `HeartbeatToPLCS`
+    *  Heartbeat **to** the PLC
+    *  `ao`
+*   `CommsHashFromPLCR`
+    *  The comms hash **from** the PLC
+    *  `ai`
+*   `HeartbeatFromPLCR`
+    *  Heartbeat **from** the PLC
+    *  `ai`
+*   `UploadParametersS`
+    *  Initiates upload of **all** the parameter variables to the PLC
+    *  `fanout`
+*   `UploadStatR`
+    *  Status of parameter uploading
+    *  `mbbi`
+       *  0 - "Never uploaded"
+       *  1 - "Uploading..."
+       *  2 - "Uploaded"
+
 #### Built-in templates / output types
 
 The following output types can be automatically generated from **Interface Definition** files (with the -t option):
