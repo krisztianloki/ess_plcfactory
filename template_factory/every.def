@@ -64,6 +64,3 @@ add_bitmask("c_bitmaskWORD", "WORD")
 add_bitmask("c_bitmaskREAL", "REAL")
 
 add_time("c_time")
-
-add_minor_alarm("c_minor", "Minor alarm")
-add_major_alarm("c_major", "Major alarm")

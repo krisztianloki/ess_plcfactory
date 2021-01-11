@@ -190,6 +190,13 @@ The specifications will be collected in a file ending with _.archive_. This file
 
 If **`PV_DESC=<desc>`** or **`ARCHIVE_DESC=<desc>`** is specified (**`ARCHIVE_DESC`** overrides **`PV_DESC`**) it will be added as a comment before the PV name in the output.
 
+## Specifying aliases
+
+It is possible to specify aliases for a variable with the **`PV_ALIAS`** parameter.
+
+*   `add_analog("primary_name",  "INT",  PV_ALIAS="secondary_name")`
+*   `add_analog("primary_name",  "INT",  PV_ALIAS=["secondary_name", "tertiary_name"])`
+
 ## Specifying defaults
 
 **`set_defaults`** can be used to define global and/or variable type specific default values. Values specified when adding a variable take precedence.
