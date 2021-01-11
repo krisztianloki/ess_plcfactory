@@ -90,6 +90,11 @@ PLC Factory is capable of integrating (and generating code for) the following PL
 
     *   _TwinCAT 3_
 
+### Integrating Safety/Gateway PLCs
+
+Integrating a safety PLC is usually done using a gateway PLC that communicates with the safety PLC in a secure manner. The EPICS integration is done for this gateway PLC. Since the gateway PLC has a dedicated datablock that contains all the variables that are to be exported to EPICS it is possible to greatly simplify the integration. Please set the **`PLC-EPICS-COMMS: GatewayDatablock`** property of the _gateway_ PLC to the name of this dedicated datablock.
+
+
 #### Options related to EPICS-PLC integration
 
 *   **--plc-siemens**=<tia_version>
@@ -168,6 +173,65 @@ Assigning Interface Definitions happens on the _device type_-level in CCDB. Ever
     If the link specified with **EPI** has a _.git_ extension then the repository will be cloned. Otherwise the definition files will be individually downloaded (by appending /raw/<branch> to the URL).
     It is possible to specify a version of the .def file to use other than _master_ with the **EPI VERSION** property (either on _slot_ or _device type_ level).
     Authentication for GitLab is only supported if using the git clone method.
+
+#### CCDB properties of the PLC
+
+The following CCDB properties are used to control the integration parameters:
+
+##### Common for both PLC types
+
+*   `PLCF#EPICSToPLCDataBlockStartOffset`
+    *  The byte offset where the actual data starts.
+    *  The default is `0` for Siemens and `12228` for Beckhoff.
+    *  Leave it at default.
+*   `PLCF#PLCToEPICSDataBlockStartOffset`
+    *  The byte offset where the actual data starts.
+    *  The default is `0`
+    *  Leave it at default.
+*   `PLCF#PLC-EPICS-COMMS:Endianness`
+    *  The byte order of the device.
+    *  The default is `BigEndian` for Siemens and `LittleEndian` for Beckhoff.
+    *  Leave it at default.
+
+##### Siemens PLC properties
+
+*   `PLC-EPICS-COMMS: GatewayDatablock`
+    *  The name of the datablock that contains all the variables from the safety PLC.
+    *  The default is unset (i.e. this PLC is not a gateway PLC)
+*   `PLCF#PLC-EPICS-COMMS: InterfaceID`
+    *  The Interface ID of the network interface that is connected to the CA network. It is in **decimal**.
+    *  **Change it to match the PLC configuration!**
+*   `PLCF#PLC-EPICS-COMMS: MBConnectionID`
+    *  The connection ID of the Modbus connection.
+    *  The default is `255`
+    *  Leave it at default?
+*   `PLCF#PLC-EPICS-COMMS: S7ConnectionID`
+    *  The connection ID of the s7plc connection.
+    *  The default is `256`
+    *  Leave it at default?
+*   `PLCF#PLC-EPICS-COMMS: MBPort`
+    *  The Modbus port on the PLC.
+    *  The default is `502`
+    *  Leave it at default.
+*   `PLCF#PLC-EPICS-COMMS: S7Port`
+    *  The s7plc port on the PLC (this is not the Siemens S7 protocol!).
+    *  The default is `2000`
+    *  Leave it at default.
+*   `PLCF#PLC-DIAG:Max-IO-Devices`
+    *  The default is `20`
+*   `PLCF#PLC-DIAG:Max-Local-Modules`
+    *  The default is `60`
+*   `PLCF#PLC-DIAG:Max-Modules-In-IO-Device`
+    *  The default is `60`
+*   `PLCF#PLC-EPICS-COMMS: PLCPulse`
+    *  The interval the PLC sends data to EPICS.
+    *  The default is 200 ms.
+*   `PLCF#PLC-EPICS-COMMS: DiagConnectionID`
+    *  Not implemented yet.
+    *  The default is `254`
+*   `PLCF#PLC-EPICS-COMMS: DiagPort`
+    *  Not implemented yet.
+    *  The default is `2001`
 
 #### Built-in templates / output types
 
