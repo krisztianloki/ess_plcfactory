@@ -6,6 +6,11 @@ import subprocess
 import time
 
 __git_dir = (os.path.abspath(os.path.dirname(__file__)))
+try:
+    isinstance('h', unicode)
+    spkwargs = dict()
+except:
+    spkwargs = {'encoding':'utf8'}
 
 
 def get_status(cwd = None):
@@ -13,14 +18,14 @@ def get_status(cwd = None):
     if cwd is None:
         cwd = __git_dir
     try:
-        return subprocess.check_output(shlex_split("git status -uno --porcelain"), cwd = __git_dir).strip() == ""
+        return subprocess.check_output(shlex_split("git status -uno --porcelain"), cwd = __git_dir, **spkwargs).strip() == ""
     except subprocess.CalledProcessError:
         return False
 
 
 def clone(url, cwd, branch = None):
     try:
-        return subprocess.check_call(shlex_split("git clone --quiet {} {} .".format(url, "" if branch is None else "--branch {} --depth 1".format(branch))), cwd = cwd)
+        return subprocess.check_call(shlex_split("git clone --quiet {} {} .".format(url, "" if branch is None else "--branch {} --depth 1".format(branch))), cwd = cwd, **spkwargs)
     except subprocess.CalledProcessError as e:
         print(e)
         raise
@@ -28,7 +33,7 @@ def clone(url, cwd, branch = None):
 
 def checkout(cwd, version):
     try:
-        return subprocess.check_call(shlex_split("git checkout --quiet {}".format(version)), cwd = cwd)
+        return subprocess.check_call(shlex_split("git checkout --quiet {}".format(version)), cwd = cwd, **spkwargs)
     except subprocess.CalledProcessError as e:
         print(e)
         raise
@@ -36,7 +41,7 @@ def checkout(cwd, version):
 
 def get_origin():
     try:
-        output = subprocess.check_output(shlex_split("git ls-remote --get-url origin"), cwd = __git_dir)
+        output = subprocess.check_output(shlex_split("git ls-remote --get-url origin"), cwd = __git_dir, **spkwargs)
         return output.strip()
     except subprocess.CalledProcessError:
         return None
@@ -44,21 +49,21 @@ def get_origin():
 
 def get_current_branch():
     try:
-        return subprocess.check_output(shlex_split("git rev-parse --abbrev-ref HEAD"), cwd = __git_dir).strip()
+        return subprocess.check_output(shlex_split("git rev-parse --abbrev-ref HEAD"), cwd = __git_dir, **spkwargs).strip()
     except subprocess.CalledProcessError:
         return None
 
 
 def get_local_ref(branch = "master"):
     try:
-        return subprocess.check_output(shlex_split("git rev-parse {}".format(branch)), cwd = __git_dir).strip()
+        return subprocess.check_output(shlex_split("git rev-parse {}".format(branch)), cwd = __git_dir, **spkwargs).strip()
     except subprocess.CalledProcessError:
         return None
 
 
 def get_remote_ref(branch = "master"):
     try:
-        output = subprocess.check_output(shlex_split("git ls-remote --quiet --exit-code origin refs/heads/{}".format(branch)), cwd = __git_dir)
+        output = subprocess.check_output(shlex_split("git ls-remote --quiet --exit-code origin refs/heads/{}".format(branch)), cwd = __git_dir, **spkwargs)
         return output[:-len("refs/heads/{}\n".format(branch))].strip()
     except subprocess.CalledProcessError:
         return None
@@ -67,7 +72,7 @@ def get_remote_ref(branch = "master"):
 def has_commit(commit):
     try:
         # Cannot use check_call; have to redirect stderr...
-        subprocess.check_output(shlex_split("git cat-file -e {}^{{commit}}".format(commit)), stderr = subprocess.STDOUT, cwd = __git_dir)
+        subprocess.check_output(shlex_split("git cat-file -e {}^{{commit}}".format(commit)), stderr = subprocess.STDOUT, cwd = __git_dir, **spkwargs)
         return True
     except subprocess.CalledProcessError:
         return False
