@@ -50,7 +50,20 @@ class BEASTFactory(object):
         from lxml import etree
         etree_options['pretty_print'] = True
     except ImportError:
-        print("Falling back to original ElementTree implementation....", file = sys.stderr)
+        print("""
+************************************************************
+*  Falling back to original ElementTree implementation.... *
+*  The generated xml will NOT be 'pretty printed'          *
+*                                                          *
+*  Please install lxml:                                    *
+*   pip install lxml                                       *
+*                                                          *
+************************************************************
+""", file = sys.stderr)
+        try:
+            time.sleep(5)
+        except:
+            pass
         import xml.etree.ElementTree as etree
 
 
