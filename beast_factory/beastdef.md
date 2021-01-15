@@ -120,23 +120,23 @@ After a component is defined it can be populated with alarms. An alarm definitio
 
 ### Alarms
 
-*   `pv("CrS-TICP:Cryo-Virt-MJFLT1:Major_Fault_051")`
-    `description("Instrument Air Failure On Cold Box")`
-    `guidance("op_action", "utilities fault 55- cold box emergency stop")`
+*   `pv("CrS-TICP:Cryo-Virt-MJFLT1:Major_Fault_051")`\
+    `description("Instrument Air Failure On Cold Box")`\
+    `guidance("op_action", "utilities fault 55- cold box emergency stop")`\
     `guidance("causes", "No pneumatic air available / Filter clogged")`
 
-    `pv("CrS-TICP:Cryo-Virt-MJFLT1:Major_Fault_055"`
-    `description("Utilities Fault On Cold Box")`
-    `guidance("op_action", "close PV-31301 and PV-33399- reset purifier and mobile dewar filling")`
+    `pv("CrS-TICP:Cryo-Virt-MJFLT1:Major_Fault_055"`\
+    `description("Utilities Fault On Cold Box")`\
+    `guidance("op_action", "close PV-31301 and PV-33399- reset purifier and mobile dewar filling")`\
     `guidance("causes", "")`
 
     *   Defines two alarms
 
 ### Components
 
-*   `component("TICP ColdBox")`
-    `    component("UTILITIES")`
-    `    end_component()`
+*   `component("TICP ColdBox")`\
+    `    component("UTILITIES")`\
+    `    end_component()`\
     `    component("ColdBox Vacuum")`
 
     *    Defines the following alarm tree
@@ -146,13 +146,13 @@ After a component is defined it can be populated with alarms. An alarm definitio
 
 ### Including
 
-*   `component("ODH")`
-    `    component("Monitor 1")`
-    `        include("section-subsection:ODH-O2iM-1")`
-    `    end_component()`
-    `    component("Monitor 2")`
-    `        include("section-subsection:ODH-O2iM-2")`
-    `    end_component()`
+*   `component("ODH")`\
+    `    component("Monitor 1")`\
+    `        include("section-subsection:ODH-O2iM-1")`\
+    `    end_component()`\
+    `    component("Monitor 2")`\
+    `        include("section-subsection:ODH-O2iM-2")`\
+    `    end_component()`\
     `end_component()`
 
     *    Defines the following alarm tree and includes the `.alarms-template` (defined with the `BEAST TEMPLATE` External Link) from the two ODH monitors

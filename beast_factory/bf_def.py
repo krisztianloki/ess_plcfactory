@@ -31,6 +31,7 @@ def xml_descape(string):
 
 
 class BEASTDefException(Exception):
+    status = 1
     args_format = """
 {}
 """
@@ -218,7 +219,7 @@ class BEAST_COMPONENT(BEAST_BASE):
         for pv in self.pvs():
             pv.toxml(element, etree)
 
-        for child in self._children.itervalues():
+        for child in self._children.values():
             child.toxml(element, etree)
 
         return element
@@ -584,11 +585,16 @@ class BEAST_DEF(object):
 
         self._alarm_tree = False
 
+        return self._config
 
-    def parse(self, def_file, device):
+
+    def parse(self, def_file, device = None):
         self._reset()
 
-        devicename = device.name()
+        if device is not None:
+            devicename = device.name()
+        else:
+            devicename = None
 
         try:
             self._component = self._includes[devicename]
@@ -597,6 +603,8 @@ class BEAST_DEF(object):
             pass
 
         if def_file.endswith('.alarms-template'):
+            if device is None:
+                raise BEASTDefSyntaxError(".alarms-template cannot be used in standalone mode")
             self._devicename = devicename
         elif self._including:
             raise BEASTDefSyntaxError("Only .alarms-template definitions can be included")
@@ -625,7 +633,7 @@ class BEAST_DEF(object):
            commit = commit,
            date   = '{:%Y.%m.%d. %H:%M:%S}'.format(datetime.datetime.now()))))
 
-        for component in self.components().itervalues():
+        for component in self.components().values():
             component.toxml(root, etree = etree)
 
         return xml_tree

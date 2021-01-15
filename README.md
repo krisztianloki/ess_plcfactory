@@ -1,10 +1,12 @@
 # PLC Factory
-(c) 2016-2018 European Spallation Source, Lund
+(c) 2016-2021 European Spallation Source, Lund
 Author: Gregor Ulm, Krisztian Loki, Miklos Boros
 
 PLC Factory is intended to simplify programming PLCs and creating the communication interface between EPICS and PLCs.
 It is also capable of processing text files and substituting specially formatted expressions that are defined as properties in CCDB.
 It takes an arbitrary device and a list of template ids as input and processes the corresponding sub-tree of devices according to their entries in CCDB.
+
+**The AlarmFactory documentation is [here](beast_factory/).**
 
 ## Quickstart
 
