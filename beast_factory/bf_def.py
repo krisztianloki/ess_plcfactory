@@ -434,7 +434,10 @@ class BEAST_DEF(object):
                                 }
 
         # Includes
-        self._includes = dict()
+        # Device includes
+        self._device_includes = dict()
+        # Device type includes
+        self._devtype_includes = dict()
 
         # The config name
         self._config = None
@@ -593,14 +596,20 @@ class BEAST_DEF(object):
 
         if device is not None:
             devicename = device.name()
+            devicetype = device.deviceType()
         else:
             devicename = None
+            devicetype = None
 
         try:
-            self._component = self._includes[devicename]
+            self._component = self._device_includes[devicename]
             self._including = True
         except KeyError:
-            pass
+            try:
+                self._component = self._devtype_includes[devicetype]
+                self._including = True
+            except KeyError:
+                pass
 
         if def_file.endswith('.alarms-template'):
             if device is None:
@@ -734,10 +743,27 @@ class BEAST_DEF(object):
         if self._component is None:
             raise BEASTDefSyntaxError("Cannot do includes outside of a component")
 
-        if devicename in self._includes:
-            raise BEASTDefSyntaxError("'{}' is already included in '{}'".format(devicename, self._includes[devicename].strpath(True)))
+        if devicename in self._device_includes:
+            raise BEASTDefSyntaxError("'{}' is already included in '{}'".format(devicename, self._device_includes[devicename].strpath(True)))
 
-        self._includes[devicename] = self._component
+        self._device_includes[devicename] = self._component
+
+        return BEAST_BASE(self._line)
+
+
+    @alarmtree_interface
+    @beastdef_interface
+    def include_type(self, devicetype):
+        if not self._alarm_tree:
+            raise BEASTDefSyntaxError("Function is only valid during alarm tree definition")
+
+        if self._component is None:
+            raise BEASTDefSyntaxError("Cannot do includes outside of a component")
+
+        if devicetype in self._devtype_includes:
+            raise BEASTDefSyntaxError("'{}' is already included in '{}'".format(devicetype, self._devtype_includes[devicetype].strpath(True)))
+
+        self._devtype_includes[devicetype] = self._component
 
         return BEAST_BASE(self._line)
 

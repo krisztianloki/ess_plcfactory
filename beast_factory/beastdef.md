@@ -146,6 +146,8 @@ After a component is defined it can be populated with alarms. An alarm definitio
 
 ### Including
 
+#### Devices
+
 *   `component("ODH")`\
     `    component("Monitor 1")`\
     `        include("section-subsection:ODH-O2iM-1")`\
@@ -160,4 +162,18 @@ After a component is defined it can be populated with alarms. An alarm definitio
              *   Monitor 1
                  * alarms of `section-subsection:ODH-O2iM-1`
              *   Monitor 2
+                 * alarms of `section-subsection:ODH-O2iM-2`
+
+#### Device types
+
+*   `component("ODH")`\
+    `    component("Monitors")`\
+    `        include-type("odh-monitor")`\
+    `    end_component()`\
+    `end_component()`
+
+    *    Defines the following alarm tree and includes the `.alarms-template` (defined with the `BEAST TEMPLATE` External Link) from the controlled ODH monitors
+         *   ODH
+             *   Monitors
+                 * alarms of `section-subsection:ODH-O2iM-1`
                  * alarms of `section-subsection:ODH-O2iM-2`
