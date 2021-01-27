@@ -916,7 +916,7 @@ class BEAST_DEF(object):
     @beastdef_interface
     def automated_action(self, title, details, delay):
         self._check_title_details("Automated action", title, details)
-        beastdef_assert_instance(isinstance(delay, float) or isinstance(delay, int), "delay", float)
+        beastdef_assert_instance(isinstance(delay, int), "delay", int)
 
         var = BEAST_AUTOMATED_ACTION(self._line, self._titles[title], details, delay)
         self._pv.add_automated_action(var)

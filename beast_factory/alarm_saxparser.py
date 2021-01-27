@@ -91,12 +91,8 @@ class ALARM_SAX_HANDLER(ContentHandler):
             self._details = self._text
         elif name == 'delay':
             try:
-                # BEAST_DEF expects a number not a string ==> try keeping the format; if float use float if int use int
-                self._delay = float(self._text)
-                try:
-                    self._delay = int(self._text)
-                except:
-                    pass
+                # BEAST_DEF expects a number not a string
+                self._delay = int(self._text)
             except:
                 # Okay, not a number. Let BEAST_DEF handle it
                 self._delay = self._text

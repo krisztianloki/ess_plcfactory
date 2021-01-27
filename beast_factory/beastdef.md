@@ -95,6 +95,8 @@ After a component is defined it can be populated with alarms. An alarm definitio
 
 **`automated_action("<type>", "<action>", <delay>)`**
 
+**NOTE: delay must be an integer (in seconds) not a string.**
+
 ## Examples
 
 ### Titles
@@ -145,6 +147,8 @@ After a component is defined it can be populated with alarms. An alarm definitio
              *   ColdBox Vacuum
 
 ### Including
+
+**NOTE: only works with --ioc**
 
 #### Devices
 
