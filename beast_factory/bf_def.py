@@ -39,6 +39,11 @@ class BEASTDefException(Exception):
     def __init__(self, typemsg, *args, **keyword_params):
         self.typemsg        = typemsg
         self.args           = args
+        if isinstance(args[0], Exception):
+            try:
+                keyword_params.update(args[0].keyword_params)
+            except:
+                pass
         self.keyword_params = keyword_params
 
 
@@ -50,7 +55,7 @@ class BEASTDefException(Exception):
         try:
             return """{error} at line {linenum}: {line}{args}""".format(error   = self.typemsg,
                                                                         linenum = self.keyword_params["linenum"],
-                                                                        line    = self.keyword_params["line"],
+                                                                        line    = self.keyword_params.get("line", '<N/A>'),
                                                                         args    = self.args_format.format(self.args[0]) if self.args[0] else "")
         except KeyError:
             return """{error}: {args}""".format(error   = self.typemsg,
@@ -621,6 +626,19 @@ class BEAST_DEF(object):
         self._read_def(def_file)
 
 
+    def fromxml(self, xml_file, config):
+        from .alarm_saxparser import ALARM_SAX_PARSER, AlarmSaxException
+
+        try:
+            ALARM_SAX_PARSER.parse(self, xml_file)
+        except AlarmSaxException as e:
+            raise BEASTDefInternalError(e)
+
+        self._config = config
+
+        return self._config
+
+
     def toxml(self, etree, branch, commit):
         xml_tree = etree.ElementTree(etree.Element('config'))
         root     = xml_tree.getroot()
@@ -698,6 +716,12 @@ class BEAST_DEF(object):
         self._titles[name] = xml_descape(title)
 
         return BEAST_BASE(self._line)
+
+
+    def xml_component(self, name):
+        self._alarm_tree = True
+        self.component(name)
+        self._alarm_tree = False
 
 
     @alarmtree_interface
@@ -892,7 +916,7 @@ class BEAST_DEF(object):
     @beastdef_interface
     def automated_action(self, title, details, delay):
         self._check_title_details("Automated action", title, details)
-        beastdef_assert_instance(isinstance(delay, float), "delay", float)
+        beastdef_assert_instance(isinstance(delay, float) or isinstance(delay, int), "delay", float)
 
         var = BEAST_AUTOMATED_ACTION(self._line, self._titles[title], details, delay)
         self._pv.add_automated_action(var)

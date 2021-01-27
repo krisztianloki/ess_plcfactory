@@ -80,7 +80,7 @@ class BEASTFactory(object):
 
         args = parser.parse_known_args(argv)[0]
 
-        self._standalone = args.alarm_tree is not None
+        self._standalone = args.iocs is None
 
         # build the final argument list
         parser         = PLCFArgumentParser()
@@ -147,7 +147,7 @@ class BEASTFactory(object):
             self.processIOCs(args.iocs)
         elif args.merge_xmls:
             self.mergeXMLs(args.files)
-        elif self._standalone:
+        elif args.alarm_tree:
             self.processStandalone(args.alarm_tree, args.files)
 
         if not self._standalone and not args.clear_ccdb_cache:
@@ -308,16 +308,6 @@ class BEASTFactory(object):
             print(self._def_alarms)
 
 
-    def __beastXML(self):
-        beast_xml = self.etree.ElementTree(self.etree.Element('config'))
-        root      = beast_xml.getroot()
-        root.tag  = "config"
-        root.attrib.clear()
-        root.attrib['name'] = self._config
-
-        return (beast_xml, root)
-
-
     def processIOCs(self, iocs):
         beast_def = None
         for iocName in iocs:
@@ -334,11 +324,24 @@ class BEASTFactory(object):
         self._checkAlarms(beast_def)
 
 
+    def _processXML(self, xml, merge_with = None):
+        # initialize beast definition parser
+        beast_def = BEAST_DEF(merge_with)
+
+        # parse XML
+        self._config = beast_def.fromxml(xml, self._config)
+        print()
+
+        return beast_def
+
+
     def mergeXMLs(self, xmls):
-        (beast_xml, root) = self.__beastXML()
+        beast_def = None
         for xml in xmls:
-            for component in self.etree.parse(xml).getroot():
-                root.append(component)
+            beast_def = self._processXML(xml, beast_def)
+
+        branch = git.get_current_branch()
+        beast_xml = beast_def.toxml(etree = self.etree, branch = branch, commit = git.get_local_ref(branch))
 
         self.writeXml(beast_xml)
 
