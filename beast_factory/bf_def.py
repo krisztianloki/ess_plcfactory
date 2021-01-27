@@ -155,7 +155,7 @@ class BEAST_COMPONENT(BEAST_BASE):
         self._name     = name
         self._path     = list(path)
         self._children = OrderedDict()
-        self._pvs      = []
+        self._pvs      = OrderedDict()
 
 
     def __repr__(self):
@@ -205,7 +205,7 @@ class BEAST_COMPONENT(BEAST_BASE):
 
         try:
             if self._children[child.name()] != child:
-                raise BEASTDefSyntaxError("Component ('{}') is already defined at this level".format(child.name()))
+                raise BEASTDefSyntaxError("Component ('{}') is already defined at this level: '{}'".format(child.name(), self.strpath(True)))
         except KeyError:
             pass
 
@@ -215,13 +215,16 @@ class BEAST_COMPONENT(BEAST_BASE):
     def add_pv(self, pv):
         beastdef_assert_instance(isinstance(pv, BEAST_PV), "child", BEAST_PV)
 
-        self._pvs.append(pv)
+        if pv.name() in self._pvs:
+            raise BEASTDefSyntaxError("PV ('{}') is already defined at this level: '{}'".format(pv.name(), self.strpath(True)))
+
+        self._pvs[pv.name()] = pv
 
 
     def toxml(self, parent, etree):
         element = etree.SubElement(parent, "component", name = self._name)
 
-        for pv in self.pvs():
+        for pv in self.pvs().values():
             pv.toxml(element, etree)
 
         for child in self._children.values():
