@@ -148,7 +148,52 @@ class BEAST_BASE(object):
 
 
 
-class BEAST_COMPONENT(BEAST_BASE):
+#
+# Guidance, Display, Command, Automated action
+#
+class BEAST_GDCA(BEAST_BASE):
+    def __init__(self, line):
+        super(BEAST_GDCA, self).__init__(line)
+
+        self._guidances         = []
+        self._displays          = []
+        self._commands          = []
+        self._automated_actions = []
+
+
+    def add_guidance(self, guidance):
+        self._guidances.append(guidance)
+
+
+    def add_display(self, display):
+        self._displays.append(display)
+
+
+    def add_command(self, command):
+        self._commands.append(command)
+
+
+    def add_automated_action(self, automated_action):
+        self._automated_actions.append(automated_action)
+
+
+    @staticmethod
+    def __xmllist(element, ls, etree):
+        for guidance in ls:
+            guidance.toxml(element, etree)
+
+
+    def toxml(self, element, etree):
+        self.__xmllist(element, self._guidances, etree)
+        self.__xmllist(element, self._commands, etree)
+        self.__xmllist(element, self._displays, etree)
+        self.__xmllist(element, self._automated_actions, etree)
+
+        return element
+
+
+
+class BEAST_COMPONENT(BEAST_GDCA):
     def __init__(self, line, name, path):
         super(BEAST_COMPONENT, self).__init__(line)
 
@@ -224,6 +269,8 @@ class BEAST_COMPONENT(BEAST_BASE):
     def toxml(self, parent, etree):
         element = etree.SubElement(parent, "component", name = self._name)
 
+        super(BEAST_COMPONENT, self).toxml(element, etree)
+
         for pv in self.pvs().values():
             pv.toxml(element, etree)
 
@@ -234,7 +281,7 @@ class BEAST_COMPONENT(BEAST_BASE):
 
 
 
-class BEAST_PV(BEAST_BASE):
+class BEAST_PV(BEAST_GDCA):
     def __init__(self, line, name, defaults):
         super(BEAST_PV, self).__init__(line)
 
@@ -244,11 +291,6 @@ class BEAST_PV(BEAST_BASE):
         self._enabled      = defaults['enabled']
         self._latching     = defaults['latching']
         self._annunciating = defaults['annunciating']
-
-        self._guidances         = []
-        self._displays          = []
-        self._commands          = []
-        self._automated_actions = []
 
 
     def __repr__(self):
@@ -265,16 +307,7 @@ class BEAST_PV(BEAST_BASE):
         etree.SubElement(element, "latching").text     = str(self._latching).lower()
         etree.SubElement(element, "annunciating").text = str(self._annunciating).lower()
 
-        def xmllist(ls, etree):
-            for guidance in ls:
-                guidance.toxml(element, etree)
-
-        xmllist(self._guidances, etree)
-        xmllist(self._commands, etree)
-        xmllist(self._displays, etree)
-        xmllist(self._automated_actions, etree)
-
-        return element
+        return super(BEAST_PV, self).toxml(element, etree)
 
 
     def name(self):
@@ -299,22 +332,6 @@ class BEAST_PV(BEAST_BASE):
 
     def set_annunciating(self, annunciating):
         self._annunciating = annunciating
-
-
-    def add_guidance(self, guidance):
-        self._guidances.append(guidance)
-
-
-    def add_display(self, display):
-        self._displays.append(display)
-
-
-    def add_command(self, command):
-        self._commands.append(command)
-
-
-    def add_automated_action(self, automated_action):
-        self._automated_actions.append(automated_action)
 
 
 
@@ -882,47 +899,58 @@ class BEAST_DEF(object):
         beastdef_assert_instance(isinstance(title, str) or isinstance(title, unicode), "title", str)
         beastdef_assert_instance(isinstance(details, str) or isinstance(details, unicode), "details", str)
 
+        if self._pv_or_component() is None:
+            raise BEASTDefSyntaxError("{} without PV or component".format(typ))
+
+
+    def _pv_or_component(self):
         if self._pv is None:
-            raise BEASTDefSyntaxError("{} without PV".format(typ))
+            return self._component
+
+        return self._pv
 
 
+    @alarmtree_interface
     @beastdef_interface
     def guidance(self, title, details):
         self._check_title_details("Guidance", title, details)
 
         var = BEAST_GUIDANCE(self._line, self._titles[title], details)
-        self._pv.add_guidance(var)
+        self._pv_or_component().add_guidance(var)
 
         return var
 
 
+    @alarmtree_interface
     @beastdef_interface
     def display(self, title, details):
         self._check_title_details("Display", title, details)
 
         var = BEAST_DISPLAY(self._line, self._titles[title], details)
-        self._pv.add_display(var)
+        self._pv_or_component().add_display(var)
 
         return var
 
 
+    @alarmtree_interface
     @beastdef_interface
     def command(self, title, details):
         self._check_title_details("Command", title, details)
 
         var = BEAST_COMMAND(self._line, self._titles[title], details)
-        self._pv.add_command(var)
+        self._pv_or_component().add_command(var)
 
         return var
 
 
+    @alarmtree_interface
     @beastdef_interface
     def automated_action(self, title, details, delay):
         self._check_title_details("Automated action", title, details)
         beastdef_assert_instance(isinstance(delay, int), "delay", int)
 
         var = BEAST_AUTOMATED_ACTION(self._line, self._titles[title], details, delay)
-        self._pv.add_automated_action(var)
+        self._pv_or_component().add_automated_action(var)
 
         return var
 
