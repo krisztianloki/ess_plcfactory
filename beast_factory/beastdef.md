@@ -45,6 +45,10 @@ Every alarm will have these attribute values unless they are explicitly override
 
 **`default_annunciating({True|False})`**
 
+### Filtering
+
+**`default_filter("<filter_expression>")`**
+
 ## Defining Titles for Guidance, Display, Command, and Automated action attributes
 
 Can be used in `.alarm-tree`, `.alarms`, `.alarms-template` definitions.
@@ -78,6 +82,10 @@ After a component is defined it can be populated with alarms. An alarm definitio
 ### Annunciating
 
 **`annunciating({True|False})`**
+
+### Filtering
+
+**`filter("<filter_expression>")`**
 
 ### Guidance
 

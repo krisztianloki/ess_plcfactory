@@ -293,6 +293,7 @@ class BEAST_PV(BEAST_GDCA):
         self._enabled      = defaults['enabled']
         self._latching     = defaults['latching']
         self._annunciating = defaults['annunciating']
+        self._filter       = defaults['filter']
 
 
     def __repr__(self):
@@ -314,6 +315,9 @@ class BEAST_PV(BEAST_GDCA):
 
         if self._count:
             etree.SubElement(element, "count").text = str(self._count)
+
+        if self._filter:
+            etree.SubElement(element, "filter").text = str(self._filter)
 
         return super(BEAST_PV, self).toxml(element, etree)
 
@@ -340,6 +344,10 @@ class BEAST_PV(BEAST_GDCA):
 
     def set_annunciating(self, annunciating):
         self._annunciating = annunciating
+
+
+    def set_filter(self, expression):
+        self._filter = expression
 
 
 
@@ -464,6 +472,7 @@ class BEAST_DEF(object):
         self._global_defaults = { 'enabled'      : True,
                                   'latching'     : True,
                                   'annunciating' : False,
+                                  'filter'       : None,
                                 }
 
         # Includes
@@ -737,6 +746,16 @@ class BEAST_DEF(object):
 
     @alarmtree_interface
     @beastdef_interface
+    def default_filter(self, expression):
+        beastdef_assert_instance(isinstance(expression, str) or isinstance(expression, unicode), "expression", str)
+
+        self._defaults['filter'] = expression
+
+        return BEAST_BASE(self._line)
+
+
+    @alarmtree_interface
+    @beastdef_interface
     def define_title(self, name, title):
         beastdef_assert_instance(isinstance(name, str) or isinstance(name, unicode), "name", str)
         beastdef_assert_instance(isinstance(title, str) or isinstance(title, unicode), "title", str)
@@ -907,6 +926,18 @@ class BEAST_DEF(object):
             raise BEASTDefSyntaxError("Annunciating without PV")
 
         self._pv.set_annunciating(annunciate)
+
+        return self._pv
+
+
+    @beastdef_interface
+    def filter(self, expression):
+        beastdef_assert_instance(isinstance(expression, str) or isinstance(expression, unicode), "expression", str)
+
+        if self._pv is None:
+            raise BEASTDefSyntaxError("Filter without PV")
+
+        self._pv.set_filter(expression)
 
         return self._pv
 
