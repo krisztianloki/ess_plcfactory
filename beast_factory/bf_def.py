@@ -282,11 +282,13 @@ class BEAST_COMPONENT(BEAST_GDCA):
 
 
 class BEAST_PV(BEAST_GDCA):
-    def __init__(self, line, name, defaults):
+    def __init__(self, line, name, delay, count, defaults):
         super(BEAST_PV, self).__init__(line)
 
         self._name     = name
         self._desc     = None
+        self._delay    = delay
+        self._count    = count
 
         self._enabled      = defaults['enabled']
         self._latching     = defaults['latching']
@@ -306,6 +308,12 @@ class BEAST_PV(BEAST_GDCA):
         etree.SubElement(element, "enabled").text      = str(self._enabled).lower()
         etree.SubElement(element, "latching").text     = str(self._latching).lower()
         etree.SubElement(element, "annunciating").text = str(self._annunciating).lower()
+
+        if self._delay:
+            etree.SubElement(element, "delay").text = str(self._delay)
+
+        if self._count:
+            etree.SubElement(element, "count").text = str(self._count)
 
         return super(BEAST_PV, self).toxml(element, etree)
 
@@ -831,16 +839,24 @@ class BEAST_DEF(object):
 
 
     @beastdef_interface
-    def pv(self, name):
+    def pv(self, name, delay = 0, count = 0):
         beastdef_assert_instance(isinstance(name, str) or isinstance(name, unicode), "name", str)
+        beastdef_assert_instance(isinstance(delay, float) or isinstance(delay, int), "delay", float)
+        beastdef_assert_instance(isinstance(count, int), "count", int)
 
         if self._component is None:
             raise BEASTDefSyntaxError("PV ('{}') without component!".format(name))
 
+        if delay < 0:
+            raise BEASTDefSyntaxError("'delay' must be greater (or equal) than 0")
+
+        if count < 0:
+            raise BEASTDefSyntaxError("'count' must be greater (or equal) than 0")
+
         if self._devicename:
             name = "{}:{}".format(self._devicename, name)
 
-        var = BEAST_PV(self._line, name, defaults = self._defaults)
+        var = BEAST_PV(self._line, name, delay, count, defaults = self._defaults)
         self._pv = var
         self._component.add_pv(var)
 

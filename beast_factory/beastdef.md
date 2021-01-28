@@ -61,7 +61,7 @@ After a component is defined it can be populated with alarms. An alarm definitio
 
 ### PV
 
-**`pv("<name>")`**
+**`pv("<name>"[, delay=<delay>[, count=<count>]])`**
 
 ### Description
 
