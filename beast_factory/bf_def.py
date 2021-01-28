@@ -945,7 +945,7 @@ class BEAST_DEF(object):
 
     @alarmtree_interface
     @beastdef_interface
-    def automated_action(self, title, details, delay):
+    def automated_action(self, title, details, delay = 0):
         self._check_title_details("Automated action", title, details)
         beastdef_assert_instance(isinstance(delay, int), "delay", int)
 

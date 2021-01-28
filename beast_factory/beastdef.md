@@ -93,7 +93,7 @@ After a component is defined it can be populated with alarms. An alarm definitio
 
 ### Automated action
 
-**`automated_action("<type>", "<action>", <delay>)`**
+**`automated_action("<type>", "<action>"[, <delay>])`**
 
 **NOTE: delay must be an integer (in seconds) not a string.**
 
