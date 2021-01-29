@@ -10,10 +10,11 @@ __copyright__  = "Copyright 2019, European Spallation Source, Lund"
 __license__    = "GPLv3"
 
 
-from collections import OrderedDict
 import codecs
-import sys
+from collections import OrderedDict
 import datetime
+import re
+import sys
 
 try:
     import helpers
@@ -452,7 +453,22 @@ def beastdef_interface(func):
 
 
 
+class Incl2Comp(object):
+    def __init__(self, component, filter_expr = None):
+        super(Incl2Comp, self).__init__()
+
+        self.component = component
+        if filter_expr is None:
+            self.filter = BEAST_DEF.DEF_INCLUDE_FILTER_EXPR
+        else:
+            self.filter = filter_expr
+
+
+
 class BEAST_DEF(object):
+    DEF_INCLUDE_FILTER_EXPR = re.compile(".*")
+
+
     def __init__(self, merge_with = None):
         if merge_with is not None:
             if not isinstance(merge_with, BEAST_DEF):
@@ -634,8 +650,6 @@ class BEAST_DEF(object):
 
 
     def parse(self, def_file, device = None):
-        self._reset()
-
         if device is not None:
             devicename = device.name()
             devicetype = device.deviceType()
@@ -644,23 +658,35 @@ class BEAST_DEF(object):
             devicetype = None
 
         try:
-            self._component = self._device_includes[devicename]
-            self._including = True
+            comps = self._device_includes[devicename]
+            including = True
         except KeyError:
             try:
-                self._component = self._devtype_includes[devicetype]
-                self._including = True
+                comps = self._devtype_includes[devicetype]
+                including = True
             except KeyError:
-                pass
+                comps = [ Incl2Comp(None) ]
+                including = False
 
         if def_file.endswith('.alarms-template'):
             if device is None:
                 raise BEASTDefSyntaxError(".alarms-template cannot be used in standalone mode")
-            self._devicename = devicename
         elif self._including:
             raise BEASTDefSyntaxError("Only .alarms-template definitions can be included")
+        else:
+            devicename = None
 
-        self._read_def(def_file)
+        for comp in comps:
+            if devicename and comp.filter.match(devicename) is None:
+                continue
+
+            self._reset()
+
+            self._component = comp.component
+            self._including = including
+            self._devicename = devicename
+
+            self._read_def(def_file)
 
 
     def fromxml(self, xml_file, config):
@@ -806,6 +832,19 @@ class BEAST_DEF(object):
         return var
 
 
+    def __incl(self, incl_dict, key, filter_expr = None):
+        if filter_expr is None:
+            c_expr = self.DEF_INCLUDE_FILTER_EXPR
+        else:
+            c_expr = re.compile(filter_expr)
+            if c_expr is None:
+                raise BEASTDefSyntaxError("Cannot compile regular expression: '{}'".format(filter_expr))
+
+        l = incl_dict.get(key, [])
+        l.append(Incl2Comp(self._component, c_expr))
+        incl_dict[key] = l
+
+
     @alarmtree_interface
     @beastdef_interface
     def include(self, devicename):
@@ -815,27 +854,21 @@ class BEAST_DEF(object):
         if self._component is None:
             raise BEASTDefSyntaxError("Cannot do includes outside of a component")
 
-        if devicename in self._device_includes:
-            raise BEASTDefSyntaxError("'{}' is already included in '{}'".format(devicename, self._device_includes[devicename].strpath(True)))
-
-        self._device_includes[devicename] = self._component
+        self.__incl(self._device_includes, devicename)
 
         return BEAST_BASE(self._line)
 
 
     @alarmtree_interface
     @beastdef_interface
-    def include_type(self, devicetype):
+    def include_type(self, devicetype, filter = None):
         if not self._alarm_tree:
             raise BEASTDefSyntaxError("Function is only valid during alarm tree definition")
 
         if self._component is None:
             raise BEASTDefSyntaxError("Cannot do includes outside of a component")
 
-        if devicetype in self._devtype_includes:
-            raise BEASTDefSyntaxError("'{}' is already included in '{}'".format(devicetype, self._devtype_includes[devicetype].strpath(True)))
-
-        self._devtype_includes[devicetype] = self._component
+        self.__incl(self._devtype_includes, devicetype, filter)
 
         return BEAST_BASE(self._line)
 
