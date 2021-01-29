@@ -286,7 +286,7 @@ class BEASTFactory(object):
 
         extra_alarms = list()
         def check_pvs(item):
-            for component in item.components().itervalues():
+            for component in item.components().values():
                 for pv in component.pvs():
                     try:
                         self._def_alarms.remove(pv.name())
@@ -308,13 +308,20 @@ class BEASTFactory(object):
             print(self._def_alarms)
 
 
+    def _toxml(self, beast_def):
+        branch = git.get_current_branch()
+        repo = helpers.url_strip_user(git.get_origin())
+        beast_xml = beast_def.toxml(etree = self.etree, repo = repo, branch = branch, commit = git.get_local_ref(branch))
+
+        return beast_xml
+
+
     def processIOCs(self, iocs):
         beast_def = None
         for iocName in iocs:
             beast_def = self._processIOC(iocName, beast_def)
 
-        branch = git.get_current_branch()
-        beast_xml = beast_def.toxml(etree = self.etree, branch = branch, commit = git.get_local_ref(branch))
+        beast_xml = self._toxml(beast_def)
 
         if len(iocs) == 1:
             self._config = beast_xml.getroot().attrib["name"]
@@ -340,8 +347,7 @@ class BEASTFactory(object):
         for xml in xmls:
             beast_def = self._processXML(xml, beast_def)
 
-        branch = git.get_current_branch()
-        beast_xml = beast_def.toxml(etree = self.etree, branch = branch, commit = git.get_local_ref(branch))
+        beast_xml = self._toxml(beast_def)
 
         self.writeXml(beast_xml)
 
@@ -352,8 +358,7 @@ class BEASTFactory(object):
             # parse alarm list
             beast_def.parse(alarms)
 
-        branch = git.get_current_branch()
-        beast_xml = beast_def.toxml(etree = self.etree, branch = branch, commit = git.get_local_ref(branch))
+        beast_xml = self._toxml(beast_def)
 
         self.writeXml(beast_xml)
 
