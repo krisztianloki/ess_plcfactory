@@ -53,6 +53,9 @@ Exactly one of them is required and allowed
 *   **--merge-xmls**
     *   \[**REQUIRED**\]
     *   Merges alarm configuration xml files to one. `--config` is mandatory.
+*   **--from-xml**
+    *   \[**REQUIRED**\]
+    *   Creates .alarm-tree and .alarms file from alarm configuration xml.
 *   **--alarm-tree <alarm_tree_file>**
     *   \[**REQUIRED**\]
     *   The filename of the .alarm-tree file

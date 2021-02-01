@@ -149,6 +149,8 @@ class AlarmFactory(object):
             self.processIOCs(args.iocs)
         elif args.merge_xmls:
             self.mergeXMLs(args.files)
+        elif args.from_xml:
+            self.fromXML(args.files)
         elif args.alarm_tree:
             self.processStandalone(args.alarm_tree, args.files)
         else:
@@ -186,6 +188,13 @@ class AlarmFactory(object):
                         dest     = 'alarm_tree',
                         metavar  = 'Alarm-Tree',
                         help     = 'The alarm structure to use'
+                       )
+
+        ix.add_argument(
+                        '--from-xml',
+                        dest     = 'from_xml',
+                        action   = 'store_true',
+                        help     = 'Create an .alarm-tree and an .alarms file from an alarm configuration xml'
                        )
 
 
@@ -363,6 +372,19 @@ class AlarmFactory(object):
         beast_xml = self._toxml(beast_def)
 
         self.writeXml(beast_xml)
+
+
+    def fromXML(self, xmls):
+        if len(xmls) > 1:
+            raise AlarmArgumentError("More than one xml file is specified")
+
+        beast_def = None
+        for xml in xmls:
+            beast_def = self._processXML(xml, beast_def)
+
+        comment_keywords = self._comment_keywords()
+        beast_def.generate_alarm_tree_file(self._config + ".alarm-tree", **comment_keywords)
+        beast_def.generate_alarms_file(self._config + ".alarms", **comment_keywords)
 
 
     def processStandalone(self, alarm_tree, alarms_list):
