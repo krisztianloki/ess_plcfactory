@@ -3,7 +3,7 @@
 from __future__ import print_function
 from __future__ import absolute_import
 
-""" BEAST Factory: Entry point """
+""" Alarm Factory: Entry point """
 
 __author__     = "Krisztian Loki"
 __copyright__  = "Copyright 2019, European Spallation Source, Lund"
@@ -24,7 +24,7 @@ import os
 import time
 
 
-# BEAST Factory modules
+# Alarm Factory modules
 from   beast_factory.bf_def import BEAST_DEF, BEASTDefException
 from   ccdb   import CC
 import helpers
@@ -37,12 +37,12 @@ from tf_ifdef import IF_DEF
 
 
 
-class BEASTFactoryException(Exception):
+class AlarmFactoryException(Exception):
     status = 1
 
 
 
-class BEASTFactory(object):
+class AlarmFactory(object):
     etree_options = { 'encoding'        : 'utf-8',
                       'xml_declaration' : True }
 
@@ -68,13 +68,15 @@ class BEASTFactory(object):
 
 
     def __init__(self, argv):
-        if git.check_for_updates(data_dir = helpers.create_data_dir(__product__), product = "BEAST Factory"):
+        super(AlarmFactory, self).__init__()
+
+        if git.check_for_updates(data_dir = helpers.create_data_dir(__product__), product = "Alarm Factory"):
             return
 
         self._output_dir = "output"
 
         # get the number of --ioc arguments
-        parser = PLCFArgumentParser(add_help = False)
+        parser = AlarmArgumentParser(add_help = False)
 
         self.__add_source_arg(parser, False)
 
@@ -83,7 +85,7 @@ class BEASTFactory(object):
         self._standalone = args.iocs is None
 
         # build the final argument list
-        parser         = PLCFArgumentParser()
+        parser         = AlarmArgumentParser()
 
         self.__add_source_arg(parser)
 
@@ -93,7 +95,7 @@ class BEASTFactory(object):
 
         parser.add_argument(
                             '--config',
-                            help     = 'BEAST config entry',
+                            help     = 'Alarm config entry',
                             default  = None,
                             required = is_config_mandatory(args.iocs) or is_config_mandatory(args.merge_xmls)
                            )
@@ -149,6 +151,8 @@ class BEASTFactory(object):
             self.mergeXMLs(args.files)
         elif args.alarm_tree:
             self.processStandalone(args.alarm_tree, args.files)
+        else:
+            raise AlarmArgumentError("Don't know what to do")
 
         if not self._standalone and not args.clear_ccdb_cache:
             print("\nAlarms definitions were reused\n")
@@ -197,7 +201,7 @@ class BEASTFactory(object):
     def _downloadAlarmTree(self, ioc):
         dArtifact = ioc.downloadExternalLink("BEAST TREE", ".alarm-tree", filetype = "Alarm tree", device_tag = self._device_tag)
         if dArtifact is None:
-            raise BEASTFactoryException("No alarm tree found")
+            raise AlarmFactoryException("No alarm tree found")
 
         alarm_tree = dArtifact.saved_as()
         print("Parsing {} of {}".format(alarm_tree, ioc.name()))
@@ -303,15 +307,24 @@ class BEASTFactory(object):
             print(extra_alarms)
 
         if self._def_alarms:
-            print("""The following {} Interface Definition alarms are not added to BEAST:
+            print("""The following {} Interface Definition alarms are not added to the Alarm Configuration:
 """.format(len(self._def_alarms)))
             print(self._def_alarms)
 
 
-    def _toxml(self, beast_def):
+    def _comment_keywords(self):
         branch = git.get_current_branch()
         repo = helpers.url_strip_user(git.get_origin())
-        beast_xml = beast_def.toxml(etree = self.etree, repo = repo, branch = branch, commit = git.get_local_ref(branch))
+        commit = git.get_local_ref(branch)
+
+        return { 'branch' : branch,
+                 'repo'   : repo,
+                 'commit' : commit,
+               }
+
+
+    def _toxml(self, beast_def):
+        beast_xml = beast_def.toxml(etree = self.etree, **self._comment_keywords())
 
         return beast_xml
 
@@ -386,32 +399,32 @@ def banner():
 
 
 
-class PLCFArgumentError(BEASTFactoryException):
+class AlarmArgumentError(AlarmFactoryException):
     def __init__(self, status, message = None):
         if message is None:
             if isinstance(status, str):
                 message = status
                 status = 1
 
-        super(PLCFArgumentError, self).__init__(message)
+        super(AlarmArgumentError, self).__init__(message)
         self.status  = status
 
 
-class PLCFArgumentParser(argparse.ArgumentParser):
+class AlarmArgumentParser(argparse.ArgumentParser):
     def __init__(self, **keyword_params):
         argparse.ArgumentParser.__init__(self, **keyword_params)
 
 
     def exit(self, status = 0, message = None):
-        raise PLCFArgumentError(status, message)
+        raise AlarmArgumentError(status, message)
 
 
 
 
 if __name__ == "__main__":
     try:
-        BEASTFactory(sys.argv[1:])
-    except (BEASTFactoryException, BEASTDefException) as e:
+        AlarmFactory(sys.argv[1:])
+    except (AlarmFactoryException, BEASTDefException) as e:
         if e.status:
             print(e, file = sys.stderr)
         try:
