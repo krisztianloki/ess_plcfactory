@@ -1,5 +1,5 @@
 # Alarm Factory
-(c) 2019-2021 European Spallation Source, Lund
+(c) 2019-2021 European Spallation Source, Lund\
 Author: Krisztian Loki
 
 Alarm Factory is intended to simplify alarm service xml file creation.
@@ -33,10 +33,14 @@ Generates alarm service configuration xml from alarm definition files that are a
 
 ### Working with already existing alarm service configuration xmls
 
-Merges already existing alarm service configuration xml files into one xml. The output file is written to the current directory.
+*   Merges already existing alarm service configuration xml files into one xml. The output file is written to the current directory.
+*   Converts an already existing alarm service configuration xml file into an .alarm-tree and an .alarms file. The output is written to the current directory, the filenames match the config entry
 
 ###### Merge alarm configuration xml files
 `python beastfactory.py --merge-xmls --config "Merged config" first.xml second.xml`
+
+###### Convert alarm configuration xml files
+`python beastfactory.py --from-xml alarm-config.xml`
 
 
 ## Usage
