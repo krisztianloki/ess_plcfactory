@@ -10,11 +10,13 @@ __copyright__  = "Copyright 2019, European Spallation Source, Lund"
 __license__    = "GPLv3"
 
 
-import codecs
 from collections import OrderedDict
 import datetime
+import json
 import re
 import sys
+if sys.version_info.major < 3:
+    from io import open
 
 try:
     import helpers
@@ -295,17 +297,17 @@ class BEAST_COMPONENT(BEAST_GDCA):
 
 
     def toalarmtree(self, f, level = 0):
-        print("""{}component("{}")""".format('\t' * level, self._name), file = f)
+        print(u"""{}component({})""".format('\t' * level, quote_escape(self._name)), file = f)
 
         for comp in self._children.values():
             comp.toalarmtree(f, level + 1)
 
-        print("""{}end_component()
+        print(u"""{}end_component()
 """.format('\t' * level), file = f)
 
 
     def toalarms(self, f, level = 0):
-        print("""{}component("{}")""".format('\t' * level, self._name), file = f)
+        print(u"""{}component({})""".format('\t' * level, quote_escape(self._name)), file = f)
 
         super(BEAST_COMPONENT, self).toalarms(f, level + 1)
 
@@ -315,7 +317,7 @@ class BEAST_COMPONENT(BEAST_GDCA):
         for comp in self._children.values():
             comp.toalarms(f, level + 1)
 
-        print("""{}end_component()
+        print(u"""{}end_component()
 """.format('\t' * level), file = f)
 
 
@@ -362,24 +364,24 @@ class BEAST_PV(BEAST_GDCA):
 
 
     def toalarms(self, f, level = 0):
-        print("""{lvl}pv("{name}{delay}{count}")""".format(lvl   = '\t' * level,
-                                                           name  = self._name,
-                                                           delay = ", delay = {}".format(self._delay) if self._delay else "",
-                                                           count = ", count = {}".format(self._count) if self._count else ""), file = f)
+        print(u"""{lvl}pv("{name}"{delay}{count})""".format(lvl   = '\t' * level,
+                                                            name  = self._name,
+                                                            delay = ", delay = {}".format(self._delay) if self._delay else "",
+                                                            count = ", count = {}".format(self._count) if self._count else ""), file = f)
 
         level += 1
         if self._desc:
-            print("""{}description("{}")""".format('\t' * level, self._desc), file = f)
+            print(u"""{}description({})""".format('\t' * level, quote_escape(self._desc)), file = f)
         if not self._enabled:
-            print("""{}disable()""".format('\t' * level), file = f)
-        print("""{}latching({})""".format('\t' * level, self._latching), file = f)
-        print("""{}annunciating({})""".format('\t' * level, self._annunciating), file = f)
+            print(u"""{}disable()""".format('\t' * level), file = f)
+        print(u"""{}latching({})""".format('\t' * level, self._latching), file = f)
+        print(u"""{}annunciating({})""".format('\t' * level, self._annunciating), file = f)
         if self._filter:
-            print("""{}filter("{}")""".format('\t' * level, self._filter), file = f)
+            print(u"""{}filter({})""".format('\t' * level, quote_escape(self._filter)), file = f)
 
         super(BEAST_PV, self).toalarms(f, level)
 
-        print("""""", file = f)
+        print(u"""""", file = f)
 
 
     def name(self):
@@ -391,7 +393,7 @@ class BEAST_PV(BEAST_GDCA):
 
 
     def add_description(self, desc):
-        self._desc = desc
+        self._desc = tounicode(desc)
 
 
     def disable(self, val):
@@ -434,8 +436,8 @@ class BEAST_TitleDetailsDelay(BEAST_BASE):
         super(BEAST_TitleDetailsDelay, self).__init__(line)
 
         self._tag     = tag
-        self._title   = title
-        self._details = xml_descape(details)
+        self._title   = tounicode(title)
+        self._details = tounicode(xml_descape(details))
         self._delay   = delay
 
 
@@ -452,7 +454,7 @@ class BEAST_TitleDetailsDelay(BEAST_BASE):
 
 
     def toalarms(self, f, level):
-        print("""{}{}("{}", "{}"{})""".format('\t' * level, self._tag, self._title, self._details, ", {}".format(self._delay) if self._delay else ""), file = f)
+        print(u"""{}{}({}, {}{})""".format('\t' * level, self._tag, quote_escape(self._title), quote_escape(self._details), ", {}".format(self._delay) if self._delay else ""), file = f)
 
 
 
@@ -497,8 +499,12 @@ def python3_unicodeargs(args):
 try:
     isinstance('h', unicode)
     unicodeargs = python2_unicodeargs
+    tounicode   = helpers.tounicode
+    quote_escape = lambda x: json.dumps(x, ensure_ascii = False)
 except NameError:
     unicodeargs = python3_unicodeargs
+    tounicode   = python3_unicodeargs
+    quote_escape = lambda x: json.dumps(x, ensure_ascii = False)
 
 
 def alarmtree_interface(func):
@@ -690,7 +696,7 @@ class BEAST_DEF(object):
 
 
     def _read_def(self, def_file):
-        with codecs.open(def_file, 'r', encoding = 'utf-8') as defs:
+        with open(def_file, 'r', encoding = 'utf-8') as defs:
             multiline    = None
             multilinenum = 1
             linenum      = 1
@@ -823,8 +829,8 @@ class BEAST_DEF(object):
 
 
     def generate_alarm_tree_file(self, tree, repo, branch, commit):
-        with open(tree, "wt") as f:
-            print("""
+        with open(tree, "wt", encoding = "utf-8") as f:
+            print(u"""
 #  Alarm tree generated by AlarmFactory from an xml configuration using the following arguments:
 #  {args}
 #
@@ -839,18 +845,18 @@ class BEAST_DEF(object):
            date   = self._now()), file = f)
 
             # Config
-            print("""
-config("{}")
-""".format(self._config), file = f)
+            print(u"""
+config({})
+""".format(quote_escape(self._config)), file = f)
 
             # Titles
             t = False
             for (name, title) in self._titles.items():
                 t = True
-                print("""define_title("{}", "{}")""".format(name, title), file = f)
+                print(u"""define_title({}, {})""".format(quote_escape(name), quote_escape(title)), file = f)
 
             if t:
-                print("""""", file = f)
+                print(u"""""", file = f)
 
             # Components
             for component in self._root_components.values():
@@ -858,8 +864,8 @@ config("{}")
 
 
     def generate_alarms_file(self, alarms, repo, branch, commit):
-        with open(alarms, "wt") as f:
-            print("""
+        with open(alarms, "wt", encoding = "utf-8") as f:
+            print(u"""
 #  .alarms file generated by AlarmFactory from an xml configuration using the following arguments:
 #  {args}
 #
@@ -928,7 +934,7 @@ config("{}")
         beastdef_assert_instance(isinstance(name, str) or isinstance(name, unicode), "name", str)
         beastdef_assert_instance(isinstance(title, str) or isinstance(title, unicode), "title", str)
 
-        self._titles[name] = xml_descape(title)
+        self._titles[name] = tounicode(xml_descape(title))
 
         return BEAST_BASE(self._line)
 
@@ -946,6 +952,8 @@ config("{}")
 
         if self._including:
             raise BEASTDefSyntaxError("Included definitions cannot (yet?) have components")
+
+        name = tounicode(name)
 
         self._pv = None
 
@@ -1056,7 +1064,7 @@ config("{}")
         if self._pv is None:
             raise BEASTDefSyntaxError("Description without PV")
 
-        self._pv.add_description(xml_descape(desc))
+        self._pv.add_description(tounicode(xml_descape(desc)))
 
         return self._pv
 
