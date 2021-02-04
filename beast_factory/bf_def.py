@@ -326,8 +326,8 @@ class BEAST_PV(BEAST_GDCA):
 
         self._name     = name
         self._desc     = None
-        self._delay    = delay
-        self._count    = count
+        self.set_delay(delay)
+        self.set_count(count)
 
         self._enabled      = defaults['enabled']
         self._latching     = defaults['latching']
@@ -408,6 +408,24 @@ class BEAST_PV(BEAST_GDCA):
 
     def set_filter(self, expression):
         self._filter = expression
+
+
+    def set_delay(self, delay):
+        beastdef_assert_instance(isinstance(delay, float) or isinstance(delay, int), "delay", float)
+
+        if delay < 0:
+            raise BEASTDefSyntaxError("'delay' must be greater (or equal) than 0")
+
+        self._delay = delay
+
+
+    def set_count(self, count):
+        beastdef_assert_instance(isinstance(count, int), "count", int)
+
+        if count < 0:
+            raise BEASTDefSyntaxError("'count' must be greater (or equal) than 0")
+
+        self._count = count
 
 
 
@@ -1017,17 +1035,9 @@ config("{}")
     @beastdef_interface
     def pv(self, name, delay = 0, count = 0):
         beastdef_assert_instance(isinstance(name, str) or isinstance(name, unicode), "name", str)
-        beastdef_assert_instance(isinstance(delay, float) or isinstance(delay, int), "delay", float)
-        beastdef_assert_instance(isinstance(count, int), "count", int)
 
         if self._component is None:
             raise BEASTDefSyntaxError("PV ('{}') without component!".format(name))
-
-        if delay < 0:
-            raise BEASTDefSyntaxError("'delay' must be greater (or equal) than 0")
-
-        if count < 0:
-            raise BEASTDefSyntaxError("'count' must be greater (or equal) than 0")
 
         if self._devicename:
             name = "{}:{}".format(self._devicename, name)

@@ -38,10 +38,14 @@ class ALARM_SAX_HANDLER(ContentHandler):
 
     def startDocument(self):
         self._beast_def._alarm_tree = True
+        self._pv = None
+        self._parent = None
 
 
     def endDocument(self):
         self._beast_def._alarm_tree = False
+        self._pv = None
+        self._parent = None
 
 
     def startElement(self, name, attrs):
@@ -52,14 +56,17 @@ class ALARM_SAX_HANDLER(ContentHandler):
         elif name == 'component':
             self._beast_def.xml_component(attrs['name'])
         elif name == 'pv':
-            self._beast_def.pv(attrs['name'])
+            self._parent = ["pv"]
+            self._pv = self._beast_def.pv(attrs['name'])._var
         elif name == 'description' or name == 'enabled' or name == 'latching' or name == 'annunciating':
             pass
         elif name == 'guidance' or name == 'display' or name == 'command' or name == 'automated_action':
             self._title = None
             self._details = None
             self._delay = None
-        elif name == 'title' or name == 'details' or name == 'delay':
+            if name == 'automated_action':
+                self._parent.append(name)
+        elif name == 'title' or name == 'details' or name == 'delay' or name == 'count':
             pass
         else:
             raise AlarmSaxException("Unhandled opening of xml tag: {}".format(name), linenum = self._locator.getLineNumber())
@@ -94,16 +101,33 @@ class ALARM_SAX_HANDLER(ContentHandler):
                 # BEAST_DEF expects a number not a string
                 self._delay = int(self._text)
             except:
+                # Maybe it is a float
+                try:
+                    self._delay = float(self._text)
+                except:
+                    # Okay, not a number. Let BEAST_DEF handle it
+                    self._delay = self._text
+            if self._pv is not None and self._parent[-1] == 'pv':
+                self._pv.set_delay(self._delay)
+        elif name == 'count':
+            try:
+                # BEAST_DEF expects a number not a string
+                self._count = int(self._text)
+            except:
                 # Okay, not a number. Let BEAST_DEF handle it
-                self._delay = self._text
+                self._count = self._text
+            if self._pv is not None and self._parent[-1] == 'pv':
+                self._pv.set_count(self._count)
         elif name == 'guidance':
             self._beast_def.guidance(self._title, self._details)
         elif name == 'display':
             self._beast_def.display(self._title, self._details)
         elif name == 'automated_action':
             self._beast_def.automated_action(self._title, self._details, self._delay)
+            self._parent.pop()
         elif name == 'pv':
-            pass
+            self._pv = None
+            self._parent = None
         elif name == 'config':
             pass
         else:
