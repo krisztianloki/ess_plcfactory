@@ -26,7 +26,7 @@ class EPICS_BASE(PRINTER):
     DISABLE_TEMPLATE = """
 	field(DISS, "INVALID")
 	field(DISV, "0")
-	field(SDIS, "[PLCF#ROOT_INSTALLATION_SLOT]:PLCHashCorrectR{CP}")"""
+	field(SDIS, "[PLCF#ROOT_INSTALLATION_SLOT]:PLCHashCorrectR")"""
 
     INPV_TEMPLATE  = """record({recordtype}, "{pv_name}")
 {{{alias}
@@ -44,7 +44,16 @@ class EPICS_BASE(PRINTER):
 }}
 
 """
-    TEST_PV_TEMPLATE = """record({recordtype}, "{pv_name}")
+
+    TEST_INPV_TEMPLATE = """record({recordtype}, "{pv_name}")
+{{{alias}
+	field(SCAN, "Event")
+	field(EVNT, "{dtyp}"){pv_extra}
+}}
+
+"""
+
+    TEST_OUTPV_TEMPLATE = """record({recordtype}, "{pv_name}")
 {{{alias}{pv_extra}
 }}
 
@@ -155,7 +164,7 @@ record(longin, "{root_inst_slot}:iTwo")
         if sdis:
             return self.INDISABLE_TEMPLATE
         if test:
-            return self.TEST_PV_TEMPLATE
+            return self.TEST_INPV_TEMPLATE
         return self.INPV_TEMPLATE
 
 
@@ -163,7 +172,7 @@ record(longin, "{root_inst_slot}:iTwo")
         if sdis:
             return self.OUTDISABLE_TEMPLATE
         if test:
-            return self.TEST_PV_TEMPLATE
+            return self.TEST_OUTPV_TEMPLATE
         return self.OUTPV_TEMPLATE
 
 
@@ -779,6 +788,14 @@ record(bi, "{root_inst_slot}:ConnectedR")
 	field(ONAM,	"Connected")
 	field(ZNAM,	"Disconnected")
 	field(ZSV,      "MAJOR")
+}}
+record(event, "{root_inst_slot}:iEvent")
+{{
+	field(DESC,	"Generate S7plc event")
+	field(SCAN,	".2 second")
+	field(VAL,	"S7plc")
+	field(DISV,	"0")
+	field(SDIS,	"{root_inst_slot}:S7ConnectedR")
 }}
 record(bi, "{root_inst_slot}:PLCHashCorrectR")
 {{
