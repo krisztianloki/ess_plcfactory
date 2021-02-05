@@ -562,9 +562,12 @@ class BEAST_DEF(object):
                 raise BEASTDefInternalError("Cannot merge with non-BEAST_DEF")
 
             self._root_components = merge_with._root_components
+            self._all_pvs = merge_with._all_pvs
         else:
             # Root components
             self._root_components = OrderedDict()
+            # All PVs
+            self._all_pvs = OrderedDict()
 
         # Not defining alarm tree
         self._alarm_tree = False
@@ -1050,9 +1053,13 @@ config({})
         if self._devicename:
             name = "{}:{}".format(self._devicename, name)
 
+        if name in self._all_pvs:
+            raise BEASTDefSyntaxError("Cannot add PV ('{}') to '{}' because it is already defined here: '{}'".format(name, self._component.strpath(True), self._all_pvs[name]))
+
         var = BEAST_PV(self._line, name, delay, count, defaults = self._defaults)
         self._pv = var
         self._component.add_pv(var)
+        self._all_pvs[name] = self._component.strpath(True)
 
         return var
 
