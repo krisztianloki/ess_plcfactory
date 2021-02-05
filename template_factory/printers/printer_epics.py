@@ -906,6 +906,7 @@ record(calcout, "{root_inst_slot}:iRuinHash")
 class EPICS_OPC(EPICS_BASE):
     def __init__(self):
         super(EPICS_OPC, self).__init__()
+        self.DISABLE_TEMPLATE = self.INDISABLE_TEMPLATE
 
 
     @staticmethod
