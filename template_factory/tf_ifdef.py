@@ -812,7 +812,7 @@ class IF_DEF(object):
         self._defaults              = dict()
         self._macros                = list()
 
-        self._features              = [ "STABLE-HASH", "OPC", "OPC-UA", "MULTILINE" ]
+        self._features              = [ "STABLE-HASH", "OPC", "OPC-UA", "MULTILINE", "VALIDITY-PV" ]
         self._experimental_features = []
 
         if self._experimental:
@@ -1080,9 +1080,11 @@ class IF_DEF(object):
 
 
     def status_interfaces(self):
-        self._exception_if_active()
+        block = self.status_block()
 
-        return self._status_block().interfaces()
+        if block:
+            return block.interfaces()
+        return []
 
 
     def command_block(self):
@@ -1092,9 +1094,11 @@ class IF_DEF(object):
 
 
     def command_interfaces(self):
-        self._exception_if_active()
+        block = self.command_block()
 
-        return self._cmd_block().interfaces()
+        if block:
+            return block.interfaces()
+        return []
 
 
     def parameter_block(self):
@@ -1104,9 +1108,11 @@ class IF_DEF(object):
 
 
     def parameter_interfaces(self):
-        self._exception_if_active()
+        block = self.parameter_block()
 
-        return self._param_block().interfaces()
+        if block:
+            return block.interfaces()
+        return []
 
 
     def warnings(self):
@@ -1150,6 +1156,17 @@ class IF_DEF(object):
             return []
 
         return filter(lambda a: isinstance(a, ALARM), self._status_block().interfaces())
+
+
+    def has_pv(self, pv_name):
+        self._exception_if_active()
+
+        for interfaces in self.status_interfaces(), self.command_interfaces(), self.parameter_interfaces():
+            f = list(filter(lambda pv: isinstance(pv, BASE_TYPE) and pv.pv_name() == pv_name, interfaces))
+            if f:
+                return f[0]
+
+        return None
 
 
     def macros(self):

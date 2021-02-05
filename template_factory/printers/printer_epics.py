@@ -9,6 +9,8 @@ __copyright__  = "Copyright 2017, European Spallation Source, Lund"
 __license__    = "GPLv3"
 
 
+import re
+
 from . import PRINTER
 from tf_ifdef import IfDefInternalError, SOURCE, VERBATIM, BLOCK, CMD_BLOCK, STATUS_BLOCK, BASE_TYPE, ANALOG_LIMIT
 
@@ -23,10 +25,12 @@ def printer():
 
 
 class EPICS_BASE(PRINTER):
+    DISABLE_PV = "[PLCF#ROOT_INSTALLATION_SLOT]:PLCHashCorrectR"
+
     DISABLE_TEMPLATE = """
 	field(DISS, "INVALID")
 	field(DISV, "0")
-	field(SDIS, "[PLCF#ROOT_INSTALLATION_SLOT]:PLCHashCorrectR")"""
+	field(SDIS, "{DISABLE_PV}")"""
 
     INPV_TEMPLATE  = """record({recordtype}, "{pv_name}")
 {{{alias}
@@ -73,8 +77,13 @@ class EPICS_BASE(PRINTER):
 
     def __init__(self, test = False):
         super(EPICS_BASE, self).__init__(comments = True, show_origin = True, preserve_empty_lines = True)
-        self.INDISABLE_TEMPLATE = self.DISABLE_TEMPLATE.format(CP = " CP" if test else "")
-        self.OUTDISABLE_TEMPLATE = self.DISABLE_TEMPLATE.format(CP = "")
+        self.DEFAULT_INDISABLE_TEMPLATE = self.DISABLE_TEMPLATE.format(DISABLE_PV = self.DISABLE_PV)
+        self.INDISABLE_TEMPLATE = self.DISABLE_TEMPLATE
+        self.OUTDISABLE_TEMPLATE = self.DISABLE_TEMPLATE.format(DISABLE_PV = self.DISABLE_PV)
+
+        self._nonprop_re = re.compile('^([^:]*:[^:]*:)(.*)')
+        self._validity_pvs = dict()
+        self._validity_calc_names = dict()
 
         self._fo_name    = 'iUploadParamS{foc}-FO'
         self._params     = []
@@ -160,15 +169,23 @@ record(longin, "{root_inst_slot}:iTwo")
         return "#"
 
 
-    def inpv_template(self, test = False, sdis = False):
+    def inpv_template(self, test = False, sdis = False, VALIDITY_PV = None):
+        """
+            Called by STATUS_BLOCK.pv_template()
+        """
         if sdis:
-            return self.INDISABLE_TEMPLATE
+            if VALIDITY_PV is None:
+                return self.DEFAULT_INDISABLE_TEMPLATE
+            return self.INDISABLE_TEMPLATE.format(DISABLE_PV = VALIDITY_PV)
         if test:
             return self.TEST_INPV_TEMPLATE
         return self.INPV_TEMPLATE
 
 
     def outpv_template(self, test = False, sdis = False):
+        """
+            Called by CMD_BLOCK.pv_template() or PARAM_BLOCK.pv_template()
+        """
         if sdis:
             return self.OUTDISABLE_TEMPLATE
         if test:
@@ -242,9 +259,124 @@ record(ao, "{ilimiter}")
            ilimiter  = self.create_pv_name(self.inst_slot(self._if_def), "i" + var.pv_name()),
            limited   = self.create_pv_name(self.inst_slot(self._if_def), var.limit_pv()),
            field     = var.limit_field(),
-           disable_template = self.INDISABLE_TEMPLATE)
+           disable_template = self.DEFAULT_INDISABLE_TEMPLATE)
 
         self._append(limit, output)
+
+
+    def _get_validity_pv(self, var, output = None):
+        """
+        Return the name of the validity PV assigned to this PV or None if the default should be used
+        As a side effect it generates the necessary helper PVs
+        """
+        validity_pv = var.get_parameter('VALIDITY_PV', None)
+
+        # If this is the PV that some other PVs validity is based on then generate a calcout PV
+        if var.pv_name() in self._validity_pvs or var.pv_name() == validity_pv:
+            self._gen_validity_calc(var, output)
+            # Cannot depend on itself, VALIDITY_PV was most probably set with 'set_defaults()'
+            if var.pv_name() == validity_pv:
+                return None
+
+        if validity_pv is None:
+            return None
+
+        # Check if name was already expanded
+        if validity_pv in self._validity_pvs:
+            return self._validity_pvs[validity_pv]
+
+        # Check if validity PV is defined in this if_def
+        if self._if_def.has_pv(validity_pv):
+            # We have to expand the PV name
+            exp_validity_pv = self.create_pv_name(self.inst_slot(self._if_def), validity_pv)
+        else:
+            exp_validity_pv = validity_pv
+
+        validity_name = "{} MSS".format(self._gen_validity_name(exp_validity_pv))
+        self._validity_pvs[validity_pv] = validity_name
+        if exp_validity_pv != validity_pv:
+            self._validity_pvs[exp_validity_pv] = validity_name
+
+        return validity_name
+
+
+    def _gen_validity_calc(self, var, output = None):
+        if output is None:
+            output = self._output
+
+        vpv = self.create_pv_name(self.inst_slot(self._if_def), var)
+        helpernames = self._gen_validity_name(vpv, "vclc", "vinv")
+        print("Helpernames", helpernames)
+
+        vcond = var.get_parameter("VALIDITY_COND")
+        if vcond is True:
+            vcond = "A"
+        elif vcond is False:
+            vcond = "!A"
+
+        # Generate PV ("vclc") that calculates validity using the supplied condition expression
+        self._append("""
+record(calcout, "{vclc}")
+{{
+	field(DESC, "Calculate validity")
+	field(INPA, "{vpv} CP")
+	field(CALC, "{vcond}")
+	field(OUT,  "{vinv} PP")
+}}
+""".format(vclc  = helpernames[1],
+           vpv   = vpv,
+           vcond = vcond,
+           vinv  = helpernames[2]), output)
+
+        # Generate PV ("vinv") that becomes INVALID when "vclc" is False
+        self._append("""
+record(bi, "{vinv}")
+{{
+	field(DESC, "Becomes INVALID if zero")
+	field(ZSV,  "INVALID")
+	field(FLNK, "{vbi}")
+}}
+""".format(vinv = helpernames[2],
+           vbi  = helpernames[0]), output)
+
+        # Generate PV ("vbi") that aggregates DISABLE_PV and "vinv"
+        self._append("""
+record(calc, "{vbi}")
+{{
+	field(DESC, "Aggregate PLCHashCorrectR and vinv")
+	field(INPA, "{sdis} CP")
+	field(INPB, "{vinv} MSS")
+	field(CALC, "A")
+}}
+""".format(vbi  = helpernames[0],
+           sdis = self.DISABLE_PV,
+           vinv = helpernames[2]), output)
+
+
+    def _gen_validity_name(self, name, *suffixes):
+        """
+        Generate validity helper PV names
+        By default only the bi PV (that must be referenced in SDIS fields) is returned.
+        If suffixes is specified then a list consisting of the bi and suffixes will be returned
+        """
+        try:
+            return self._validity_calc_names[name]
+        except KeyError:
+            pass
+
+        rematch = self._nonprop_re.match(name)
+        ess_name = rematch.group(1)
+        prop = rematch.group(2)
+
+        vbi = "{}i{}vbi".format(ess_name, prop)
+
+        if len(suffixes) == 0:
+            return vbi
+
+        pvs = [ vbi ]
+        pvs.extend(map(lambda s: "{}i{}{}".format(ess_name, prop, s), suffixes))
+
+        return pvs
 
 
     def _gen_param_fanouts(self, param_list, inst_slot, output, footer = False):
@@ -403,7 +535,7 @@ class EPICS(EPICS_BASE):
 
 
     def _toEPICS(self, var):
-        pv_extra = var.pv_template(sdis = True) + var.build_pv_extra() + EPICS_BASE.PLC_INFO_FIELDS.format(plc_datablock = self._if_def.DEFAULT_DATABLOCK_NAME,
+        pv_extra = var.pv_template(sdis = True, VALIDITY_PV = self._get_validity_pv(var)) + var.build_pv_extra() + EPICS_BASE.PLC_INFO_FIELDS.format(plc_datablock = self._if_def.DEFAULT_DATABLOCK_NAME,
                                                                                                            plc_variable  = var.name())
         if var.is_parameter() or self._test:
             pv_extra = pv_extra + """
@@ -923,7 +1055,7 @@ record(calcout, "{root_inst_slot}:iRuinHash")
 class EPICS_OPC(EPICS_BASE):
     def __init__(self):
         super(EPICS_OPC, self).__init__()
-        self.DISABLE_TEMPLATE = self.INDISABLE_TEMPLATE
+        self.DISABLE_TEMPLATE = EPICS_OPC.DISABLE_TEMPLATE.format(DISABLE_PV = self.DISABLE_PV)
 
 
     @staticmethod
