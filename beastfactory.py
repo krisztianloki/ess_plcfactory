@@ -357,6 +357,8 @@ class AlarmFactory(object):
         # initialize beast definition parser
         beast_def = BEAST_DEF(merge_with)
 
+        print("Parsing xml '{}'...".format(xml))
+
         # parse XML
         self._config = beast_def.fromxml(xml, self._config)
         print()

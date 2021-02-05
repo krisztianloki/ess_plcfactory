@@ -51,7 +51,7 @@ Every alarm will have these attribute values unless they are explicitly override
 
 **`default_latching({True|False})`**
 
-The server default is **latching**
+**NOTE** despite the documentation states the the server default is **latching**, it does not seem to be the case. So it is best to always specify the default.
 
 ### Annunciating
 

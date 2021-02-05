@@ -347,7 +347,9 @@ class BEAST_PV(BEAST_GDCA):
         if self._desc is not None:
             etree.SubElement(element, "description").text = self._desc
 
-        etree.SubElement(element, "enabled").text      = str(self._enabled).lower()
+        # The alarm service default is enabled
+        if not self._enabled:
+            etree.SubElement(element, "enabled").text      = str(self._enabled).lower()
         etree.SubElement(element, "latching").text     = str(self._latching).lower()
         etree.SubElement(element, "annunciating").text = str(self._annunciating).lower()
 
@@ -574,7 +576,7 @@ class BEAST_DEF(object):
 
         # Defined titles to be used in guidance/display/command/automated_action
         # Default and titles defined in the alarm tree
-        self._global_titles   = dict()
+        self._global_titles   = OrderedDict()
         self._global_defaults = { 'enabled'      : True,
                                   'latching'     : True,
                                   'annunciating' : False,
@@ -655,7 +657,7 @@ class BEAST_DEF(object):
         self._including  = False
 
         # Initialize titles and defaults to the globally defined ones
-        self._titles     = dict(self._global_titles)
+        self._titles     = OrderedDict(self._global_titles)
         self._defaults   = dict(self._global_defaults)
 
 
