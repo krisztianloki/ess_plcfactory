@@ -1158,11 +1158,15 @@ class IF_DEF(object):
         return filter(lambda a: isinstance(a, ALARM), self._status_block().interfaces())
 
 
-    def has_pv(self, pv_name):
+    def has_pv(self, pv_name, prefix = None):
         self._exception_if_active()
 
+        if prefix is None:
+            check = lambda x: x.pv_name() == pv_name
+        else:
+            check = lambda x: x.pv_name() == pv_name or prefix + x.pv_name() == pv_name
         for interfaces in self.status_interfaces(), self.command_interfaces(), self.parameter_interfaces():
-            f = list(filter(lambda pv: isinstance(pv, BASE_TYPE) and pv.pv_name() == pv_name, interfaces))
+            f = list(filter(lambda pv: isinstance(pv, BASE_TYPE) and check(pv), interfaces))
             if f:
                 return f[0]
 

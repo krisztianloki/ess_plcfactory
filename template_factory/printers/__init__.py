@@ -21,7 +21,27 @@ except ImportError:
 
 
 class TemplatePrinterException(Exception):
-    pass
+    args_format = """
+{}
+"""
+
+    def __init__(self, *args, **keyword_params):
+        super(TemplatePrinterException, self).__init__(*args)
+        self.keyword_params = keyword_params
+
+
+    def __repr__(self):
+        try:
+            return """at line {linenum}:
+{line}{args}""".format(linenum = self.keyword_params["IFDEF_SOURCE"].sourcenum(),
+                       line    = self.keyword_params["IFDEF_SOURCE"].source(),
+                       args    = self.args_format.format(self.args[0]) if self.args[0] else "")
+        except KeyError:
+            return """{args}""".format(args    = self.args_format.format(self.args[0]) if self.args[0] else "")
+
+
+    def __str__(self):
+        return repr(self)
 
 
 

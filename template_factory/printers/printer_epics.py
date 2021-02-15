@@ -11,7 +11,7 @@ __license__    = "GPLv3"
 
 import re
 
-from . import PRINTER
+from . import PRINTER, TemplatePrinterException
 from tf_ifdef import IfDefInternalError, SOURCE, VERBATIM, BLOCK, CMD_BLOCK, STATUS_BLOCK, BASE_TYPE, ANALOG_LIMIT
 
 
@@ -84,6 +84,7 @@ class EPICS_BASE(PRINTER):
         self._nonprop_re = re.compile('^([^:]*:[^:]*:)(.*)')
         self._validity_pvs = dict()
         self._validity_calc_names = dict()
+        self._gen_validity_pvs = set()
 
         self._fo_name    = 'iUploadParamS{foc}-FO'
         self._params     = []
@@ -269,33 +270,39 @@ record(ao, "{ilimiter}")
         Return the name of the validity PV assigned to this PV or None if the default should be used
         As a side effect it generates the necessary helper PVs
         """
-        validity_pv = var.get_parameter('VALIDITY_PV', None)
+        validity_pv = self.expand(var.get_parameter("VALIDITY_PV", None))
+        validity_condition = var.get_parameter("VALIDITY_CONDITION", None)
+
+        exp_var_pv_name = self.create_pv_name(self.inst_slot(self._if_def), var)
 
         # If this is the PV that some other PVs validity is based on then generate a calcout PV
-        if var.pv_name() in self._validity_pvs or var.pv_name() == validity_pv:
+        # First check if the expanded PV name is already registered as a validity PV
+        # we have to fall back to checking if this PV has a VALIDITY_CONDITION keyword because it might be assigned to other PVs we haven't seen yet
+        # FIXME: This is not really optimal, since VALIDITY_CONDITION might be erroneously missing
+        if exp_var_pv_name in self._validity_pvs or validity_condition is not None:
             self._gen_validity_calc(var, output)
-            # Cannot depend on itself, VALIDITY_PV was most probably set with 'set_defaults()'
-            if var.pv_name() == validity_pv:
+
+            # Check (and ignore) if it depends on itself (happens when VALIDITY_PV is set with 'set_defaults()')
+            # First check if VALIDITY_PV is specified without a prefix
+            # fall back to checking if VALIDITY_PV was specified with a prefix
+            if var.pv_name() == validity_pv or exp_var_pv_name == validity_pv:
                 return None
 
         if validity_pv is None:
             return None
 
-        # Check if name was already expanded
+        # Check if name has the prefix by checking if it was already registered
         if validity_pv in self._validity_pvs:
             return self._validity_pvs[validity_pv]
 
-        # Check if validity PV is defined in this if_def
-        if self._if_def.has_pv(validity_pv):
+        # Check if validity PV is defined in this interface definition file
+        val_pv_var = self._if_def.has_pv(validity_pv, prefix = self.inst_slot(self._if_def) + ':')
+        if val_pv_var is not None:
             # We have to expand the PV name
-            exp_validity_pv = self.create_pv_name(self.inst_slot(self._if_def), validity_pv)
-        else:
-            exp_validity_pv = validity_pv
+            validity_pv = self.create_pv_name(self.inst_slot(self._if_def), val_pv_var)
 
-        validity_name = "{} MSS".format(self._gen_validity_name(exp_validity_pv))
+        validity_name = "{} MSS".format(self._gen_validity_name(validity_pv))
         self._validity_pvs[validity_pv] = validity_name
-        if exp_validity_pv != validity_pv:
-            self._validity_pvs[exp_validity_pv] = validity_name
 
         return validity_name
 
@@ -305,10 +312,14 @@ record(ao, "{ilimiter}")
             output = self._output
 
         vpv = self.create_pv_name(self.inst_slot(self._if_def), var)
+        # Register the fact that this validity PV was taken care of
+        self._gen_validity_pvs.add(vpv)
         helpernames = self._gen_validity_name(vpv, "vclc", "vinv")
-        print("Helpernames", helpernames)
 
-        vcond = var.get_parameter("VALIDITY_COND")
+        vcond = var.get_parameter("VALIDITY_CONDITION", None)
+        if vcond is None:
+            raise TemplatePrinterException("VALIDITY_CONDITION is not specified", IFDEF_SOURCE = var)
+
         if vcond is True:
             vcond = "A"
         elif vcond is False:
@@ -425,6 +436,9 @@ record(fanout, "{inst_slot}:{upload}")
     def footer(self, output, **keyword_params):
         super(EPICS_BASE, self).footer(output, **keyword_params)
 
+        if not self._gen_validity_pvs == set(self._validity_pvs.keys()):
+            raise TemplatePrinterException("The following validity PVs were not found or are missing VALIDITY_CONDITION:{}".format(set(self._validity_pvs.keys()) - self._gen_validity_pvs))
+
         self._gen_param_fanouts(self._uploads, self.root_inst_slot(), output, True)
 
         # Generate parameter uploading status monitoring
@@ -521,6 +535,9 @@ class EPICS(EPICS_BASE):
 
 
     def field_inp(self, inst_io, offset, dtyp_var_type, link_extra):
+        """
+            Called by STATUS_BLOCK.inp_out()
+        """
         return '@{inst_io}/{offset} T={dtyp_var_type}{link_extra}'.format(inst_io       = inst_io,
                                                                           offset        = offset,
                                                                           dtyp_var_type = dtyp_var_type,
@@ -528,6 +545,9 @@ class EPICS(EPICS_BASE):
 
 
     def field_out(self, inst_io, offset, dtyp_var_type, link_extra):
+        """
+            Called by COMMAND_BLOCK.inp_out() or PARAM_BLOCK.inp_out()
+        """
         return '@{inst_io}($(PLCNAME)write, {offset}, {link_extra}){dtyp_var_type}'.format(inst_io       = inst_io,
                                                                                            offset        = offset,
                                                                                            dtyp_var_type = dtyp_var_type,
