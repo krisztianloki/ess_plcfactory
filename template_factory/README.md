@@ -179,6 +179,20 @@ Creates a PLC variable of type **<plc_type>** and an **mbbiDirect** or **mbboDir
 
 The default length is the maximum allowed by EPICS; 39 characters
 
+## Supported KEYWORDs
+
+### PV_ALIAS
+
+Adds aliases. [More details](#specifying-aliases)
+
+### ARCHIVE and ARCHIVE_DESC
+
+Controls archiving requirements. [More details](#specifying-archiving-requirements)
+
+### VALIDITY_PV and VALIDITY_CONDITION
+
+Controls validity requirements. [More details](#specifying-validity-requirements)
+
 ## Specifying archiving requirements
 
 If a variable has to be archived the **`ARCHIVE=<spec>`** construction can be used. <spec> can be one of the following:
@@ -196,6 +210,31 @@ It is possible to specify aliases for a variable with the **`PV_ALIAS`** paramet
 
 *   `add_analog("primary_name",  "INT",  PV_ALIAS="secondary_name")`
 *   `add_analog("primary_name",  "INT",  PV_ALIAS=["secondary_name", "tertiary_name"])`
+
+## Specifying validity requirements
+
+It is possible to assign a PV that controls the validity state (setting the EPICS alarm severity to INVALID) of a PV coming from the PLC. This assignment is done with the **`VALIDITY_PV`** keyword. (Self assignment is ignored; if a PV is assigned to itself as a validity PV). If the specified validity PV is defined in the interface definition file then it is not necessary to specify the full PV name (i.e. the ESS name can be omitted). The validity PV can even be external; i.e. not coming from the PLC.
+
+The condition that determines if the validity PV shows a valid state is specified by:
+
+*   the **`VALIDITY_CONDITION`** keyword of the validity PV
+*   the **`external_validity_pv("external_pv_name", <condition>)`** if the validity PV is external
+
+The syntax of the condition:
+
+*   it can be **`True`** if a non-zero value means validity; **`VALIDITY_CONDITION=True`**
+*   it can be **`False`** if a zero value means validity; **`VALIDITY_CONDITION=False`**
+*   a complex expression (evaluated by the `calc` record so valid expressions are those accepted by `calc`) where **`A`** represents the actual value of the validity PV; **`VALIDITY_CONDITION="2 < A && A < 5"`**
+
+Restrictions:
+
+*   Only one validity PV can be assigned to a PV (but a validity PV can be assigned to any number of PVs)
+*   The validity condition is assigned to the validity PV
+
+An actual use-case:
+
+Safety systems use a gateway PLC between the IOC and the safety PLC and this brings in an interesting point of failure; if the connection between the two PLCs is disrupted the data sent to EPICS by the gateway PLC becomes stale/invalid. To reflect this in the state of the PVs the gateway PLC exports a status PV showing the connection status between the two PLCs. This PV is then used as the validity PV of the PVs relayed from the safety PLC.
+
 
 ## Specifying defaults
 
