@@ -206,6 +206,29 @@ class SOURCE(object):
         return self._sourcenum
 
 
+    @staticmethod
+    def __is_it_a(klass, typ):
+        for t in klass.__bases__:
+            print("Checking ", t.__name__, " and ", typ)
+            if t.__name__ == typ:
+                return True
+
+            if SOURCE.__is_it_a(t, typ):
+                return True
+
+        return False
+
+
+    def is_it_a(self, typ, explicit = False):
+        if type(self).__name__ == typ:
+            return True
+
+        if explicit:
+            return False
+
+        return SOURCE.__is_it_a(type(self), typ)
+
+
     def warnings(self):
         return self._warnings
 
@@ -811,6 +834,7 @@ class IF_DEF(object):
         self._global_defaults       = dict()
         self._defaults              = dict()
         self._macros                = list()
+        self._external_validity_pvs = dict()
 
         self._features              = [ "STABLE-HASH", "OPC", "OPC-UA", "MULTILINE", "VALIDITY-PV" ]
         self._experimental_features = []
@@ -1129,6 +1153,12 @@ class IF_DEF(object):
         return warns if len(warns) > 3 else []
 
 
+    def external_validity_pvs(self):
+        self._exception_if_active()
+
+        return self._external_validity_pvs
+
+
     def to_plc_words_length(self):
         self._exception_if_active()
 
@@ -1224,6 +1254,22 @@ class IF_DEF(object):
             self._macros.append(name)
 
         return self._add_source()
+
+
+    @ifdef_interface
+    def external_validity_pv(self, validity_pv, condition):
+        if not isinstance(validity_pv, str):
+            raise IfDefSyntaxError("Validity PV name must be a string!")
+        if not isinstance(condition, str) or not isinstance(condition, bool):
+            raise IfDefSyntaxError("Validity PV condition must be a string or boolean (True/False)!")
+
+        try:
+            if self._external_validity_pvs[validity_pv] != condition:
+                raise IfDefSyntaxError("Cannot change validity condition of external validity PV '{}'".format(validity_pv))
+        except KeyError:
+            self._external_validity_pvs[validity_pv] = condition
+
+        return SOURCE(self._source)
 
 
     @ifdef_interface

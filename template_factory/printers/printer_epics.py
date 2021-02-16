@@ -247,6 +247,14 @@ record(longin, "{root_inst_slot}:iTwo")
         self._gen_param_fanouts(self._params, self.inst_slot(if_def), output)
 
 
+    def _body_end(self, if_def, output):
+        """
+        Runs at the end of _ifdef_body()
+        """
+        for pv_cond in if_def.external_validity_pvs().items():
+            self._gen_validity_pvs(pv_cond, output)
+
+
     def _set_alarm_limit(self, var, output):
         limit = """
 record(ao, "{ilimiter}")
@@ -308,17 +316,29 @@ record(ao, "{ilimiter}")
 
 
     def _gen_validity_calc(self, var, output = None):
+        """
+        Generate the helper PVs for validity calculation
+        """
+
         if output is None:
             output = self._output
 
-        vpv = self.create_pv_name(self.inst_slot(self._if_def), var)
+        if var.is_it_a("BASE_TYPE"):
+            # This is a class; i.e. a PLC variable
+            vpv = self.create_pv_name(self.inst_slot(self._if_def), var)
+            vcond = var.get_parameter("VALIDITY_CONDITION", None)
+            if vcond is None:
+                raise TemplatePrinterException("VALIDITY_CONDITION is not specified", IFDEF_SOURCE = var)
+        else:
+            # This is an external validity PV
+            vpv = var[0]
+            if vpv in self._gen_validity_pvs:
+                return
+            vcond = var[1]
+
         # Register the fact that this validity PV was taken care of
         self._gen_validity_pvs.add(vpv)
         helpernames = self._gen_validity_name(vpv, "vclc", "vinv")
-
-        vcond = var.get_parameter("VALIDITY_CONDITION", None)
-        if vcond is None:
-            raise TemplatePrinterException("VALIDITY_CONDITION is not specified", IFDEF_SOURCE = var)
 
         if vcond is True:
             vcond = "A"
@@ -860,16 +880,18 @@ record(ai, "{root_inst_slot}:HeartbeatFromPLCR")
         self._body_end_cmd(if_def, output)
         self._body_end_status(if_def, output)
 
+        self._body_end(if_def, output)
+
 
     def _body_end_cmd(self, if_def, output):
-        self._body_end(CMD_BLOCK.counter_keyword(), if_def.to_plc_words_length(), output)
+        self._body_end_block(CMD_BLOCK.counter_keyword(), if_def.to_plc_words_length(), output)
 
 
     def _body_end_status(self, if_def, output):
-        self._body_end(STATUS_BLOCK.counter_keyword(), if_def.from_plc_words_length(), output)
+        self._body_end_block(STATUS_BLOCK.counter_keyword(), if_def.from_plc_words_length(), output)
 
 
-    def _body_end(self, counter_keyword, plc_db_length, output):
+    def _body_end_block(self, counter_keyword, plc_db_length, output):
         if self._test:
             return
 
