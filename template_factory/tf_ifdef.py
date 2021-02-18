@@ -1257,17 +1257,17 @@ class IF_DEF(object):
 
 
     @ifdef_interface
-    def external_validity_pv(self, validity_pv, condition):
+    def external_validity_pv(self, validity_pv, VALIDITY_CONDITION):
         if not isinstance(validity_pv, str):
             raise IfDefSyntaxError("Validity PV name must be a string!")
-        if not isinstance(condition, str) or not isinstance(condition, bool):
+        if not isinstance(VALIDITY_CONDITION, str) and not isinstance(VALIDITY_CONDITION, bool):
             raise IfDefSyntaxError("Validity PV condition must be a string or boolean (True/False)!")
 
         try:
-            if self._external_validity_pvs[validity_pv] != condition:
+            if self._external_validity_pvs[validity_pv] != VALIDITY_CONDITION:
                 raise IfDefSyntaxError("Cannot change validity condition of external validity PV '{}'".format(validity_pv))
         except KeyError:
-            self._external_validity_pvs[validity_pv] = condition
+            self._external_validity_pvs[validity_pv] = VALIDITY_CONDITION
 
         return SOURCE(self._source)
 

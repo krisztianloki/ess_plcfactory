@@ -252,7 +252,7 @@ record(longin, "{root_inst_slot}:iTwo")
         Runs at the end of _ifdef_body()
         """
         for pv_cond in if_def.external_validity_pvs().items():
-            self._gen_validity_pvs(pv_cond, output)
+            self._gen_validity_calc(pv_cond, output)
 
 
     def _set_alarm_limit(self, var, output):
@@ -323,7 +323,7 @@ record(ao, "{ilimiter}")
         if output is None:
             output = self._output
 
-        if var.is_it_a("BASE_TYPE"):
+        if not isinstance(var, tuple):
             # This is a class; i.e. a PLC variable
             vpv = self.create_pv_name(self.inst_slot(self._if_def), var)
             vcond = var.get_parameter("VALIDITY_CONDITION", None)
@@ -336,9 +336,15 @@ record(ao, "{ilimiter}")
                 return
             vcond = var[1]
 
+        # Accept True/False in quotes
+        if vcond.lower() == "true":
+            vcond = True
+        elif vcond.lower() == "false":
+            vcond = False
+
         # Register the fact that this validity PV was taken care of
         self._gen_validity_pvs.add(vpv)
-        helpernames = self._gen_validity_name(vpv, "vclc", "vinv")
+        helpernames = self._gen_validity_name(vpv, "vclc", "vinv", "vhsh")
 
         if vcond is True:
             vcond = "A"
@@ -351,6 +357,7 @@ record(calcout, "{vclc}")
 {{
 	field(DESC, "Calculate validity")
 	field(INPA, "{vpv} CP")
+	field(IVOA, "Set output to IVOV")
 	field(CALC, "{vcond}")
 	field(OUT,  "{vinv} PP")
 }}
@@ -365,9 +372,23 @@ record(bi, "{vinv}")
 {{
 	field(DESC, "Becomes INVALID if zero")
 	field(ZSV,  "INVALID")
-	field(FLNK, "{vbi}")
+	field(PINI, "YES")
+	field(VAL,  "0")
+	field(FLNK, "{vbi}.PROC CA")
 }}
 """.format(vinv = helpernames[2],
+           vbi  = helpernames[0]), output)
+
+        # Generate PV ("vhsh") that ensures that 'vbi' will be processed every time PLCHashCorrectR changes
+        self._append("""
+record(bi, "{vhsh}")
+{{
+	field(DESC, "Forward PLCHashCorrectR change to vbi")
+	field(INP,  "{sdis} CP")
+	field(FLNK, "{vbi}.PROC CA")
+}}
+""".format(vhsh = helpernames[3],
+           sdis = self.DISABLE_PV,
            vbi  = helpernames[0]), output)
 
         # Generate PV ("vbi") that aggregates DISABLE_PV and "vinv"
@@ -375,7 +396,7 @@ record(bi, "{vinv}")
 record(calc, "{vbi}")
 {{
 	field(DESC, "Aggregate PLCHashCorrectR and vinv")
-	field(INPA, "{sdis} CP")
+	field(INPA, "{sdis}")
 	field(INPB, "{vinv} MSS")
 	field(CALC, "A")
 }}
@@ -396,7 +417,10 @@ record(calc, "{vbi}")
             pass
 
         rematch = self._nonprop_re.match(name)
-        ess_name = rematch.group(1)
+        try:
+            ess_name = rematch.group(1)
+        except AttributeError:
+            raise TemplatePrinterException("Non ESS conformant device name: '{}'".format(name))
         prop = rematch.group(2)
 
         vbi = "{}i{}vbi".format(ess_name, prop)
@@ -682,6 +706,8 @@ record(stringout, "{root_inst_slot}:iS7AddrS")
 }}
 record(calcout, "{root_inst_slot}:iCalcConn")
 {{
+# Need to explicitly scan because using multiple CPs is not robust
+	field(SCAN,	"1 second")
 	field(INPA,	"{root_inst_slot}:S7ConnectedR CP")
 	field(INPB,	"{root_inst_slot}:ModbusConnectedR CP")
 	field(CALC,	"A && B")
@@ -951,6 +977,8 @@ record(bi, "{root_inst_slot}:S7ConnectedR")
 }}
 record(calcout, "{root_inst_slot}:iCalcConn")
 {{
+# Need to explicitly scan because using multiple CPs is not robust
+	field(SCAN,	"1 second")
 	field(INPA,	"{root_inst_slot}:S7ConnectedR CP")
 	field(INPB,	"{root_inst_slot}:ModbusConnectedR CP")
 	field(CALC,	"A && B")
