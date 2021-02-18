@@ -178,7 +178,7 @@ class ST_CMD(eee, MACROS, PRINTER):
 
     def _dbLoadRecords(self, plc_macro):
         return """#- Load plc interface database
-dbLoadRecords("{modulename}.db", "{PLC_MACRO}={plcname}, MODVERSION=$({modversion}), S7_PORT={s7_port}, MODBUS_PORT={modbus_port}{macros}")""".format(
+dbLoadRecords("{modulename}.db", "{PLC_MACRO}={plcname}, MODVERSION=$({modversion}), S7_PORT=$(S7_PORT={s7_port}), MODBUS_PORT=$(MB_PORT={modbus_port}){macros}")""".format(
             PLC_MACRO   = plc_macro,
             plcname     = self.raw_root_inst_slot(),
             modulename  = self.modulename(),
@@ -203,15 +203,19 @@ dbLoadRecords("{modulename}.db", "{PLC_MACRO}={plcname}, MODVERSION=$({modversio
     def _s7_footer(self, output, **keyword_parameters):
         super(ST_CMD, self).footer(output, **keyword_parameters)
 
+        ipaddr = self.get_property("Hostname", None)
+        if ipaddr == "":
+            ipaddr = None
+
         st_cmd_footer = """
 #- S7 port           : {s7drvport}
 #- Input block size  : {insize} bytes
 #- Output block size : 0 bytes
 #- Endianness        : {endianness}
-s7plcConfigure("{plcname}", $(IPADDR), {s7drvport}, {insize}, 0, {bigendian}, $(RECVTIMEOUT), 0)
+s7plcConfigure("{plcname}", {ipaddr}, $(S7_PORT={s7drvport}), {insize}, 0, {bigendian}, $(RECVTIMEOUT), 0)
 
 #- Modbus port       : {modbusdrvport}
-drvAsynIPPortConfigure("{plcname}", $(IPADDR):{modbusdrvport}, 0, 0, 1)
+drvAsynIPPortConfigure("{plcname}", {ipaddr}:$(MB_PORT={modbusdrvport}), 0, 0, 1)
 
 #- Link type         : TCP/IP (0)
 modbusInterposeConfig("{plcname}", 0, $(RECVTIMEOUT), 0)
@@ -230,7 +234,8 @@ drvModbusAsynConfigure("{plcname}write", "{plcname}", 0, 16, -1, 20, 0, 0, "S7-1
 drvModbusAsynConfigure("{plcname}read", "{plcname}", 0, 3, {start_offset}, 10, 0, 1000, "S7-1500")
 
 {dbloadrecords}
-""".format(s7drvport     = self.plcf("PLC-EPICS-COMMS: S7Port"),
+""".format(ipaddr        = "$(IPADDR)" if ipaddr is None else "$(IPADDR={})".format(ipaddr),
+           s7drvport     = self.plcf("PLC-EPICS-COMMS: S7Port"),
            modbusdrvport = self.plcf("PLC-EPICS-COMMS: MBPort"),
            insize        = self.plcf(STATUS_BLOCK.counter_keyword()),
            endianness    = self.plcf("PLC-EPICS-COMMS:Endianness"),
