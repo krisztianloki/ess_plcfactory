@@ -193,6 +193,10 @@ Controls archiving requirements. [More details](#specifying-archiving-requiremen
 
 Controls validity requirements. [More details](#specifying-validity-requirements)
 
+### ALARM_IF
+
+Controls the alarm severity condition of alarm PVs. [More details](#alarm-variable)
+
 ## Specifying archiving requirements
 
 If a variable has to be archived the **`ARCHIVE=<spec>`** construction can be used. <spec> can be one of the following:
@@ -213,7 +217,7 @@ It is possible to specify aliases for a variable with the **`PV_ALIAS`** paramet
 
 ## Specifying validity requirements
 
-It is possible to assign a PV that controls the validity state (setting the EPICS alarm severity to INVALID) of a PV coming from the PLC. This assignment is done with the **`VALIDITY_PV`** keyword. (Self assignment is ignored; if a PV is assigned to itself as a validity PV). If the specified validity PV is defined in the interface definition file then it is not necessary to specify the full PV name (i.e. the ESS name can be omitted). The validity PV can even be external; i.e. not coming from the PLC.
+It is possible to assign a PV that controls the validity state (setting the EPICS alarm severity to INVALID) of a **status** PV coming from the PLC. This assignment is done with the **`VALIDITY_PV`** keyword. (Self assignment is ignored; if a PV is assigned to itself as a validity PV). If the specified validity PV is defined in the interface definition file then it is not necessary to specify the full PV name (i.e. the ESS name can be omitted). The validity PV can even be external; i.e. not coming from the PLC.
 
 The condition that determines if the validity PV shows a valid state is specified by:
 
@@ -252,12 +256,12 @@ Safety systems use a gateway PLC between the IOC and the safety PLC and this bri
 ### Limit examples
 
 *   `add_analog("Measurement",  "REAL")`
-    `add_minor_low_limit("Measurement_Minimum")`
+*   `add_minor_low_limit("Measurement_Minimum")`
     *   Creates two variables: `Measurement` and `Measurement_Minimum` and sets the `LSV` field of `Measurement` to "MINOR" and the `LOW` field to the value of `Measurement_Minimum`
 
 *   `add_analog("Measurement",  "REAL")`
-    `add_minor_low_limit("Measurement_Minimum")`
-    `add_major_high_limit("Measurement_Maximum")`
+*   `add_minor_low_limit("Measurement_Minimum")`
+*   `add_major_high_limit("Measurement_Maximum")`
     *   Creates three variables: `Measurement`, `Measurement_Minimum`, and `Measurement_Maximum` and sets the `LSV` field of `Measurement` to "MINOR", the `HHSV` field to "MAJOR", the `LOW` field to the value of `Measurement_Minimum`, and the `HIHI` field to the value of `Measurement_Maximum`
 
 ### Archiving examples
@@ -266,3 +270,21 @@ Safety systems use a gateway PLC between the IOC and the safety PLC and this bri
     *   Archive with the default policy
 *   `add_analog("ErrorCodeR", "INT",`  **`ARCHIVE="1Hz"`**`)`
     *   Archive with the 1Hz policy
+
+### Validity examples
+
+*   `add_digital("RIO_Connected", VALIDITY_CONDITION=True)`
+*   `add_analog("AI0", VALIDITY_PV="RIO_Connected")`
+    *   `AI0` will be set to INVALID alarm severity if `RIO_Connected` is false
+
+*   `add_analog("Voltage_Level", VALIDITY_CONDITION="4.5 <= A && A <= 5.5")`
+*   `add_analog("Reading", VALIDITY_PV="Voltage_Level")`
+    *   `Reading` will be set to INVALID alarm severity if `Voltage_Level` is less than 4.5 or greater than 5.5
+
+*   `add_analog("foo", VALIDITY_PV="sys-subsys:dis-dev-idx:bar")`
+*   `external_validity_pv("sys-subsys:dis-dev-idx:bar", VALIDITY_CONDITION=False)`
+    *   `foo` will be set to INVALID alarm severity if `sys-subsys:dis-dev-idx:bar` is false or not connected
+
+*   `add_analog("foo", VALIDITY_PV="sys-subsys:dis-dev-idx:bar")`
+*   `external_validity_pv("sys-subsys:dis-dev-idx:bar", False)`
+    *   The same as the previous but `VALIDITY_CONDITION` is not spelled out

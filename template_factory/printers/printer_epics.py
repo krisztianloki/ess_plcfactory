@@ -183,7 +183,7 @@ record(longin, "{root_inst_slot}:iTwo")
         return self.INPV_TEMPLATE
 
 
-    def outpv_template(self, test = False, sdis = False):
+    def outpv_template(self, test = False, sdis = False, VALIDITY_PV = None):
         """
             Called by CMD_BLOCK.pv_template() or PARAM_BLOCK.pv_template()
         """
