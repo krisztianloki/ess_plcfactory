@@ -244,9 +244,14 @@ Safety systems use a gateway PLC between the IOC and the safety PLC and this bri
 
 **`set_defaults`** can be used to define global and/or variable type specific default values. Values specified when adding a variable take precedence.
 
+### Setting defaults for everything
+
 *   **`set_defaults(KEYWORD1="value"[, KEYWORD2="value"]...)`**
     *   This has the same effect as specifying `KEYWORD1="value"`, `KEYWORD2="value"`, and so on for every variable
     *   **`set_defaults(ARCHIVE=True)`**
+
+### Setting defaults for certain variable types
+
 *   **`set_defaults(<add_type1>[, <add_type2>]... ,KEYWORD1="value"[, KEYWORD2="value"]...)`**
     *   This has the same effect as specifying `KEYWORD1="value"`, `KEYWORD2="value"`, and so on for every `add_type1`, `add_type2` construct
     *   **`set_defaults(add_minor_alarm, ALARM_IF=False)`**
@@ -255,9 +260,13 @@ Safety systems use a gateway PLC between the IOC and the safety PLC and this bri
 
 ### Limit examples
 
+#### Low limit
+
 *   `add_analog("Measurement",  "REAL")`
 *   `add_minor_low_limit("Measurement_Minimum")`
     *   Creates two variables: `Measurement` and `Measurement_Minimum` and sets the `LSV` field of `Measurement` to "MINOR" and the `LOW` field to the value of `Measurement_Minimum`
+
+#### Low and high limits
 
 *   `add_analog("Measurement",  "REAL")`
 *   `add_minor_low_limit("Measurement_Minimum")`
@@ -266,24 +275,37 @@ Safety systems use a gateway PLC between the IOC and the safety PLC and this bri
 
 ### Archiving examples
 
+#### Default archiving policy
+
 *   `add_digital("Error",`             **`ARCHIVE=True`**`)`
     *   Archive with the default policy
+
+#### Custom archiving policy
+
 *   `add_analog("ErrorCodeR", "INT",`  **`ARCHIVE="1Hz"`**`)`
     *   Archive with the 1Hz policy
 
 ### Validity examples
 
+#### Simple validity condition
+
 *   `add_digital("RIO_Connected", VALIDITY_CONDITION=True)`
 *   `add_analog("AI0", VALIDITY_PV="RIO_Connected")`
     *   `AI0` will be set to INVALID alarm severity if `RIO_Connected` is false
+
+#### Complex validity condition
 
 *   `add_analog("Voltage_Level", VALIDITY_CONDITION="4.5 <= A && A <= 5.5")`
 *   `add_analog("Reading", VALIDITY_PV="Voltage_Level")`
     *   `Reading` will be set to INVALID alarm severity if `Voltage_Level` is less than 4.5 or greater than 5.5
 
+#### External validity PV
+
 *   `add_analog("foo", VALIDITY_PV="sys-subsys:dis-dev-idx:bar")`
 *   `external_validity_pv("sys-subsys:dis-dev-idx:bar", VALIDITY_CONDITION=False)`
     *   `foo` will be set to INVALID alarm severity if `sys-subsys:dis-dev-idx:bar` is false or not connected
+
+#### External validity PV
 
 *   `add_analog("foo", VALIDITY_PV="sys-subsys:dis-dev-idx:bar")`
 *   `external_validity_pv("sys-subsys:dis-dev-idx:bar", False)`

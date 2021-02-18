@@ -337,10 +337,11 @@ record(ao, "{ilimiter}")
             vcond = var[1]
 
         # Accept True/False in quotes
-        if vcond.lower() == "true":
-            vcond = True
-        elif vcond.lower() == "false":
-            vcond = False
+        if isinstance(vcond, str):
+            if vcond.lower() == "true":
+                vcond = True
+            elif vcond.lower() == "false":
+                vcond = False
 
         # Register the fact that this validity PV was taken care of
         self._gen_validity_pvs.add(vpv)
