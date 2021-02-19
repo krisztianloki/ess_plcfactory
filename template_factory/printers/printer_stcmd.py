@@ -135,16 +135,29 @@ class ST_CMD(eee, MACROS, PRINTER):
         super(ST_CMD, self).header(output, **keyword_parameters).add_filename_header(output, inst_slot = self.snippet(), template = False, extension = self._extension())
         self._opc = True if 'OPC' in keyword_parameters.get('PLC_TYPE', '') else False
 
+        self._ipaddr = self.get_property("Hostname", None)
+        if self._ipaddr == "":
+            self._ipaddr = None
+
         st_cmd_header = """
 # @field IPADDR
-# @type STRING
+# @{ipaddr}
 # PLC IP address
 {s7_vs_opc}
 # @field {modversion}
 # @runtime YES
+
+# @field S7_PORT
+# @runtime YES
+# Can override S7 port with this
+
+# @field MB_PORT
+# @runtime YES
+# Can override Modbus port with this
 #COUNTER {status_cnt} = [PLCF#{status_cnt} + 10 * 2]
 
-""".format(modversion = self._modversion(),
+""".format(ipaddr     = "type STRING" if self._ipaddr is None else "runtime YES",
+           modversion = self._modversion(),
            status_cnt = STATUS_BLOCK.counter_keyword(),
            s7_vs_opc  = """
 # @field RECVTIMEOUT
@@ -203,10 +216,6 @@ dbLoadRecords("{modulename}.db", "{PLC_MACRO}={plcname}, MODVERSION=$({modversio
     def _s7_footer(self, output, **keyword_parameters):
         super(ST_CMD, self).footer(output, **keyword_parameters)
 
-        ipaddr = self.get_property("Hostname", None)
-        if ipaddr == "":
-            ipaddr = None
-
         st_cmd_footer = """
 #- S7 port           : {s7drvport}
 #- Input block size  : {insize} bytes
@@ -234,7 +243,7 @@ drvModbusAsynConfigure("{plcname}write", "{plcname}", 0, 16, -1, 20, 0, 0, "S7-1
 drvModbusAsynConfigure("{plcname}read", "{plcname}", 0, 3, {start_offset}, 10, 0, 1000, "S7-1500")
 
 {dbloadrecords}
-""".format(ipaddr        = "$(IPADDR)" if ipaddr is None else "$(IPADDR={})".format(ipaddr),
+""".format(ipaddr        = "$(IPADDR)" if self._ipaddr is None else "$(IPADDR={})".format(self._ipaddr),
            s7drvport     = self.plcf("PLC-EPICS-COMMS: S7Port"),
            modbusdrvport = self.plcf("PLC-EPICS-COMMS: MBPort"),
            insize        = self.plcf(STATUS_BLOCK.counter_keyword()),
