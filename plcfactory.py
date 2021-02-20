@@ -129,6 +129,9 @@ device_tag      = None
 epi_version     = None
 hashes          = dict()
 prev_hashes     = None
+generate_ioc    = False
+ioc             = None
+e3              = None
 branch          = git.get_current_branch()
 commit_id       = git.get_local_ref(branch)
 if commit_id is not None:
@@ -191,6 +194,308 @@ class Hasher(object):
             return str(crc32 - 0x100000000)
 
         return str(crc32)
+
+
+
+class E3(object):
+    def __init__(self, modname, snippet = None):
+        super(E3, self).__init__()
+
+        if snippet is None:
+            modname = helpers.sanitizeFilename(modname.lower())
+
+        if modname.startswith('e3-'):
+            modname = modname[len('e3-'):]
+
+        self._modulename = modname.replace('-', '_')
+        self._snippet    = snippet.replace('-', '_') if snippet is not None else self._modulename
+
+        self._files = []
+        self._test_cmd = False
+
+        glob.e3_modulename = self._modulename
+        glob.e3_snippet    = self._snippet
+
+
+    def modulename(self):
+        """
+        Returns the name of the module without the 'e3-' prefix
+        """
+        return self._modulename
+
+
+    def snippet(self):
+        """
+        Returns the name of the .iocsh snippet
+        """
+        return self._snippet
+
+
+    def files(self):
+        """
+        Returns the list of files that are in the module
+        """
+        return self._files
+
+
+    @staticmethod
+    def from_device(device):
+        """
+        Create an E3 object from the EPICSModule and EPICSSnippet properties of 'device'
+        """
+
+        dev_props = device.properties()
+        modulename = dev_props.get("EPICSModule", [])
+        if len(modulename) == 1:
+            modulename = modulename[0]
+            if modulename != helpers.sanitizeFilename(modulename):
+                print("Overriding modulename because it is not a valid filename", file = sys.stderr)
+        else:
+            print("Ignoring EPICSModule property; it is an array", file = sys.stderr)
+            modulename = deviceName.lower()
+
+        modulename = helpers.sanitizeFilename(modulename)
+
+        snippet = dev_props.get("EPICSSnippet", [])
+        if len(snippet) == 1:
+            snippet = snippet[0]
+            validSnippet = helpers.sanitizeFilename(snippet)
+            if snippet != validSnippet:
+                print("Overriding snippet because it is not a valid filename", file = sys.stderr)
+                snippet = validSnippet
+        else:
+            print("Ignoring EPICSSnippet property; it is an array", file = sys.stderr)
+            snippet = modulename
+
+        return E3(modulename, snippet)
+
+
+    def copy_files(self, basedir):
+        """
+        Create the directory structure and copy the generated files
+        """
+        ch = copy_helper(basedir)
+
+        #
+        # Copy files
+        #
+        ch.m_cp(output_files.get('EPICS-DB', output_files.get('EPICS-OPC-DB')), "db", self.modulename() + ".db")
+
+        try:
+            ch.m_cp(output_files['EPICS-TEST-DB'],           "db",      self.modulename() + "-test.db")
+        except KeyError:
+            pass
+
+        try:
+            self._startup = 'AUTOSAVE-IOCSH'
+            ch.m_cp(output_files[self._startup],                   "iocsh",   self.snippet() + ".iocsh")
+        except KeyError:
+            self._startup = 'IOCSH'
+            ch.m_cp(output_files[self._startup],                   "iocsh",   self.snippet() + ".iocsh")
+
+        self._test_cmd = True
+        try:
+            test_startup = 'AUTOSAVE-TEST-IOCSH'
+            ch.m_cp(output_files[test_startup],              "iocsh",   self.snippet() + "-test.iocsh")
+        except KeyError:
+            try:
+                test_startup = 'TEST-IOCSH'
+                ch.m_cp(output_files[test_startup],          "iocsh",   self.snippet() + "-test.iocsh")
+            except KeyError:
+                self._test_cmd = False
+
+        ch.m_cp(output_files["CREATOR"],                     "misc",    "creator")
+
+        try:
+            ch.m_cp(output_files["BECKHOFF"],                "misc",    os.path.basename(output_files["BECKHOFF"]))
+        except KeyError:
+            pass
+
+        try:
+            ch.m_cp(output_files["STANDARD_SCL"],            "misc",    os.path.basename(output_files["STANDARD_SCL"]))
+        except KeyError:
+            pass
+
+        try:
+            ch.m_cp(output_files["PROJECT_SCL"],             "misc",    os.path.basename(output_files["PROJECT_SCL"]))
+        except KeyError:
+            pass
+
+        #
+        # Copy CCDB dump
+        #
+        if output_files['CCDB-DUMP'] is not None:
+            miscdir = os.path.join(basedir, "misc")
+            try:
+                import zipfile
+                with zipfile.ZipFile(output_files['CCDB-DUMP'], "r") as z:
+                    z.extractall(miscdir)
+                    self._files.extend(map(lambda x: os.path.join(miscdir, x), z.namelist()))
+                    z.close()
+            except:
+                helpers.rmdirs(os.path.join(miscdir, "ccdb"))
+                print("Cannot copy CCDB dump to E3 module", file = sys.stderr)
+
+        #
+        # Copy the README file to the modname directory
+        #
+        readme = os.path.join(basedir, "README.md")
+        copy2(output_files["README"], readme)
+        self._files.append(readme)
+
+        self._files.extend(ch.copied())
+
+        return self._files
+
+
+    def create(self):
+        """
+        Create the E3 module and some helper scripts to run it
+        """
+        out_mdir = os.path.join(OUTPUT_DIR, "modules", "-".join([ "e3", self.modulename() ]))
+        helpers.makedirs(out_mdir)
+
+        self._files.extend(m_copytree(module_dir("e3"), out_mdir))
+
+        out_sdir = os.path.join(out_mdir, self.modulename())
+        helpers.makedirs(out_sdir)
+        self.copy_files(out_sdir)
+
+        output_files['E3'] = self._files
+
+        macros          = ""
+        live_macros     = ""
+        test_macros     = ""
+        startup_printer = printers[self._startup]
+        macro_list      = startup_printer.macros()
+        if macro_list:
+            macros      = ", ".join(["{m}={m}".format(m = startup_printer.macro_name(macro)) for macro in macro_list])
+            live_macros = ", {}".format(macros)
+
+        #
+        # Create env.sh
+        #
+        with open(os.path.join(OUTPUT_DIR, "env.sh"), "w") as run:
+            print("""IOCNAME='{modulename}'""".format(modulename = self.modulename()), file = run)
+
+        #
+        # Create script to run module with 'safe' defaults
+        #
+        with open(os.path.join(OUTPUT_DIR, "run_module.bash"), "w") as run:
+            iocsh_bash = """iocsh.bash -l {moduledir}/cellMods -r {modulename},plcfactory -c 'iocshLoad($({modulename}_DIR)/{snippet}.iocsh, "IPADDR = 127.0.0.1, """.format(moduledir  = os.path.abspath(out_mdir),
+                                                                                                                                                                             modulename = self.modulename(),
+                                                                                                                                                                             snippet    = self.snippet())
+            if 'OPC' in ifdef_params['PLC_TYPE']:
+                print(iocsh_bash + """PORT = 4840, PUBLISHING_INTERVAL = 200{macros}")'""".format(macros = live_macros), file = run)
+            else:
+                print(iocsh_bash + """ RECVTIMEOUT = 3000{macros}")'""".format(macros = live_macros), file = run)
+
+        if self._test_cmd:
+            #
+            # Create script to run test version of module
+            #
+            with open(os.path.join(OUTPUT_DIR, "run_test_module.bash"), "w") as run:
+                if macros:
+                    test_macros = ', "{}"'.format(macros)
+                print("""iocsh.bash -l {moduledir}/cellMods -r {modulename},plcfactory -c 'iocshLoad($({modulename}_DIR)/{snippet}-test.iocsh, "_={macros}")'""".format(moduledir  = os.path.abspath(out_mdir),
+                                                                                                                                                                        modulename = self.modulename(),
+                                                                                                                                                                        snippet    = self.snippet(),
+                                                                                                                                                                        macros     = test_macros), file = run)
+
+        print("E3 Module created:", out_mdir)
+        return out_mdir
+
+
+
+class IOC(object):
+    def __init__(self, device):
+        super(IOC, self).__init__()
+
+        # Store the name of the PLC
+        self._plc = device.name()
+
+        # Create our own E3 module
+        self._e3 = E3(self._plc)
+
+        ioc = self.__get_ioc(device)
+        self._name = ioc.name()
+        self._dir = helpers.sanitizeFilename(self._name.lower()).replace('-', '_')
+        self._repo = get_e3_repository(ioc)
+        if self._repo:
+            self._dir = helpers.url_to_path(self._repo).split('/')[-1]
+            if self._dir.endswith('.git'):
+                self._dir = self._dir[:-4]
+            else:
+                self._repo += ".git"
+
+
+    def __get_ioc(self, device):
+        """
+        Get the IOC that _directly_ controls 'device'
+        """
+        for c in device.controlledBy(convert = False):
+            if c.deviceType() == 'IOC':
+                return c
+
+        raise PLCFactoryException("Could not find IOC for {}".format(device.name()))
+
+
+    def plc(self):
+        """
+        Returns the PLC name this IOC controls
+        """
+        return self._plc
+
+
+    def name(self):
+        """
+        Returns the IOC name
+        """
+        return self._name
+
+
+    def directory(self):
+        """
+        Returns the directory name (as derived from repo URL or name) where the IOC is generated
+        """
+        return self._dir
+
+
+    def repo(self):
+        """
+        Returns the IOC repository URL
+        """
+        return self._repo
+
+
+    def create(self, version):
+        """
+        Generate IOC
+        """
+
+        if not self.name():
+            print("Could not find IOC that controls the device!", file = sys.stderr)
+            return
+
+        out_idir = os.path.join(OUTPUT_DIR, "ioc", self.directory())
+        helpers.makedirs(out_idir)
+
+        with open(os.path.join(out_idir, 'env.sh'), 'wt') as env_sh:
+            print("export IOCNAME={}".format(self.name()), file = env_sh)
+            print("export {}_VERSION={}".format(self._e3.modulename(), version if version else 'development'), file = env_sh)
+
+        with open(os.path.join(out_idir, 'st.cmd'), 'wt') as st_cmd:
+            print("""# Startup for {}
+require modbus
+require s7plc
+require calc""".format(self.name()), file = st_cmd)
+            print("""
+require autosave
+require recsync""", file = st_cmd)
+            print("""
+iocshLoad(iocsh/{}.iocsh)""".format(self._e3.snippet()), file = st_cmd)
+
+        self._e3.copy_files(out_idir)
 
 
 
@@ -551,6 +856,16 @@ def processTemplateID(templateID, devices):
     print("--- %s %.1f seconds ---\n" % (tagged_templateID, time.time() - start_time))
 
 
+def get_e3_repository(device):
+    e3_repo = None
+
+    for e3_repo_link in filter(lambda x: x.name() == 'E3_REPOSITORY', device.externalLinks(convert = False)):
+        if e3_repo is None or not e3_repo_link.is_perdevtype():
+            e3_repo = e3_repo_link.uri()
+
+    return e3_repo
+
+
 def processDevice(deviceName, templateIDs):
     assert isinstance(deviceName,  str)
     assert isinstance(templateIDs, list)
@@ -613,9 +928,13 @@ Exiting.
         glob.eee_modulename = modulename
         glob.eee_snippet    = snippet
 
-    if not glob.e3_modulename:
-        glob.e3_modulename = modulename.replace('-', '_')
-        glob.e3_snippet    = snippet.replace('-', '_')
+    global e3
+    if e3 is None:
+        e3 = E3.from_device(device)
+
+    if generate_ioc:
+        global ioc
+        ioc = IOC(device)
 
     cplcf = getPLCF(device)
 
@@ -722,78 +1041,94 @@ def module_dir(module):
     return os.path.join(MODULES_DIR, "s7plc", module)
 
 
+class copy_helper(object):
+    def __init__(self, basedir):
+        super(copy_helper, self).__init__()
+        self._basedir = basedir
+        self._copied = []
+
+
+    def __makedir(self, d):
+        od = os.path.join(self._basedir, d)
+        helpers.makedirs(od)
+
+        return od
+
+
+    def copied(self):
+        return self._copied
+
+
+    def m_cp(self, src, dest, newname):
+        of = os.path.join(self.__makedir(dest), newname)
+        copy2(src, of)
+        self._copied.append(of)
+
+
 def create_eee(modulename, snippet):
     eee_files = []
     out_mdir  = os.path.join(OUTPUT_DIR, "modules", "-".join([ "m-epics", modulename ]))
     helpers.makedirs(out_mdir)
 
-    def makedir(d):
-        od = os.path.join(out_mdir, d)
-        helpers.makedirs(od)
-        return od
-
-    def m_cp(f, d, newname):
-        of = os.path.join(makedir(d), newname)
-        copy2(f, of)
-        eee_files.append(of)
+    ch = copy_helper(out_mdir)
 
     eee_files.extend(m_copytree(module_dir("eee"), out_mdir))
 
     #
     # Copy files
     #
-    m_cp(output_files.get('EPICS-DB', output_files.get('EPICS-OPC-DB')), "db", modulename + ".db")
+    ch.m_cp(output_files.get('EPICS-DB', output_files.get('EPICS-OPC-DB')), "db", modulename + ".db")
 
     try:
-        m_cp(output_files['EPICS-TEST-DB'],           "db",      modulename + "-test.db")
+        ch.m_cp(output_files['EPICS-TEST-DB'],           "db",      modulename + "-test.db")
     except KeyError:
         pass
 
     try:
         startup = 'AUTOSAVE-ST-CMD'
-        m_cp(output_files[startup],                   "startup", snippet + ".cmd")
+        ch.m_cp(output_files[startup],                   "startup", snippet + ".cmd")
     except KeyError:
         startup = 'ST-CMD'
-        m_cp(output_files[startup],                   "startup", snippet + ".cmd")
+        ch.m_cp(output_files[startup],                   "startup", snippet + ".cmd")
 
     test_cmd = True
     try:
         test_startup = 'AUTOSAVE-ST-TEST-CMD'
-        m_cp(output_files[test_startup],              "startup", snippet + "-test.cmd")
+        ch.m_cp(output_files[test_startup],              "startup", snippet + "-test.cmd")
     except KeyError:
         try:
             test_startup = 'ST-TEST-CMD'
-            m_cp(output_files[test_startup],          "startup", snippet + "-test.cmd")
+            ch.m_cp(output_files[test_startup],          "startup", snippet + "-test.cmd")
         except KeyError:
             test_cmd = False
 
     req_files    = []
     try:
-        m_cp(output_files['AUTOSAVE'],                "misc",    modulename + ".req")
+        ch.m_cp(output_files['AUTOSAVE'],                "misc",    modulename + ".req")
         req_files.append(modulename + ".req")
     except KeyError:
         pass
 
     try:
-        m_cp(output_files['AUTOSAVE-TEST'],           "misc",    modulename + "-test.req")
+        ch.m_cp(output_files['AUTOSAVE-TEST'],           "misc",    modulename + "-test.req")
         req_files.append(modulename + "-test.req")
     except KeyError:
         pass
 
-    m_cp(output_files["CREATOR"],                     "misc",    "creator")
+    ch.m_cp(output_files["CREATOR"],                     "misc",    "creator")
 
     try:
-        m_cp(output_files["BECKHOFF"],                "misc",    os.path.basename(output_files["BECKHOFF"]))
+        ch.m_cp(output_files["BECKHOFF"],                "misc",    os.path.basename(output_files["BECKHOFF"]))
     except KeyError:
         pass
 
     try:
-        m_cp(output_files["STANDARD_SCL"],            "misc",    os.path.basename(output_files["STANDARD_SCL"]))
+        ch.m_cp(output_files["STANDARD_SCL"],            "misc",    os.path.basename(output_files["STANDARD_SCL"]))
     except KeyError:
         pass
 
     try:
-        m_cp(output_files["PROJECT_SCL"],             "misc",    os.path.basename(output_files["PROJECT_SCL"]))
+        ch.m_cp(output_files["PROJECT_SCL"],             "misc",    os.path.basename(output_files["PROJECT_SCL"]))
     except KeyError:
         pass
 
@@ -835,6 +1170,7 @@ USR_DEPENDENCIES += autosave
 USR_DEPENDENCIES += synappsstd
 MISCS += $(wildcard misc/*.req)""", file = makefile)
 
+    eee_files.extend(ch.copied())
     output_files['EEE'] = eee_files
 
     macros          = ""
@@ -891,153 +1227,6 @@ def read_data_files():
             hashes[k] = copy.deepcopy(v)
         else:
             hashes[k] = (None, copy.deepcopy(v))
-
-
-def create_e3(modulename, snippet):
-    e3_files = []
-    out_mdir = os.path.join(OUTPUT_DIR, "modules", "-".join([ "e3", modulename ]))
-    helpers.makedirs(out_mdir)
-
-    def makedir(d):
-        od = os.path.join(out_sdir, d)
-        helpers.makedirs(od)
-        return od
-
-    def m_cp(f, d, newname):
-        of = os.path.join(makedir(d), newname)
-        copy2(f, of)
-        e3_files.append(of)
-
-    e3_files.extend(m_copytree(module_dir("e3"), out_mdir))
-
-    out_sdir = os.path.join(out_mdir, modulename)
-    helpers.makedirs(out_sdir)
-
-    #
-    # Copy files
-    #
-    m_cp(output_files.get('EPICS-DB', output_files.get('EPICS-OPC-DB')), "db", modulename + ".db")
-
-    try:
-        m_cp(output_files['EPICS-TEST-DB'],           "db",      modulename + "-test.db")
-    except KeyError:
-        pass
-
-    try:
-        startup = 'AUTOSAVE-IOCSH'
-        m_cp(output_files[startup],                   "iocsh",   snippet + ".iocsh")
-    except KeyError:
-        startup = 'IOCSH'
-        m_cp(output_files[startup],                   "iocsh",   snippet + ".iocsh")
-
-    test_cmd = True
-    try:
-        test_startup = 'AUTOSAVE-TEST-IOCSH'
-        m_cp(output_files[test_startup],              "iocsh",   snippet + "-test.iocsh")
-    except KeyError:
-        try:
-            test_startup = 'TEST-IOCSH'
-            m_cp(output_files[test_startup],          "iocsh",   snippet + "-test.iocsh")
-        except KeyError:
-            test_cmd = False
-
-    # These are not needed for E3
-#    req_files    = []
-#    try:
-#        m_cp(output_files['AUTOSAVE'],                "misc",    modulename + ".req")
-#        req_files.append(modulename + ".req")
-#    except KeyError:
-#        pass
-#
-#    try:
-#        m_cp(output_files['AUTOSAVE-TEST'],           "misc",    modulename + "-test.req")
-#        req_files.append(modulename + "-test.req")
-#    except KeyError:
-#        pass
-
-    m_cp(output_files["CREATOR"],                     "misc",    "creator")
-
-    try:
-        m_cp(output_files["BECKHOFF"],                "misc",    os.path.basename(output_files["BECKHOFF"]))
-    except KeyError:
-        pass
-
-    try:
-        m_cp(output_files["STANDARD_SCL"],            "misc",    os.path.basename(output_files["STANDARD_SCL"]))
-    except KeyError:
-        pass
-
-    try:
-        m_cp(output_files["PROJECT_SCL"],             "misc",    os.path.basename(output_files["PROJECT_SCL"]))
-    except KeyError:
-        pass
-
-    #
-    # Copy CCDB dump
-    #
-    if output_files['CCDB-DUMP'] is not None:
-        miscdir = os.path.join(out_sdir, "misc")
-        try:
-            import zipfile
-            with zipfile.ZipFile(output_files['CCDB-DUMP'], "r") as z:
-                z.extractall(miscdir)
-                e3_files.extend(map(lambda x: os.path.join(miscdir, x), z.namelist()))
-                z.close()
-        except:
-            helpers.rmdirs(os.path.join(miscdir, "ccdb"))
-            print("Cannot copy CCDB dump to E3 module")
-
-
-    #
-    # Copy the README file to the modname directory
-    #
-    readme = os.path.join(out_sdir, "README.md")
-    copy2(output_files["README"], readme)
-    e3_files.append(readme)
-
-    output_files['E3'] = e3_files
-
-    macros          = ""
-    live_macros     = ""
-    test_macros     = ""
-    startup_printer = printers[startup]
-    macro_list      = startup_printer.macros()
-    if macro_list:
-        macros      = ", ".join(["{m}={m}".format(m = startup_printer.macro_name(macro)) for macro in macro_list])
-        live_macros = ", {}".format(macros)
-
-    #
-    # Create env.sh
-    #
-    with open(os.path.join(OUTPUT_DIR, "env.sh"), "w") as run:
-        print("""IOCNAME='{modulename}'""".format(modulename = modulename), file = run)
-
-    #
-    # Create script to run module with 'safe' defaults
-    #
-    with open(os.path.join(OUTPUT_DIR, "run_module.bash"), "w") as run:
-        iocsh_bash = """iocsh.bash -l {moduledir}/cellMods -r {modulename},plcfactory -c 'iocshLoad($({modulename}_DIR)/{snippet}.iocsh, "IPADDR = 127.0.0.1, """.format(moduledir  = os.path.abspath(out_mdir),
-                                                                                                                                                                         modulename = modulename,
-                                                                                                                                                                         snippet    = snippet)
-        if 'OPC' in ifdef_params['PLC_TYPE']:
-            print(iocsh_bash + """PORT = 4840, PUBLISHING_INTERVAL = 200{macros}")'""".format(macros = live_macros), file = run)
-        else:
-            print(iocsh_bash + """ RECVTIMEOUT = 3000{macros}")'""".format(macros = live_macros), file = run)
-
-    if test_cmd:
-        #
-        # Create script to run test version of module
-        #
-        with open(os.path.join(OUTPUT_DIR, "run_test_module.bash"), "w") as run:
-            if macros:
-                test_macros = ', "{}"'.format(macros)
-            print("""iocsh.bash -l {moduledir}/cellMods -r {modulename},plcfactory -c 'iocshLoad($({modulename}_DIR)/{snippet}-test.iocsh, "_={macros}")'""".format(moduledir  = os.path.abspath(out_mdir),
-                                                                                                                                                                    modulename = modulename,
-                                                                                                                                                                    snippet    = snippet,
-                                                                                                                                                                    macros     = test_macros), file = run)
-
-    print("E3 Module created:", out_mdir)
-    return out_mdir
 
 
 def write_data_files():
@@ -1323,6 +1512,15 @@ def main(argv):
                             const   = ""
                            )
 
+        parser.add_argument(
+                            '--ioc',
+                            dest     = "ioc",
+                            help     = "Generate IOC and if git repository is defined tag it with the given version",
+                            metavar  = 'version',
+                            type     = str,
+                            const    = "",
+                            nargs    = '?')
+
         return parser
 
 
@@ -1386,16 +1584,13 @@ def main(argv):
     else:
         eee = False
 
+    if args.ioc is not None:
+        global generate_ioc
+        generate_ioc = True
+
     if args.e3 is not None:
-        if args.e3 != "":
-            e3_modulename = args.e3.lower()
-            if e3_modulename.startswith('e3-'):
-                e3_modulename = e3_modulename[len('e3-'):]
-        glob.e3_modulename = e3_modulename
-        glob.e3_snippet    = e3_modulename
-        e3 = True
-    else:
-        e3 = False
+        global e3
+        e3 = E3(args.e3)
 
     # Third pass
     #  get all options
@@ -1524,7 +1719,7 @@ def main(argv):
     if eee:
         default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "AUTOSAVE-ST-CMD", "AUTOSAVE", "BEAST", "BEAST-TEMPLATE" ] )
 
-    if e3:
+    if e3 or generate_ioc:
         default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "AUTOSAVE-IOCSH", "BEAST", "BEAST-TEMPLATE", ] )
 
     if default_printers:
@@ -1549,7 +1744,7 @@ def main(argv):
         templateIDs.add("AUTOSAVE-TEST")
         templateIDs.add("AUTOSAVE-ST-TEST-CMD")
 
-    if e3 and "EPICS-TEST-DB" in templateIDs:
+    if (e3 or generate_ioc) and "EPICS-TEST-DB" in templateIDs:
         templateIDs.add("AUTOSAVE-TEST-IOCSH")
 
     if "ST-CMD" in templateIDs and "AUTOSAVE-ST-CMD" in templateIDs:
@@ -1630,7 +1825,9 @@ def main(argv):
         if eee:
             create_eee(glob.eee_modulename, glob.eee_snippet)
         if e3:
-            create_e3(glob.e3_modulename, glob.e3_snippet)
+            e3.create()
+        if ioc is not None:
+            ioc.create(args.ioc)
 
     if args.zipit is not None:
         create_zipfile(args.zipit)
