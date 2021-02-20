@@ -478,7 +478,18 @@ class IOC(object):
             return
 
         out_idir = os.path.join(OUTPUT_DIR, "ioc", self.directory())
+        out_idir = os.path.join("/tmp/plcfactory", "ioc", self.directory())
         helpers.makedirs(out_idir)
+        if self.repo():
+            # Cannot specify 'branch = "master"'; git segfaults when trying to clone an empty repository and checking out its "master" branch
+            repo = git.GIT.clone(self.repo(), out_idir)
+            try:
+                repo.create_branch(glob.timestamp, "master")
+            except git.GITException:
+                # We might want to create a .gitignore file on 'master'?
+                pass
+        else:
+            repo = None
 
         with open(os.path.join(out_idir, 'env.sh'), 'wt') as env_sh:
             print("export IOCNAME={}".format(self.name()), file = env_sh)
@@ -496,6 +507,15 @@ require recsync""", file = st_cmd)
 iocshLoad(iocsh/{}.iocsh)""".format(self._e3.snippet()), file = st_cmd)
 
         self._e3.copy_files(out_idir)
+        if repo:
+            # FIXME: remove EVERYTHING from the directories E3 created but not copied this time
+            repo.add(self._e3.files())
+            # TODO: add env.sh and st.cmd too
+            # Do we want to separate those commits? most probably not?
+            repo.commit()
+            if version:
+                repo.tag(version)
+                repo.push()
 
 
 
