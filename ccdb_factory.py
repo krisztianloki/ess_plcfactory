@@ -89,7 +89,7 @@ class CCDB_Factory(CC):
             if self.is_file():
                 self._saveasurl = self._artifact["full_path"]
                 self.download()
-            else:
+            elif self._artifact["download"]:
                 name = self.name()
                 if name.startswith("EPI"):
                     extension = ".def"
@@ -238,11 +238,12 @@ class CCDB_Factory(CC):
             self.__addArtifact(artifactDict)
 
 
-        def addLink(self, name, uri, local_file = None):
+        def addLink(self, name, uri, local_file = None, download = True):
             artifactDict = dict(CCDB_Factory.default_link_dict)
             artifactDict["kind"] = "SLOT"
             artifactDict["name"] = name
             artifactDict["uri"]  = uri
+            artifactDict["download"] = download
             if local_file is not None:
                 if not os.path.isdir(local_file):
                     CCDB_Factory.checkIfExists(local_file)
@@ -361,10 +362,11 @@ class CCDB_Factory(CC):
         self.__addArtifact(deviceType, artifactDict)
 
 
-    def addLink(self, deviceType, name, uri, local_file = None):
+    def addLink(self, deviceType, name, uri, local_file = None, download = True):
         artifactDict = dict(CCDB_Factory.default_link_dict)
         artifactDict["uri"]  = uri
         artifactDict["name"] = name
+        artifactDict["download"] = download
         if local_file is not None:
             if not os.path.isdir(local_file):
                 CCDB_Factory.checkIfExists(local_file)
