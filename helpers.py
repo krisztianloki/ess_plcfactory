@@ -9,6 +9,8 @@ __license__    = "GPLv3"
 
 # Python libraries
 import os
+from shlex import split as shlex_split
+import subprocess
 import unicodedata
 try:
     from urllib.parse import urlsplit, urlunsplit
@@ -180,6 +182,16 @@ def url_to_path(url):
     return os.path.join(*map(lambda sde: sanitizeFilename(sde), comps))
 
 
+def url_to_host(url):
+    """
+    Returns the host part of the url
+
+    https://gitlab.esss.lu.se/icshwi/plcfactory.git ==> gitlab.esss.lu.se
+    """
+
+    return splituser(urlsplit(url).netloc)[1]
+
+
 def urljoin(part1, part2, *more):
     """
     Join paths to form a URL
@@ -193,3 +205,8 @@ def urljoin(part1, part2, *more):
         part2 = posixpathjoin(part2, *[ m[1:] if m[0] =='/' else m for m in more])
 
     return posixpathjoin(part1, part2)
+
+
+def xdg_open(url):
+    subprocess.check_call(shlex_split("xdg-open {}".format(url)))
+

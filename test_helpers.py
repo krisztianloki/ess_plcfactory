@@ -93,6 +93,14 @@ class TestHelpers(unittest.TestCase):
         self.assertEqual(helpers.url_to_path(url.format(usr = "krisztianloki@", path = path)), os.path.join(urlbase, path))
 
 
+    def test_url_to_host(self):
+        url = "https://gitlab.esss.lu.se/icshwi/plcfactory"
+        self.assertEqual(helpers.url_to_host(url), "gitlab.esss.lu.se")
+
+        url = "https://krisztianloki@gitlab.esss.lu.se/icshwi/plcfactory"
+        self.assertEqual(helpers.url_to_host(url), "gitlab.esss.lu.se")
+
+
     def test_urljoin(self):
         base = "https://ccdb.esss.lu.se"
         rest = "rest"
