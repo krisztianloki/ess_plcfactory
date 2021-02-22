@@ -305,6 +305,7 @@ class E3(object):
                 self._test_cmd = False
 
         ch.m_cp(output_files["CREATOR"],                     "misc",    "creator")
+        ch.m_cp(output_files["DEVICE-LIST"],                 "misc",    "device-list.txt")
 
         try:
             ch.m_cp(output_files["BECKHOFF"],                "misc",    os.path.basename(output_files["BECKHOFF"]))
@@ -318,6 +319,11 @@ class E3(object):
 
         try:
             ch.m_cp(output_files["PROJECT_SCL"],             "misc",    os.path.basename(output_files["PROJECT_SCL"]))
+        except KeyError:
+            pass
+
+        try:
+            ch.m_cp(output_files["ARCHIVE"],                 "misc",    self.modulename() + ".archive")
         except KeyError:
             pass
 
