@@ -488,40 +488,57 @@ class IOC(object):
         helpers.makedirs(out_idir)
         if self.repo():
             # Cannot specify 'branch = "master"'; git segfaults when trying to clone an empty repository and checking out its "master" branch
-            repo = git.GIT.clone(self.repo(), out_idir)
+            # Update the master branch if available
+            repo = git.GIT.clone(self.repo(), out_idir, update = True)
             try:
                 repo.create_branch(glob.timestamp, "master")
             except git.GITException:
-                # We might want to create a .gitignore file on 'master'?
-                pass
+                # Create a .gitignore file on 'master' so we can create a development branch
+                gitignore = os.path.join(out_idir, ".gitignore")
+                with open(gitignore, "wt") as gf:
+                    pass
+                repo.add(gitignore)
+                repo.commit("Initialized repository")
+                repo.push()
+                # Now that we have a proper 'master' branch we can try creating a development branch
+                repo.create_branch(glob.timestamp, "master")
         else:
             repo = None
 
-        with open(os.path.join(out_idir, 'env.sh'), 'wt') as env_sh:
-            print("export IOCNAME={}".format(self.name()), file = env_sh)
-            print("export {}_VERSION={}".format(self._e3.modulename(), version if version else 'development'), file = env_sh)
+        # Create env.sh
+        env_sh = os.path.join(out_idir, 'env.sh')
+        with open(env_sh, 'wt') as f_env_sh:
+            print('export IOCNAME={}'.format(self.name()), file = f_env_sh)
+            print('export EPICS_DB_INCLUDE_PATH="`pwd`/db"', file = f_env_sh)
+            print('export {}_VERSION={}'.format(self._e3.modulename(), version if version else 'plcfactory@' + glob.timestamp), file = f_env_sh)
 
-        with open(os.path.join(out_idir, 'st.cmd'), 'wt') as st_cmd:
+        # Create st.cmd
+        st_cmd = os.path.join(out_idir, 'st.cmd')
+        with open(st_cmd, 'wt') as f_st_cmd:
             print("""# Startup for {}
 require modbus
 require s7plc
-require calc""".format(self.name()), file = st_cmd)
+require calc""".format(self.name()), file = f_st_cmd)
             print("""
 require autosave
-require recsync""", file = st_cmd)
+require recsync""", file = f_st_cmd)
             print("""
-iocshLoad(iocsh/{}.iocsh)""".format(self._e3.snippet()), file = st_cmd)
+iocshLoad(iocsh/{}.iocsh)""".format(self._e3.snippet()), file = f_st_cmd)
 
+        # Copy the generated e3 files
         self._e3.copy_files(out_idir)
+
+        # Update the repository
         if repo:
             # FIXME: remove EVERYTHING from the directories E3 created but not copied this time
             repo.add(self._e3.files())
-            # TODO: add env.sh and st.cmd too
-            # Do we want to separate those commits? most probably not?
+            repo.add([env_sh, st_cmd])
             repo.commit()
             if version:
                 repo.tag(version)
-                repo.push()
+                link = repo.push()
+                if link:
+                    helpers.xdg_open(link)
 
 
 

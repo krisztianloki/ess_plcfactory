@@ -21,16 +21,22 @@ class GITException(Exception):
 
 
 class GIT(object):
+    REMOTE_PREFIX = "remote:"
+    REMOTE_PREFIX_LEN = len(REMOTE_PREFIX)
+
     def __init__(self, path):
         super(GIT, self).__init__()
 
         self._path = path
         self._branch = None
-        self._repo = None
+        self._url = None
 
 
     @staticmethod
     def __is_repo(path):
+        """
+        Returns True if 'path' is inside a work tree of a git repository
+        """
         try:
             return subprocess.check_output(shlex_split("git rev-parse --is-inside-work-tree"), stderr = subprocess.STDOUT, cwd = path, **spkwargs).strip().lower() == "true"
         except subprocess.CalledProcessError as e:
@@ -41,22 +47,22 @@ class GIT(object):
 
 
     @staticmethod
-    def clone(url, path = '.', branch = None):
+    def clone(url, path = '.', branch = None, update = False):
         """
         Clone the repository at 'url' into 'path' and possibly checkout 'branch'
 
         If repository is already cloned, checkout 'branch'
+
+        If 'update' is True then the master branch will be updated
         """
         git = GIT(path)
         if not git.is_repo():
             # If 'path' is not a repository then clone url
-            print("Not repository --> clone")
             git.__clone(url, branch)
             return git
 
         if git.get_toplevel_dir() != path:
             # This is some other repository working tree, we can clone a new one here
-            print("Inside other repository --> clone")
             git.__clone(url, branch)
             return git
 
@@ -64,18 +70,29 @@ class GIT(object):
         if helpers.url_strip_user(git.get_origin()) != helpers.url_strip_user(url):
             raise GITException("Found unrelated git repository in {}, refusing to overwrite".format(path))
 
+        git.__set_url(url)
+
+        # Check if there are branches (meaning the repository is not empty) and do a git pull
+        if update and git.get_branches():
+            if git.get_current_branch() == "master":
+                git.pull("master")
+            else:
+                git.fetch("master", "master")
+
         # Check if we need to (and actually can) checkout 'branch'
         if branch and git.get_branches():
-            print("Checking out", branch)
             git.checkout(branch)
         else:
             # Update the current branch
-            self._branch = self.get_current_branch()
+            git._branch = git.get_current_branch()
 
         return git
 
 
     def get_toplevel_dir(self):
+        """
+        Returns the toplevel directory of the repository
+        """
         try:
             return subprocess.check_output(shlex_split("git rev-parse --show-toplevel"), cwd = self._path, **spkwargs).strip()
         except subprocess.CalledProcessError as e:
@@ -84,11 +101,20 @@ class GIT(object):
 
 
     def get_origin(self):
+        """
+        Returns the remote url of 'origin'
+        """
         try:
             return subprocess.check_output(shlex_split("git ls-remote --get-url origin"), cwd = self._path, **spkwargs).strip()
         except subprocess.CalledProcessError as e:
             print(e)
             raise
+
+
+    def __set_url(self, url):
+        if not url.endswith(".git"):
+            url += ".git"
+        self._url = url
 
 
     def __clone(self, url, branch = None):
@@ -97,7 +123,7 @@ class GIT(object):
         """
         try:
             subprocess.check_output(shlex_split("git clone --quiet {} {} .".format(url, "" if branch is None else "--branch {} --depth 1".format(branch))), cwd = self._path, stderr = subprocess.STDOUT, **spkwargs)
-            self._repo = url
+            self.__set_url(url)
             self._branch = "master"
         except subprocess.CalledProcessError as e:
             print(e)
@@ -109,6 +135,9 @@ class GIT(object):
 
 
     def checkout(self, branch, exception = False):
+        """
+        Checks out 'branch'
+        """
         try:
             subprocess.check_call(shlex_split("git checkout --quiet {}".format(branch)), cwd = self._path, **spkwargs)
         except subprocess.CalledProcessError as e:
@@ -119,6 +148,9 @@ class GIT(object):
 
 
     def create_branch(self, branch, start_point = None):
+        """
+        Creates and checks out 'branch' with starting point of 'start_point' (if specified)
+        """
         try:
             if start_point:
                 start_point = " {}".format(start_point)
@@ -132,6 +164,9 @@ class GIT(object):
 
 
     def get_branches(self):
+        """
+        Returns the hashes(?) of the available branches
+        """
         try:
             return subprocess.check_output(shlex_split("git rev-parse --branches"), cwd = self._path, **spkwargs).splitlines()
         except subprocess.CalledProcessError as e:
@@ -140,6 +175,9 @@ class GIT(object):
 
 
     def get_current_branch(self):
+        """
+        Returns the current branch
+        """
         try:
             return subprocess.check_output(shlex_split("git rev-parse --abbrev-ref HEAD"), cwd = self._path, **spkwargs).strip()
         except subprocess.CalledProcessError as e:
@@ -148,16 +186,22 @@ class GIT(object):
 
 
     def add(self, files):
+        """
+        Adds the files
+        """
         try:
             if isinstance(files, str):
                 files = [ files ]
-            return subprocess.check_call(shlex_split("git add {}".format(" ".join(files))), cwd = self._path, **spkwargs)
+            return subprocess.check_call(shlex_split("git add {}".format(" ".join(map(lambda x: os.path.relpath(x, self._path), files)))), cwd = self._path, **spkwargs)
         except subprocess.CalledProcessError as e:
             print(e)
             raise
 
 
     def commit(self, msg = None):
+        """
+        Commits the index
+        """
         try:
             if msg:
                 msg = "-m '{}'".format(msg)
@@ -170,20 +214,95 @@ class GIT(object):
 
 
     def tag(self, tag, msg = None):
+        """
+        Tags using 'msg' as commit message or 'tag' if 'msg' is not specified
+        """
         try:
             if msg is None:
                 msg = tag
             msg = "-m '{}'".format(msg)
 
-            return subprocess.check_call(shlex_split("git tag -a {} {}".format(tag, msg)), cwd = self._path, **spkwargs)
+            return subprocess.check_output(shlex_split("git tag -a {} {}".format(tag, msg)), stderr = subprocess.STDOUT, cwd = self._path, **spkwargs)
         except subprocess.CalledProcessError as e:
+            if e.output.strip() == "fatal: tag '{}' already exists".format(tag):
+                raise GITException("Tag '{}' already exists".format(tag))
             print(e)
             raise
 
 
     def push(self):
+        """
+        Pushes the current branch
+
+        Returns a URL to create a merge request
+        """
         try:
-            subprocess.check_call(shlex_split("git push --follow-tags origin {}".format(self._branch)), cwd = self._path, **spkwargs)
+            subprocess.check_call(shlex_split("git push --follow-tags --quiet --porcelain origin {}".format(self._branch)), cwd = self._path, **spkwargs)
+            if helpers.url_to_host(self._url) == "gitlab.esss.lu.se":
+                return "{url}/-/merge_requests/new?merge_request%5Bsource_branch%5D={branch}".format(url = self._url[:-4], branch = self._branch)
+            # For some reason subprocess will hang when trying to capture the 'remote:' messages
+            # subprocess.run() is not available in Python2
+
+#            lines = subprocess.check_output(shlex_split("git push --follow-tags --quiet --porcelain origin {}".format(self._branch)), stderr = subprocess.STDOUT, cwd = self._path, **spkwargs).splitlines()
+
+#            out = subprocess.run(shlex_split("git push --follow-tags --quiet --porcelain origin {}".format(self._branch)), stdout = subprocess.PIPE, stderr = subprocess.PIPE, cwd = self._path, **spkwargs)
+#            print(out)
+#            lines = out.stderr.splitlines()
+
+#            out = subprocess.Popen(shlex_split("git push --follow-tags --porcelain origin {}".format(self._branch)), stdout = subprocess.PIPE, stderr = subprocess.PIPE, cwd = self._path, **spkwargs)
+#            print("out:", out)
+#            print("Calling communicate()")
+#            output, stderr = out.communicate()
+#            print("Calling poll()...")
+#            retcode = out.poll()
+#            if retcode:
+#                raise subprocess.CalledProcessError(retcode, "git push", output = stderr)
+#            print("STDOUT", output)
+#            print("STDERR", stderr)
+#            lines = stderr.splitlines()
+
+#            print(lines)
+#            lines = map(lambda l: l.strip()[GIT.REMOTE_PREFIX_LEN:].strip() if l.strip().startswith(GIT.REMOTE_PREFIX) else l.strip(), lines)
+#            print(lines)
+#            found = False
+#            for l in lines:
+#                if not l:
+#                    continue
+#
+#                if l == "To create a merge request for {}, visit:".format(self._branch):
+#                    print("Found",l)
+#                    found = True
+#                    continue
+#
+#                if found:
+#                    # Return the link to merge request creation
+#                    print("Link:", l)
+#                    return l
+            return None
+        except subprocess.CalledProcessError as e:
+            print(e)
+            raise
+
+
+    def fetch(self, src, dst = None):
+        """
+        Fetches 'src' into 'dst'
+        """
+        try:
+            if dst:
+                dst = ":" + dst
+            subprocess.check_call(shlex_split("git fetch --quiet origin {}{}".format(src, dst)), cwd = self._path, **spkwargs)
+        except subprocess.CalledProcessError as e:
+            print(e)
+            raise
+
+
+    def pull(self, src):
+        """
+        Pulls 'src'
+        """
+        try:
+            subprocess.check_call(shlex_split("git pull --ff-only --quiet origin {}".format(src)), cwd = self._path, **spkwargs)
         except subprocess.CalledProcessError as e:
             print(e)
             raise
