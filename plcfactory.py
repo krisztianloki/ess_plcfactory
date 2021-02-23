@@ -28,6 +28,10 @@ if sys.version_info.major != 2:
 PLCFactory supports Python-2.x only. You are running {}
 """.format(sys.version))
 
+try:
+    from pathlib import Path
+except ImportError:
+    from pathlib2 import Path
 import argparse
 import datetime
 import filecmp
@@ -530,15 +534,37 @@ iocshLoad(iocsh/{}.iocsh)""".format(self._e3.snippet()), file = f_st_cmd)
 
         # Update the repository
         if repo:
-            # FIXME: remove EVERYTHING from the directories E3 created but not copied this time
             repo.add(self._e3.files())
+            self.__remove_stale_files(repo, self._e3.files())
             repo.add([env_sh, st_cmd])
             repo.commit()
             if version:
-                repo.tag(version)
+                repo.tag(version, override_local = True)
                 link = repo.push()
                 if link:
                     helpers.xdg_open(link)
+
+
+    def __remove_stale_files(self, repo, current_files):
+        # Get the 'toplevel' directories E3 creates
+        paths = set()
+        for cf in current_files:
+            # Get a repository relative path
+            relpath = os.path.relpath(cf, repo.path())
+            # Get the first component
+            path = Path(relpath)
+            path = path.parts[0]
+            # Make sure that it is a directory
+            if not os.path.isdir(os.path.join(repo.path(), path)):
+                continue
+            paths.add(path)
+
+        # Now check that every file under 'paths' is still relevant
+        for path in paths:
+            for root, dirs, files in os.walk(os.path.join(repo.path(), path)):
+                for f in files:
+                    if os.path.join(root, f) not in current_files:
+                        repo.remove(os.path.join(root, f))
 
 
 

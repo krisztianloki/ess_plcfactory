@@ -32,6 +32,14 @@ class GIT(object):
         self._url = None
 
 
+    def path(self):
+        return self._path
+
+
+    def url(self):
+        return self._url
+
+
     @staticmethod
     def __is_repo(path):
         """
@@ -77,7 +85,9 @@ class GIT(object):
             if git.get_current_branch() == "master":
                 git.pull("master")
             else:
+                # Not on master, so fetch master and also fetch remote tags
                 git.fetch("master", "master")
+                git.fetch_tags()
 
         # Check if we need to (and actually can) checkout 'branch'
         if branch and git.get_branches():
@@ -187,7 +197,7 @@ class GIT(object):
 
     def add(self, files):
         """
-        Adds the files
+        Adds the files in 'files'
         """
         try:
             if isinstance(files, str):
@@ -198,9 +208,22 @@ class GIT(object):
             raise
 
 
+    def remove(self, files):
+        """
+        Removes the files in 'files'
+        """
+        try:
+            if isinstance(files, str):
+                files = [ files ]
+            return subprocess.check_call(shlex_split("git rm --quiet {}".format(" ".join(map(lambda x: os.path.relpath(x, self._path), files)))), cwd = self._path, **spkwargs)
+        except subprocess.CalledProcessError as e:
+            print(e)
+            raise
+
+
     def commit(self, msg = None):
         """
-        Commits the index
+        Commits the current contents of the index
         """
         try:
             if msg:
@@ -213,16 +236,46 @@ class GIT(object):
             raise
 
 
-    def tag(self, tag, msg = None):
+    def remote_tags(self):
+        """
+        Returns the remote tags
+
+        A list of lines as returned by 'git ls-remote --tags'
+        """
+        try:
+            return subprocess.check_output(shlex_split("git ls-remote --tags origin"), cwd = self._path, **spkwargs).splitlines()
+        except subprocess.CalledProcessError as e:
+            print(e)
+            raise
+
+
+    def __filter_tag_names(self, ls_remote_output):
+        """
+        Removes the commit hashes and the refs/tags/ part of the tags. Also removes tags with the ^{} suffix
+        """
+        return filter(lambda x: not x.endswith("^{}"), map(lambda x: x[x.index("refs/tags/") + 10:], ls_remote_output))
+
+
+    def tag(self, tag, msg = None, override_local = False):
         """
         Tags using 'msg' as commit message or 'tag' if 'msg' is not specified
+
+        If 'override_local' is True it will overwrite existing _local_ tags
         """
         try:
             if msg is None:
                 msg = tag
             msg = "-m '{}'".format(msg)
 
-            return subprocess.check_output(shlex_split("git tag -a {} {}".format(tag, msg)), stderr = subprocess.STDOUT, cwd = self._path, **spkwargs)
+            if tag in self.__filter_tag_names(self.remote_tags()):
+                raise GITException("Tag '{}' already exists".format(tag))
+            else:
+                if override_local:
+                    force = "-f "
+                else:
+                    force = ""
+
+            return subprocess.check_output(shlex_split("git tag -a {} {} {}".format(tag, force, msg)), stderr = subprocess.STDOUT, cwd = self._path, **spkwargs)
         except subprocess.CalledProcessError as e:
             if e.output.strip() == "fatal: tag '{}' already exists".format(tag):
                 raise GITException("Tag '{}' already exists".format(tag))
@@ -280,6 +333,8 @@ class GIT(object):
 #                    return l
             return None
         except subprocess.CalledProcessError as e:
+            if e.output.startswith("fatal: Authentication failed for "):
+                raise GITException("AUTHENTICATION PROBLEM")
             print(e)
             raise
 
@@ -292,6 +347,17 @@ class GIT(object):
             if dst:
                 dst = ":" + dst
             subprocess.check_call(shlex_split("git fetch --quiet origin {}{}".format(src, dst)), cwd = self._path, **spkwargs)
+        except subprocess.CalledProcessError as e:
+            print(e)
+            raise
+
+
+    def fetch_tags(self):
+        """
+        Fetches tags
+        """
+        try:
+            subprocess.check_call(shlex_split("git fetch --quiet --tags origin"), cwd = self._path, **spkwargs)
         except subprocess.CalledProcessError as e:
             print(e)
             raise
