@@ -144,6 +144,14 @@ if commit_id is not None:
 
 class PLCFactoryException(Exception):
     status = 1
+    def __init__(self, *args):
+        super(PLCFactoryException, self).__init__(*args)
+        try:
+            self.message = args[0]
+        except IndexError:
+            self.message = ""
+
+
     def __str__(self):
         if self.message is not None:
             return """
