@@ -242,6 +242,13 @@ class E3(object):
         return self._files
 
 
+    def iocsh_printer(self):
+        """
+        Returns the printer that generated the iocsh snippet
+        """
+        return  printers[self._startup]
+
+
     @staticmethod
     def from_device(device):
         """
@@ -373,14 +380,14 @@ class E3(object):
 
         output_files['E3'] = self._files
 
-        macros          = ""
-        live_macros     = ""
-        test_macros     = ""
-        startup_printer = printers[self._startup]
-        macro_list      = startup_printer.macros()
+        iocsh_printer   = self.iocsh_printer()
+        macro_list      = iocsh_printer.macros()
         if macro_list:
-            macros      = ", ".join(["{m}={m}".format(m = startup_printer.macro_name(macro)) for macro in macro_list])
+            macros      = ", ".join(["{m}={m}".format(m = iocsh_printer.macro_name(macro)) for macro in macro_list])
             live_macros = ", {}".format(macros)
+        else:
+            macros      = ""
+            live_macros = ""
 
         #
         # Create env.sh
@@ -407,6 +414,8 @@ class E3(object):
             with open(os.path.join(OUTPUT_DIR, "run_test_module.bash"), "w") as run:
                 if macros:
                     test_macros = ', "{}"'.format(macros)
+                else:
+                    test_macros = ""
                 print("""iocsh.bash -l {moduledir}/cellMods -r {modulename},plcfactory -c 'iocshLoad($({modulename}_DIR)/{snippet}-test.iocsh, "_={macros}")'""".format(moduledir  = os.path.abspath(out_mdir),
                                                                                                                                                                         modulename = self.modulename(),
                                                                                                                                                                         snippet    = self.snippet(),
@@ -483,10 +492,6 @@ class IOC(object):
         Generate IOC
         """
 
-        if not self.name():
-            print("Could not find IOC that controls the device!", file = sys.stderr)
-            return
-
         out_idir = os.path.join(OUTPUT_DIR, "ioc", self.directory())
         out_idir = os.path.join("/tmp/plcfactory", "ioc", self.directory())
         helpers.makedirs(out_idir)
@@ -509,6 +514,9 @@ class IOC(object):
         else:
             repo = None
 
+        # Copy the generated e3 files
+        self._e3.copy_files(out_idir)
+
         # Create env.sh
         env_sh = os.path.join(out_idir, 'env.sh')
         with open(env_sh, 'wt') as f_env_sh:
@@ -529,8 +537,8 @@ require recsync""", file = f_st_cmd)
             print("""
 iocshLoad(iocsh/{}.iocsh)""".format(self._e3.snippet()), file = f_st_cmd)
 
-        # Copy the generated e3 files
-        self._e3.copy_files(out_idir)
+        if self._e3.iocsh_printer().hostname() is None:
+            raise PLCFactoryException("Hostname of the PLC is not specified, generated IOC is not usable!")
 
         # Update the repository
         if repo:

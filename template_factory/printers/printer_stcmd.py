@@ -137,6 +137,10 @@ class ST_CMD(eee, MACROS, PRINTER):
         return ""
 
 
+    def hostname(self):
+        return self._ipaddr
+
+
     #
     # HEADER
     #
