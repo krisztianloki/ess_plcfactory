@@ -1467,6 +1467,11 @@ class PLCFArgumentParser(argparse.ArgumentParser):
 
 
 def main(argv):
+    def not_empty_string(argument):
+        if argument == "":
+            raise argparse.ArgumentTypeError("empty string not allowed")
+        return argument
+
     def add_common_parser_args(parser):
         #
         # -d/--device cannot be added to the common args, because it is not a required option in the first pass but a required one in the second pass
@@ -1722,13 +1727,13 @@ def main(argv):
     parser.add_argument(
                         '--tag',
                         help     = 'tag to use if more than one matching artifact is found',
-                        type     = str)
+                        type     = not_empty_string)
 
     parser.add_argument(
                         '--epi-version',
                         dest     = "epi_version",
                         help     = "'EPI VERSION' to use. Overrides any 'EPI VERSION' property set in CCDB",
-                        type     = str)
+                        type     = not_empty_string)
 
     parser.add_argument(
                         '-t',
