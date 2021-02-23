@@ -9,7 +9,7 @@ __license__    = "GPLv3"
 
 
 
-from . import PRINTER
+from . import PRINTER, TemplatePrinterException
 from tf_ifdef import STATUS_BLOCK, BASE_TYPE
 
 
@@ -113,6 +113,15 @@ class MACROS(object):
 
 
 class ST_CMD(eee, MACROS, PRINTER):
+    SIEMENS_PLC_PULSE = dict({"Pulse_100ms" : 100,
+                              "Pulse_200ms" : 200,
+                              "Pulse_400ms" : 400,
+                              "Pulse_500ms" : 500,
+                              "Pulse_800ms" : 800,
+                              "Pulse_1s" : 1000,
+                              "Pulse_1600ms" : 1600,
+                              "Pulse_2s" : 200})
+
     def __init__(self):
         super(ST_CMD, self).__init__()
         self._opc = False
@@ -138,6 +147,14 @@ class ST_CMD(eee, MACROS, PRINTER):
         self._ipaddr = self.get_property("Hostname", None)
         if self._ipaddr == "":
             self._ipaddr = None
+
+        self._recvtimeout = 3000
+        plc_pulse = self.get_property("PLC-EPICS-COMMS: PLCPulse", "Pulse_200ms")
+        try:
+            plc_pulse = self.SIEMENS_PLC_PULSE[plc_pulse]
+            self._recvtimeout = plc_pulse * 1.5
+        except KeyError:
+            raise TemplatePrinterException("Cannot interpret PLCPulse property: '{}'".format(plc_pulse))
 
         st_cmd_header = """
 # @field IPADDR
@@ -221,13 +238,14 @@ dbLoadRecords("{modulename}.db", "{PLC_MACRO}={plcname}, MODVERSION=$({modversio
 #- Input block size  : {insize} bytes
 #- Output block size : 0 bytes
 #- Endianness        : {endianness}
-s7plcConfigure("{plcname}", {ipaddr}, $(S7_PORT={s7drvport}), {insize}, 0, {bigendian}, $(RECVTIMEOUT), 0)
+s7plcConfigure("{plcname}", {ipaddr}, $(S7_PORT={s7drvport}), {insize}, 0, {bigendian}, $(RECVTIMEOUT={recvtimeout}), 0)
 
 #- Modbus port       : {modbusdrvport}
 drvAsynIPPortConfigure("{plcname}", {ipaddr}:$(MB_PORT={modbusdrvport}), 0, 0, 1)
 
 #- Link type         : TCP/IP (0)
-modbusInterposeConfig("{plcname}", 0, $(RECVTIMEOUT), 0)
+#- The timeout is initialized to the (modbus) default if not specified
+modbusInterposeConfig("{plcname}", 0, $(RECVTIMEOUT=0), 0)
 
 #- Slave address     : 0
 #- Function code     : 16 - Write Multiple Registers
@@ -244,6 +262,7 @@ drvModbusAsynConfigure("{plcname}read", "{plcname}", 0, 3, {start_offset}, 10, 0
 
 {dbloadrecords}
 """.format(ipaddr        = "$(IPADDR)" if self._ipaddr is None else "$(IPADDR={})".format(self._ipaddr),
+           recvtimeout   = self._recvtimeout,
            s7drvport     = self.plcf("PLC-EPICS-COMMS: S7Port"),
            modbusdrvport = self.plcf("PLC-EPICS-COMMS: MBPort"),
            insize        = self.plcf(STATUS_BLOCK.counter_keyword()),
