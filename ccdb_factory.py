@@ -28,6 +28,8 @@ from ccdb import CCDB
 
 
 class CCDB_Factory(CC):
+    data_types = dict({ str: "String", int: "Integer", list : "Strings List" })
+
     default_artifact_dict = {"kind": "TYPE",
                              "description": "",
                              "type": "FILE",
@@ -50,7 +52,13 @@ class CCDB_Factory(CC):
     @staticmethod
     def toDatatype(value, dataType = None):
         if dataType is not None:
-            return dataType
+            if dataType in CCDB_Factory.data_types.values():
+                return dataType
+
+            try:
+                return CCDB_Factory.data_types[dataType]
+            except KeyError:
+                raise CC.Exception("Unknown data type: {}".format(dataType))
 
         if isinstance(value, str):
             dataType = "String"
@@ -184,12 +192,13 @@ class CCDB_Factory(CC):
             if self._slot["properties"] is None:
                 self._slot["properties"] = []
 
+            str_value = str(value) if value is not None else None
             for prop in self._slot["properties"]:
                 if prop["name"] == key:
-                    prop["value"] = str(value)
+                    prop["value"] = str_value
                     return
 
-            self._slot["properties"].append({"name": key, "value": str(value), "dataType": CCDB_Factory.toDatatype(value, dataType)})
+            self._slot["properties"].append({"name": key, "value": str_value, "dataType": CCDB_Factory.toDatatype(value, dataType)})
 
 
         def addDevice(self, deviceType, deviceName):
@@ -378,7 +387,7 @@ class CCDB_Factory(CC):
     def setProperty(self, deviceType, key, value, dataType = None):
         propDict = dict(CCDB_Factory.default_prop_dict)
         propDict["name"]  = key
-        propDict["value"] = value
+        propDict["value"] = str(value) if value is not None else None
 
         propDict["dataType"] = self.toDatatype(value, dataType)
 
