@@ -678,6 +678,7 @@ class CC(object):
     @staticmethod
     def addArgs(parser):
         import argparse
+        from ccdb import CCDB, CCDB_TEST, CCDB_CSLAB, CCDB_DEVEL
 
         ccdb_args = parser.add_argument_group("CCDB related options")
 
@@ -685,14 +686,21 @@ class CC(object):
         ccdb_flavors.add_argument(
                                   '--ccdb-test',
                                   dest     = "ccdb_test",
-                                  help     = 'select CCDB test database',
+                                  help     = 'selects CCDB test database at ' + CCDB_TEST.default_url(),
+                                  action   = 'store_true',
+                                  required = False)
+
+        ccdb_flavors.add_argument(
+                                  '--ccdb-cslab',
+                                  dest     = "ccdb_cslab",
+                                  help     = 'selects CCDB test database at ' + CCDB_CSLAB.default_url(),
                                   action   = 'store_true',
                                   required = False)
 
         ccdb_flavors.add_argument(
                                   '--ccdb-devel',
                                   dest     = "ccdb_devel",
-                                  help     = argparse.SUPPRESS,  # selects CCDB development database
+                                  help     = "selects CCDB test database at " + CCDB_DEVEL.default_url(),
                                   action   = 'store_true',
                                   required = False)
 
@@ -701,7 +709,7 @@ class CC(object):
         ccdb_flavors.add_argument(
                                   '--ccdb-production',
                                   dest     = "ccdb_production",
-                                  help     = 'select production CCDB database',
+                                  help     = '(default) selects production CCDB database at ' + CCDB.default_url(),
                                   action   = 'store_true',
                                   required = False)
 
@@ -709,7 +717,7 @@ class CC(object):
                                   '--ccdb',
                                   dest     = "ccdb",
                                   help     = 'use a CCDB dump or custom URL as backend',
-                                  metavar  = 'directory-to-CCDB-dump / name-of-.ccdb.zip / URL to CCDB REST interface',
+                                  metavar  = 'directory-to-CCDB-dump / name-of-.ccdb.zip / URL to CCDB server',
                                   type     = str,
                                   required = False)
 
@@ -1144,6 +1152,21 @@ factory.save("{filename}")""".format(factory_options = 'git_tag = "{}"'.format(g
 
         from ccdb import CCDB
         return CCDB(name, **kwargs)
+
+
+    @staticmethod
+    def open_from_args(args):
+        if args.ccdb_test:
+            from ccdb import CCDB_TEST
+            return CCDB_TEST(clear_templates = args.clear_ccdb_cache)
+        elif args.ccdb_devel:
+            from ccdb import CCDB_DEVEL
+            return CCDB_DEVEL(clear_templates = args.clear_ccdb_cache)
+        elif args.ccdb_cslab:
+            from ccdb import CCDB_CSLAB
+            return CCDB_CSLAB(clear_templates = args.clear_ccdb_cache)
+        else:
+            return CC.open(args.ccdb, clear_templates = args.clear_ccdb_cache)
 
 
     @staticmethod

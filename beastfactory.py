@@ -26,7 +26,7 @@ import time
 
 # Alarm Factory modules
 from   beast_factory.bf_def import BEAST_DEF, BEASTDefException
-from   ccdb   import CC
+from   cc import CC
 import helpers
 import plcf_git as git
 
@@ -136,14 +136,7 @@ class AlarmFactory(object):
         banner()
 
         if not self._standalone:
-            if args.ccdb_test:
-                from ccdb import CCDB_TEST
-                self._ccdb = CCDB_TEST(clear_templates = args.clear_ccdb_cache)
-            elif args.ccdb_devel:
-                from ccdb import CCDB_DEVEL
-                self._ccdb = CCDB_DEVEL(clear_templates = args.clear_ccdb_cache)
-            else:
-                self._ccdb = CC.open(args.ccdb, clear_templates = args.clear_ccdb_cache)
+            self._ccdb = CC.open_from_args(args)
 
         if args.iocs:
             self.processIOCs(args.iocs)

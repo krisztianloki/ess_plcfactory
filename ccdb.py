@@ -209,12 +209,17 @@ class CCDB(CC):
 
 
 
+    @staticmethod
+    def default_url():
+        return "https://ccdb.esss.lu.se"
+
+
     def __init__(self, url = None, verify_ssl_cert = True, **kwargs):
         CC.__init__(self, **kwargs)
         CCDB.Device.ccdb = self
 
         if url is None:
-            self._base_url = "https://ccdb.esss.lu.se"
+            self._base_url = CCDB.default_url()
         else:
             self._base_url = url
 
@@ -317,14 +322,37 @@ class CCDB(CC):
 
 
 class CCDB_TEST(CCDB):
+    @staticmethod
+    def default_url():
+        return "https://icsvs-app01.esss.lu.se/ccdb"
+
+
+    def __init__(self, **kwargs):
+        kwargs["verify_ssl_cert"] = True
+        CCDB.__init__(self, CCDB_TEST.default_url(), **kwargs)
+
+
+
+
+class CCDB_CSLAB(CCDB):
+    @staticmethod
+    def default_url():
+        return "https://ccdb-test-01.cslab.esss.lu.se"
+
+
     def __init__(self, **kwargs):
         kwargs["verify_ssl_cert"] = False
-        CCDB.__init__(self, "https://ics-services.esss.lu.se/ccdb-test", **kwargs)
+        CCDB.__init__(self, CCDB_CSLAB.default_url(), **kwargs)
 
 
 
 
 class CCDB_DEVEL(CCDB):
+    @staticmethod
+    def default_url():
+        return "https://icsvd-app01.esss.lu.se:8443/ccdb-test"
+
+
     def __init__(self, **kwargs):
-        kwargs["verify_ssl_cert"] = False
-        CCDB.__init__(self, "https://icsvd-app01.esss.lu.se:8443/ccdb-test", **kwargs)
+        kwargs["verify_ssl_cert"] = True
+        CCDB.__init__(self, CCDB_DEVEL.default_url(), **kwargs)
