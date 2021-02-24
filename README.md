@@ -43,12 +43,9 @@ For further information, see the files in [doc](doc/).
     *   \[**REQUIRED** _if not using any plc options_\]
     *   The list of templates to process
     *   `--template EPICS-DB TIA-MAP MY-SPECIAL-TEMPLATE`
-*   **--ccdb=<directory_of_ccdb_dump | path_to_.ccdb.zip | URL to CCDB server>**
-    *   \[OPTIONAL\]
-    *   Use the specified CCDB-dump of _device_ instead of connecting to the CCDB database OR use a custom CCDB server
-    *   `--ccdb=VacS-ACCV_Vac-PLC-01001.ccdb.zip`
-    *   `--ccdb=modules/m-epics-vacs-accv_vac-plc-01001/misc/ccdb`
-    *   `--ccdb=https://my-shiny-ccdb.esss.lu.se`
+*   **--ccdb-production**
+    *   \[OPTIONAL\], \[DEFAULT\]
+    *   Use the production version of the CCDB database at https://ccdb.esss.lu.se. This is the default.
 *   **--ccdb-test**
     *   \[OPTIONAL\]
     *   Use the test version of the CCDB database at https://icsvs-app01.esss.lu.se/ccdb
@@ -58,9 +55,12 @@ For further information, see the files in [doc](doc/).
 *   **--ccdb-devel**
     *   \[OPTIONAL\]
     *   Use the development test version of the CCDB database at https://icsvd-app01.esss.lu.se:8443/ccdb-test
-*   **--ccdb-production**
+*   **--ccdb=<directory_of_ccdb_dump | path_to_.ccdb.zip | URL to CCDB server>**
     *   \[OPTIONAL\]
-    *   Use the production version of the CCDB database at https://ccdb.esss.lu.se. This is the default.
+    *   Use the specified CCDB-dump of _device_ instead of connecting to the CCDB database OR use a custom CCDB server
+    *   `--ccdb=VacS-ACCV_Vac-PLC-01001.ccdb.zip`
+    *   `--ccdb=modules/m-epics-vacs-accv_vac-plc-01001/misc/ccdb`
+    *   `--ccdb=https://my-shiny-ccdb.esss.lu.se`
 *   **--zip**=<created_zip_file>
     *   \[OPTIONAL\]
     *   Create a zip file containing the generated files. The default file name is derived from _device_
