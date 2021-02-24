@@ -146,8 +146,12 @@ class PLCFactoryException(Exception):
     status = 1
     def __init__(self, *args):
         super(PLCFactoryException, self).__init__(*args)
+
         try:
-            self.message = args[0]
+            if isinstance(args[0], Exception):
+                self.message = args[0].args[0]
+            else:
+                self.message = args[0]
         except IndexError:
             self.message = ""
 
