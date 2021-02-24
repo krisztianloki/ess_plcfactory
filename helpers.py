@@ -22,6 +22,18 @@ try:
 except ImportError:
     from urllib import quote as urlquote, splituser
 
+try:
+    from pathlib import Path
+except ImportError:
+    try:
+        from pathlib2 import Path
+    except ImportError:
+        libs_dir     = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'libs')
+        sys.path.append(libs_dir)
+        del libs_dir
+        from pathlib2 import Path
+
+
 from posixpath import join as posixpathjoin
 
 # Fake a WindowsError exception under non-Windows machines

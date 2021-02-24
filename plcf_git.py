@@ -41,6 +41,50 @@ class GIT(object):
 
 
     @staticmethod
+    def get_config(cfg, path = "."):
+        """
+        Returns the value of the configuration item 'cfg'
+        """
+        try:
+            return subprocess.check_output(shlex_split("git config {}".format(cfg)), stderr = subprocess.STDOUT, cwd = path, **spkwargs).strip()
+        except subprocess.CalledProcessError as e:
+            if not e.output:
+                return ""
+            print(e.output)
+            print(e)
+            raise
+
+
+    @staticmethod
+    def check_minimal_config(path = "."):
+        user_email = GIT.get_config("user.email")
+        user_name = GIT.get_config("user.name")
+        if not user_name:
+            user_name = subprocess.check_output("whoami", **spkwargs).strip()
+
+        if user_email:
+            user_email = ""
+        else:
+            user_email = """
+E-mail address is not set in git. Please set it with:
+
+git config --global user.email my-email@address.se
+"""
+
+        if user_name == "vagrant":
+            user_name = """
+Username is not set in git. Please set it with:
+
+git config --global user.name "My Name"
+"""
+        else:
+            user_name = ""
+
+        if user_email or user_name:
+            raise GITException(user_name + user_email)
+
+
+    @staticmethod
     def __is_repo(path):
         """
         Returns True if 'path' is inside a work tree of a git repository
@@ -372,6 +416,30 @@ class GIT(object):
         except subprocess.CalledProcessError as e:
             print(e)
             raise
+
+
+    def remove_stale_items(self, current_items):
+        # Get the 'toplevel' directories E3 creates
+        paths = set()
+        for cf in current_items:
+            # Get a repository relative path
+            relpath = os.path.relpath(cf, self.path())
+            # Get the first component
+            path = helpers.Path(relpath)
+            path = path.parts[0]
+            # Make sure that it is a directory
+            if not os.path.isdir(os.path.join(self.path(), path)):
+                continue
+            paths.add(path)
+
+        # Now check that every file under 'paths' is still relevant
+        for path in paths:
+            for root, dirs, files in os.walk(os.path.join(self.path(), path)):
+                for f in files:
+                    if os.path.join(root, f) not in current_items:
+                        self.remove(os.path.join(root, f))
+
+
 
 
 
