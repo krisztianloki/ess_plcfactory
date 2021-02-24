@@ -1857,14 +1857,7 @@ def main(argv):
 
     banner()
 
-    if args.ccdb_test:
-        from ccdb import CCDB_TEST
-        glob.ccdb = CCDB_TEST(clear_templates = args.clear_ccdb_cache)
-    elif args.ccdb_devel:
-        from ccdb import CCDB_DEVEL
-        glob.ccdb = CCDB_DEVEL(clear_templates = args.clear_ccdb_cache)
-    else:
-        glob.ccdb = CC.open(args.ccdb, clear_templates = args.clear_ccdb_cache)
+    glob.ccdb = CC.open_from_args(args)
 
     if args.output_dir[0] == '+':
         OUTPUT_DIR = os.path.join(OUTPUT_DIR, args.output_dir[1:])

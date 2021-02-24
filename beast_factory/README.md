@@ -69,17 +69,24 @@ Exactly one of them is required and allowed
 
 Consulted when `--ioc` is specified
 
-*   **--ccdb <directory_of_ccdb_dump_OR_path_to_.ccdb.zip>**
-    *   \[OPTIONAL\]
-    *   Use the specified CCDB-dump of _device_ instead of connecting to the CCDB database
-    *   `--ccdb VacS-ACCV_Vac-PLC-01001.ccdb.zip`
-    *   `--ccdb modules/m-epics-vacs-accv_vac-plc-01001/misc/ccdb`
+*   **--ccdb-production**
+    *   \[OPTIONAL\], \[DEFAULT\]
+    *   Use the production version of the CCDB database at https://ccdb.esss.lu.se. This is the default.
 *   **--ccdb-test**
     *   \[OPTIONAL\]
-    *   Use the test version of the CCDB database
-*   **--ccdb-production**
+    *   Use the test version of the CCDB database at https://icsvs-app01.esss.lu.se/ccdb
+*   **--ccdb-cslab**
     *   \[OPTIONAL\]
-    *   Use the production version of the CCDB database. This is the default.
+    *   Use the CSLab test version of the CCDB database at https://ccdb-test-01.cslab.esss.lu.se
+*   **--ccdb-devel**
+    *   \[OPTIONAL\]
+    *   Use the development test version of the CCDB database at https://icsvd-app01.esss.lu.se:8443/ccdb-test
+*   **--ccdb=<directory_of_ccdb_dump | path_to_.ccdb.zip | URL to CCDB server>**
+    *   \[OPTIONAL\]
+    *   Use the specified CCDB-dump of _device_ instead of connecting to the CCDB database OR use a custom CCDB server
+    *   `--ccdb=VacS-ACCV_Vac-PLC-01001.ccdb.zip`
+    *   `--ccdb=modules/m-epics-vacs-accv_vac-plc-01001/misc/ccdb`
+    *   `--ccdb=https://my-shiny-ccdb.esss.lu.se`
 *   **--tag <tag_name>**
     *   \[OPTIONAL\]
     *   Used to select the correct link if more than one External Link was found
