@@ -33,6 +33,11 @@ class eee(object):
         return "cmd"
 
 
+    def require(self):
+        # require is handled by the .dep file in EEE
+        return ""
+
+
     def modulename(self):
         return self.plcf("ext.eee_modulename()")
 
@@ -51,6 +56,13 @@ class e3(object):
     @staticmethod
     def _extension():
         return "iocsh"
+
+
+    def require(self):
+        return """require s7plc
+require modbus
+require calc
+"""
 
 
     def modulename(self):
@@ -160,7 +172,7 @@ class ST_CMD(eee, MACROS, PRINTER):
         except KeyError:
             raise TemplatePrinterException("Cannot interpret PLCPulse property: '{}'".format(plc_pulse))
 
-        st_cmd_header = """
+        st_cmd_header = """{require}
 # @field IPADDR
 # @{ipaddr}
 # PLC IP address
@@ -177,7 +189,8 @@ class ST_CMD(eee, MACROS, PRINTER):
 # Can override Modbus port with this
 #COUNTER {status_cnt} = [PLCF#{status_cnt} + 10 * 2]
 
-""".format(ipaddr     = "type STRING" if self._ipaddr is None else "runtime YES",
+""".format(require    = self.require(),
+           ipaddr     = "type STRING" if self._ipaddr is None else "runtime YES",
            modversion = self._modversion(),
            status_cnt = STATUS_BLOCK.counter_keyword(),
            s7_vs_opc  = """
@@ -335,17 +348,22 @@ class ST_TEST_CMD(eee, MACROS, PRINTER):
         return "-test"
 
 
+    def require(self):
+        # Test does not require anything
+        return ""
+
+
     #
     # HEADER
     #
     def header(self, output, **keyword_parameters):
         super(ST_TEST_CMD, self).header(output, **keyword_parameters).add_filename_header(output, inst_slot = self.snippet(), template = "test", extension = self._extension())
 
-        st_cmd_header = """
+        st_cmd_header = """{require}
 # @field {modversion}
 # @runtime YES
 
-""".format(modversion = self._modversion())
+""".format(require = self.require(), modversion = self._modversion())
 
         self._append(st_cmd_header, output)
 
@@ -384,6 +402,11 @@ class TEST_IOCSH(e3, ST_TEST_CMD):
     @staticmethod
     def name():
         return "TEST-IOCSH"
+
+
+    def require(self):
+        # Test does not require anything
+        return ""
 
 
 
@@ -492,6 +515,13 @@ class AUTOSAVE_IOCSH(IOCSH):
         return "AUTOSAVE-IOCSH"
 
 
+    def require(self):
+        # require autosave too
+        return super(AUTOSAVE_IOCSH, self).require() + """
+require autosave
+"""
+
+
     #
     # HEADER
     #
@@ -567,6 +597,13 @@ class AUTOSAVE_TEST_IOCSH(TEST_IOCSH):
     @staticmethod
     def name():
         return "AUTOSAVE-TEST-IOCSH"
+
+
+    def require(self):
+        # require autosave too
+        return super(AUTOSAVE_TEST_IOCSH, self).require() + """
+require autosave
+"""
 
 
     #

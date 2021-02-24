@@ -536,12 +536,7 @@ class IOC(object):
         st_cmd = os.path.join(out_idir, 'st.cmd')
         with open(st_cmd, 'wt') as f_st_cmd:
             print("""# Startup for {}
-require modbus
-require s7plc
-require calc""".format(self.name()), file = f_st_cmd)
-            print("""
-require autosave
-require recsync""", file = f_st_cmd)
+require recsync""".format(self.name()), file = f_st_cmd)
             print("""
 iocshLoad(iocsh/{}.iocsh)""".format(self._e3.snippet()), file = f_st_cmd)
 
