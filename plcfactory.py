@@ -447,7 +447,7 @@ class IOC(object):
         ioc = self.__get_ioc(device)
         self._name = ioc.name()
         self._dir = helpers.sanitizeFilename(self._name.lower()).replace('-', '_')
-        self._repo = get_e3_repository(ioc)
+        self._repo = get_repository(ioc, "IOC_REPOSITORY")
         if self._repo:
             self._dir = helpers.url_to_path(self._repo).split('/')[-1]
             if self._dir.endswith('.git'):
@@ -914,14 +914,14 @@ def processTemplateID(templateID, devices):
     print("--- %s %.1f seconds ---\n" % (tagged_templateID, time.time() - start_time))
 
 
-def get_e3_repository(device):
-    e3_repo = None
+def get_repository(device, link_name):
+    repo = None
 
-    for e3_repo_link in filter(lambda x: x.name() == 'E3_REPOSITORY', device.externalLinks(convert = False)):
-        if e3_repo is None or not e3_repo_link.is_perdevtype():
-            e3_repo = e3_repo_link.uri()
+    for repo_link in filter(lambda x: x.name() == link_name, device.externalLinks(convert = False)):
+        if repo is None or not repo_link.is_perdevtype():
+            repo = repo_link.uri()
 
-    return e3_repo
+    return repo
 
 
 def processDevice(deviceName, templateIDs):
