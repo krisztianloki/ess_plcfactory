@@ -99,7 +99,7 @@ git config --global user.name "My Name"
 
 
     @staticmethod
-    def clone(url, path = '.', branch = None, update = False):
+    def clone(url, path = '.', branch = None, update = False, initialize_if_empty = False):
         """
         Clone the repository at 'url' into 'path' and possibly checkout 'branch'
 
@@ -110,12 +110,12 @@ git config --global user.name "My Name"
         git = GIT(path)
         if not git.is_repo():
             # If 'path' is not a repository then clone url
-            git.__clone(url, branch)
+            git.__clone(url, branch, initialize_if_empty)
             return git
 
         if git.get_toplevel_dir() != path:
             # This is some other repository working tree, we can clone a new one here
-            git.__clone(url, branch)
+            git.__clone(url, branch, initialize_if_empty)
             return git
 
         # Have to check if this repository is the one we need
@@ -150,6 +150,7 @@ git config --global user.name "My Name"
         try:
             return subprocess.check_output(shlex_split("git rev-parse --show-toplevel"), cwd = self._path, **spkwargs).strip()
         except subprocess.CalledProcessError as e:
+            print(e.output)
             print(e)
             raise
 
@@ -161,6 +162,7 @@ git config --global user.name "My Name"
         try:
             return subprocess.check_output(shlex_split("git ls-remote --get-url origin"), cwd = self._path, **spkwargs).strip()
         except subprocess.CalledProcessError as e:
+            print(e.output)
             print(e)
             raise
 
@@ -171,7 +173,7 @@ git config --global user.name "My Name"
         self._url = url
 
 
-    def __clone(self, url, branch = None):
+    def __clone(self, url, branch = None, initialize_if_empty = False):
         """
         Clone 'url'. If branch is specified then that branch is checked out
         """
@@ -179,7 +181,16 @@ git config --global user.name "My Name"
             subprocess.check_output(shlex_split("git clone --quiet {} {} .".format(url, "" if branch is None else "--branch {} --depth 1".format(branch))), cwd = self._path, stderr = subprocess.STDOUT, **spkwargs)
             self.__set_url(url)
             self._branch = "master"
+            if initialize_if_empty and not self.get_branches():
+                # Create a .gitignore file on 'master' so we can create a development branch
+                gitignore = os.path.join(self._path, ".gitignore")
+                with open(gitignore, "wt") as gf:
+                    pass
+                self.add(gitignore)
+                self.commit("Initialized repository")
+                self.push()
         except subprocess.CalledProcessError as e:
+            print(e.output)
             print(e)
             raise
 
@@ -213,6 +224,7 @@ git config --global user.name "My Name"
         except subprocess.CalledProcessError as e:
             if e.output.startswith("fatal: Cannot update paths and switch to branch '{}' at the same time.".format(branch)):
                 raise GITException("Branch {} does not exist".format(start_point))
+            print(e.output)
             print(e)
             raise
 
@@ -224,6 +236,7 @@ git config --global user.name "My Name"
         try:
             return subprocess.check_output(shlex_split("git rev-parse --branches"), cwd = self._path, **spkwargs).splitlines()
         except subprocess.CalledProcessError as e:
+            print(e.output)
             print(e)
             raise
 
@@ -235,6 +248,7 @@ git config --global user.name "My Name"
         try:
             return subprocess.check_output(shlex_split("git rev-parse --abbrev-ref HEAD"), cwd = self._path, **spkwargs).strip()
         except subprocess.CalledProcessError as e:
+            print(e.output)
             print(e)
             raise
 
@@ -289,6 +303,7 @@ git config --global user.name "My Name"
         try:
             return subprocess.check_output(shlex_split("git ls-remote --tags origin"), cwd = self._path, **spkwargs).splitlines()
         except subprocess.CalledProcessError as e:
+            print(e.output)
             print(e)
             raise
 
@@ -323,6 +338,7 @@ git config --global user.name "My Name"
         except subprocess.CalledProcessError as e:
             if e.output.strip() == "fatal: tag '{}' already exists".format(tag):
                 raise GITException("Tag '{}' already exists".format(tag))
+            print(e.output)
             print(e)
             raise
 

@@ -506,19 +506,8 @@ class IOC(object):
         if self.repo():
             # Cannot specify 'branch = "master"'; git segfaults when trying to clone an empty repository and checking out its "master" branch
             # Update the master branch if available
-            repo = git.GIT.clone(self.repo(), out_idir, update = True)
-            try:
-                repo.create_branch(glob.timestamp, "master")
-            except git.GITException:
-                # Create a .gitignore file on 'master' so we can create a development branch
-                gitignore = os.path.join(out_idir, ".gitignore")
-                with open(gitignore, "wt") as gf:
-                    pass
-                repo.add(gitignore)
-                repo.commit("Initialized repository")
-                repo.push()
-                # Now that we have a proper 'master' branch we can try creating a development branch
-                repo.create_branch(glob.timestamp, "master")
+            repo = git.GIT.clone(self.repo(), out_idir, update = True, initialize_if_empty = True)
+            repo.create_branch(glob.timestamp, "master")
         else:
             repo = None
 
