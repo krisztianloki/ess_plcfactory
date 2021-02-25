@@ -47,6 +47,7 @@ except NameError:
 try:
     fnf = FileNotFoundError()
     del fnf
+    FileNotFoundError = FileNotFoundError
 except NameError:
     FileNotFoundError = OSError
 
@@ -220,5 +221,11 @@ def urljoin(part1, part2, *more):
 
 
 def xdg_open(url):
-    subprocess.check_call(shlex_split("xdg-open {}".format(url)))
+    try:
+        subprocess.check_call(shlex_split("xdg-open {}".format(url)))
+    except (OSError, FileNotFoundError) as e:
+        if e.errno == 2:
+            raise FileNotFoundError(e)
+
+        raise
 

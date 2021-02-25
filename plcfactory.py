@@ -547,7 +547,15 @@ iocshLoad(iocsh/{}.iocsh)""".format(self._e3.snippet()), file = f_st_cmd)
                 repo.tag(version, override_local = True)
                 link = repo.push()
                 if link:
-                    helpers.xdg_open(link)
+                    try:
+                        helpers.xdg_open(link)
+                    except helpers.FileNotFoundError:
+                        print("""
+Could not launh browser to create merge request, please visit:
+
+{}
+
+""".format(link))
 
 
 
