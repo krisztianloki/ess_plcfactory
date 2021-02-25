@@ -1837,6 +1837,8 @@ def main(argv):
 
     if device_tag:
         OUTPUT_DIR = os.path.join(OUTPUT_DIR, helpers.sanitizeFilename(CC.TAG_SEPARATOR.join([ "", "tag", device_tag ])))
+
+    OUTPUT_DIR = os.path.abspath(OUTPUT_DIR)
     helpers.makedirs(OUTPUT_DIR)
 
     read_data_files()
