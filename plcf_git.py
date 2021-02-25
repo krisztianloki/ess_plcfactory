@@ -105,7 +105,7 @@ git config --global user.name "My Name"
 
 
     @staticmethod
-    def clone(url, path = '.', branch = None, update = False, initialize_if_empty = False):
+    def clone(url, path = '.', branch = None, update = False, initialize_if_empty = False, verbose = True):
         """
         Clone the repository at 'url' into 'path' and possibly checkout 'branch'
 
@@ -116,12 +116,12 @@ git config --global user.name "My Name"
         git = GIT(path)
         if not git.is_repo():
             # If 'path' is not a repository then clone url
-            git.__clone(url, branch, initialize_if_empty)
+            git.__clone(url, branch, initialize_if_empty, verbose)
             return git
 
         if git.get_toplevel_dir() != path:
             # This is some other repository working tree, we can clone a new one here
-            git.__clone(url, branch, initialize_if_empty)
+            git.__clone(url, branch, initialize_if_empty, verbose)
             return git
 
         # Have to check if this repository is the one we need
@@ -179,16 +179,20 @@ git config --global user.name "My Name"
         self._url = url
 
 
-    def __clone(self, url, branch = None, initialize_if_empty = False):
+    def __clone(self, url, branch = None, initialize_if_empty = False, verbose = True):
         """
         Clone 'url'. If branch is specified then that branch is checked out
         """
         try:
+            if verbose:
+                print("Cloning {}...".format(url))
             subprocess.check_output(shlex_split("git clone --quiet {} {} .".format(url, "" if branch is None else "--branch {} --depth 1".format(branch))), cwd = self._path, stderr = subprocess.STDOUT, **spkwargs)
             self.__set_url(url)
             self._branch = "master"
             if initialize_if_empty and not self.get_branches():
                 # Create a .gitignore file on 'master' so we can create a development branch
+                if verbose:
+                    print("Initializing empty repository...")
                 gitignore = os.path.join(self._path, ".gitignore")
                 with open(gitignore, "wt") as gf:
                     pass
@@ -349,13 +353,15 @@ git config --global user.name "My Name"
             raise
 
 
-    def push(self):
+    def push(self, verbose = True):
         """
         Pushes the current branch
 
         Returns a URL to create a merge request
         """
         try:
+            if verbose:
+                print("Pushing your changes to {}...".format(self._url))
             subprocess.check_call(shlex_split("git push --follow-tags --quiet --porcelain origin {}".format(self._branch)), cwd = self._path, **spkwargs)
             if helpers.url_to_host(self._url) == "gitlab.esss.lu.se":
                 return "{url}/-/merge_requests/new?merge_request%5Bsource_branch%5D={branch}".format(url = self._url[:-4], branch = self._branch)
