@@ -270,8 +270,9 @@ class E3(object):
             if modulename != helpers.sanitizeFilename(modulename):
                 print("Overriding modulename because it is not a valid filename", file = sys.stderr)
         else:
-            print("Ignoring EPICSModule property; it is an array", file = sys.stderr)
-            modulename = deviceName.lower()
+            if modulename:
+                print("Ignoring EPICSModule property; it is an array: {}".format(modulename), file = sys.stderr)
+            modulename = device.name().lower()
 
         modulename = helpers.sanitizeFilename(modulename)
 
@@ -283,7 +284,8 @@ class E3(object):
                 print("Overriding snippet because it is not a valid filename", file = sys.stderr)
                 snippet = validSnippet
         else:
-            print("Ignoring EPICSSnippet property; it is an array", file = sys.stderr)
+            if snippet:
+                print("Ignoring EPICSSnippet property; it is an array: {}".format(snippet), file = sys.stderr)
             snippet = modulename
 
         return E3(modulename, snippet)
