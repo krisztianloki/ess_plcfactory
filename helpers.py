@@ -28,6 +28,7 @@ except ImportError:
     try:
         from pathlib2 import Path
     except ImportError:
+        import sys
         libs_dir     = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'libs')
         sys.path.append(libs_dir)
         del libs_dir
