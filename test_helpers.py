@@ -150,6 +150,15 @@ class TestHelpers(unittest.TestCase):
             self.assertEqual(cuni, uni)
 
 
+    def test_Path(self):
+        try:
+            fp = helpers.FakePath(os.path.join("this", "is", "a", "path")).parts
+        except AttributeError:
+            return
+        p = helpers.Path(os.path.join("this", "is", "a", "path")).parts
+        self.assertEqual(p, fp)
+
+
 
 if __name__ == "__main__":
     unittest.main()

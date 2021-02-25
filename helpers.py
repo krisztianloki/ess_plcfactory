@@ -25,14 +25,13 @@ except ImportError:
 try:
     from pathlib import Path
 except ImportError:
+    class FakePath(object):
+        def __init__(self, p):
+            self.parts = tuple(p.split(os.path.sep))
     try:
         from pathlib2 import Path
     except ImportError:
-        import sys
-        libs_dir     = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'libs')
-        sys.path.append(libs_dir)
-        del libs_dir
-        from pathlib2 import Path
+        Path = FakePath
 
 
 from posixpath import join as posixpathjoin
