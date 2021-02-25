@@ -525,7 +525,10 @@ class IOC(object):
         st_cmd = os.path.join(out_idir, 'st.cmd')
         with open(st_cmd, 'wt') as f_st_cmd:
             print("""# Startup for {}
-require recsync""".format(self.name()), file = f_st_cmd)
+
+# Load standard module startup scripts
+iocshLoad("$(E3_COMMON_DIR)/e3-common.iocsh")
+""".format(self.name()), file = f_st_cmd)
             print("""
 iocshLoad(iocsh/{}.iocsh)""".format(self._e3.snippet()), file = f_st_cmd)
 
