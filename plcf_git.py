@@ -60,7 +60,13 @@ class GIT(object):
         user_email = GIT.get_config("user.email")
         user_name = GIT.get_config("user.name")
         if not user_name:
-            user_name = subprocess.check_output("whoami", **spkwargs).strip()
+            # os.getlogin() does not handle su
+            # but pwd is not available on Windows
+            try:
+                import pwd
+                user_name = pwd.getpwuid(os.getuid()).pw_name
+            except ImportError:
+                user_name = os.getlogin()
 
         if user_email:
             user_email = ""
