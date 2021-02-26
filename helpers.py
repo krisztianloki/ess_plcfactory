@@ -28,10 +28,7 @@ except ImportError:
     class FakePath(object):
         def __init__(self, p):
             self.parts = tuple(p.split(os.path.sep))
-    try:
-        from pathlib2 import Path
-    except ImportError:
-        Path = FakePath
+    Path = FakePath
 
 
 from posixpath import join as posixpathjoin
