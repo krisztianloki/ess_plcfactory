@@ -503,7 +503,6 @@ class IOC(object):
         """
 
         out_idir = os.path.join(OUTPUT_DIR, "ioc", self.directory())
-        out_idir = os.path.join("/tmp/plcfactory", "ioc", self.directory())
         helpers.makedirs(out_idir)
         if self.repo():
             # Cannot specify 'branch = "master"'; git segfaults when trying to clone an empty repository and checking out its "master" branch
