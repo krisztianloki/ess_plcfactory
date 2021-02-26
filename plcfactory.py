@@ -529,7 +529,8 @@ class IOC(object):
             print("""# Startup for {}
 
 # Load standard module startup scripts
-iocshLoad("$(E3_COMMON_DIR)/e3-common.iocsh")
+require common
+iocshLoad("$(common_DIR)/e3-common.iocsh")
 """.format(self.name()), file = f_st_cmd)
             print("""
 iocshLoad(iocsh/{}.iocsh)""".format(self._e3.snippet()), file = f_st_cmd)
