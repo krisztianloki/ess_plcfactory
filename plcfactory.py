@@ -989,7 +989,7 @@ Exiting.
         glob.eee_snippet    = snippet
 
     global e3
-    if e3 is None:
+    if e3 is True:
         e3 = E3.from_device(device)
 
     if generate_ioc:
@@ -1657,7 +1657,11 @@ def main(argv):
 
     if args.e3 is not None:
         global e3
-        e3 = E3(args.e3)
+        if args.e3 != "":
+            e3 = E3(args.e3)
+        else:
+            # processDevice() will create the correct E3
+            e3 = True
 
     # Third pass
     #  get all options
