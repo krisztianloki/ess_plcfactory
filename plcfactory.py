@@ -544,15 +544,22 @@ iocshLoad(iocsh/{}.iocsh)""".format(self._e3.snippet()), file = f_st_cmd)
             repo.remove_stale_items(self._e3.files())
             repo.add([env_sh, st_cmd])
             repo.commit()
+
+            # Tag if requested
             if version:
                 repo.tag(version, override_local = True)
-                link = repo.push()
-                if link:
-                    try:
-                        helpers.xdg_open(link)
-                    except helpers.FileNotFoundError:
-                        print("""
-Could not launh browser to create merge request, please visit:
+
+            # Push the branch
+            link = repo.push()
+
+            # Open a create merge request page if we have a version number (and the URL)
+            if link and version:
+                try:
+                    print("Launching browser to create merge request...")
+                    helpers.xdg_open(link)
+                except helpers.FileNotFoundError:
+                    print("""
+Could not launch browser to create merge request, please visit:
 
 {}
 
