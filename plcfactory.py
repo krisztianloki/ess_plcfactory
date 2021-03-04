@@ -502,13 +502,14 @@ class IOC(object):
         Generate IOC
         """
 
+        branch = "{}{}".format("{}_by_".format(version) if version else "", "PLCFactory_on_{}".format(glob.timestamp))
         out_idir = os.path.join(OUTPUT_DIR, "ioc", self.directory())
         helpers.makedirs(out_idir)
         if self.repo():
             # Cannot specify 'branch = "master"'; git segfaults when trying to clone an empty repository and checking out its "master" branch
-            # Update the master branch if available
+            # Update the master branch if available, and initialize an empty repository
             repo = git.GIT.clone(self.repo(), out_idir, update = True, initialize_if_empty = True)
-            repo.create_branch(glob.timestamp, "master")
+            repo.create_branch(branch, "master")
         else:
             repo = None
 
