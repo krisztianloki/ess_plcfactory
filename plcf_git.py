@@ -7,6 +7,7 @@ from shlex import split as shlex_split
 import subprocess
 import time
 
+
 __git_dir = (os.path.abspath(os.path.dirname(__file__)))
 try:
     isinstance('h', unicode)
@@ -113,6 +114,7 @@ git config --global user.name "My Name"
 
         If 'update' is True then the master branch will be updated
         """
+        # FIXME: I've deleted and recreated the repo but an old working copy was still in the output folder and git.fetch choked on it
         git = GIT(path)
         if not git.is_repo():
             # If 'path' is not a repository then clone url
@@ -289,13 +291,13 @@ git config --global user.name "My Name"
             raise
 
 
-    def commit(self, msg = None):
+    def commit(self, msg = None, edit = False):
         """
         Commits the current contents of the index
         """
         try:
             if msg:
-                msg = "-m '{}'".format(msg)
+                msg = "-m '{msg}'{edit}".format(msg = msg, edit = ' --edit' if edit else '')
             else:
                 msg = ""
             return subprocess.check_call(shlex_split("git commit --quiet {}".format(msg)), cwd = self._path, **spkwargs)

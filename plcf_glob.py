@@ -16,7 +16,10 @@ commit_id = None
 # plfactory git url
 origin = None
 
-# timestamp for names of output files
+# raw timestamp
+raw_timestamp = None
+
+# String timestamp for names of output files
 timestamp = None
 
 # the CCDB backend
