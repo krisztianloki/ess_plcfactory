@@ -772,7 +772,7 @@ def getHeader(device, templateID, plcf):
         templatePrinter = tf.get_printer(templateID)
 
     if templatePrinter is not None:
-        print("Using built-in template header")
+        print("Using built-in '{}' template header".format(templateID))
         printers[templateID] = templatePrinter
         header = []
         templatePrinter.header(header, ROOT_DEVICE = device, PLCF = plcf, OUTPUT_DIR = OUTPUT_DIR, HELPERS = helpers, **ifdef_params)
@@ -793,7 +793,7 @@ def getFooter(device, templateID, plcf):
     except KeyError:
         return openHeaderFooter(device, FOOTER_TAG, templateID)
 
-    print("Using built-in template footer")
+    print("Using built-in '{}' template footer".format(templateID))
     footer = []
     templatePrinter.footer(footer, PLCF = plcf)
 
@@ -849,12 +849,16 @@ def processTemplateID(templateID, devices):
     def_seen      = None
     template_seen = None
 
+    template_from_def_file = "Generating '{}' template from Definition File...".format(templateID)
+    template_built_in = "Using default built-in '{}' template...".format(templateID)
+
     # for each device, find corresponding template and process it
     output     = []
     for device in devices:
         deviceType = device.deviceType()
         cplcf      = getPLCF(device)
         cplcf.register_template(templateID)
+        processed = False
 
         print(device.name())
         print("Device type: " + deviceType)
@@ -868,13 +872,17 @@ def processTemplateID(templateID, devices):
         if templatePrinter is not None:
             ifdef = getIfDef(device)
             if ifdef is not None:
+                print(template_from_def_file)
+
                 def_seen = True
-                print("Generating template from Definition File...")
                 ifdef.calculate_hash(hashobj)
-                template = []
+                # TemplatePrinters do their own PLCF processing, so
+                # we can use 'output' instead of an empty list and do no PLCF processing on 'output' later
+                template = output
                 try:
                     templatePrinter.body(ifdef, template, DEVICE = device, PLCF = cplcf)
-                except tf.TemplatePrinterException as e:
+                    processed = True
+                except (tf.TemplatePrinterException, plcf.PLCFException, PLCFExtException) as e:
                     raise ProcessTemplateException(device.name(), templateID, e)
 
         # Try to download template from artifact
@@ -888,7 +896,7 @@ def processTemplateID(templateID, devices):
 
         # Try to check if we have a default template printer implementation
         if template is None and templatePrinter is not None and not templatePrinter.needs_ifdef():
-            print("Using default built-in template...")
+            print(template_built_in)
             template = []
             try:
                 templatePrinter.body(None, template)
@@ -896,15 +904,16 @@ def processTemplateID(templateID, devices):
                 raise ProcessTemplateException(device.name(), templateID, e)
 
         if template is not None:
-            # process template and add result to output
-            try:
-                if isinstance(template, str):
-                    with open(template, 'r') as f:
-                        output += cplcf.process(f)
-                else:
-                    output += cplcf.process(template)
-            except (plcf.PLCFException, PLCFExtException) as e:
-                raise ProcessTemplateException(device.name(), templateID, e)
+            if not processed:
+                # process template and add result to output
+                try:
+                    if isinstance(template, str):
+                        with open(template, 'r') as f:
+                            output += cplcf.process(f)
+                    else:
+                        output += cplcf.process(template)
+                except (plcf.PLCFException, PLCFExtException) as e:
+                    raise ProcessTemplateException(device.name(), templateID, e)
 
             print("Template processed.")
 

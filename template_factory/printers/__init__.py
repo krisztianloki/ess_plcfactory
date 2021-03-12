@@ -90,6 +90,7 @@ class PRINTER(object):
         self._device         = None
         self._if_def         = None
         self._plcf           = None
+        self.__append        = self.__append_simple
 
 
     def _check_if_list(self, output):
@@ -99,6 +100,10 @@ class PRINTER(object):
     def _parse_keyword_args(self, keyword_params):
         self._device = keyword_params.get("DEVICE", None)
         self._plcf   = keyword_params.get("PLCF", None)
+        if self._plcf is not None:
+            self.__append = self.__append_with_cplcf
+        else:
+            self.__append = self.__append_simple
 
 
     def expand(self, string):
@@ -307,9 +312,23 @@ class PRINTER(object):
         return self
 
 
+    def __append_simple(self, output, stuff):
+        if isinstance(stuff, list):
+            output.extend(stuff)
+        else:
+            output.append(stuff)
+
+
+    def __append_with_cplcf(self, output, stuff):
+        if isinstance(stuff, list):
+            output.extend(self._plcf.process(stuff))
+        else:
+            output.append(self._plcf.processLine(stuff))
+
+
     def _append_origin(self, origin, output):
         if self._show_origin and origin.strip() != "":
-            output.extend(map(lambda x: self.comment() + self.origin() + x, origin.splitlines()))
+            self.__append(output, map(lambda x: self.comment() + self.origin() + x, origin.splitlines()))
 
 
     def _append_source(self, source, output):
@@ -321,9 +340,9 @@ class PRINTER(object):
         if source.is_comment():
             if self._comments:
                 if source.source().strip() != "":
-                    output.append(self.comment() + source.source())
+                    self.__append(output, self.comment() + source.source())
                 elif self._preserve_empty:
-                    output.append(self.empty_line())
+                    self.__append(output, self.empty_line())
         else:
             self._append_origin(source.source(), output)
 
@@ -352,7 +371,7 @@ class PRINTER(object):
         assert isinstance(result, str), type(result)
         self._append_origin(from_inp, output)
         if result != "":
-            output += result.splitlines(True)
+            self.__append(output, result.splitlines(True))
 
         return gen
 
