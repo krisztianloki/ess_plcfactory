@@ -779,6 +779,9 @@ record(mbbi, "{root_inst_slot}:UploadStat-RB")
 	field(SCAN,	"I/O Intr")
 	field(DTYP,	"S7plc")
 	field(INP,	"@$(PLCNAME)/[PLCF#PLCToEPICSDataBlockStartOffset + {plc_to_epics_upload_stat}] T=INT16")
+	field(NOBT,     "16")
+	field(SHFT,     "0")
+
 	field(ZRVL,	"0")
 	field(ZRST,	"Never uploaded")
 

@@ -960,6 +960,8 @@ def WriteUtilitiesCode(TIAVersion):
 	ExternalSourceFile.append("      Pulse_2s " + NoExternal + " : Bool;   // Bit TRUE every 2 s for one PLC scan")
 	ExternalSourceFile.append("      TestInProgress " + NoExternal + " : Bool;   // Indicates which caller FC is used")
 	ExternalSourceFile.append("      EPICS_Device_calls_precessed " + NoExternal + " : Bool;   // Indicates which caller FC is used")
+	ExternalSourceFile.append("      EPICSParametersStatus " + NoExternal + " : Word;   // 0=Never Uploaded 1=Uploading... 2=Uploaded")
+	ExternalSourceFile.append("      ParameterFreeze " + NoExternal + " : Bool;   // If True, the Handlers doesn't take new parameters from EPICS")
 	ExternalSourceFile.append("   END_VAR")
 	ExternalSourceFile.append("")
 	ExternalSourceFile.append("BEGIN")
@@ -1323,6 +1325,8 @@ def WriteCommsEpicsAndDbs():
 	ExternalSourceFile.append("")
 	ExternalSourceFile.append("	// Send the PLC parameter upload status to the EPICS IOC")
 	ExternalSourceFile.append("	\"PLCToEPICS\".\"Word\"[{}] := \"EPICSToPLC\".\"Word\"[{}];".format(IFA.PLCTOEPICS_UPLOADSTAT, IFA.EPICSTOPLC_UPLOADSTAT))
+	ExternalSourceFile.append("     \"Utilities\".EPICSParametersStatus := \"EPICSToPLC\".\"Word\"[{}];".format(IFA.EPICSTOPLC_UPLOADSTAT))
+
 	ExternalSourceFile.append("")
 	ExternalSourceFile.append("	// Put the PLC Hash into the Modbus map")
 	ExternalSourceFile.append("	\"EPICSToPLC\".\"Word\"[{}] := DINT_TO_WORD(#PLC_Hash);".format(IFA.EPICSTOPLC_READ_HASH + 1))
