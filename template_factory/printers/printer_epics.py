@@ -77,9 +77,6 @@ class EPICS_BASE(PRINTER):
 
     def __init__(self, test = False):
         super(EPICS_BASE, self).__init__(comments = True, show_origin = True, preserve_empty_lines = True)
-        self.DEFAULT_INDISABLE_TEMPLATE = self.DISABLE_TEMPLATE.format(DISABLE_PV = self.DISABLE_PV)
-        self.INDISABLE_TEMPLATE = self.DISABLE_TEMPLATE
-        self.OUTDISABLE_TEMPLATE = self.DISABLE_TEMPLATE.format(DISABLE_PV = self.DISABLE_PV)
 
         self._nonprop_re = re.compile('^([^:]*:[^:]*:)(.*)')
         self._validity_pvs = dict()
@@ -97,6 +94,13 @@ class EPICS_BASE(PRINTER):
     #
     def header(self, output, **keyword_params):
         super(EPICS_BASE, self).header(output, **keyword_params)
+
+        # Expand the disable PV
+        self.DISABLE_PV = self.expand(self.DISABLE_PV)
+
+        self.DEFAULT_INDISABLE_TEMPLATE = self.DISABLE_TEMPLATE.format(DISABLE_PV = self.DISABLE_PV)
+        self.INDISABLE_TEMPLATE = self.DISABLE_TEMPLATE
+        self.OUTDISABLE_TEMPLATE = self.DISABLE_TEMPLATE.format(DISABLE_PV = self.DISABLE_PV)
 
         epics_db_header = """
 ################################################################################
@@ -1126,7 +1130,6 @@ record(calcout, "{root_inst_slot}:iRuinHash")
 class EPICS_OPC(EPICS_BASE):
     def __init__(self):
         super(EPICS_OPC, self).__init__()
-        self.DISABLE_TEMPLATE = EPICS_OPC.DISABLE_TEMPLATE.format(DISABLE_PV = self.DISABLE_PV)
 
 
     @staticmethod
@@ -1165,7 +1168,13 @@ class EPICS_OPC(EPICS_BASE):
     # HEADER
     #
     def header(self, output, **keyword_params):
+        # This is intentional but check if it is possible to call super(EPICS_OPC, self).header
         PRINTER.header(self, output, **keyword_params).add_filename_header(output, extension = "db")
+
+        # Expand the disable PV
+        self.DISABLE_PV = self.expand(self.DISABLE_PV)
+        self.DISABLE_TEMPLATE = EPICS_OPC.DISABLE_TEMPLATE.format(DISABLE_PV = self.DISABLE_PV)
+
         epics_db_header = """
 record(stringin, "{root_inst_slot}:ModVersionR")
 {{
