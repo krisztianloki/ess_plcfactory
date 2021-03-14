@@ -106,6 +106,16 @@ class PRINTER(object):
             self.__append = self.__append_simple
 
 
+    def __reset_body(self):
+        # Cache ROOT_INSTALLATION_SLOT and INSTALLATION_SLOT
+        self.__cached_root_inst_slot = self.__get_root_inst_slot("ROOT_INSTALLATION_SLOT")
+        self.__cached_inst_slot = self.__get_inst_slot("INSTALLATION_SLOT", self._if_def)
+
+
+    def _reset_body(self):
+        self.__reset_body()
+
+
     def expand(self, string):
         """
         Expand string as a PLCF# expression
@@ -142,7 +152,7 @@ class PRINTER(object):
         raise TemplatePrinterException("No PLCF instance provided")
 
 
-    def __inst_slot(self, default_slot, if_def):
+    def __get_inst_slot(self, default_slot, if_def):
         if if_def is not None:
             slot = if_def.inst_slot(nonnull = False)
             if slot is not None:
@@ -155,11 +165,15 @@ class PRINTER(object):
 
 
     def inst_slot(self, if_def = None):
-        return self.__inst_slot("INSTALLATION_SLOT", if_def)
+        # Use the cached INSTALLATION_SLOT if if_def is provided
+        if if_def:
+            return self.__cached_inst_slot
+        else:
+            return self.__get_inst_slot("INSTALLATION_SLOT", None)
 
 
     def raw_inst_slot(self, if_def = None):
-        return self.__inst_slot("RAW_INSTALLATION_SLOT", if_def)
+        return self.__get_inst_slot("RAW_INSTALLATION_SLOT", if_def)
 
 
     def create_pv_name(self, slot, property_part):
@@ -176,7 +190,7 @@ class PRINTER(object):
             raise TemplatePrinterException(e)
 
 
-    def __root_inst_slot(self, default_slot):
+    def __get_root_inst_slot(self, default_slot):
         if self._root_inst_slot is None:
             return self.plcf(default_slot)
         else:
@@ -184,11 +198,11 @@ class PRINTER(object):
 
 
     def root_inst_slot(self):
-        return self.__root_inst_slot("ROOT_INSTALLATION_SLOT")
+        return self.__cached_root_inst_slot
 
 
     def raw_root_inst_slot(self):
-        return self.__root_inst_slot("RAW_ROOT_INSTALLATION_SLOT")
+        return self.__get_root_inst_slot("RAW_ROOT_INSTALLATION_SLOT")
 
 
     def template(self):
@@ -278,6 +292,8 @@ class PRINTER(object):
         self._parse_keyword_args(keyword_params)
         self._device = self._root_device
 
+        self._reset_body()
+
         return self
 
 
@@ -287,6 +303,8 @@ class PRINTER(object):
         self._parse_keyword_args(keyword_params)
 
         self._if_def = if_def
+
+        self._reset_body()
 
         if isinstance(if_def, IF_DEF):
             self._ifdef_body(if_def, output, **keyword_params)
@@ -308,6 +326,8 @@ class PRINTER(object):
         self._check_if_list(output)
 
         self._parse_keyword_args(keyword_params)
+
+        self._reset_body()
 
         return self
 
