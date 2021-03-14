@@ -176,7 +176,11 @@ class PRINTER(object):
         return self.__get_inst_slot("RAW_INSTALLATION_SLOT", if_def)
 
 
-    def create_pv_name(self, slot, property_part):
+    def create_pv_name(self, slot, property_part = None):
+        if property_part is None:
+            property_part = slot
+            slot = self.__cached_inst_slot
+
         # if property_part is not a string then assume it is a BASE_TYPE
         if not isinstance(property_part, str):
             property_part = property_part.pv_name()

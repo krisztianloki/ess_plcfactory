@@ -224,18 +224,21 @@ record(longin, "{root_inst_slot}:iTwo")
 
 
     def _body_var(self, var, output):
+        var.fqdn_pv_name = self.create_pv_name(var)
+
         self._append(self._toEPICS(var))
 
         if isinstance(var, ANALOG_LIMIT):
             self._set_alarm_limit(var, output)
 
         if not var.is_parameter():
+            del var.fqdn_pv_name
             return
 
         self._params.append(var)
 
         # Have to resolve PLCF# expressions _now_ otherwise we'd end up with root_inst_slot in footer()
-        self._last_param = (self.create_pv_name(self.inst_slot(self._if_def), var), self.expand(var.get_pv_field("FLNK")))
+        self._last_param = (var.fqdn_pv_name, self.expand(var.get_pv_field("FLNK")))
 
 
     def _body_source(self, var, output):
@@ -243,7 +246,7 @@ record(longin, "{root_inst_slot}:iTwo")
 
 
     def _body_end_param(self, if_def, output):
-        if len(self._params) == 0:
+        if not self._params:
             return
 
         self._uploads.append("{}:{}".format(self.inst_slot(if_def), self.UPLOAD_PARAMS))
@@ -268,9 +271,9 @@ record(ao, "{ilimiter}")
 	field(OUT,  "{limited}.{field}")
 	field(OMSL, "closed_loop"){disable_template}
 }}
-""".format(limiter   = self.create_pv_name(self.inst_slot(self._if_def), var),
-           ilimiter  = self.create_pv_name(self.inst_slot(self._if_def), "i" + var.pv_name()),
-           limited   = self.create_pv_name(self.inst_slot(self._if_def), var.limit_pv()),
+""".format(limiter   = var.fqdn_pv_name,
+           ilimiter  = self.create_pv_name("i" + var.pv_name()),
+           limited   = self.create_pv_name(var.limit_pv()),
            field     = var.limit_field(),
            disable_template = self.DEFAULT_INDISABLE_TEMPLATE)
 
@@ -285,7 +288,7 @@ record(ao, "{ilimiter}")
         validity_pv = self.expand(var.get_parameter("VALIDITY_PV", None))
         validity_condition = var.get_parameter("VALIDITY_CONDITION", None)
 
-        exp_var_pv_name = self.create_pv_name(self.inst_slot(self._if_def), var)
+        exp_var_pv_name = var.fqdn_pv_name
 
         # If this is the PV that some other PVs validity is based on then generate a calcout PV
         # First check if the expanded PV name is already registered as a validity PV
@@ -311,7 +314,7 @@ record(ao, "{ilimiter}")
         val_pv_var = self._if_def.has_pv(validity_pv, prefix = self.inst_slot(self._if_def) + ':')
         if val_pv_var is not None:
             # We have to expand the PV name
-            validity_pv = self.create_pv_name(self.inst_slot(self._if_def), val_pv_var)
+            validity_pv = self.create_pv_name(val_pv_var)
 
         validity_name = "{} MSS".format(self._gen_validity_name(validity_pv))
         self._validity_pvs[validity_pv] = validity_name
@@ -329,7 +332,7 @@ record(ao, "{ilimiter}")
 
         if not isinstance(var, tuple):
             # This is a class; i.e. a PLC variable
-            vpv = self.create_pv_name(self.inst_slot(self._if_def), var)
+            vpv = self.create_pv_name(var)
             vcond = var.get_parameter("VALIDITY_CONDITION", None)
             if vcond is None:
                 raise TemplatePrinterException("VALIDITY_CONDITION is not specified", IFDEF_SOURCE = var)
@@ -461,9 +464,12 @@ record(calc, "{vbi}")
 
             self._append("""	field(LNK{lnk}, "{upload}")
 """.format(lnk       = self.LNKx[lnk],
-           upload    = upload if footer else "{}:{}".format(inst_slot, upload.pv_name())), output)
+           upload    = upload if footer else upload.fqdn_pv_name), output)
 
             lnk += 1
+
+            if not footer:
+                del upload.fqdn_pv_name
 
         if footer and foc == 0 and lnk == 0:
             # Create an empty UploadParamsS if there are no parameters
@@ -612,7 +618,7 @@ class EPICS(EPICS_BASE):
 
         return (var.source(),
                 var.pv_template(test = self._test).format(recordtype = var.pv_type(),
-                                                          pv_name    = self.create_pv_name(self.inst_slot(self._if_def), var),
+                                                          pv_name    = var.fqdn_pv_name,
                                                           alias      = var._build_pv_alias(self.create_pv_name, self.inst_slot(self._if_def)),
                                                           dtyp       = var.dtyp(),
                                                           inp_out    = var.inp_out(inst_io       = var.inst_io(),
