@@ -94,8 +94,19 @@ class TestPLCF(unittest.TestCase):
 
     def testParenInPLCF(self):
         line = "[PLCF#(]"
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(plcf.PLCFException):
             self.process(line)
+
+        line = "[PLCF#)]"
+        with self.assertRaises(plcf.PLCFException):
+            self.process(line)
+
+        line = "[PLCF#)(]"
+        with self.assertRaises(plcf.PLCFException):
+            self.process(line)
+
+        line = "[PLCF#()]"
+        self.assertEqual(self.process(line), "()")
 
         line = "[PLCF#[]"
         with self.assertRaises(plcf.PLCFException):
@@ -106,19 +117,19 @@ class TestPLCF(unittest.TestCase):
 
     def testParenPropertyInPLCF(self):
         line = "[PLCF#(property]"
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(plcf.PLCFException):
             self.process(line)
 
 
     def testParenExtInPLCF(self):
         line = "[PLCF#ext.(]"
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(plcf.PLCFException):
             self.process(line)
 
 
     def testUnclosedParenExtInPLCF(self):
         line = "[PLCF#ext.fn(()]"
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(plcf.PLCFException):
             self.process(line)
 
 
@@ -281,7 +292,7 @@ class TestPLCF(unittest.TestCase):
         counterline = "#COUNTER {} = {}"
         const = 42
         lines = [counterline.format(counter, "[PLCF#{}]".format(const)), line]
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(plcf.PLCFException):
             plcf.PLCF.evalCounters(lines)
 
 

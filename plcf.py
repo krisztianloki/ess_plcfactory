@@ -390,7 +390,9 @@ class PLCF(object):
 
             assert isinstance(line, str)
             # PLCF should now all be processed
-            assert PLCF.plcf_tag not in line, "Leftover PLCF# expression in line: {line}".format(line = line)
+            if PLCF.plcf_tag in line:
+                raise PLCFException("Leftover PLCF# expression in line: {line}".format(line = line))
+
             output.append(line)
 
         return (output, counters)
@@ -436,7 +438,8 @@ class PLCF(object):
 
         # identify counter
         counterVar = line.split()[1]
-        assert counterVar in counters.keys()
+        if counterVar not in counters.keys():
+            raise PLCFSyntaxError("Unknown counter: {} in line {}".format(counterVar, line))
 
         # evaluate
         (counter, line) = PLCF._processLineCounter(line)
@@ -485,10 +488,13 @@ class PLCF(object):
             end = PLCF.findMatchingParenthesis(line[start:], '[]') + start
         except PLCFException as e:
             raise PLCFSyntaxError("Malformatted PLCF# expression ({error}) in line {line}".format(error = e.args[0], line = line))
-        assert end != -1, "Unclosed PLCF# expression in line {line}".format(line = line)
+
+        if end == -1:
+            raise PLCFSyntaxError("Unclosed PLCF# expression in line {line}".format(line = line))
 
         expression = line[start + PLCF.plcf_tag_len : end]
-        assert PLCF.matchingParentheses(expression)
+        if not PLCF.matchingParentheses(expression):
+            raise PLCFSyntaxError("Invalid parentheses expression in line {}".format(line))
 
         return (start, expression, end)
 
@@ -504,8 +510,7 @@ class PLCF(object):
         for i, c in enumerate(line):
             if c == oparen:
                 istart.append(i)
-
-            if c == cparen:
+            elif c == cparen:
                 try:
                     ci = istart.pop()
                     if not istart:   # check if this closed the first opening parenthesis
@@ -546,27 +551,17 @@ class PLCF(object):
     def matchingParentheses(line):
         assert isinstance(line, str)
 
-        def helper(line, acc):
+        acc = 0
+        for c in line:
+            if c == '(':
+                acc += 1
+            elif c == ')':
+                acc -= 1
 
             if acc < 0:
                 return False
 
-            if line == "":
-                return acc == 0
-
-            else:
-
-                if line[0] == '(':
-                    return helper(line[1:], acc + 1)
-
-                elif line[0] == ')':
-                    return helper(line[1:], acc - 1)
-
-                else:
-                    return helper(line[1:], acc)
-
-
-        return helper(line, 0)
+        return acc == 0
 
 
 
