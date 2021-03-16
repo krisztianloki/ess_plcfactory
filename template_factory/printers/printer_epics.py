@@ -87,6 +87,7 @@ class EPICS_BASE(PRINTER):
         self._params     = []
         self._last_param = None
         self._uploads    = []
+        self._endianness = None
 
 
     #
@@ -101,6 +102,8 @@ class EPICS_BASE(PRINTER):
         self.DEFAULT_INDISABLE_TEMPLATE = self.DISABLE_TEMPLATE.format(DISABLE_PV = self.DISABLE_PV)
         self.INDISABLE_TEMPLATE = self.DISABLE_TEMPLATE
         self.OUTDISABLE_TEMPLATE = self.DISABLE_TEMPLATE.format(DISABLE_PV = self.DISABLE_PV)
+
+        self._endianness = self.plcf("'BE' if 'PLC-EPICS-COMMS:Endianness' == 'BigEndian' else 'LE'")
 
         epics_db_header = """
 ################################################################################
@@ -214,6 +217,8 @@ record(longin, "{root_inst_slot}:iTwo")
             comment = "EPICS -> PLC parameters"
         else:
             raise IfDefInternalError("Unsupported block type: " + block.type())
+
+        block.set_endianness(self._endianness)
 
         self._append((block.source(), """
 ##########
@@ -786,7 +791,7 @@ record(ao, "{root_inst_slot}:CommsHashToPLCS")
 	field(DESC,	"Sends comms hash to PLC")
 	field(SCAN,	"1 second")
 	field(DTYP,	"asynInt32")
-	field(OUT,	"@asyn($(PLCNAME)write, [PLCF#EPICSToPLCDataBlockStartOffset], 100)INT32_[PLCF#'BE' if 'PLC-EPICS-COMMS:Endianness' == 'BigEndian' else 'LE']")
+	field(OUT,	"@asyn($(PLCNAME)write, [PLCF#EPICSToPLCDataBlockStartOffset], 100)INT32_{endianness}")
 	field(OMSL,	"closed_loop")
 	field(DOL,	"{root_inst_slot}:iCommsHashToPLC")
 	field(DISV,	"0")
@@ -835,7 +840,7 @@ record(ai, "{root_inst_slot}:iMBCommsHash")
 	field(DESC,	"Comms hash from PLC using MB map")
 	field(SCAN,	"I/O Intr")
 	field(DTYP,	"asynInt32")
-	field(INP,	"@asyn($(PLCNAME)read, 3, 100)INT32_[PLCF#'BE' if 'PLC-EPICS-COMMS:Endianness' == 'BigEndian' else 'LE']")
+	field(INP,	"@asyn($(PLCNAME)read, 3, 100)INT32_{endianness}")
 	field(FLNK,	"{root_inst_slot}:iIsMBHash")
 }}
 record(calcout, "{root_inst_slot}:iIsMBHash")
@@ -868,6 +873,7 @@ record(ai, "{root_inst_slot}:HeartbeatFromPLCR")
 #COUNTER {cmd_cnt} = [PLCF#{cmd_cnt} + 10];
 #COUNTER {status_cnt} = [PLCF#{status_cnt} + 10];
 """.format(root_inst_slot  = self.root_inst_slot(),
+           endianness      = self._endianness,
            cmd_cnt         = CMD_BLOCK.counter_keyword(),
            status_cnt      = STATUS_BLOCK.counter_keyword())
 

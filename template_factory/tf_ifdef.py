@@ -451,6 +451,10 @@ class BLOCK(SOURCE):
             raise IfDefSyntaxError("Cannot compute width, unknown type: " + str(num_bytes))
 
 
+    def set_endianness(self, endianness):
+        self._endianness = endianness
+
+
     def register_printer(self, printer):
         self._block_printer = printer
 
@@ -599,7 +603,7 @@ class MODBUS(object):
         else:
             raise IfDefInternalError("Cannot determine endian correct type of {}".format(epics_type))
 
-        return "[PLCF#'{BE}' if '^(PLC-EPICS-COMMS:Endianness)' == 'BigEndian' else '{LE}']".format(BE = pairs[0], LE = pairs[1])
+        return pairs[0] if self._big_endian else pairs[1]
 
 
     def link_offset(self, var):
@@ -609,6 +613,15 @@ class MODBUS(object):
 
     def pv_template(self, **keyword_params):
         return self._block_printer.outpv_template(**keyword_params)
+
+
+    def compile_endianness(self, endianness):
+        if endianness == 'BE':
+            self._big_endian = True
+        elif endianness == 'LE':
+            self._big_endian = False
+        else:
+            raise IfDefSyntaxError("Unknown endianness: {}".format(endianness))
 
 
 
@@ -623,6 +636,11 @@ class CMD_BLOCK(MODBUS, BLOCK):
         super(CMD_BLOCK, self).__init__(source, BLOCK.CMD, optimize)
 
 
+    def set_endianness(self, endianness):
+        self.compile_endianness(endianness)
+        super(CMD_BLOCK, self).set_endianness(endianness)
+
+
 
 class PARAM_BLOCK(MODBUS, BLOCK):
     @staticmethod
@@ -632,6 +650,11 @@ class PARAM_BLOCK(MODBUS, BLOCK):
 
     def __init__(self, source, optimize):
         super(PARAM_BLOCK, self).__init__(source, BLOCK.PARAM, optimize)
+
+
+    def set_endianness(self, endianness):
+        self.compile_endianness(endianness)
+        super(PARAM_BLOCK, self).set_endianness(endianness)
 
 
 
