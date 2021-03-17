@@ -67,6 +67,8 @@ class AUTOSAVE_TEST(PRINTER):
     def header(self, output, **keyword_params):
         super(AUTOSAVE_TEST, self).header(output, **keyword_params).add_filename_header(output, custom = "{inst_slot}-[PLCF#TEMPLATE]-[PLCF#TIMESTAMP]-test.req".format(inst_slot = self.raw_inst_slot()))
 
+        self._append("{root_inst_slot}:UploadStat-RB.VAL".format(root_inst_slot = self.root_inst_slot()), output)
+
         return self
 
 

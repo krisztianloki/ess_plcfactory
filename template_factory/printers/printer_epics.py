@@ -25,6 +25,24 @@ def printer():
 
 
 class EPICS_BASE(PRINTER):
+    ## These are copied from interface_factory.__init__.py
+
+    # Length: 2 words
+    EPICSTOPLC_HASH       = 0
+    # Length: 1 word
+    EPICSTOPLC_HEARTBEAT  = 2
+    # Length: 2 words
+    EPICSTOPLC_READ_HASH  = 3
+    # Length: 1 word
+    EPICSTOPLC_UPLOADSTAT = 5
+
+    # Length: 2 words
+    PLCTOEPICS_HASH       = 0 * 2
+    # Length: 1 word
+    PLCTOEPICS_HEARTBEAT  = 2 * 2
+    # Length: 1 word
+    PLCTOEPICS_UPLOADSTAT = 3 * 2
+
     DISABLE_PV = "[PLCF#ROOT_INSTALLATION_SLOT]:PLCHashCorrectR"
 
     DISABLE_TEMPLATE = """
@@ -69,7 +87,6 @@ class EPICS_BASE(PRINTER):
 
 
     UPLOAD_PARAMS = "UploadParametersS"
-    UPLOAD_STAT   = "UploadStatR"
 
     LNKx    = [ '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F' ]
     MAX_LNK = len(LNKx)
@@ -506,7 +523,7 @@ record(bo, "{root_inst_slot}:iInitUploadStat")
 	field(DESC, "Initialize parameter uploading status")
 	field(DOL,  "{root_inst_slot}:iOne")
 	field(OMSL, "closed_loop")
-	field(OUT,  "{root_inst_slot}:{upload_stat} PP")
+	field(OUT,  "{root_inst_slot}:iUploadStatToPLCS PP")
 
 }}
 
@@ -515,32 +532,26 @@ record(longout, "{root_inst_slot}:iDoneUploadStat")
 	field(DESC, "Done parameter uploading status")
 	field(DOL,  "{root_inst_slot}:iTwo")
 	field(OMSL, "closed_loop")
-	field(OUT,  "{root_inst_slot}:{upload_stat} PP")
-
+	field(OUT,  "{root_inst_slot}:iUploadStatToPLCS PP")
 }}
 
-record(mbbi, "{root_inst_slot}:{upload_stat}")
+record(calcout, "{root_inst_slot}:iAssertUploadStat")
 {{
-	field(DESC, "Parameter uploading status")
-	field(ZRVL, "0")
-	field(ZRST, "Never uploaded")
-
-	field(ONVL, "1")
-	field(ONST, "Uploading...")
-
-	field(TWVL, "2")
-	field(TWST, "Uploaded")
-
-	field(VAL,  "0")
-	field(PINI, "YES")
+	field(DESC, "Assert validity of upload statistics")
+	field(INPA, "{root_inst_slot}:UploadStat-RB CP")
+	field(INPB, "{root_inst_slot}:iInitUploadStat.UDF")
+# PLC says we are uploading but iInitUploadStat was never processed ==> reset upload status in the PLC
+	field(CALC, "A == 1 && B == 1")
+	field(OOPT, "When Non-zero")
+	field(DOPT, "Use OCAL")
+	field(OCAL, "0")
+	field(OUT,  "{root_inst_slot}:iUploadStatToPLCS PP")
 }}
-
 record(fanout, "{root_inst_slot}:{upload}")
 {{
 	field(LNK0, "{root_inst_slot}:iInitUploadStat")
 	field(SHFT, "0")
 """.format(root_inst_slot = self.root_inst_slot(),
-           upload_stat    = self.UPLOAD_STAT,
            upload         = self.UPLOAD_PARAMS), output)
 
         if self._last_param:
@@ -769,6 +780,30 @@ record(bo, "{root_inst_slot}:iKickAlive")
 	field(HIGH,	"5")
 	field(OUT,	"{root_inst_slot}:AliveR PP")
 }}
+record(mbbi, "{root_inst_slot}:UploadStat-RB")
+{{
+# Maintain compatibility with existing OPIs
+	alias("{root_inst_slot}:UploadStatR")
+	field(DESC,	"Parameter upload status from the PLC")
+	field(SCAN,	"I/O Intr")
+	field(DTYP,	"S7plc")
+	field(INP,	"@$(PLCNAME)/[PLCF#PLCToEPICSDataBlockStartOffset + {plc_to_epics_upload_stat}] T=INT16")
+	field(NOBT,     "16")
+	field(SHFT,     "0")
+
+	field(ZRVL,	"0")
+	field(ZRST,	"Never uploaded")
+
+	field(ONVL,	"1")
+	field(ONST,	"Uploading...")
+
+	field(TWVL,	"2")
+	field(TWST,	"Uploaded")
+
+	field(DISS,	"INVALID")
+	field(DISV,	"0")
+	field(SDIS,	"{root_inst_slot}:PLCHashCorrectR")
+}}
 
 ########################################################
 ########## EPICS -> PLC comms management data ##########
@@ -785,7 +820,7 @@ record(ao, "{root_inst_slot}:CommsHashToPLCS")
 	field(DESC,	"Sends comms hash to PLC")
 	field(SCAN,	"1 second")
 	field(DTYP,	"asynInt32")
-	field(OUT,	"@asyn($(PLCNAME)write, [PLCF#EPICSToPLCDataBlockStartOffset], 100)INT32_{endianness}")
+	field(OUT,	"@asyn($(PLCNAME)write, [PLCF#EPICSToPLCDataBlockStartOffset + {epics_to_plc_hash}], 100)INT32_{endianness}")
 	field(OMSL,	"closed_loop")
 	field(DOL,	"{root_inst_slot}:iCommsHashToPLC")
 	field(DISV,	"0")
@@ -804,12 +839,20 @@ record(ao, "{root_inst_slot}:HeartbeatToPLCS")
 {{
 	field(DESC,	"Sends heartbeat to PLC")
 	field(DTYP,	"asynInt32")
-	field(OUT,	"@asyn($(PLCNAME)write, [PLCF#EPICSToPLCDataBlockStartOffset + 2], 100)")
+	field(OUT,	"@asyn($(PLCNAME)write, [PLCF#EPICSToPLCDataBlockStartOffset + {epics_to_plc_heartbeat}], 100)")
 	field(OMSL,	"closed_loop")
 	field(DOL,	"{root_inst_slot}:iHeartbeatToPLC.VAL")
 	field(OIF,	"Full")
 	field(DRVL,	"0")
 	field(DRVH,	"32000")
+	field(DISV,	"0")
+	field(SDIS,	"{root_inst_slot}:ModbusConnectedR")
+}}
+record(longout, "{root_inst_slot}:iUploadStatToPLCS")
+{{
+	field(DESC,	"Parameter upload status to the PLC")
+	field(DTYP,	"asynInt32")
+	field(OUT,	"@asyn($(PLCNAME)write, [PLCF#EPICSToPLCDataBlockStartOffset + {epics_to_plc_upload_stat}], 100)")
 	field(DISV,	"0")
 	field(SDIS,	"{root_inst_slot}:ModbusConnectedR")
 }}
@@ -826,7 +869,7 @@ record(ai, "{root_inst_slot}:iS7CommsHash")
 	field(DESC,	"Comms hash from PLC using S7 stream")
 	field(SCAN,	"I/O Intr")
 	field(DTYP,	"S7plc")
-	field(INP,	"@$(PLCNAME)/[PLCF#PLCToEPICSDataBlockStartOffset] T=INT32")
+	field(INP,	"@$(PLCNAME)/[PLCF#PLCToEPICSDataBlockStartOffset + {plc_to_epics_hash}] T=INT32")
 	field(FLNK,	"{root_inst_slot}:CommsHashFromPLCR")
 }}
 record(ai, "{root_inst_slot}:iMBCommsHash")
@@ -834,7 +877,7 @@ record(ai, "{root_inst_slot}:iMBCommsHash")
 	field(DESC,	"Comms hash from PLC using MB map")
 	field(SCAN,	"I/O Intr")
 	field(DTYP,	"asynInt32")
-	field(INP,	"@asyn($(PLCNAME)read, 3, 100)INT32_{endianness}")
+	field(INP,	"@asyn($(PLCNAME)read, [PLCF#EPICSToPLCDataBlockStartOffset + {epics_to_plc_read_hash}], 100)INT32_{endianness}")
 	field(FLNK,	"{root_inst_slot}:iIsMBHash")
 }}
 record(calcout, "{root_inst_slot}:iIsMBHash")
@@ -857,7 +900,7 @@ record(ai, "{root_inst_slot}:HeartbeatFromPLCR")
 	field(DESC,	"Heartbeat from PLC")
 	field(SCAN,	"I/O Intr")
 	field(DTYP,	"S7plc")
-	field(INP,	"@$(PLCNAME)/[PLCF#(PLCToEPICSDataBlockStartOffset + 4)] T=INT16")
+	field(INP,	"@$(PLCNAME)/[PLCF#(PLCToEPICSDataBlockStartOffset + {plc_to_epics_heartbeat})] T=INT16")
 	field(FLNK,	"{root_inst_slot}:iGotHeartbeat")
 	field(DISS,	"INVALID")
 	field(DISV,	"0")
@@ -868,6 +911,13 @@ record(ai, "{root_inst_slot}:HeartbeatFromPLCR")
 #COUNTER {status_cnt} = {status_cnt_val}
 """.format(root_inst_slot  = self.root_inst_slot(),
            endianness      = self._endianness,
+           epics_to_plc_hash        = self.EPICSTOPLC_HASH,
+           epics_to_plc_heartbeat   = self.EPICSTOPLC_HEARTBEAT,
+           epics_to_plc_read_hash   = self.EPICSTOPLC_READ_HASH,
+           epics_to_plc_upload_stat = self.EPICSTOPLC_UPLOADSTAT,
+           plc_to_epics_hash        = self.PLCTOEPICS_HASH,
+           plc_to_epics_heartbeat   = self.PLCTOEPICS_HEARTBEAT,
+           plc_to_epics_upload_stat = self.PLCTOEPICS_UPLOADSTAT,
            cmd_cnt         = CMD_BLOCK.counter_keyword(),
            cmd_cnt_val     = self.plcf("{} + {}".format(CMD_BLOCK.counter_keyword(), self.EPICSToPLCDataBlockStartOffset + 10)),
            status_cnt      = STATUS_BLOCK.counter_keyword(),
@@ -1059,6 +1109,14 @@ record(bo, "{root_inst_slot}:iKickAlive")
 	field(HIGH,	"5")
 	field(OUT,	"{root_inst_slot}:AliveR PP")
 }}
+record(longin, "{root_inst_slot}:UploadStat-RB")
+{{
+	field(DESC,	"Parameter upload status from the PLC")
+	field(DISS,	"INVALID")
+	field(DISV,	"0")
+	field(SDIS,	"{root_inst_slot}:PLCHashCorrectR CP")
+	info(autosaveFields_pass0, "VAL")
+}}
 
 ########################################################
 ########## EPICS -> PLC comms management data ##########
@@ -1094,6 +1152,13 @@ record(ao, "{root_inst_slot}:HeartbeatToPLCS")
 	field(OIF,	"Full")
 	field(DRVL,	"0")
 	field(DRVH,	"32000")
+}}
+record(longout, "{root_inst_slot}:iUploadStatToPLCS")
+{{
+	field(DESC,	"Parameter upload status to the PLC")
+	field(OUT,	"{root_inst_slot}:UploadStat-RB PP")
+	field(DISV,	"0")
+	field(SDIS,	"{root_inst_slot}:ConnectedR")
 }}
 
 ########################################################
