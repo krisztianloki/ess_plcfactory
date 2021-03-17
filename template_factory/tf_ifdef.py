@@ -14,6 +14,7 @@ import copy
 from collections import OrderedDict
 #import inspect
 
+# FIXME: I don't think it is needed anymore
 try:
     from plcf import PLCF
 except ImportError:
@@ -467,19 +468,6 @@ class STATUS_BLOCK(BLOCK):
 
 
     @staticmethod
-    def counter_keyword():
-        try:
-            return PLCF.get_counter(2)
-        except:
-            return "Counter2"
-
-
-    @staticmethod
-    def root_of_db():
-        return "^(PLCToEPICSDataBlockStartOffset)"
-
-
-    @staticmethod
     def valid_type_pairs():
         return dict(BYTE   = [ "UINT8",   "UNSIGN8", "BYTE", "CHAR" ],
                     USINT  = [ "UINT8",   "UNSIGN8", "BYTE", "CHAR" ],
@@ -513,9 +501,9 @@ class STATUS_BLOCK(BLOCK):
         super(STATUS_BLOCK, self).__init__(source, BLOCK.STATUS, optimize)
 
 
-    def link_offset(self, var):
-        offset_template = "[PLCF# {counter} * 2 + {offset}]"
-        return offset_template.format(counter = self.counter_keyword(), offset = var.offset())
+    def link_offset(self, var, plc_to_epics_offset, epics_to_plc_offset):
+        # S7 uses byte based offsets
+        return plc_to_epics_offset + var.offset()
 
 
     def pv_template(self, **keyword_params):
@@ -552,18 +540,6 @@ class MODBUS(object):
 
 
     _endian_specific_epics_types = [item for sublist in _endian_dependent_type_pairs.values() for item in sublist]
-
-    @staticmethod
-    def counter_keyword():
-        try:
-            return PLCF.get_counter(1)
-        except:
-            return "Counter1"
-
-
-    @staticmethod
-    def root_of_db():
-        return "^(EPICSToPLCDataBlockStartOffset)"
 
 
     @staticmethod
@@ -606,9 +582,9 @@ class MODBUS(object):
         return pairs[0] if self._big_endian else pairs[1]
 
 
-    def link_offset(self, var):
-        offset_template = "[PLCF# {counter} + {offset}]"
-        return offset_template.format(counter = self.counter_keyword(), offset = var.offset() // 2)
+    def link_offset(self, var, plc_to_epics_offset, epics_to_plc_offset):
+        # Modbus uses (16 bit) word base offsets
+        return epics_to_plc_offset + var.offset() // 2
 
 
     def pv_template(self, **keyword_params):
@@ -2077,8 +2053,8 @@ class BASE_TYPE(SOURCE):
         self._block.compute_offset(self._width)
 
 
-    def link_offset(self):
-        return self._block.link_offset(self)
+    def link_offset(self, plc_to_epics_offset, epics_to_plc_offset):
+        return self._block.link_offset(self, plc_to_epics_offset, epics_to_plc_offset)
 
 
     def pv_template(self, **keyword_params):

@@ -116,7 +116,17 @@ class PRINTER(object):
         self.__reset_body()
 
 
-    def get_start_offsets(self):
+    def get_endianness(self):
+        endianness = self.get_property("PLC-EPICS-COMMS:Endianness", None)
+        if endianness == 'BigEndian':
+            self._endianness = "BE"
+        elif endianness == 'LittleEndian':
+            self._endianness = 'LE'
+        else:
+            raise TemplatePrinterException("Unknown PLC endianness specification: '{}'".format(endianness))
+
+
+    def get_offsets(self):
         try:
             self.EPICSToPLCDataBlockStartOffset = int(self.get_property("EPICSToPLCDataBlockStartOffset", None))
         except (TypeError, ValueError):
@@ -126,6 +136,23 @@ class PRINTER(object):
             self.PLCToEPICSDataBlockStartOffset = int(self.get_property("PLCToEPICSDataBlockStartOffset", None))
         except (TypeError, ValueError):
             raise TemplatePrinterException("Invalid PLCToEPICSDataBlockStartOffset property")
+
+        self._plc_to_epics_offset = self.PLCToEPICSDataBlockStartOffset
+        self._epics_to_plc_offset = self.EPICSToPLCDataBlockStartOffset
+
+
+    def advance_offsets_after_header(self, ifa = False):
+        # S7 offsets are in bytes (but for IFA it is in words)
+        self._plc_to_epics_offset += 10 * (1 if ifa else 2)
+        # while modbus offsets are in (16 bit) words
+        self._epics_to_plc_offset += 10
+
+
+    def advance_offsets_after_body(self, ifa = False):
+        # S7 offsets are in bytes (but for IFA it is in words)
+        self._plc_to_epics_offset += (1 if ifa else 2) * int(self._if_def.from_plc_words_length())
+        # while modbus offsets are in (16 bit) words
+        self._epics_to_plc_offset += int(self._if_def.to_plc_words_length())
 
 
     def expand(self, string):

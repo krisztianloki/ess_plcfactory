@@ -160,6 +160,10 @@ class ST_CMD(eee, MACROS, PRINTER):
         super(ST_CMD, self).header(output, **keyword_parameters).add_filename_header(output, inst_slot = self.snippet(), template = False, extension = self._extension())
         self._opc = True if 'OPC' in keyword_parameters.get('PLC_TYPE', '') else False
 
+        if not self._opc:
+            self.get_endianness()
+            self.get_offsets()
+
         self._ipaddr = self.get_property("Hostname", None)
         if self._ipaddr == "":
             self._ipaddr = None
@@ -187,12 +191,10 @@ class ST_CMD(eee, MACROS, PRINTER):
 # @field MB_PORT
 # @runtime YES
 # Can override Modbus port with this
-#COUNTER {status_cnt} = [PLCF#{status_cnt} + 10 * 2]
 
 """.format(require    = self.require(),
            ipaddr     = "type STRING" if self._ipaddr is None else "runtime YES",
            modversion = self._modversion(),
-           status_cnt = STATUS_BLOCK.counter_keyword(),
            s7_vs_opc  = """
 # @field RECVTIMEOUT
 # @type INTEGER
@@ -209,6 +211,9 @@ class ST_CMD(eee, MACROS, PRINTER):
 
         self._append(st_cmd_header, output)
 
+        if not self._opc:
+            self.advance_offsets_after_header()
+
 
     #
     # BODY
@@ -217,10 +222,8 @@ class ST_CMD(eee, MACROS, PRINTER):
         # Append macro 'declarations' to header part...
         self._declare_macros(if_def, output);
 
-        status = if_def._status_block()
-        if status is not None:
-            self._append("#COUNTER {status_cnt} = [PLCF# {status_cnt} + {db_length}]".format(status_cnt = STATUS_BLOCK.counter_keyword(),
-                                                                                             db_length  = status.length()), output)
+        if not self._opc and if_def._status_block() is not None:
+            self.advance_offsets_after_body()
 
 
     def _dbLoadRecords(self, plc_macro):
@@ -282,14 +285,14 @@ drvModbusAsynConfigure("{plcname}read", "{plcname}", 0, 3, {start_offset}, 10, 0
            recvtimeout   = self._recvtimeout,
            s7drvport     = self.plcf("PLC-EPICS-COMMS: S7Port"),
            modbusdrvport = self.plcf("PLC-EPICS-COMMS: MBPort"),
-           insize        = self.plcf(STATUS_BLOCK.counter_keyword()),
-           endianness    = self.plcf("PLC-EPICS-COMMS:Endianness"),
-           bigendian     = self.plcf("1 if 'PLC-EPICS-COMMS:Endianness' == 'BigEndian' else 0"),
+           insize        = self._plc_to_epics_offset - self.PLCToEPICSDataBlockStartOffset,
+           endianness    = "BigEndian" if self._endianness == "BE" else "LittleEndian",
+           bigendian     = 1 if self._endianness == "BE" else 0,
            modulename    = self.modulename(),
            modversion    = self._modversion(),
            plcname       = self.raw_root_inst_slot(),
            dbloadrecords = self._dbLoadRecords("PLCNAME"),
-           start_offset  = self.plcf("EPICSToPLCDataBlockStartOffset")
+           start_offset  = self.EPICSToPLCDataBlockStartOffset,
           )
 
         self._append(st_cmd_footer, output)

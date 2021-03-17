@@ -66,7 +66,7 @@ class IFF(PRINTER):
         #
         super(IFF, self).header(output, **keyword_params).add_filename_header(output, extension = "ifa")
 
-        self.get_start_offsets()
+        self.get_offsets()
 
         plc_type = keyword_params.get("PLC_TYPE", "SIEMENS")
         if plc_type == "SIEMENS":
@@ -120,6 +120,7 @@ GATEWAY_DATABLOCK
            gateway_datablock        = self.get_property("PLC-EPICS-COMMS: GatewayDatablock", "")), output)
 
         #FIXME: the 10 word offset should be applied here (and not in the footer) and removed from InterfaceFactorySiemens.py and InterfaceFactoryBeckhoff.py
+        #self.advance_offsets_after_header(True)
 
 
     #
@@ -140,17 +141,15 @@ EPICSTOPLCDATABLOCKOFFSET
 {epicstoplcdatablockoffset}
 PLCTOEPICSDATABLOCKOFFSET
 {plctoepicsdatablockoffset}
-#COUNTER {cmd_cnt} = [PLCF# {cmd_cnt} + {epicstoplclength}];
-#COUNTER {status_cnt} = [PLCF# {status_cnt} + {plctoepicslength}];
 """.format(inst_slot                 = self.raw_inst_slot(),
            type                      = self._device.deviceType() if if_def._artifact.is_perdevtype() else "{}_as_{}".format(self._device.deviceType(), self._device.name()),
            datablock                 = if_def.DEFAULT_DATABLOCK_NAME,
-           epicstoplcdatablockoffset = self.plcf("{EPICSToPLCDataBlockStartOffset} + {cmd_cnt}".format(EPICSToPLCDataBlockStartOffset = self.EPICSToPLCDataBlockStartOffset, cmd_cnt = CMD_BLOCK.counter_keyword())),
-           plctoepicsdatablockoffset = self.plcf("{PLCToEPICSDataBlockStartOffset} + {status_cnt}".format(PLCToEPICSDataBlockStartOffset = self.PLCToEPICSDataBlockStartOffset, status_cnt = STATUS_BLOCK.counter_keyword())),
+           epicstoplcdatablockoffset = self._epics_to_plc_offset,
+           plctoepicsdatablockoffset = self._plc_to_epics_offset,
            epicstoplclength          = if_def.to_plc_words_length(),
-           plctoepicslength          = if_def.from_plc_words_length(),
-           cmd_cnt                   = CMD_BLOCK.counter_keyword(),
-           status_cnt                = STATUS_BLOCK.counter_keyword()), output)
+           plctoepicslength          = if_def.from_plc_words_length()), output)
+
+        self.advance_offsets_after_body(True)
 
         for src in if_def.interfaces():
             if isinstance(src, BLOCK):
@@ -215,9 +214,10 @@ PLCTOEPICSDATABLOCKOFFSET
     def footer(self, output, **keyword_params):
         super(IFF, self).footer(output, **keyword_params)
 
+        #FIXME: the 10 word offset should be applied in the header (and not here) and removed from InterfaceFactorySiemens.py and InterfaceFactoryBeckhoff.py
         self._append("""TOTALEPICSTOPLCLENGTH
 {totalepicstoplclength}
 TOTALPLCTOEPICSLENGTH
 {totalplctoepicslength}
-""".format(totalepicstoplclength = self.plcf(CMD_BLOCK.counter_keyword() + " + 10"),
-           totalplctoepicslength = self.plcf(STATUS_BLOCK.counter_keyword() + " + 10")), output)
+""".format(totalepicstoplclength = self._epics_to_plc_offset + 10 - self.EPICSToPLCDataBlockStartOffset,
+           totalplctoepicslength = self._plc_to_epics_offset + 10 - self.PLCToEPICSDataBlockStartOffset), output)

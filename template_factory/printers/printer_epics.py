@@ -636,7 +636,7 @@ class EPICS(EPICS_BASE):
                                                           alias      = var._build_pv_alias(self.create_pv_name, self.inst_slot(self._if_def)),
                                                           dtyp       = var.dtyp(),
                                                           inp_out    = var.inp_out(inst_io       = var.inst_io(),
-                                                                                   offset        = var.link_offset(),
+                                                                                   offset        = var.link_offset(self._plc_to_epics_offset, self._epics_to_plc_offset),
                                                                                    dtyp_var_type = var.endian_correct_dtyp_var_type(),
                                                                                    link_extra    = var.link_extra() + var._get_user_link_extra()),
                                                           pv_extra   = pv_extra))
@@ -787,7 +787,7 @@ record(mbbi, "{root_inst_slot}:UploadStat-RB")
 	field(DESC,	"Parameter upload status from the PLC")
 	field(SCAN,	"I/O Intr")
 	field(DTYP,	"S7plc")
-	field(INP,	"@$(PLCNAME)/[PLCF#PLCToEPICSDataBlockStartOffset + {plc_to_epics_upload_stat}] T=INT16")
+	field(INP,	"@$(PLCNAME)/{plc_to_epics_upload_stat} T=INT16")
 	field(NOBT,     "16")
 	field(SHFT,     "0")
 
@@ -820,7 +820,7 @@ record(ao, "{root_inst_slot}:CommsHashToPLCS")
 	field(DESC,	"Sends comms hash to PLC")
 	field(SCAN,	"1 second")
 	field(DTYP,	"asynInt32")
-	field(OUT,	"@asyn($(PLCNAME)write, [PLCF#EPICSToPLCDataBlockStartOffset + {epics_to_plc_hash}], 100)INT32_{endianness}")
+	field(OUT,	"@asyn($(PLCNAME)write, {epics_to_plc_hash}, 100)INT32_{endianness}")
 	field(OMSL,	"closed_loop")
 	field(DOL,	"{root_inst_slot}:iCommsHashToPLC")
 	field(DISV,	"0")
@@ -839,7 +839,7 @@ record(ao, "{root_inst_slot}:HeartbeatToPLCS")
 {{
 	field(DESC,	"Sends heartbeat to PLC")
 	field(DTYP,	"asynInt32")
-	field(OUT,	"@asyn($(PLCNAME)write, [PLCF#EPICSToPLCDataBlockStartOffset + {epics_to_plc_heartbeat}], 100)")
+	field(OUT,	"@asyn($(PLCNAME)write, {epics_to_plc_heartbeat}, 100)")
 	field(OMSL,	"closed_loop")
 	field(DOL,	"{root_inst_slot}:iHeartbeatToPLC.VAL")
 	field(OIF,	"Full")
@@ -852,7 +852,7 @@ record(longout, "{root_inst_slot}:iUploadStatToPLCS")
 {{
 	field(DESC,	"Parameter upload status to the PLC")
 	field(DTYP,	"asynInt32")
-	field(OUT,	"@asyn($(PLCNAME)write, [PLCF#EPICSToPLCDataBlockStartOffset + {epics_to_plc_upload_stat}], 100)")
+	field(OUT,	"@asyn($(PLCNAME)write, {epics_to_plc_upload_stat}, 100)")
 	field(DISV,	"0")
 	field(SDIS,	"{root_inst_slot}:ModbusConnectedR")
 }}
@@ -869,7 +869,7 @@ record(ai, "{root_inst_slot}:iS7CommsHash")
 	field(DESC,	"Comms hash from PLC using S7 stream")
 	field(SCAN,	"I/O Intr")
 	field(DTYP,	"S7plc")
-	field(INP,	"@$(PLCNAME)/[PLCF#PLCToEPICSDataBlockStartOffset + {plc_to_epics_hash}] T=INT32")
+	field(INP,	"@$(PLCNAME)/{plc_to_epics_hash} T=INT32")
 	field(FLNK,	"{root_inst_slot}:CommsHashFromPLCR")
 }}
 record(ai, "{root_inst_slot}:iMBCommsHash")
@@ -877,7 +877,7 @@ record(ai, "{root_inst_slot}:iMBCommsHash")
 	field(DESC,	"Comms hash from PLC using MB map")
 	field(SCAN,	"I/O Intr")
 	field(DTYP,	"asynInt32")
-	field(INP,	"@asyn($(PLCNAME)read, [PLCF#EPICSToPLCDataBlockStartOffset + {epics_to_plc_read_hash}], 100)INT32_{endianness}")
+	field(INP,	"@asyn($(PLCNAME)read, {epics_to_plc_read_hash}, 100)INT32_{endianness}")
 	field(FLNK,	"{root_inst_slot}:iIsMBHash")
 }}
 record(calcout, "{root_inst_slot}:iIsMBHash")
@@ -900,28 +900,22 @@ record(ai, "{root_inst_slot}:HeartbeatFromPLCR")
 	field(DESC,	"Heartbeat from PLC")
 	field(SCAN,	"I/O Intr")
 	field(DTYP,	"S7plc")
-	field(INP,	"@$(PLCNAME)/[PLCF#(PLCToEPICSDataBlockStartOffset + {plc_to_epics_heartbeat})] T=INT16")
+	field(INP,	"@$(PLCNAME)/{plc_to_epics_heartbeat} T=INT16")
 	field(FLNK,	"{root_inst_slot}:iGotHeartbeat")
 	field(DISS,	"INVALID")
 	field(DISV,	"0")
 	field(SDIS,	"{root_inst_slot}:PLCHashCorrectR")
 }}
 
-#COUNTER {cmd_cnt} = {cmd_cnt_val}
-#COUNTER {status_cnt} = {status_cnt_val}
 """.format(root_inst_slot  = self.root_inst_slot(),
            endianness      = self._endianness,
-           epics_to_plc_hash        = self.EPICSTOPLC_HASH,
-           epics_to_plc_heartbeat   = self.EPICSTOPLC_HEARTBEAT,
-           epics_to_plc_read_hash   = self.EPICSTOPLC_READ_HASH,
-           epics_to_plc_upload_stat = self.EPICSTOPLC_UPLOADSTAT,
-           plc_to_epics_hash        = self.PLCTOEPICS_HASH,
-           plc_to_epics_heartbeat   = self.PLCTOEPICS_HEARTBEAT,
-           plc_to_epics_upload_stat = self.PLCTOEPICS_UPLOADSTAT,
-           cmd_cnt         = CMD_BLOCK.counter_keyword(),
-           cmd_cnt_val     = self.plcf("{} + {}".format(CMD_BLOCK.counter_keyword(), self.EPICSToPLCDataBlockStartOffset + 10)),
-           status_cnt      = STATUS_BLOCK.counter_keyword(),
-           status_cnt_val  = self.plcf("{} + {}".format(STATUS_BLOCK.counter_keyword(), self.PLCToEPICSDataBlockStartOffset + 10)))
+           epics_to_plc_hash        = self.EPICSToPLCDataBlockStartOffset + self.EPICSTOPLC_HASH,
+           epics_to_plc_heartbeat   = self.EPICSToPLCDataBlockStartOffset + self.EPICSTOPLC_HEARTBEAT,
+           epics_to_plc_read_hash   = self.EPICSToPLCDataBlockStartOffset + self.EPICSTOPLC_READ_HASH,
+           epics_to_plc_upload_stat = self.EPICSToPLCDataBlockStartOffset + self.EPICSTOPLC_UPLOADSTAT,
+           plc_to_epics_hash        = self.PLCToEPICSDataBlockStartOffset + self.PLCTOEPICS_HASH,
+           plc_to_epics_heartbeat   = self.PLCToEPICSDataBlockStartOffset + self.PLCTOEPICS_HEARTBEAT,
+           plc_to_epics_upload_stat = self.PLCToEPICSDataBlockStartOffset + self.PLCTOEPICS_UPLOADSTAT)
 
 
     #
@@ -930,17 +924,13 @@ record(ai, "{root_inst_slot}:HeartbeatFromPLCR")
     def header(self, output, **keyword_params):
         super(EPICS, self).header(output, **keyword_params).add_filename_header(output, extension = "db")
 
-        endianness = self.get_property("PLC-EPICS-COMMS:Endianness", None)
-        if endianness == 'BigEndian':
-            self._endianness = "BE"
-        elif endianness == 'LittleEndian':
-            self._endianness = 'LE'
-        else:
-            raise TemplatePrinterException("Unknown PLC endianness specification: '{}'".format(endianness))
+        self.get_endianness()
 
-        self.get_start_offsets()
+        self.get_offsets()
 
         self._append(self._db_header(**keyword_params), output)
+
+        self.advance_offsets_after_header()
 
         return self
 
@@ -983,27 +973,19 @@ record(ai, "{root_inst_slot}:HeartbeatFromPLCR")
 
         self._body_end_param(if_def, output)
         self._append("\n\n")
-        self._body_end_cmd(if_def, output)
-        self._body_end_status(if_def, output)
+        self._body_end_epics_to_plc(if_def, output)
+        self._body_end_plc_to_epics(if_def, output)
 
         self._body_end(if_def, output)
 
 
-    def _body_end_cmd(self, if_def, output):
-        self._body_end_block(CMD_BLOCK.counter_keyword(), if_def.to_plc_words_length(), output)
+    def _body_end_epics_to_plc(self, if_def, output):
+        self._epics_to_plc_offset += int(if_def.to_plc_words_length())
 
 
-    def _body_end_status(self, if_def, output):
-        self._body_end_block(STATUS_BLOCK.counter_keyword(), if_def.from_plc_words_length(), output)
-
-
-    def _body_end_block(self, counter_keyword, plc_db_length, output):
-        if self._test:
-            return
-
-        counter_template = "#COUNTER {counter} = [PLCF# {counter} + {plc_db_length}]\n"
-
-        self._append(counter_template.format(counter = counter_keyword, plc_db_length = plc_db_length))
+    def _body_end_plc_to_epics(self, if_def, output):
+        # S7 offsets are in bytes
+        self._plc_to_epics_offset += 2 * int(if_def.from_plc_words_length())
 
 
     def _body_verboseheader(self, block, output):
