@@ -103,8 +103,6 @@ class EPICS_BASE(PRINTER):
         self.INDISABLE_TEMPLATE = self.DISABLE_TEMPLATE
         self.OUTDISABLE_TEMPLATE = self.DISABLE_TEMPLATE.format(DISABLE_PV = self.DISABLE_PV)
 
-        self._endianness = self.plcf("'BE' if 'PLC-EPICS-COMMS:Endianness' == 'BigEndian' else 'LE'")
-
         epics_db_header = """
 ################################################################################
 #
@@ -633,12 +631,8 @@ class EPICS(EPICS_BASE):
                                                           pv_extra   = pv_extra))
 
 
-    #
-    # HEADER
-    #
-    def header(self, output, **keyword_params):
-        super(EPICS, self).header(output, **keyword_params).add_filename_header(output, extension = "db")
-        epics_db_header = """
+    def _db_header(self, **keyword_params):
+        return """
 
 #########################################################
 ########## EPICS <-> PLC connection management ##########
@@ -870,14 +864,33 @@ record(ai, "{root_inst_slot}:HeartbeatFromPLCR")
 	field(SDIS,	"{root_inst_slot}:PLCHashCorrectR")
 }}
 
-#COUNTER {cmd_cnt} = [PLCF#{cmd_cnt} + 10];
-#COUNTER {status_cnt} = [PLCF#{status_cnt} + 10];
+#COUNTER {cmd_cnt} = {cmd_cnt_val}
+#COUNTER {status_cnt} = {status_cnt_val}
 """.format(root_inst_slot  = self.root_inst_slot(),
            endianness      = self._endianness,
            cmd_cnt         = CMD_BLOCK.counter_keyword(),
-           status_cnt      = STATUS_BLOCK.counter_keyword())
+           cmd_cnt_val     = self.plcf("{} + {}".format(CMD_BLOCK.counter_keyword(), self.EPICSToPLCDataBlockStartOffset + 10)),
+           status_cnt      = STATUS_BLOCK.counter_keyword(),
+           status_cnt_val  = self.plcf("{} + {}".format(STATUS_BLOCK.counter_keyword(), self.PLCToEPICSDataBlockStartOffset + 10)))
 
-        self._append(epics_db_header, output)
+
+    #
+    # HEADER
+    #
+    def header(self, output, **keyword_params):
+        super(EPICS, self).header(output, **keyword_params).add_filename_header(output, extension = "db")
+
+        endianness = self.get_property("PLC-EPICS-COMMS:Endianness", None)
+        if endianness == 'BigEndian':
+            self._endianness = "BE"
+        elif endianness == 'LittleEndian':
+            self._endianness = 'LE'
+        else:
+            raise TemplatePrinterException("Unknown PLC endianness specification: '{}'".format(endianness))
+
+        self.get_start_offsets()
+
+        self._append(self._db_header(**keyword_params), output)
 
         return self
 
@@ -962,13 +975,8 @@ class EPICS_TEST(EPICS):
         return "EPICS-TEST-DB"
 
 
-    #
-    # HEADER
-    #
-    def header(self, output, **keyword_params):
-        #Have to call EPICS_BASE.header explicitly; we don't want EPICS.header
-        EPICS_BASE.header(self, output, **keyword_params).add_filename_header(output, extension = "db")
-        epics_db_header = """
+    def _db_header(self, **keyword_params):
+        return """
 
 #########################################################
 ########## EPICS <-> PLC connection management ##########
@@ -1130,9 +1138,6 @@ record(calcout, "{root_inst_slot}:iRuinHash")
 	field(OUT,	"{root_inst_slot}:CommsHashFromPLCR PP")
 }}
 """.format(root_inst_slot = self.root_inst_slot())
-
-        self._append(epics_db_header, output)
-        return self
 
 
 

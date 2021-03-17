@@ -66,6 +66,8 @@ class IFF(PRINTER):
         #
         super(IFF, self).header(output, **keyword_params).add_filename_header(output, extension = "ifa")
 
+        self.get_start_offsets()
+
         plc_type = keyword_params.get("PLC_TYPE", "SIEMENS")
         if plc_type == "SIEMENS":
             plcpulse = self.get_property("PLC-EPICS-COMMS: PLCPulse", "Pulse_200ms")
@@ -104,9 +106,9 @@ GATEWAY_DATABLOCK
 {gateway_datablock}
 """.format(inst_slot                = self.raw_inst_slot(),
            plc_type                 = plc_type,
-           max_io_devices           = self.get_property("PLC-DIAG:Max-IO-Devices", 10),
-           max_local_modules        = self.get_property("PLC-DIAG:Max-Local-Modules", 30),
-           max_modules_in_io_device = self.get_property("PLC-DIAG:Max-Modules-In-IO-Device", 30),
+           max_io_devices           = self.get_property("PLC-DIAG:Max-IO-Devices", 20),
+           max_local_modules        = self.get_property("PLC-DIAG:Max-Local-Modules", 60),
+           max_modules_in_io_device = self.get_property("PLC-DIAG:Max-Modules-In-IO-Device", 60),
            interfaceid              = self.plcf("PLC-EPICS-COMMS: InterfaceID"),
            diagconnectionid         = self.get_property("PLC-EPICS-COMMS: DiagConnectionID", 254),
            s7connectionid           = self.plcf("PLC-EPICS-COMMS: S7ConnectionID"),
@@ -116,6 +118,8 @@ GATEWAY_DATABLOCK
            mbport                   = self.plcf("PLC-EPICS-COMMS: MBPort"),
            plcpulse                 = plcpulse,
            gateway_datablock        = self.get_property("PLC-EPICS-COMMS: GatewayDatablock", "")), output)
+
+        #FIXME: the 10 word offset should be applied here (and not in the footer) and removed from InterfaceFactorySiemens.py and InterfaceFactoryBeckhoff.py
 
 
     #
@@ -141,8 +145,8 @@ PLCTOEPICSDATABLOCKOFFSET
 """.format(inst_slot                 = self.raw_inst_slot(),
            type                      = self._device.deviceType() if if_def._artifact.is_perdevtype() else "{}_as_{}".format(self._device.deviceType(), self._device.name()),
            datablock                 = if_def.DEFAULT_DATABLOCK_NAME,
-           epicstoplcdatablockoffset = self.plcf("^(EPICSToPLCDataBlockStartOffset) + {cmd_cnt}".format(cmd_cnt = CMD_BLOCK.counter_keyword())),
-           plctoepicsdatablockoffset = self.plcf("^(PLCToEPICSDataBlockStartOffset) + {status_cnt}".format(status_cnt = STATUS_BLOCK.counter_keyword())),
+           epicstoplcdatablockoffset = self.plcf("{EPICSToPLCDataBlockStartOffset} + {cmd_cnt}".format(EPICSToPLCDataBlockStartOffset = self.EPICSToPLCDataBlockStartOffset, cmd_cnt = CMD_BLOCK.counter_keyword())),
+           plctoepicsdatablockoffset = self.plcf("{PLCToEPICSDataBlockStartOffset} + {status_cnt}".format(PLCToEPICSDataBlockStartOffset = self.PLCToEPICSDataBlockStartOffset, status_cnt = STATUS_BLOCK.counter_keyword())),
            epicstoplclength          = if_def.to_plc_words_length(),
            plctoepicslength          = if_def.from_plc_words_length(),
            cmd_cnt                   = CMD_BLOCK.counter_keyword(),

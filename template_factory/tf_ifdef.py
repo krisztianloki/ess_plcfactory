@@ -514,8 +514,8 @@ class STATUS_BLOCK(BLOCK):
 
 
     def link_offset(self, var):
-        offset_template = "[PLCF# ( {root} + {counter} ) * 2 + {offset}]"
-        return offset_template.format(root = self.root_of_db(), counter = self.counter_keyword(), offset = var.offset())
+        offset_template = "[PLCF# {counter} * 2 + {offset}]"
+        return offset_template.format(counter = self.counter_keyword(), offset = var.offset())
 
 
     def pv_template(self, **keyword_params):
@@ -607,8 +607,8 @@ class MODBUS(object):
 
 
     def link_offset(self, var):
-        offset_template = "[PLCF# ( {root} + {counter} ) + {offset}]"
-        return offset_template.format(root = self.root_of_db(), counter = self.counter_keyword(), offset = var.offset() // 2)
+        offset_template = "[PLCF# {counter} + {offset}]"
+        return offset_template.format(counter = self.counter_keyword(), offset = var.offset() // 2)
 
 
     def pv_template(self, **keyword_params):

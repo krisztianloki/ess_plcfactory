@@ -116,6 +116,18 @@ class PRINTER(object):
         self.__reset_body()
 
 
+    def get_start_offsets(self):
+        try:
+            self.EPICSToPLCDataBlockStartOffset = int(self.get_property("EPICSToPLCDataBlockStartOffset", None))
+        except (TypeError, ValueError):
+            raise TemplatePrinterException("Invalid EPICSToPLCDataBlockStartOffset property")
+
+        try:
+            self.PLCToEPICSDataBlockStartOffset = int(self.get_property("PLCToEPICSDataBlockStartOffset", None))
+        except (TypeError, ValueError):
+            raise TemplatePrinterException("Invalid PLCToEPICSDataBlockStartOffset property")
+
+
     def expand(self, string):
         """
         Expand string as a PLCF# expression
