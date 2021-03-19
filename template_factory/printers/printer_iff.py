@@ -69,10 +69,17 @@ class IFF(PRINTER):
         self.get_offsets()
 
         plc_type = keyword_params.get("PLC_TYPE", None)
-        if plc_type == "SIEMENS" or plc_type == "BECKHOFF":
-            plcpulse = self.get_property("PLC-EPICS-COMMS: PLCPulse", "Pulse_200ms")
-        else:
+        if plc_type != "SIEMENS" and plc_type != "BECKHOFF":
             raise TemplatePrinterException("Unknown PLC type: {}".format(plc_type))
+
+        plcpulse = self.get_property("PLC-EPICS-COMMS: PLCPulse", "Pulse_200ms")
+        if plc_type == "SIEMENS":
+            try:
+                interface_id = int(self.get_property("PLC-EPICS-COMMS: InterfaceID", None))
+            except (TypeError, ValueError) as e:
+                raise TemplatePrinterException("Missing/invalid 'PLC-EPICS-COMMS: InterfaceID'")
+        else:
+            interface_id = ""
 
         self._append("""HASH
 #HASH
@@ -109,7 +116,7 @@ GATEWAY_DATABLOCK
            max_io_devices           = self.get_property("PLC-DIAG:Max-IO-Devices", 20),
            max_local_modules        = self.get_property("PLC-DIAG:Max-Local-Modules", 60),
            max_modules_in_io_device = self.get_property("PLC-DIAG:Max-Modules-In-IO-Device", 60),
-           interfaceid              = self.plcf("PLC-EPICS-COMMS: InterfaceID"),
+           interfaceid              = interface_id,
            diagconnectionid         = self.get_property("PLC-EPICS-COMMS: DiagConnectionID", 254),
            s7connectionid           = self.plcf("PLC-EPICS-COMMS: S7ConnectionID"),
            mbconnectionid           = self.plcf("PLC-EPICS-COMMS: MBConnectionID"),
