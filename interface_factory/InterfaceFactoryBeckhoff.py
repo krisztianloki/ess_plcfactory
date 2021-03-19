@@ -1008,6 +1008,22 @@ def ProcessIFADevTypes(OutputDir):
 	#Process IFA devices
 	print("Processing .ifa file...")
 
+	pulses = {
+		"Pulse_100ms" : "100MS",
+		"Pulse_200ms" : "200MS",
+		"Pulse_400ms" : "400MS",
+		"Pulse_500ms" : "500MS",
+		"Pulse_800ms" : "800MS",
+		"Pulse_1s" : "1000MS",
+		"Pulse_1600ms" : "1600MS",
+		"Pulse_2s" : "2000MS",
+		}
+
+	try:
+		plc_pulse = pulses[ifa.PLC_PULSE]
+	except KeyError:
+		raise IFA.FatalException("Unknown PLC Pulse specification: {}".format(ifa.PLC_PULSE))
+
 	ProcessedDeviceNum = 0
 
 	global ActualDeviceName
@@ -1109,9 +1125,9 @@ def ProcessIFADevTypes(OutputDir):
 	FC_EPICS_DEVICE_CALLS_HEADER.append("EPICS_GVL.FB_EPICS_S7_Comm(")
 	FC_EPICS_DEVICE_CALLS_HEADER.append("    sLocalHost  := sPlcIp,")
 	FC_EPICS_DEVICE_CALLS_HEADER.append("    sRemoteHost := sEpicsIp,")
-	FC_EPICS_DEVICE_CALLS_HEADER.append("    nS7Port     := 2000,")
-	FC_EPICS_DEVICE_CALLS_HEADER.append("    nPLC_Hash   := "+ifa.HASH+",")
-	FC_EPICS_DEVICE_CALLS_HEADER.append("    tSendTrig   := T#200MS,")
+	FC_EPICS_DEVICE_CALLS_HEADER.append("    nS7Port     := {},".format(ifa.S7_PORT))
+	FC_EPICS_DEVICE_CALLS_HEADER.append("    nPLC_Hash   := {},".format(ifa.HASH))
+	FC_EPICS_DEVICE_CALLS_HEADER.append("    tSendTrig   := T#{},".format(plc_pulse))
 	FC_EPICS_DEVICE_CALLS_HEADER.append("    nCase=> ,")
 	FC_EPICS_DEVICE_CALLS_HEADER.append("    bConnected=> ,")
 	FC_EPICS_DEVICE_CALLS_HEADER.append("    bError=> );")

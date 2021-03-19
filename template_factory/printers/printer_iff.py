@@ -13,7 +13,7 @@ __license__    = "GPLv3"
 # DOCUMENT, DOCUMENT, DOCUMENT
 
 
-from . import PRINTER
+from . import PRINTER, TemplatePrinterException
 from tf_ifdef import IfDefSyntaxError, SOURCE, BLOCK, CMD_BLOCK, STATUS_BLOCK, BASE_TYPE, BIT, ALARM, TIME
 
 
@@ -68,11 +68,11 @@ class IFF(PRINTER):
 
         self.get_offsets()
 
-        plc_type = keyword_params.get("PLC_TYPE", "SIEMENS")
-        if plc_type == "SIEMENS":
+        plc_type = keyword_params.get("PLC_TYPE", None)
+        if plc_type == "SIEMENS" or plc_type == "BECKHOFF":
             plcpulse = self.get_property("PLC-EPICS-COMMS: PLCPulse", "Pulse_200ms")
         else:
-            plcpulse = 0
+            raise TemplatePrinterException("Unknown PLC type: {}".format(plc_type))
 
         self._append("""HASH
 #HASH
