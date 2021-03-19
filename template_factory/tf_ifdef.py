@@ -93,10 +93,12 @@ class IfDefException(Exception):
 
     def __repr__(self):
         try:
-            return """{error} at line {linenum}: {line}{args}""".format(error   = self.typemsg,
-                                                                        linenum = self.keyword_params["linenum"],
-                                                                        line    = self.keyword_params["line"],
-                                                                        args    = self.args_format.format(self.args[0]) if self.args[0] else "")
+            return """{error} in {file} at line {linenum}:
+{line}{args}""".format(error   = self.typemsg,
+                       file    = self.keyword_params["filename"],
+                       linenum = self.keyword_params["linenum"],
+                       line    = self.keyword_params["line"],
+                       args    = self.args_format.format(self.args[0]) if self.args[0] else "")
         except KeyError:
             return """{error}: {args}""".format(error   = self.typemsg,
                                                 args    = self.args_format.format(self.args[0]) if self.args[0] else "")
@@ -1018,10 +1020,10 @@ class IF_DEF(object):
 
             self._eval(stripped_line)
         except IfDefException as e:
-            e.add_params(line = stripped_line, linenum = linenum)
-            raise e
+            e.add_params(filename = self._filename, line = stripped_line, linenum = linenum)
+            raise
         except AssertionError as e:
-            raise IfDefInternalError(e, line = stripped_line, linenum = linenum)
+            raise IfDefInternalError(e, filename = self._filename, line = stripped_line, linenum = linenum)
         except SyntaxError as e:
             if e.msg == "unexpected EOF while parsing":
                 raise IfDefPrematureEnd()
@@ -1029,10 +1031,10 @@ class IF_DEF(object):
                 raise IfDefPrematureEnd()
             elif e.msg == "invalid syntax" and e.lineno > 1 and len(stripped_line.splitlines()[e.lineno - 1]) == e.offset:
                 raise IfDefPrematureEnd()
-            raise IfDefSyntaxError(e.msg, line = stripped_line, linenum = linenum + e.lineno - 1)
+            raise IfDefSyntaxError(e.msg, filename = self._filename, line = stripped_line, linenum = linenum + e.lineno - 1)
         except TypeError as e:
             if "got an unexpected keyword argument" in e.message:
-                raise IfDefSyntaxError(e.message, line = stripped_line, linenum = linenum)
+                raise IfDefSyntaxError(e.message, filename = self._filename, line = stripped_line, linenum = linenum)
 
             raise
 
@@ -1801,6 +1803,9 @@ class BASE_TYPE(SOURCE):
 
         if self._pvname in BASE_TYPE.pv_names:
             raise IfDefSyntaxError("PV Names must be unique")
+
+        if ' ' in self._pvname:
+            raise IfDefSyntaxError("PV Names cannot contain spaces")
 
         if self._name == "":
             raise IfDefSyntaxError("Empty PLC variable name")
