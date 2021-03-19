@@ -225,6 +225,8 @@ class E3(object):
 
         self._files = []
         self._test_cmd = False
+        self._startup = None
+        self._iocsh = None
 
         glob.e3_modulename = self._modulename
         glob.e3_snippet    = self._snippet
@@ -239,9 +241,16 @@ class E3(object):
 
     def snippet(self):
         """
-        Returns the name of the .iocsh snippet
+        Returns the snippet; the base name that is used for .iocsh files
         """
         return self._snippet
+
+
+    def iocsh(self):
+        """
+        Returns the name of the main iocsh file
+        """
+        return os.path.basename(self._iocsh)
 
 
     def files(self):
@@ -292,7 +301,7 @@ class E3(object):
         return E3(modulename, snippet)
 
 
-    def copy_files(self, basedir):
+    def copy_files(self, basedir, generate_iocsh = None):
         """
         Create the directory structure and copy the generated files
         """
@@ -309,11 +318,20 @@ class E3(object):
             pass
 
         try:
-            self._startup = 'AUTOSAVE-IOCSH'
-            ch.m_cp(output_files[self._startup],                   "iocsh",   self.snippet() + ".iocsh")
+            if generate_iocsh is None or generate_iocsh == 'AUTOSAVE-IOCSH':
+                self._iocsh = ch.m_cp(output_files['AUTOSAVE-IOCSH'],      "iocsh",   self.snippet() + "-autosave.iocsh")
+                self._startup = 'AUTOSAVE-IOCSH'
         except KeyError:
-            self._startup = 'IOCSH'
-            ch.m_cp(output_files[self._startup],                   "iocsh",   self.snippet() + ".iocsh")
+            pass
+
+        try:
+            if generate_iocsh is None or generate_iocsh == 'IOCSH':
+                tmp = ch.m_cp(output_files['IOCSH'],               "iocsh",   self.snippet() + ".iocsh")
+                if self._startup is None:
+                    self._startup = 'IOCSH'
+                    self._iocsh = tmp
+        except KeyError:
+            pass
 
         self._test_cmd = True
         try:
@@ -391,6 +409,7 @@ class E3(object):
 
         output_files['E3'] = self._files
 
+        # It returns the autosave-iocsh if it was generated otherwise the 'normal' iocsh
         iocsh_printer   = self.iocsh_printer()
         macro_list      = iocsh_printer.macros()
         if macro_list:
@@ -410,9 +429,9 @@ class E3(object):
         # Create script to run module with 'safe' defaults
         #
         with open(os.path.join(OUTPUT_DIR, "run_module.bash"), "w") as run:
-            iocsh_bash = """iocsh.bash -l {moduledir}/cellMods -r {modulename},plcfactory -c 'iocshLoad($({modulename}_DIR)/{snippet}.iocsh, "IPADDR = 127.0.0.1, """.format(moduledir  = os.path.abspath(out_mdir),
-                                                                                                                                                                             modulename = self.modulename(),
-                                                                                                                                                                             snippet    = self.snippet())
+            iocsh_bash = """iocsh.bash -l {moduledir}/cellMods -r {modulename},plcfactory -c 'iocshLoad($({modulename}_DIR)/{iocsh}, "IPADDR = 127.0.0.1, """.format(moduledir  = os.path.abspath(out_mdir),
+                                                                                                                                                                     modulename = self.modulename(),
+                                                                                                                                                                     iocsh      = self.iocsh())
             if 'OPC' in ifdef_params['PLC_TYPE']:
                 print(iocsh_bash + """PORT = 4840, PUBLISHING_INTERVAL = 200{macros}")'""".format(macros = live_macros), file = run)
             else:
@@ -515,7 +534,7 @@ class IOC(object):
             repo = None
 
         # Copy the generated e3 files
-        self._e3.copy_files(out_idir)
+        self._e3.copy_files(out_idir, generate_iocsh = "IOCSH")
 
         # Create env.sh
         env_sh = os.path.join(out_idir, 'env.sh')
@@ -534,7 +553,7 @@ require common
 iocshLoad("$(common_DIR)/e3-common.iocsh")
 """.format(self.name()), file = f_st_cmd)
             print("""
-iocshLoad(iocsh/{}.iocsh)""".format(self._e3.snippet()), file = f_st_cmd)
+iocshLoad(iocsh/{})""".format(self._e3.iocsh()), file = f_st_cmd)
 
         # Update the repository
         if repo:
@@ -1171,7 +1190,10 @@ class copy_helper(object):
         copy2(src, of)
         self._copied.append(of)
 
+        return of
 
+
+# FIXME: EEE
 def create_eee(modulename, snippet):
     eee_files = []
     out_mdir  = os.path.join(OUTPUT_DIR, "modules", "-".join([ "m-epics", modulename ]))
@@ -1608,6 +1630,7 @@ def main(argv):
 
 
     def add_eee_arg(parser):
+        # FIXME: EEE
         parser.add_argument(
                             '--eee',
                             dest    = "eee",
@@ -1687,8 +1710,8 @@ def main(argv):
 
     args = parser.parse_known_args(argv)[0]
 
+    # FIXME: EEE
     eee_modulename = None
-    e3_modulename  = None
     if args.eee is not None:
         if args.eee != "":
             eee_modulename = args.eee.lower()
@@ -1837,11 +1860,12 @@ def main(argv):
     if not plc and (eee or e3):
         raise PLCFArgumentError("Generating EEE or E3 modules is only supported with PLC integration")
 
+    # FIXME: EEE
     if eee:
         default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "AUTOSAVE-ST-CMD", "AUTOSAVE", "BEAST", "BEAST-TEMPLATE" ] )
 
     if e3 or generate_ioc:
-        default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "AUTOSAVE-IOCSH", "BEAST", "BEAST-TEMPLATE", ] )
+        default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "IOCSH", "AUTOSAVE-IOCSH", "BEAST", "BEAST-TEMPLATE", ] )
 
     if default_printers:
         if not default_printers <= set(tf.available_printers()):
@@ -1868,14 +1892,13 @@ def main(argv):
     if (e3 or generate_ioc) and "EPICS-TEST-DB" in templateIDs:
         templateIDs.add("AUTOSAVE-TEST-IOCSH")
 
+    # FIXME: EEE
     if "ST-CMD" in templateIDs and "AUTOSAVE-ST-CMD" in templateIDs:
         templateIDs.remove("ST-CMD")
 
+    # FIXME: EEE
     if "ST-TEST-CMD" in templateIDs and "AUTOSAVE-ST-TEST-CMD" in templateIDs:
         templateIDs.remove("ST-TEST-CMD")
-
-    if "IOCSH" in templateIDs and "AUTOSAVE-IOCSH" in templateIDs:
-        templateIDs.remove("IOCSH")
 
     if "TEST-IOCSH" in templateIDs and "AUTOSAVE-TEST-IOCSH" in templateIDs:
         templateIDs.remove("TEST-IOCSH")
@@ -1938,6 +1961,7 @@ def main(argv):
     record_args(root_device)
 
     if plc:
+        # FIXME: EEE
         if eee:
             create_eee(glob.eee_modulename, glob.eee_snippet)
         if e3:

@@ -137,6 +137,7 @@ class ST_CMD(eee, MACROS, PRINTER):
     def __init__(self):
         super(ST_CMD, self).__init__()
         self._opc = False
+        self._autosave = False
 
 
     @staticmethod
@@ -153,7 +154,7 @@ class ST_CMD(eee, MACROS, PRINTER):
     # HEADER
     #
     def header(self, output, **keyword_parameters):
-        super(ST_CMD, self).header(output, **keyword_parameters).add_filename_header(output, inst_slot = self.snippet(), template = False, extension = self._extension())
+        super(ST_CMD, self).header(output, **keyword_parameters).add_filename_header(output, inst_slot = self.snippet(), template = False if not self._autosave else "autosave", extension = self._extension())
         self._opc = True if 'OPC' in keyword_parameters.get('PLC_TYPE', '') else False
 
         if not self._opc:
@@ -462,6 +463,7 @@ class AUTOSAVE_ST_CMD(ST_CMD):
     def __init__(self, **keyword_parameters):
         super(AUTOSAVE_ST_CMD, self).__init__(**keyword_parameters)
         self._has_params = False
+        self._autosave = True
 
 
     @staticmethod
@@ -507,6 +509,7 @@ class AUTOSAVE_IOCSH(IOCSH):
     def __init__(self, **keyword_parameters):
         super(AUTOSAVE_IOCSH, self).__init__(**keyword_parameters)
         self._has_params = False
+        self._autosave = True
 
 
     @staticmethod
