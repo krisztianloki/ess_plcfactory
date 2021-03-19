@@ -106,7 +106,7 @@ git config --global user.name "My Name"
 
 
     @staticmethod
-    def clone(url, path = '.', branch = None, update = False, initialize_if_empty = False, verbose = True):
+    def clone(url, path = '.', branch = None, update = False, initialize_if_empty = False, verbose = True, gitignore_contents = ""):
         """
         Clone the repository at 'url' into 'path' and possibly checkout 'branch'
 
@@ -118,12 +118,12 @@ git config --global user.name "My Name"
         git = GIT(path)
         if not git.is_repo():
             # If 'path' is not a repository then clone url
-            git.__clone(url, branch, initialize_if_empty, verbose)
+            git.__clone(url, branch, initialize_if_empty = initialize_if_empty, verbose = verbose, gitignore_contents = gitignore_contents)
             return git
 
         if git.get_toplevel_dir() != path:
             # This is some other repository working tree, we can clone a new one here
-            git.__clone(url, branch, initialize_if_empty, verbose)
+            git.__clone(url, branch, initialize_if_empty = initialize_if_empty, verbose = verbose, gitignore_contents = gitignore_contents)
             return git
 
         # Have to check if this repository is the one we need
@@ -181,7 +181,7 @@ git config --global user.name "My Name"
         self._url = url
 
 
-    def __clone(self, url, branch = None, initialize_if_empty = False, verbose = True):
+    def __clone(self, url, branch = None, initialize_if_empty = False, verbose = True, gitignore_contents = ""):
         """
         Clone 'url'. If branch is specified then that branch is checked out
         """
@@ -197,7 +197,7 @@ git config --global user.name "My Name"
                     print("Initializing empty repository...")
                 gitignore = os.path.join(self._path, ".gitignore")
                 with open(gitignore, "wt") as gf:
-                    pass
+                    print(gitignore_contents, file = gf)
                 self.add(gitignore)
                 self.commit("Initialized repository")
                 self.push()

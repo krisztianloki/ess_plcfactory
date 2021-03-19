@@ -528,7 +528,7 @@ class IOC(object):
         if self.repo():
             # Cannot specify 'branch = "master"'; git segfaults when trying to clone an empty repository and checking out its "master" branch
             # Update the master branch if available, and initialize an empty repository
-            repo = git.GIT.clone(self.repo(), out_idir, update = True, initialize_if_empty = True)
+            repo = git.GIT.clone(self.repo(), out_idir, update = True, initialize_if_empty = True, gitignore_contents = "/cell/")
             repo.create_branch(branch, "master")
         else:
             repo = None
