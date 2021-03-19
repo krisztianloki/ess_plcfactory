@@ -131,10 +131,6 @@ class CC(object):
 
 
     class Artifact(object):
-        # list of the path names of downloaded artifacts
-        # FIXME: should make this per-CC
-        downloadedArtifacts = list()
-
         def __init__(self, device):
             super(CC.Artifact, self).__init__()
 
@@ -155,6 +151,10 @@ class CC(object):
             This one is used in place of is_perdevtype if _saveasversion is device specific
             """
             return False
+
+
+        def registerDownloadedArtifact(self, filename):
+            self._device.registerDownloadedArtifact(filename)
 
 
         def name(self):
@@ -301,6 +301,8 @@ class CC(object):
 
             # check if filename has already been downloaded
             if os_path.exists(save_as):
+                # Make sure that cached artifacts are also added to the list
+                self.registerDownloadedArtifact(save_as)
                 return CC.DownloadedArtifact(self)
 
             try:
@@ -308,7 +310,7 @@ class CC(object):
             except CC.DownloadException as e:
                 raise CC.ArtifactException(e, deviceName = self._device.name(), filename = self.saveas_filename())
 
-            CC.Artifact.downloadedArtifacts.append(save_as)
+            self.registerDownloadedArtifact(save_as)
 
             return CC.DownloadedArtifact(self)
 
@@ -405,6 +407,10 @@ class CC(object):
 
         def url(self):
             return None
+
+
+        def registerDownloadedArtifact(self, filename):
+            self.ccdb._downloadedArtifacts.add(filename)
 
 
         @staticmethod
@@ -855,7 +861,7 @@ class CC(object):
         self._backtrackCache       = dict()
 
         # cache of downloaded artifacts
-        CC.Artifact.downloadedArtifacts = list()
+        self._downloadedArtifacts  = set()
 
         if self._clear_templates:
             # clear templates downloaded in a previous run
@@ -1136,7 +1142,7 @@ factory.save("{filename}")""".format(factory_options = 'git_tag = "{}"'.format(g
             filename = filename.name
 
         dumpfile.writestr(os_path.join("ccdb", CC.DEVICE_DICT), str(self._devices))
-        for template in self.Artifact.downloadedArtifacts:
+        for template in self._downloadedArtifacts:
             dumpfile.write(template, os_path.join("ccdb", template))
 
         return filename
