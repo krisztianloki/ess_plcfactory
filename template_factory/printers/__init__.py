@@ -376,17 +376,17 @@ class PRINTER(object):
 
 
     def __append_simple(self, output, stuff):
-        if isinstance(stuff, list):
-            output.extend(stuff)
-        else:
+        if isinstance(stuff, str):
             output.append(stuff)
+        else:
+            output.extend(stuff)
 
 
     def __append_with_cplcf(self, output, stuff):
-        if isinstance(stuff, list):
-            output.extend(self._plcf.process(stuff))
-        else:
+        if isinstance(stuff, str):
             output.append(self._plcf.processLine(stuff))
+        else:
+            output.extend(self._plcf.process(stuff))
 
 
     def _append_origin(self, origin, output):

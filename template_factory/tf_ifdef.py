@@ -416,12 +416,12 @@ class BLOCK(SOURCE):
 
         def _valid_var_types(self):
             types = []
-            for k,v in self.valid_type_pairs().iteritems():
+            for k,v in self.valid_type_pairs().items():
                 types += v
             return types
 
 
-        for key, value in keyword_params.iteritems():
+        for key, value in keyword_params.items():
             if key.startswith(BASE_TYPE.PV_PREFIX) or not key in PLC_types:
                 continue
 
@@ -1991,7 +1991,7 @@ class BASE_TYPE(SOURCE):
         except KeyError:
             pass
 
-        for field, value in self._keyword_params.iteritems():
+        for field, value in self._keyword_params.items():
             if not field.startswith(BASE_TYPE.PV_PREFIX):
                 continue
 
