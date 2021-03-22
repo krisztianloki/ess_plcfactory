@@ -86,10 +86,20 @@ class CCDB_Factory(CC):
 
     @staticmethod
     def checkArtifact(artifacts, artifact):
-        if isinstance(artifacts, list):
-            for art in artifacts:
-                if art["kind"] == artifact["kind"] and art["name"] == artifact["name"]:
+        """
+        Check if artifact is unique. Returns True if artifact should be added, False otherwise
+        """
+        if not isinstance(artifacts, list):
+            return True
+
+        for art in artifacts:
+            if art["kind"] == artifact["kind"] and art["name"] == artifact["name"]:
+                if art != artifact:
                     raise CC.Exception("Duplicate entries: {} and {}".format(art, artifact))
+                else:
+                    return False
+
+        return True
 
 
 
@@ -226,7 +236,8 @@ class CCDB_Factory(CC):
 
 
         def __addArtifact(self, artifactDict):
-            CCDB_Factory.checkArtifact(self._slot["artifacts"], artifactDict)
+            if not CCDB_Factory.checkArtifact(self._slot["artifacts"], artifactDict):
+                return
             try:
                 self._slot["artifacts"].append(artifactDict)
             except AttributeError:
@@ -352,7 +363,8 @@ class CCDB_Factory(CC):
 
 
     def __addArtifact(self, deviceType, artifactDict):
-        CCDB_Factory.checkArtifact(self._artifacts.get(deviceType), artifactDict)
+        if not CCDB_Factory.checkArtifact(self._artifacts.get(deviceType), artifactDict):
+            return
         try:
             self._artifacts[deviceType].append(artifactDict)
         except KeyError:
