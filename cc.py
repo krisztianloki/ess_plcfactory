@@ -970,7 +970,7 @@ class CC(object):
         fact_root     = []
         fact_devs     = []
 
-        setProperty_str = """{var}.setProperty("{k}", "{v}")"""
+        setProperty_str = """{var}.setProperty("{k}", {v})"""
 
         def setProperty(out, dev, var):
             comment = False
@@ -979,9 +979,13 @@ class CC(object):
                     comment = True
                     out.append("# Properties")
                 # FIXME: we really shouldn't pass 'null' instead of None... but that is what CCDB gives us, so...
+                if v is None:
+                    v = "null"
+                elif isinstance(v, str):
+                    v = '"{}"'.format(v)
                 out.append(setProperty_str.format(var = var,
                                                   k   = k,
-                                                  v   = "null" if v is None else v))
+                                                  v   = v))
 
         def addDevice(dev, fact, var, output):
             devType = dev.deviceType()
