@@ -65,8 +65,11 @@ class CCDB_Factory(CC):
         elif isinstance(value, int):
             dataType = "Integer"
         elif isinstance(value, list):
-            if isinstance(value[0], str):
-                dataType = "Strings List"
+            try:
+                if isinstance(value[0], str):
+                    dataType = "Strings List"
+            except IndexError:
+                raise CC.Exception("Unable to auto-detect dataType for {}".format(value))
 
         if dataType is None:
             raise CC.Exception("Unable to auto-detect dataType for {}".format(value))

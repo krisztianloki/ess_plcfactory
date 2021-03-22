@@ -916,7 +916,7 @@ def processTemplateID(templateID, devices):
             print(template_built_in)
             template = []
             try:
-                templatePrinter.body(None, template)
+                templatePrinter.body(None, template, DEVICE = device, PLCF = cplcf)
             except tf.TemplatePrinterException as e:
                 raise ProcessTemplateException(device.name(), templateID, e)
 

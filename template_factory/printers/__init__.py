@@ -431,10 +431,13 @@ class PRINTER(object):
         if from_inp is None:
             from_inp = ""
 
-        assert isinstance(result, str), type(result)
         self._append_origin(from_inp, output)
-        if result != "":
+        if isinstance(result, str) and result != "":
             self.__append(output, result.splitlines(True))
+        elif isinstance(result, list):
+            self.__append(output, result)
+        else:
+            raise TemplatePrinterException("Unknown type to _append: {}, {}".format(result, type(result)))
 
         return gen
 
