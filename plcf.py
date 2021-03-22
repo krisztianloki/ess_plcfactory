@@ -169,7 +169,7 @@ class PLCF(object):
             return self.processLine(line_or_lines)
 
         # read each line, process them, add one by one to accumulator
-        return map(lambda x: self.processLine(x), line_or_lines)
+        return [self.processLine(x) for x in line_or_lines]
 
 
     # extracts a PLCFLang expression from a line in a template,
