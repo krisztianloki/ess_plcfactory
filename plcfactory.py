@@ -1123,7 +1123,7 @@ def create_zipfile(zipit):
         except:
             return path
 
-    for f in output_files.itervalues():
+    for f in output_files.values():
         if f is None:
             continue
 
@@ -1352,7 +1352,7 @@ def read_data_files():
 
     prev_hashes = ast_literal_eval(raw_hashes)
     import copy
-    for (k, v) in prev_hashes.iteritems():
+    for (k, v) in prev_hashes.items():
         if isinstance(v, tuple):
             hashes[k] = copy.deepcopy(v)
         else:
@@ -1423,7 +1423,7 @@ def verify_output(strictness, ignore):
     # previous_files will contain files that are not the same
     # not_checked will contain files that are not found / not generated
     not_checked = dict()
-    for (template, output) in output_files.iteritems():
+    for (template, output) in output_files.items():
         if template in ignored_templates:
             continue
 
@@ -1449,7 +1449,7 @@ def verify_output(strictness, ignore):
         print("""
 THE FOLLOWING FILES WERE CHANGED:
 """)
-        for (template, output) in previous_files.iteritems():
+        for (template, output) in previous_files.items():
             print("\t{template}:\t{filename}".format(template = template, filename = output))
         print("\n" + "=*" * 40)
 
@@ -1460,7 +1460,7 @@ THE FOLLOWING FILES WERE CHANGED:
         print("""
 THE FOLLOWING FILES WERE NOT CHECKED:
 """)
-        for (template, output) in not_checked.iteritems():
+        for (template, output) in not_checked.items():
             print("\t{template}:\t{filename}".format(template = template, filename = output))
         print("\n" + "=*" * 40)
 
@@ -1477,7 +1477,7 @@ def record_args(root_device):
         print("""#!/bin/sh
 
 #Date:              {date}
-#PLCFactory URL:    {url},
+#PLCFactory URL:    {url}
 #PLCFactory branch: {branch}
 #PLCFactory commit: {commit}
 """.format(date   = '{:%Y-%m-%d %H:%M:%S}'.format(glob.raw_timestamp),
@@ -1974,7 +1974,7 @@ def main(argv):
         create_zipfile(args.zipit)
 
     has_warns = False
-    for ifdef in ifdefs.itervalues():
+    for ifdef in ifdefs.values():
         if ifdef is None:
             continue
 
