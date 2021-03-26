@@ -540,6 +540,7 @@ class IOC(object):
         env_sh = os.path.join(out_idir, 'env.sh')
         with open(env_sh, 'wt') as f_env_sh:
             print('export IOCNAME={}'.format(self.name()), file = f_env_sh)
+            print('export IOCDIR={}'.format(helpers.sanitizeFilename(self.name())), file = f_env_sh)
             print('export EPICS_DB_INCLUDE_PATH="`pwd`/db"', file = f_env_sh)
             print('export EPICS_DB_INCLUDE_PATH="$(dirname ${BASH_SOURCE})/db"', file = f_env_sh)
             print('export {}_VERSION={}'.format(self._e3.modulename(), version if version else 'plcfactory@' + glob.timestamp), file = f_env_sh)
@@ -550,8 +551,8 @@ class IOC(object):
             print("""# Startup for {}
 
 # Load standard module startup scripts
-require common
-iocshLoad("$(common_DIR)/e3-common.iocsh")
+require essioc
+iocshLoad("$(essioc_DIR)/common_config.iocsh")
 """.format(self.name()), file = f_st_cmd)
             print("""
 iocshLoad(iocsh/{})""".format(self._e3.iocsh()), file = f_st_cmd)
