@@ -29,6 +29,7 @@ PLCFactory supports Python-2.x only. You are running {}
 """.format(sys.version))
 
 import argparse
+from collections import OrderedDict
 import datetime
 import filecmp
 import os
@@ -489,6 +490,62 @@ class IOC(object):
         raise PLCFactoryException("Could not find IOC for {}".format(device.name()))
 
 
+    def __get_contents(self, fname):
+        try:
+            stat = os.stat(fname)
+            if stat.st_size > 1024 * 1024:
+                raise PLCFactoryException("'{}' is suspiciously large. Refusing to continue".format(os.path.basename(fname)))
+        except OSError:
+            return []
+
+        with open(fname, "rt") as f:
+            return f.readlines()
+
+
+    def __create_env_sh(self, out_idir, version):
+        new_env_lines = OrderedDict()
+        new_env_lines['IOCNAME'] = self.name()
+        new_env_lines['IOCDIR'] = helpers.sanitizeFilename(self.name())
+        new_env_lines['EPICS_DB_INCLUDE_PATH'] = "$(dirname ${BASH_SOURCE})/db"
+        if self._e3:
+            new_env_lines['{}_VERSION'.format(self._e3.modulename())] = version if version else 'plcfactory@' + glob.timestamp
+
+        # Get the currently defined env vars
+        env_sh = os.path.join(out_idir, 'env.sh')
+        lines = self.__get_contents(env_sh)
+        env_vars = dict()
+        for i in range(len(lines)):
+            sp = lines[i].strip()
+            if sp[0] == '#':
+                continue
+
+            # Split into only two; the value might contain spaces
+            sp = sp.split(' ', 1)
+            # Ignore export
+            if sp[0].strip() == 'export':
+                sp = sp[1]
+            sp = sp.split('=', 1)
+            if len(sp) == 1:
+                continue
+
+            # Store the variable name and its location
+            env_vars[sp[0].strip()] = i
+
+        # Update the env vars we manage
+        for k,v in new_env_lines.items():
+            line = 'export {}="{}"\n'.format(k, v)
+            try:
+                i = env_vars[k]
+                lines[i] = line
+            except KeyError:
+                lines.append(line)
+
+        with open(env_sh, "wt") as f:
+            f.writelines(lines)
+
+        return env_sh
+
+
     def plc(self):
         """
         Returns the PLC name this IOC controls
@@ -537,13 +594,7 @@ class IOC(object):
         self._e3.copy_files(out_idir, generate_iocsh = "IOCSH")
 
         # Create env.sh
-        env_sh = os.path.join(out_idir, 'env.sh')
-        with open(env_sh, 'wt') as f_env_sh:
-            print('export IOCNAME={}'.format(self.name()), file = f_env_sh)
-            print('export IOCDIR={}'.format(helpers.sanitizeFilename(self.name())), file = f_env_sh)
-            print('export EPICS_DB_INCLUDE_PATH="`pwd`/db"', file = f_env_sh)
-            print('export EPICS_DB_INCLUDE_PATH="$(dirname ${BASH_SOURCE})/db"', file = f_env_sh)
-            print('export {}_VERSION={}'.format(self._e3.modulename(), version if version else 'plcfactory@' + glob.timestamp), file = f_env_sh)
+        env_sh = self.__create_env_sh(out_idir, version)
 
         # Create st.cmd
         st_cmd = os.path.join(out_idir, 'st.cmd')
