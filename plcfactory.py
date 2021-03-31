@@ -461,13 +461,13 @@ class IOC(object):
     def __init__(self, device):
         super(IOC, self).__init__()
 
-        # Store the name of the PLC
-        self._plc = device.name()
-
-        # Create our own E3 module
-        self._e3 = E3(self._plc)
-
         ioc = self.__get_ioc(device)
+        if ioc != device:
+            # Create our own E3 module
+            self._e3 = E3(device.name())
+        else:
+            self._e3 = None
+
         self._name = ioc.name()
         self._dir = helpers.sanitizeFilename(self._name.lower()).replace('-', '_')
         self._repo = get_repository(ioc, "IOC_REPOSITORY")
@@ -483,6 +483,9 @@ class IOC(object):
         """
         Get the IOC that _directly_ controls 'device'
         """
+        if device.deviceType() == 'IOC':
+            return device
+
         for c in device.controlledBy(convert = False):
             if c.deviceType() == 'IOC':
                 return c
@@ -546,11 +549,68 @@ class IOC(object):
         return env_sh
 
 
-    def plc(self):
-        """
-        Returns the PLC name this IOC controls
-        """
-        return self._plc
+    def __create_st_cmd(self, out_idir):
+        startup = '# Startup for {}\n'.format(self.name())
+
+        common_config = [ '# Load standard IOC startup scripts\n', 'require essioc\n', 'iocshLoad("$(essioc_DIR)/common_config.iocsh")\n' ]
+
+        load_plc = [ '# Load PLC specific startup script\n', 'iocshLoad("iocsh/{}")\n'.format(self._e3.iocsh()) ]
+
+        st_cmd = os.path.join(out_idir, 'st.cmd')
+        lines = self.__get_contents(st_cmd)
+
+        # Try to determine what is already in st.cmd
+        iocsh_loads = list()
+        requires = dict()
+        for i in range(len(lines)):
+            sp = lines[i].strip()
+            if not sp or sp[0] == '#':
+                continue
+
+            if sp.startswith("require"):
+                # Get the name of the required module
+                sp = sp.split(' ', 1)
+                if sp[0] != "require":
+                    raise PLCFactoryException("Cannot interpret require line: '{}'".format("".join(sp)))
+                sp = sp[1].split(',')
+
+                # Store the module name and its location
+                requires[sp[0]] = i
+
+            elif sp.startswith("iocshLoad"):
+                # (Try to) Remove any comments
+                sp = sp[len("iocshLoad"):].split('#', 1)
+
+                # Store the iocshLoad parameters and its location
+                iocsh_loads.append((i, sp[0].strip()))
+
+        # If essioc is loaded we don't need to load it again
+        if "essioc" in requires:
+            common_config.pop(1)
+
+        # Check what is iocshLoad-ed
+        for i, l in iocsh_loads:
+            # If common_config.iocsh is loaded we don't need to load it again
+            if "common_config.iocsh" in l:
+                common_config = []
+            # If plc.iocsh is loaded we don't need to load it again
+            elif self._e3.iocsh() in l:
+                load_plc = []
+
+        with open(st_cmd, "wt") as f:
+            if not lines or "startup for " not in lines[0].lower():
+                print(startup, file = f)
+            f.writelines(lines)
+            if lines and common_config:
+                # Add extra newline
+                print(file = f)
+            f.writelines(common_config)
+            if common_config and load_plc:
+                # Add extra newline
+                print(file = f)
+            f.writelines(load_plc)
+
+        return st_cmd
 
 
     def name(self):
@@ -590,23 +650,16 @@ class IOC(object):
         else:
             repo = None
 
-        # Copy the generated e3 files
-        self._e3.copy_files(out_idir, generate_iocsh = "IOCSH")
+        if self._e3:
+            # Copy the generated e3 files
+            self._e3.copy_files(out_idir, generate_iocsh = "IOCSH")
 
         # Create env.sh
         env_sh = self.__create_env_sh(out_idir, version)
 
         # Create st.cmd
-        st_cmd = os.path.join(out_idir, 'st.cmd')
-        with open(st_cmd, 'wt') as f_st_cmd:
-            print("""# Startup for {}
-
-# Load standard module startup scripts
-require essioc
-iocshLoad("$(essioc_DIR)/common_config.iocsh")
-""".format(self.name()), file = f_st_cmd)
-            print("""
-iocshLoad(iocsh/{})""".format(self._e3.iocsh()), file = f_st_cmd)
+        if self._e3:
+            st_cmd = self.__create_st_cmd(out_idir)
 
         # Update the repository
         if repo:
@@ -1108,7 +1161,7 @@ Exiting.
 
     if generate_ioc:
         if not device.properties()["Hostname"]:
-            raise PLCFactoryException("Hostname of the PLC is not specified, required for IOC generation")
+            raise PLCFactoryException("Hostname of '{}' is not specified, required for IOC generation".format(device.name()))
 
         global ioc
         ioc = IOC(device)
@@ -1917,7 +1970,7 @@ def main(argv):
     if eee:
         default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "AUTOSAVE-ST-CMD", "AUTOSAVE", "BEAST", "BEAST-TEMPLATE" ] )
 
-    if e3 or generate_ioc:
+    if e3 or (generate_ioc and plc):
         default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "IOCSH", "AUTOSAVE-IOCSH", "BEAST", "BEAST-TEMPLATE", ] )
 
     if default_printers:
@@ -2019,8 +2072,8 @@ def main(argv):
             create_eee(glob.eee_modulename, glob.eee_snippet)
         if e3:
             e3.create()
-        if ioc is not None:
-            ioc.create(args.ioc)
+    if ioc is not None:
+        ioc.create(args.ioc)
 
     if args.zipit is not None:
         create_zipfile(args.zipit)
