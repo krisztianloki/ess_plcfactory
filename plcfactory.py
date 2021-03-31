@@ -634,6 +634,30 @@ class IOC(object):
         return self._repo
 
 
+    @staticmethod
+    def _create_plcfactory_ignore(ioc):
+        plcfactory_ignore = os.path.join(ioc._path, ".plcfactory_ignore")
+        with open(plcfactory_ignore, "wt") as pf:
+            print("# List of files that are not managed by PLCFactory", file = pf)
+        ioc.add(plcfactory_ignore)
+
+
+    def get_ignored_files(self, out_idir, repo):
+        """
+        Returns the list of files (with absolute path) that should not be removed by PLCFactory
+        """
+        plcfactory_ignore = os.path.join(out_idir, ".plcfactory_ignore")
+        try:
+            with open(plcfactory_ignore, "rt") as pf:
+                # Remove newlines, empty lines, and comments
+                return map(lambda p: os.path.join(out_idir, p), filter(lambda y: True if y and y[0] != '#' else False, map(lambda x: x.strip(), pf.readlines())))
+        except IOError as e:
+            if e.errno == 2:
+                self._create_plcfactory_ignore(repo)
+                return []
+            raise
+
+
     def create(self, version):
         """
         Generate IOC
@@ -645,21 +669,22 @@ class IOC(object):
         if self.repo():
             # Cannot specify 'branch = "master"'; git segfaults when trying to clone an empty repository and checking out its "master" branch
             # Update the master branch if available, and initialize an empty repository
-            repo = git.GIT.clone(self.repo(), out_idir, update = True, initialize_if_empty = True, gitignore_contents = "/cell/")
+            repo = git.GIT.clone(self.repo(), out_idir, update = True, initialize_if_empty = True, gitignore_contents = "/cell/", initializer = self._create_plcfactory_ignore)
             repo.create_branch(branch, "master")
         else:
             repo = None
 
+        created_files = []
         if self._e3:
             # Copy the generated e3 files
             self._e3.copy_files(out_idir, generate_iocsh = "IOCSH")
+            # Create st.cmd
+            st_cmd = self.__create_st_cmd(out_idir)
+            created_files.append(st_cmd)
 
         # Create env.sh
         env_sh = self.__create_env_sh(out_idir, version)
-
-        # Create st.cmd
-        if self._e3:
-            st_cmd = self.__create_st_cmd(out_idir)
+        created_files.append(env_sh)
 
         # Update the repository
         if repo:
@@ -690,9 +715,13 @@ Command line:
            commit  = commit_id,
            cmdline = " ".join(sys.argv))
 
-            repo.add(self._e3.files())
-            repo.remove_stale_items(self._e3.files())
-            repo.add([env_sh, st_cmd])
+            if self._e3:
+                repo.add(self._e3.files())
+                generated_files = list(self._e3.files())
+                generated_files.extend(self.get_ignored_files(out_idir, repo))
+                # Remove files that are not created by PLCFactory
+                repo.remove_stale_items(generated_files)
+            repo.add(created_files)
             repo.commit(msg = commit_msg, edit = True)
 
             # Tag if requested

@@ -106,7 +106,7 @@ git config --global user.name "My Name"
 
 
     @staticmethod
-    def clone(url, path = '.', branch = None, update = False, initialize_if_empty = False, verbose = True, gitignore_contents = ""):
+    def clone(url, path = '.', branch = None, update = False, initialize_if_empty = False, verbose = True, gitignore_contents = "", initializer = None):
         """
         Clone the repository at 'url' into 'path' and possibly checkout 'branch'
 
@@ -118,12 +118,12 @@ git config --global user.name "My Name"
         git = GIT(path)
         if not git.is_repo():
             # If 'path' is not a repository then clone url
-            git.__clone(url, branch, initialize_if_empty = initialize_if_empty, verbose = verbose, gitignore_contents = gitignore_contents)
+            git.__clone(url, branch, initialize_if_empty = initialize_if_empty, verbose = verbose, gitignore_contents = gitignore_contents, initializer = initializer)
             return git
 
         if git.get_toplevel_dir() != path:
             # This is some other repository working tree, we can clone a new one here
-            git.__clone(url, branch, initialize_if_empty = initialize_if_empty, verbose = verbose, gitignore_contents = gitignore_contents)
+            git.__clone(url, branch, initialize_if_empty = initialize_if_empty, verbose = verbose, gitignore_contents = gitignore_contents, initializer = initializer)
             return git
 
         # Have to check if this repository is the one we need
@@ -181,7 +181,7 @@ git config --global user.name "My Name"
         self._url = url
 
 
-    def __clone(self, url, branch = None, initialize_if_empty = False, verbose = True, gitignore_contents = ""):
+    def __clone(self, url, branch = None, initialize_if_empty = False, verbose = True, gitignore_contents = "", initializer = None):
         """
         Clone 'url'. If branch is specified then that branch is checked out
         """
@@ -199,6 +199,8 @@ git config --global user.name "My Name"
                 with open(gitignore, "wt") as gf:
                     print(gitignore_contents, file = gf)
                 self.add(gitignore)
+                if initializer and callable(initializer):
+                    initializer(self)
                 self.commit("Initialized repository")
                 self.push()
         except subprocess.CalledProcessError as e:
@@ -278,14 +280,18 @@ git config --global user.name "My Name"
             raise
 
 
-    def remove(self, files):
+    def remove(self, files, ignore_unmatch = False):
         """
         Removes the files in 'files'
         """
         try:
             if isinstance(files, str):
                 files = [ files ]
-            return subprocess.check_call(shlex_split("git rm --quiet {}".format(" ".join(map(lambda x: os.path.relpath(x, self._path), files)))), cwd = self._path, **spkwargs)
+            if ignore_unmatch:
+                ignore_unmatch = "--ignore-unmatch "
+            else:
+                ignore_unmatch = ""
+            return subprocess.check_call(shlex_split("git rm --quiet {}{}".format(ignore_unmatch, " ".join(map(lambda x: os.path.relpath(x, self._path), files)))), cwd = self._path, **spkwargs)
         except subprocess.CalledProcessError as e:
             print(e)
             raise
@@ -467,7 +473,7 @@ git config --global user.name "My Name"
             for root, dirs, files in os.walk(os.path.join(self.path(), path)):
                 for f in files:
                     if os.path.join(root, f) not in current_items:
-                        self.remove(os.path.join(root, f))
+                        self.remove(os.path.join(root, f), ignore_unmatch = True)
 
 
 
