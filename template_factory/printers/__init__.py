@@ -19,6 +19,12 @@ except ImportError:
         pass
 
 
+try:
+    isinstance("unicode", unicode)
+except NameError:
+    unicode = str
+
+
 
 class TemplatePrinterException(Exception):
     args_format = """
@@ -376,14 +382,14 @@ class PRINTER(object):
 
 
     def __append_simple(self, output, stuff):
-        if isinstance(stuff, str):
+        if isinstance(stuff, str) or isinstance(stuff, unicode):
             output.append(stuff)
         else:
             output.extend(stuff)
 
 
     def __append_with_cplcf(self, output, stuff):
-        if isinstance(stuff, str):
+        if isinstance(stuff, str) or isinstance(stuff, unicode):
             output.append(self._plcf.processLine(stuff))
         else:
             output.extend(self._plcf.process(stuff))
