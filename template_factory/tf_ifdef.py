@@ -970,7 +970,7 @@ class IF_DEF(object):
             return
 
         if self._plc_array[1] is None:
-            self._plc_array = (self._plc_array[0], atype)
+            self._plc_array = (self._plc_array[0], atype, self._plc_array[2])
             return
         elif self._plc_array[1] == atype:
             return
@@ -988,6 +988,12 @@ class IF_DEF(object):
 
 
     def _handle_extra_params(self, keyword_params):
+        if self._plc_array is not None:
+            if "USE_GATEWAY_DB" in keyword_params:
+                raise IfDefSyntaxError("`USE_GATEWAY_DB` must be used in `define_plc_array()`")
+            # Must be defined in define_plc_array() BUT we need to know this for every individual variable
+            keyword_params["USE_GATEWAY_DB"] = self._plc_array[2]
+
         keyword_params["DATABLOCK"] = self._datablock_name
 
         return keyword_params
@@ -1347,7 +1353,7 @@ class IF_DEF(object):
 
 
     @ifdef_interface
-    def define_plc_array(self, name):
+    def define_plc_array(self, name, USE_GATEWAY_DB = True):
         if self._plc_array is not None:
             raise IfDefSyntaxError("Nesting of arrays is not possible")
 
@@ -1355,8 +1361,8 @@ class IF_DEF(object):
         # redundant with hash_message _active_block() call
         # not removing: if hash_message ever changes uncomment the following line
 #        self._active_block()
-        var = PRINTER_METADATA(self._source, "IFA", "DEFINE_ARRAY\n{}\n".format(name), hash_message = "{}, DEFINE_PLC_ARRAY, {}".format(self._active_block().type(), name))
-        self._plc_array = (name, None)
+        var = PRINTER_METADATA(self._source, "IFA", "DEFINE_ARRAY\n{}\n{}".format(name, "" if USE_GATEWAY_DB else "NO_GATEWAY\nTrue\n"), hash_message = "{}, DEFINE_PLC_ARRAY, {}{}".format(self._active_block().type(), name, "" if USE_GATEWAY_DB else ", False"))
+        self._plc_array = (name, None, USE_GATEWAY_DB)
         return self._add(var)
 
 

@@ -38,6 +38,10 @@ _iff_time_template = """{base}EGU
 {egu}
 """
 
+_iff_nogw_template = """{base}NO_GATEWAY
+True
+"""
+
 
 
 #
@@ -196,6 +200,9 @@ PLCTOEPICSDATABLOCKOFFSET
                                    type        = var.plc_type() if var.dimension() == 1 else "{}[{}]".format(var.plc_type(), var.dimension()),
                                    array_index = str(var.offset() // 2),
                                    bit_number  = bit_number)
+
+        if not var.get_parameter('USE_GATEWAY_DB', True):
+            ifa = _iff_nogw_template.format(base = ifa)
 
         if isinstance(var, TIME):
             egu = var.get_pv_field("EGU").lower()

@@ -98,12 +98,26 @@ def ClearCmd(body, clear_cmd):
 			body.append(l.format(""))
 
 
-def GetPLCVariableName(variable):
-	plc_var = variable.properties["VARIABLE"]
-	if ifa.GATEWAY_DATABLOCK is None:
-		return '#"{}"'.format(plc_var)
-	else:
+def IsInGatewayDatablock(variable):
+	try:
+		if ifa.GATEWAY_DATABLOCK is None or variable.properties["NO_GATEWAY"]:
+			return False
+	except KeyError:
+		# ifa.GATEWAY_DATABLOCK always exists but variable.properties["NO_GATEWAY"] does not
+		#  so if we get a KeyError it means that 'ifa.GATEWAY_DATABLOCK is not None' AND there is no 'NO_GATEWAY'
+		# which means that this variable is definitely in a a gateway datablock
+		pass
+
+	return True
+
+
+def GetPLCVariableName(variable, in_array = None):
+	# InArrayName should be passed as in_array; when copying from "remote" arrays into local arrays GetPLCVariableName() MUST NOT return the gateway datablock prefix
+	plc_var = variable.name()
+	if in_array is None and IsInGatewayDatablock(variable):
 		return '{}."{}"'.format(ifa.GATEWAY_DATABLOCK, plc_var)
+	else:
+		return '#"{}"'.format(plc_var)
 
 
 def AddBOOL(variable, InArrayName, InArrayNum, StartingRegister):
@@ -114,7 +128,7 @@ def AddBOOL(variable, InArrayName, InArrayNum, StartingRegister):
 	global IsDouble
 
 	#====== BOOL TYPE ========
-	ActVariablePLCName    = GetPLCVariableName(variable)
+	ActVariablePLCName    = GetPLCVariableName(variable, InArrayName)
 	ActVariableEPICSName  = variable.properties["EPICS"]
 	ActVariableType       = variable.properties["TYPE"]
 	ActVariableArrayIndex = int(variable.properties["ARRAY_INDEX"])
@@ -123,7 +137,7 @@ def AddBOOL(variable, InArrayName, InArrayNum, StartingRegister):
 	if variable.is_status():
 		if InArrayName is not None:
 			InArrayNum = InArrayNum + 1
-			DevTypeBODY_CODE_ARRAY.append("              "+ ActVariablePLCName +" := #"+InArrayName+"["+str(InArrayNum)+"];")
+			DevTypeBODY_CODE_ARRAY.append("              "+ ActVariablePLCName +" := "+InArrayName+"["+str(InArrayNum)+"];")
 		if StartingRegister != ActVariableArrayIndex:
 			CloseLastVariable()
 			StartingRegister = ActVariableArrayIndex
@@ -166,7 +180,7 @@ def AddBYTE(variable, InArrayName, InArrayNum, StartingRegister):
 	global IsDouble
 
 	#====== BYTE TYPE ========
-	ActVariablePLCName    = GetPLCVariableName(variable)
+	ActVariablePLCName    = GetPLCVariableName(variable, InArrayName)
 	ActVariableEPICSName  = variable.properties["EPICS"]
 	ActVariableType       = variable.properties["TYPE"]
 	ActVariableArrayIndex = int(variable.properties["ARRAY_INDEX"])
@@ -175,7 +189,7 @@ def AddBYTE(variable, InArrayName, InArrayNum, StartingRegister):
 	if variable.is_status():
 		if InArrayName is not None:
 			InArrayNum = InArrayNum + 1
-			DevTypeBODY_CODE_ARRAY.append("              "+ ActVariablePLCName +" := #"+InArrayName+"["+str(InArrayNum)+"];")
+			DevTypeBODY_CODE_ARRAY.append("              "+ ActVariablePLCName +" := "+InArrayName+"["+str(InArrayNum)+"];")
 		if StartingRegister != ActVariableArrayIndex:
 			CloseLastVariable()
 			StartingRegister = ActVariableArrayIndex
@@ -218,7 +232,7 @@ def AddINT(variable, InArrayName, InArrayNum, StartingRegister):
 	global IsDouble
 
 	#====== INT TYPE ========
-	ActVariablePLCName    = GetPLCVariableName(variable)
+	ActVariablePLCName    = GetPLCVariableName(variable, InArrayName)
 	ActVariableEPICSName  = variable.properties["EPICS"]
 	ActVariableType       = variable.properties["TYPE"]
 	ActVariableArrayIndex = int(variable.properties["ARRAY_INDEX"])
@@ -227,7 +241,7 @@ def AddINT(variable, InArrayName, InArrayNum, StartingRegister):
 	if variable.is_status():
 		if InArrayName is not None:
 			InArrayNum = InArrayNum + 1
-			DevTypeBODY_CODE_ARRAY.append("              "+ ActVariablePLCName +" := #"+InArrayName+"["+str(InArrayNum)+"];")
+			DevTypeBODY_CODE_ARRAY.append("              "+ ActVariablePLCName +" := "+InArrayName+"["+str(InArrayNum)+"];")
 		if StartingRegister != ActVariableArrayIndex:
 			CloseLastVariable()
 			StartingRegister = ActVariableArrayIndex
@@ -260,7 +274,7 @@ def AddWORD(variable, InArrayName, InArrayNum, StartingRegister):
 	global IsDouble
 
 	#====== WORD TYPE ========
-	ActVariablePLCName    = GetPLCVariableName(variable)
+	ActVariablePLCName    = GetPLCVariableName(variable, InArrayName)
 	ActVariableEPICSName  = variable.properties["EPICS"]
 	ActVariableType       = variable.properties["TYPE"]
 	ActVariableArrayIndex = int(variable.properties["ARRAY_INDEX"])
@@ -269,7 +283,7 @@ def AddWORD(variable, InArrayName, InArrayNum, StartingRegister):
 	if variable.is_status():
 		if InArrayName is not None:
 			InArrayNum = InArrayNum + 1
-			DevTypeBODY_CODE_ARRAY.append("              "+ ActVariablePLCName +" := #"+InArrayName+"["+str(InArrayNum)+"];")
+			DevTypeBODY_CODE_ARRAY.append("              "+ ActVariablePLCName +" := "+InArrayName+"["+str(InArrayNum)+"];")
 		if StartingRegister != ActVariableArrayIndex:
 			CloseLastVariable()
 			StartingRegister = ActVariableArrayIndex
@@ -301,7 +315,7 @@ def AddDINT(variable, InArrayName, InArrayNum, StartingRegister):
 	global IsDouble
 
 	#====== DINT TYPE ========
-	ActVariablePLCName    = GetPLCVariableName(variable)
+	ActVariablePLCName    = GetPLCVariableName(variable, InArrayName)
 	ActVariableEPICSName  = variable.properties["EPICS"]
 	ActVariableType       = variable.properties["TYPE"]
 	ActVariableArrayIndex = int(variable.properties["ARRAY_INDEX"])
@@ -310,7 +324,7 @@ def AddDINT(variable, InArrayName, InArrayNum, StartingRegister):
 	if variable.is_status():
 		if InArrayName is not None:
 			InArrayNum = InArrayNum + 1
-			DevTypeBODY_CODE_ARRAY.append("              "+ ActVariablePLCName +" := #"+InArrayName+"["+str(InArrayNum)+"];")
+			DevTypeBODY_CODE_ARRAY.append("              "+ ActVariablePLCName +" := "+InArrayName+"["+str(InArrayNum)+"];")
 		if StartingRegister != ActVariableArrayIndex:
 			CloseLastVariable()
 			StartingRegister = ActVariableArrayIndex
@@ -347,7 +361,7 @@ def AddDWORD(variable, InArrayName, InArrayNum, StartingRegister):
 	global IsDouble
 
 	#====== DWORD TYPE ========
-	ActVariablePLCName    = GetPLCVariableName(variable)
+	ActVariablePLCName    = GetPLCVariableName(variable, InArrayName)
 	ActVariableEPICSName  = variable.properties["EPICS"]
 	ActVariableType       = variable.properties["TYPE"]
 	ActVariableArrayIndex = int(variable.properties["ARRAY_INDEX"])
@@ -356,7 +370,7 @@ def AddDWORD(variable, InArrayName, InArrayNum, StartingRegister):
 	if variable.is_status():
 		if InArrayName is not None:
 			InArrayNum = InArrayNum + 1
-			DevTypeBODY_CODE_ARRAY.append("              "+ ActVariablePLCName +" := #"+InArrayName+"["+str(InArrayNum)+"];")
+			DevTypeBODY_CODE_ARRAY.append("              "+ ActVariablePLCName +" := "+InArrayName+"["+str(InArrayNum)+"];")
 		if StartingRegister != ActVariableArrayIndex:
 			CloseLastVariable()
 			StartingRegister = ActVariableArrayIndex
@@ -380,7 +394,7 @@ def AddREAL(variable, InArrayName, InArrayNum, StartingRegister):
 	global IsDouble
 
 	#====== REAL TYPE ========
-	ActVariablePLCName    = GetPLCVariableName(variable)
+	ActVariablePLCName    = GetPLCVariableName(variable, InArrayName)
 	ActVariableEPICSName  = variable.properties["EPICS"]
 	ActVariableType       = variable.properties["TYPE"]
 	ActVariableArrayIndex = int(variable.properties["ARRAY_INDEX"])
@@ -389,7 +403,7 @@ def AddREAL(variable, InArrayName, InArrayNum, StartingRegister):
 	if variable.is_status():
 		if InArrayName is not None:
 			InArrayNum = InArrayNum + 1
-			DevTypeBODY_CODE_ARRAY.append("              "+ ActVariablePLCName +" := #"+InArrayName+"["+str(InArrayNum)+"];")
+			DevTypeBODY_CODE_ARRAY.append("              "+ ActVariablePLCName +" := "+InArrayName+"["+str(InArrayNum)+"];")
 		if StartingRegister != ActVariableArrayIndex:
 			CloseLastVariable()
 			StartingRegister = ActVariableArrayIndex
@@ -426,7 +440,7 @@ def AddTIME(variable, InArrayName, InArrayNum, StartingRegister):
 	global IsDouble
 
 	#====== TIME TYPE ========
-	ActVariablePLCName    = GetPLCVariableName(variable)
+	ActVariablePLCName    = GetPLCVariableName(variable, InArrayName)
 	ActVariableEPICSName  = variable.properties["EPICS"]
 	ActVariableType       = variable.properties["TYPE"]
 	ActVariableArrayIndex = int(variable.properties["ARRAY_INDEX"])
@@ -435,7 +449,7 @@ def AddTIME(variable, InArrayName, InArrayNum, StartingRegister):
 	if variable.is_status():
 		if InArrayName is not None:
 			InArrayNum = InArrayNum + 1
-			DevTypeBODY_CODE_ARRAY.append("              "+ ActVariablePLCName +" := #"+InArrayName+"["+str(InArrayNum)+"];")
+			DevTypeBODY_CODE_ARRAY.append("              "+ ActVariablePLCName +" := "+InArrayName+"["+str(InArrayNum)+"];")
 		if StartingRegister != ActVariableArrayIndex:
 			CloseLastVariable()
 			StartingRegister = ActVariableArrayIndex
@@ -472,7 +486,7 @@ def AddSTRING(variable, InArrayName, InArrayNum, StartingRegister):
 	global IsDouble
 
 	#====== STRING TYPE ========
-	ActVariablePLCName    = GetPLCVariableName(variable)
+	ActVariablePLCName    = GetPLCVariableName(variable, InArrayName)
 	ActVariableEPICSName  = variable.properties["EPICS"]
 	ActVariableType       = variable.properties["TYPE"]
 	ActVariableArrayIndex = int(variable.properties["ARRAY_INDEX"])
@@ -484,7 +498,7 @@ def AddSTRING(variable, InArrayName, InArrayNum, StartingRegister):
 			raise IFA.FatalException("'Hybrid' PLC STRING arrays are not supported: " + InArrayName)
 			# The fact that ActVariablePLCName is IN_OUT (because of the TESTER) triggers an error because ActVariablePLCName is not specified in EPICS_device_calls
 			InArrayNum = InArrayNum + 1
-			DevTypeBODY_CODE_ARRAY.append("              "+ ActVariablePLCName +" := #"+InArrayName+"["+str(InArrayNum)+"];")
+			DevTypeBODY_CODE_ARRAY.append("              "+ ActVariablePLCName +" := "+InArrayName+"["+str(InArrayNum)+"];")
 		if StartingRegister != ActVariableArrayIndex:
 			CloseLastVariable()
 			StartingRegister = ActVariableArrayIndex
@@ -1408,6 +1422,7 @@ def ProcessIFADevTypes(OutputDir, TIAVersion, CommsTest):
 	MaxCommandReg = 0;
 
 	InArrayName = None
+	InArrayGatewayDatablock = True
 	InArrayNum  = None
 
 	WriteUtilitiesCode(TIAVersion)
@@ -1544,13 +1559,15 @@ def ProcessIFADevTypes(OutputDir, TIAVersion, CommsTest):
 		for item in device:
 			if item.is_wrapper_array():
 				if item.is_start():
-					InArrayName = QuoteVariableName(TIAVersion, item.name())
+					InArrayName = GetPLCVariableName(item)
 					InArrayNum = 0
+					InArrayGatewayDatablock = IsInGatewayDatablock(item)
 				else:
-					if ifa.GATEWAY_DATABLOCK is None:
-						DevTypeVAR_INPUT.append("      " + InArrayName + " " + NoExternal + " : Array[1.."+ str(InArrayNum) +"] of "+ ActVariableType+";   //EPICS Status variables defined in an array")
+					if not InArrayGatewayDatablock:
+						DevTypeVAR_INPUT.append("      " + QuoteVariableName(TIAVersion, item.name()) + " " + NoExternal + " : Array[1.."+ str(InArrayNum) +"] of "+ ActVariableType+";   //EPICS Status variables defined in an array")
 					InArrayName = None
 					InArrayNum  = None
+					InArrayGatewayDatablock = True
 
 			elif item.is_block():
 				CloseLastVariable()
@@ -1587,7 +1604,7 @@ def ProcessIFADevTypes(OutputDir, TIAVersion, CommsTest):
 					LastVariableType = ActVariableType
 					CloseLastVariable()
 
-				if ifa.GATEWAY_DATABLOCK is None:
+				if not IsInGatewayDatablock(item):
 					if item.is_status():
 						if InArrayName is not None:
 							DevTypeVAR_INOUT.append("      \"" + ActVariablePLCName + "\" " + NoExternal + " : "+ ActVariableType+";   //EPICS Status variable in an array: "+ActVariableEPICSName)
@@ -1606,6 +1623,11 @@ def ProcessIFADevTypes(OutputDir, TIAVersion, CommsTest):
 						DevTypeVAR_OUTPUT.append("      \"" + ActVariablePLCName + "\" " + ExternalRead + " : "+ ActVariableType+";   //EPICS Parameter variable: "+ActVariableEPICSName)
 						EPICS_PLC_TesterDB.append("      \"" + ActualDeviceName+"_" + ActVariablePLCName + "\" " + NoExternal + " : "+ ActVariableType+";   //EPICS Parameter variable: "+ActVariableEPICSName)
 						EPICS_device_calls_test_body.append("                                 "+TIAVariablePLCName+" => \"EPICS_PLC_Tester\".#\""+ ActualDeviceName+"_" + ActVariablePLCName + "\",")
+				elif item.is_status() and InArrayName is not None:
+					# (local) Arrays need to be declared even if using gateway mode
+					DevTypeVAR_INOUT.append("      \"" + ActVariablePLCName + "\" " + NoExternal + " : "+ ActVariableType+";   //EPICS Status variable in an array: "+ActVariableEPICSName)
+					EPICS_PLC_TesterDB.append("      \"" + ActualDeviceName+"_" + ActVariablePLCName + "\" " + NoExternal + " : "+ ActVariableType+";   //EPICS Status variable: "+ActVariableEPICSName)
+					EPICS_device_calls_test_body.append("                                 "+TIAVariablePLCName+" := \"EPICS_PLC_Tester\".#\""+ ActualDeviceName+"_" + ActVariablePLCName + "\",")
 
 				#SUPPORTED TYPES
 				#PLC_types = {'BOOL', 'BYTE', 'WORD', 'DWORD', 'INT', 'DINT', 'REAL', 'TIME' }

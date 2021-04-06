@@ -1202,6 +1202,14 @@ Exiting.
     hash_base = """EPICSToPLCDataBlockStartOffset: [PLCF#EPICSToPLCDataBlockStartOffset]
 PLCToEPICSDataBlockStartOffset: [PLCF#PLCToEPICSDataBlockStartOffset]
 PLC-EPICS-COMMS:Endianness: [PLCF#PLC-EPICS-COMMS:Endianness]"""
+    # GatewayDatablock is a relatively new feature; do not break the hash for PLCs not using it
+    try:
+        gw_db = cplcf.getProperty("PLC-EPICS-COMMS: GatewayDatablock")
+        if gw_db:
+            hash_base = """{}
+PLC-EPICS-COMMS: GatewayDatablock: {}""".format(hash_base, gw_db)
+    except plcf.PLCFNoPropertyException:
+        pass
     hash_base = "\n".join(cplcf.process(hash_base.splitlines()))
 
     # create a stable list of controlled devices

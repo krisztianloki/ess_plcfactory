@@ -197,6 +197,12 @@ Controls validity requirements. [More details](#specifying-validity-requirements
 
 Controls the alarm severity condition of alarm PVs. [More details](#alarm-variable)
 
+### USE_GATEWAY_DB
+
+Controls whether the variable is defined in the GatewayDatablock or not.
+
+This keyword can be used to specify if a variable is defined in the gateway datablock when the `PLC-EPICS-COMMS: GatewayDatablock` PLC property is set to the name of the gateway datablock. The default value is `True`, use `False` if you want to override that.
+
 ## Specifying archiving requirements
 
 If a variable has to be archived the **`ARCHIVE=<spec>`** construction can be used. <spec> can be one of the following:
@@ -303,10 +309,18 @@ Safety systems use a gateway PLC between the IOC and the safety PLC and this bri
 
 *   `add_analog("foo", VALIDITY_PV="sys-subsys:dis-dev-idx:bar")`
 *   `external_validity_pv("sys-subsys:dis-dev-idx:bar", VALIDITY_CONDITION=False)`
-    *   `foo` will be set to INVALID alarm severity if `sys-subsys:dis-dev-idx:bar` is false or not connected
+    *   `foo` will be set to INVALID alarm severity if `sys-subsys:dis-dev-idx:bar` is true or not connected
 
 #### External validity PV
 
 *   `add_analog("foo", VALIDITY_PV="sys-subsys:dis-dev-idx:bar")`
 *   `external_validity_pv("sys-subsys:dis-dev-idx:bar", False)`
     *   The same as the previous but `VALIDITY_CONDITION` is not spelled out
+
+### Gateway datablock examples
+
+Suppose the `PLC-EPICS-COMMS: GatewayDatablock` is set to `dbSTD_to_Gateway`.
+*   `add_analog("foo")`
+    *    The variable `foo` will be interpreted as `"dbSTD_to_Gateway"."foo"` and will not be declared in the generated instance DB
+*   `add_analog("bar", USE_GATEWAY_DB=False)`
+    *    The variable `bar` will be declared in the generated instance DB. From this variable's point of view it is as if `PLC-EPICS-COMMS: GatewayDatablock` was not set

@@ -24,7 +24,7 @@ class IFA(object):
                                          ARRAY_INDEX = int,
                                          BIT_NUMBER  = int)
 
-    valid_variable_entries = set([ 'EGU' ])
+    valid_variable_entries = set([ 'EGU', 'NO_GATEWAY' ])
     valid_variable_entries.update(set(mandatory_variable_properties.keys()))
 
     mandatory_device_properties = dict(DEVICE                    = str,
@@ -176,6 +176,10 @@ class IFA(object):
             return "BLOCK " + self.__block
 
 
+        def name(self):
+            return self.__block
+
+
         def is_block(self):
             return True
 
@@ -202,6 +206,10 @@ class IFA(object):
 
         def __repr__(self):
             return repr(self.properties)
+
+
+        def name(self):
+            return self.properties["VARIABLE"]
 
 
         def is_block(self):
@@ -243,6 +251,7 @@ class IFA(object):
     class WrapperArray(DeviceItem):
         def __init__(self, array_name, start):
             super(IFA.WrapperArray, self).__init__()
+            self.properties   = dict()
             self.__array_name = array_name
             self.__start      = start
 
@@ -354,7 +363,8 @@ Pre-parsing .ifa file...""".format(self.IfaPath))
                         continue
 
                     elif linetype == "DEFINE_ARRAY":
-                        Area.append(IFA.WrapperArrayStart(line))
+                        item = IFA.WrapperArrayStart(line)
+                        Area.append(item)
                         continue
 
                     elif linetype == "END_ARRAY":
