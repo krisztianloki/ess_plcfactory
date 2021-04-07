@@ -136,8 +136,8 @@ def AddBOOL(variable, InArrayName, InArrayNum, StartingRegister):
 
 	if variable.is_status():
 		if InArrayName is not None:
-			InArrayNum = InArrayNum + 1
 			DevTypeBODY_CODE_ARRAY.append("              "+ ActVariablePLCName +" := "+InArrayName+"["+str(InArrayNum)+"];")
+			InArrayNum = InArrayNum + 1
 		if StartingRegister != ActVariableArrayIndex:
 			CloseLastVariable()
 			StartingRegister = ActVariableArrayIndex
@@ -188,8 +188,8 @@ def AddBYTE(variable, InArrayName, InArrayNum, StartingRegister):
 
 	if variable.is_status():
 		if InArrayName is not None:
-			InArrayNum = InArrayNum + 1
 			DevTypeBODY_CODE_ARRAY.append("              "+ ActVariablePLCName +" := "+InArrayName+"["+str(InArrayNum)+"];")
+			InArrayNum = InArrayNum + 1
 		if StartingRegister != ActVariableArrayIndex:
 			CloseLastVariable()
 			StartingRegister = ActVariableArrayIndex
@@ -240,8 +240,8 @@ def AddINT(variable, InArrayName, InArrayNum, StartingRegister):
 
 	if variable.is_status():
 		if InArrayName is not None:
-			InArrayNum = InArrayNum + 1
 			DevTypeBODY_CODE_ARRAY.append("              "+ ActVariablePLCName +" := "+InArrayName+"["+str(InArrayNum)+"];")
+			InArrayNum = InArrayNum + 1
 		if StartingRegister != ActVariableArrayIndex:
 			CloseLastVariable()
 			StartingRegister = ActVariableArrayIndex
@@ -282,8 +282,8 @@ def AddWORD(variable, InArrayName, InArrayNum, StartingRegister):
 
 	if variable.is_status():
 		if InArrayName is not None:
-			InArrayNum = InArrayNum + 1
 			DevTypeBODY_CODE_ARRAY.append("              "+ ActVariablePLCName +" := "+InArrayName+"["+str(InArrayNum)+"];")
+			InArrayNum = InArrayNum + 1
 		if StartingRegister != ActVariableArrayIndex:
 			CloseLastVariable()
 			StartingRegister = ActVariableArrayIndex
@@ -323,8 +323,8 @@ def AddDINT(variable, InArrayName, InArrayNum, StartingRegister):
 
 	if variable.is_status():
 		if InArrayName is not None:
-			InArrayNum = InArrayNum + 1
 			DevTypeBODY_CODE_ARRAY.append("              "+ ActVariablePLCName +" := "+InArrayName+"["+str(InArrayNum)+"];")
+			InArrayNum = InArrayNum + 1
 		if StartingRegister != ActVariableArrayIndex:
 			CloseLastVariable()
 			StartingRegister = ActVariableArrayIndex
@@ -369,8 +369,8 @@ def AddDWORD(variable, InArrayName, InArrayNum, StartingRegister):
 
 	if variable.is_status():
 		if InArrayName is not None:
-			InArrayNum = InArrayNum + 1
 			DevTypeBODY_CODE_ARRAY.append("              "+ ActVariablePLCName +" := "+InArrayName+"["+str(InArrayNum)+"];")
+			InArrayNum = InArrayNum + 1
 		if StartingRegister != ActVariableArrayIndex:
 			CloseLastVariable()
 			StartingRegister = ActVariableArrayIndex
@@ -402,8 +402,8 @@ def AddREAL(variable, InArrayName, InArrayNum, StartingRegister):
 
 	if variable.is_status():
 		if InArrayName is not None:
-			InArrayNum = InArrayNum + 1
 			DevTypeBODY_CODE_ARRAY.append("              "+ ActVariablePLCName +" := "+InArrayName+"["+str(InArrayNum)+"];")
+			InArrayNum = InArrayNum + 1
 		if StartingRegister != ActVariableArrayIndex:
 			CloseLastVariable()
 			StartingRegister = ActVariableArrayIndex
@@ -448,8 +448,8 @@ def AddTIME(variable, InArrayName, InArrayNum, StartingRegister):
 
 	if variable.is_status():
 		if InArrayName is not None:
-			InArrayNum = InArrayNum + 1
 			DevTypeBODY_CODE_ARRAY.append("              "+ ActVariablePLCName +" := "+InArrayName+"["+str(InArrayNum)+"];")
+			InArrayNum = InArrayNum + 1
 		if StartingRegister != ActVariableArrayIndex:
 			CloseLastVariable()
 			StartingRegister = ActVariableArrayIndex
@@ -497,8 +497,8 @@ def AddSTRING(variable, InArrayName, InArrayNum, StartingRegister):
 		if InArrayName is not None:
 			raise IFA.FatalException("'Hybrid' PLC STRING arrays are not supported: " + InArrayName)
 			# The fact that ActVariablePLCName is IN_OUT (because of the TESTER) triggers an error because ActVariablePLCName is not specified in EPICS_device_calls
-			InArrayNum = InArrayNum + 1
 			DevTypeBODY_CODE_ARRAY.append("              "+ ActVariablePLCName +" := "+InArrayName+"["+str(InArrayNum)+"];")
+			InArrayNum = InArrayNum + 1
 		if StartingRegister != ActVariableArrayIndex:
 			CloseLastVariable()
 			StartingRegister = ActVariableArrayIndex
@@ -1423,6 +1423,7 @@ def ProcessIFADevTypes(OutputDir, TIAVersion, CommsTest):
 
 	InArrayName = None
 	InArrayGatewayDatablock = True
+	InArrayStartIdx  = None
 	InArrayNum  = None
 
 	WriteUtilitiesCode(TIAVersion)
@@ -1560,11 +1561,12 @@ def ProcessIFADevTypes(OutputDir, TIAVersion, CommsTest):
 			if item.is_wrapper_array():
 				if item.is_start():
 					InArrayName = GetPLCVariableName(item)
-					InArrayNum = 0
+					InArrayNum = item.start_idx()
+					InArrayStartIdx = item.start_idx()
 					InArrayGatewayDatablock = IsInGatewayDatablock(item)
 				else:
 					if not InArrayGatewayDatablock:
-						DevTypeVAR_INPUT.append("      " + QuoteVariableName(TIAVersion, item.name()) + " " + NoExternal + " : Array[1.."+ str(InArrayNum) +"] of "+ ActVariableType+";   //EPICS Status variables defined in an array")
+						DevTypeVAR_INPUT.append("      " + QuoteVariableName(TIAVersion, item.name()) + " " + NoExternal + " : Array["+str(InArrayStartIdx)+".."+ str(InArrayNum-1) +"] of "+ ActVariableType+";   //EPICS Status variables defined in an array")
 					InArrayName = None
 					InArrayNum  = None
 					InArrayGatewayDatablock = True

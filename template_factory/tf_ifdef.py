@@ -837,7 +837,7 @@ class IF_DEF(object):
         self._macros                = list()
         self._external_validity_pvs = dict()
 
-        self._features              = [ "STABLE-HASH", "OPC", "OPC-UA", "MULTILINE", "VALIDITY-PV" ]
+        self._features              = [ "STABLE-HASH", "OPC", "OPC-UA", "MULTILINE", "VALIDITY-PV", "ARRAY-START-IDX", "SELECTIVE-GATEWAY-DB" ]
         self._experimental_features = []
 
         if self._experimental:
@@ -1353,7 +1353,7 @@ class IF_DEF(object):
 
 
     @ifdef_interface
-    def define_plc_array(self, name, USE_GATEWAY_DB = True):
+    def define_plc_array(self, name, USE_GATEWAY_DB = True, START_IDX = 1):
         if self._plc_array is not None:
             raise IfDefSyntaxError("Nesting of arrays is not possible")
 
@@ -1361,7 +1361,9 @@ class IF_DEF(object):
         # redundant with hash_message _active_block() call
         # not removing: if hash_message ever changes uncomment the following line
 #        self._active_block()
-        var = PRINTER_METADATA(self._source, "IFA", "DEFINE_ARRAY\n{}\n{}".format(name, "" if USE_GATEWAY_DB else "NO_GATEWAY\nTrue\n"), hash_message = "{}, DEFINE_PLC_ARRAY, {}{}".format(self._active_block().type(), name, "" if USE_GATEWAY_DB else ", False"))
+        ifa_line = "DEFINE_ARRAY\n{}\n{}{}".format(name, "" if USE_GATEWAY_DB else "NO_GATEWAY\nTrue\n", "" if START_IDX == 1 else "START_IDX\n{}\n".format(START_IDX))
+        hash_message = "{}, DEFINE_PLC_ARRAY, {}{}{}".format(self._active_block().type(), name, "" if USE_GATEWAY_DB else ", False", "" if START_IDX == 1 else ", {}".format(START_IDX))
+        var = PRINTER_METADATA(self._source, "IFA", ifa_line, hash_message = hash_message)
         self._plc_array = (name, None, USE_GATEWAY_DB)
         return self._add(var)
 

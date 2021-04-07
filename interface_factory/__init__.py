@@ -40,6 +40,9 @@ class IFA(object):
     valid_device_entries.update(set(mandatory_device_properties.keys()))
     valid_device_entries.update(valid_variable_entries)
 
+    valid_array_entries = set([ 'NO_GATEWAY', 'START_IDX' ])
+    valid_device_entries.update(valid_array_entries)
+
     mandatory_ifa_properties = dict(HASH                     = str,
                                     MAX_IO_DEVICES           = int,
                                     MAX_LOCAL_MODULES        = int,
@@ -60,6 +63,7 @@ class IFA(object):
 
     valid_line_types = set(mandatory_ifa_properties.keys())
     valid_line_types.update(valid_device_entries)
+    valid_line_types.update(valid_array_entries)
 
     valid_var_types = set([ 'BOOL', 'BYTE', 'CHAR', 'WORD', 'DWORD', 'INT', 'DINT', 'REAL', 'SSTIME', 'TIME', 'LTIME', 'DATE', 'TIME_OF_DAY', 'STRING',
                             'USINT', 'SINT', 'UINT', 'UDINT' ])
@@ -251,7 +255,7 @@ class IFA(object):
     class WrapperArray(DeviceItem):
         def __init__(self, array_name, start):
             super(IFA.WrapperArray, self).__init__()
-            self.properties   = dict()
+            self.properties   = dict(START_IDX = 1)
             self.__array_name = array_name
             self.__start      = start
 
@@ -262,6 +266,10 @@ class IFA(object):
 
         def is_wrapper_array(self):
             return True
+
+
+        def start_idx(self):
+            return int(self.properties["START_IDX"])
 
 
         def is_start(self):
@@ -376,8 +384,12 @@ Pre-parsing .ifa file...""".format(self.IfaPath))
                         Area.append(item)
                         continue
 
-                    if item and linetype not in IFA.valid_variable_entries:
-                        raise IFA.FatalException("Unknown VARIABLE keyword", linetype)
+                    if item:
+                        if isinstance(item, IFA.WrapperArrayStart):
+                            if linetype not in IFA.valid_array_entries:
+                                raise IFA.FatalException("Unknown DEFINE_ARRAY keyword", linetype)
+                        elif linetype not in IFA.valid_variable_entries:
+                            raise IFA.FatalException("Unknown VARIABLE keyword", linetype)
 
                     if item is not None:
                         item.properties[linetype] = line
