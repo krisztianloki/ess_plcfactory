@@ -424,11 +424,39 @@ Pre-parsing .ifa file...""".format(self.IfaPath))
         if self.MAX_MODULES_IN_IO_DEVICE <= 0:
             self.MAX_MODULES_IN_IO_DEVICE = 1
 
+        vars_per_devicetype = dict()
+        devicetypes_to_modify = set()
         for device in self.Devices:
             device.check()
 
             for item in device:
                 item.check()
+
+            # Now check that every device in a device type has the same variable name
+            # might not be the case if CCDB properties were used to customize the variable names
+
+            # Store the different device types
+            devtype = device.properties["DEVICE_TYPE"]
+            if devtype not in vars_per_devicetype:
+                vars_per_devicetype[devtype] = [item.name() for item in device]
+                continue
+
+            # We already know it has to be modified
+            if devtype in devicetypes_to_modify:
+                continue
+
+            # Gather all the variable names
+            dvars = [item.name() for item in device]
+
+            # Check if this device type has the same variables as the first one
+            if dvars != vars_per_devicetype[devtype]:
+                devicetypes_to_modify.add(devtype)
+
+        # "Personalize" the device type name if using custom variable names
+        for device in self.Devices:
+            devtype = device.properties["DEVICE_TYPE"]
+            if devtype in devicetypes_to_modify:
+                device.properties["DEVICE_TYPE"] = "{}_as_{}".format(devtype, device.properties["DEVICE"])
 
         if not self.Devices:
             print("""
