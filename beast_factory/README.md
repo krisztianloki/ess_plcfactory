@@ -149,6 +149,12 @@ It is possible to explicitly specify the filename in square brackets after `BEAS
 
 ## Basic definitions
 
+### Alarm configuration, alarm tree
+
+The alarm configuration is hierachical, starting from for example a top-level _Accelerator_ configuration to components like _Vacuum_, _RF_, with alarm trigger PVs listed below those components. Configuration settings for Guidance, Displays etc. are inherited along the hierarchy, so that all alarms under _`/Accelerator/Vacuum`_ will see all the guidance and displays configured on _Vacuum_.
+
+The alarm system does not enforce how the hierachical configuration is used. The ‘components’ could be subsystems like _Vacuum_, _RF_, or they could refer to areas of the machine like _Front End_, _Ring_, _Beam Line_. There can be several levels of sub-components, and each site can decide how to arrange their alarm trigger PVs to best re-use guidance and display information so that the configuration of individual PVs is simplified by benefitting from the inherited settings along the hierarchy.
+
 #### Creating the Alarm tree
 
 The alarm tree definition uses a subset of the 'normal' alarm definition syntax and has to be assigned to the IOC (or specified with the `--alarm-tree` option). The assignment is done with the **`BEAST TREE`** External Link name. The extension of the file shall be **`.alarm-tree`**. A sample alarm tree looks like this (Tabs/Spaces are optional):
