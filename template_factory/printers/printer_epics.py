@@ -348,13 +348,14 @@ record(ao, "{ilimiter}")
                 raise TemplatePrinterException("VALIDITY_CONDITION is not specified", IFDEF_SOURCE = var)
         else:
             # This is an external validity PV
-            vpv = var[0]
+            vpv = self.expand(var[0])
             if vpv in self._gen_validity_pvs:
                 return
             vcond = var[1]
 
         # Accept True/False in quotes
         if isinstance(vcond, str):
+            vcond = self.expand(vcond)
             if vcond.lower() == "true":
                 vcond = True
             elif vcond.lower() == "false":
