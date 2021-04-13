@@ -332,7 +332,7 @@ The following PVs are automatically generated using the ESS name of the PLC as t
 *   `AliveR`
     *  Shows if the PLC is sending heartbeats; i.e. connected, the Hash is correct and communicating
     *  `bi`
-*   `CommsHashToPLCS`
+*   `CommsHashToPLC`
     *  The comms hash **to** the PLC
     *  `ao`
 *   `HeartbeatToPLCS`
