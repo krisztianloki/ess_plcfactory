@@ -750,7 +750,7 @@ record(bi, "{root_inst_slot}:AliveR")
 }}
 record(calcout, "{root_inst_slot}:iCheckHash")
 {{
-	field(INPA,	"{root_inst_slot}:iCommsHashToPLC")
+	field(INPA,	"{root_inst_slot}:CommsHashToPLC")
 	field(INPB,	"{root_inst_slot}:iIsMBHash")
 	field(INPC,	"{root_inst_slot}:iS7CommsHash")
 	field(INPD,	"{root_inst_slot}:iMBCommsHash")
@@ -800,8 +800,10 @@ record(mbbi, "{root_inst_slot}:UploadStat-RB")
 ########################################################
 ########## EPICS -> PLC comms management data ##########
 ########################################################
-record(ao, "{root_inst_slot}:iCommsHashToPLC")
+record(ao, "{root_inst_slot}:CommsHashToPLC")
 {{
+# Maintain compatibility with existing OPIs
+	alias("{root_inst_slot}:iCommsHashToPLC")
 	field(DESC,	"The comms hash to PLC")
 	field(DISP,	"1")
 	field(PINI,	"YES")
@@ -814,7 +816,7 @@ record(ao, "{root_inst_slot}:CommsHashToPLCS")
 	field(DTYP,	"asynInt32")
 	field(OUT,	"@asyn($(PLCNAME)write, [PLCF#EPICSToPLCDataBlockStartOffset + {epics_to_plc_hash}], 100)INT32_[PLCF#'BE' if 'PLC-EPICS-COMMS:Endianness' == 'BigEndian' else 'LE']")
 	field(OMSL,	"closed_loop")
-	field(DOL,	"{root_inst_slot}:iCommsHashToPLC")
+	field(DOL,	"{root_inst_slot}:CommsHashToPLC")
 	field(DISV,	"0")
 	field(SDIS,	"{root_inst_slot}:ModbusConnectedR")
 }}
@@ -1068,7 +1070,7 @@ record(bi, "{root_inst_slot}:AliveR")
 }}
 record(calcout, "{root_inst_slot}:iCheckHash")
 {{
-	field(INPA,	"{root_inst_slot}:iCommsHashToPLC")
+	field(INPA,	"{root_inst_slot}:CommsHashToPLC")
 	field(INPB,	"{root_inst_slot}:CommsHashFromPLCR")
 	field(INPC,	"{root_inst_slot}:CommsHashFromPLCR.STAT")
 	field(CALC,	"A == B && C == 0")
@@ -1098,8 +1100,10 @@ record(longin, "{root_inst_slot}:UploadStat-RB")
 ########################################################
 ########## EPICS -> PLC comms management data ##########
 ########################################################
-record(ao, "{root_inst_slot}:iCommsHashToPLC")
+record(ao, "{root_inst_slot}:CommsHashToPLC")
 {{
+# Maintain compatibility with existing OPIs
+	alias("{root_inst_slot}:iCommsHashToPLC")
 	field(DISP,	"1")
 	field(PINI,	"YES")
 	field(VAL,	"#HASH")
@@ -1108,7 +1112,7 @@ record(ao, "{root_inst_slot}:CommsHashToPLCS")
 {{
 	field(DESC,	"Sends comms hash to PLC")
 	field(OMSL,	"closed_loop")
-	field(DOL,	"{root_inst_slot}:iCommsHashToPLC")
+	field(DOL,	"{root_inst_slot}:CommsHashToPLC")
 	field(DISV,	"0")
 	field(SDIS,	"{root_inst_slot}:ConnectedR")
 }}
@@ -1163,7 +1167,7 @@ record(ao, "{root_inst_slot}:FixHashS")
 {{
 	field(DESC,	"Make HASH correct")
 	field(OMSL,	"closed_loop")
-	field(DOL,	"{root_inst_slot}:iCommsHashToPLC")
+	field(DOL,	"{root_inst_slot}:CommsHashToPLC")
 	field(OUT,	"{root_inst_slot}:CommsHashFromPLCR PP")
 }}
 
@@ -1175,7 +1179,7 @@ record(bo, "{root_inst_slot}:RuinHashS")
 record(calcout, "{root_inst_slot}:iRuinHash")
 {{
 	field(DESC,	"Make HASH incorrect")
-	field(INPA,	"{root_inst_slot}:iCommsHashToPLC")
+	field(INPA,	"{root_inst_slot}:CommsHashToPLC")
 	field(CALC,	"A * -1")
 	field(OUT,	"{root_inst_slot}:CommsHashFromPLCR PP")
 }}
@@ -1263,8 +1267,10 @@ record(mbbi, "{root_inst_slot}:OPCStateR")
 	field(SVST, "Unknown")
 }}
 
-record(ao, "{root_inst_slot}:iCommsHashToPLC")
+record(ao, "{root_inst_slot}:CommsHashToPLC")
 {{
+# Maintain compatibility with existing OPIs
+	alias("{root_inst_slot}:iCommsHashToPLC")
 	field(DISP,	"1")
 	field(PINI,	"YES")
 	field(VAL,	"#HASH")
@@ -1274,7 +1280,7 @@ record(ao, "{root_inst_slot}:CommsHashToPLCS")
 	field(DESC,	"Sends comms hash to PLC")
 #	field(SCAN,	"1 second")
 	field(OMSL,	"closed_loop")
-	field(DOL,	"{root_inst_slot}:iCommsHashToPLC")
+	field(DOL,	"{root_inst_slot}:CommsHashToPLC")
 }}
 """.format(root_inst_slot  = self.root_inst_slot(),
            plcf_commit     = keyword_params.get("COMMIT_ID", "N/A"),
