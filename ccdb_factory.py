@@ -325,6 +325,12 @@ class CCDB_Factory(CC):
         return plc
 
 
+    def addIOC(self, deviceName):
+        ioc = self.addDevice("IOC", deviceName)
+
+        return ioc
+
+
     def addDevice(self, deviceType, deviceName):
         device = self.device(deviceName)
 
