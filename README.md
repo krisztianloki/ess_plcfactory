@@ -35,7 +35,7 @@ For further information, see the files in [doc](doc/).
 
 #### General purpose options
 
-*   **--device=<device_name_as_in_CCDB>**
+*   **--device**`=<device_name_as_in_CCDB>`
     *   \[**REQUIRED**\]
     *   The root device of the _controls_ hierarchy in CCDB
     *   `--device=VacS-ACCV:Vac-PLC-01001`
@@ -43,22 +43,22 @@ For further information, see the files in [doc](doc/).
     *   \[**REQUIRED** _if not using any plc options_\]
     *   The list of templates to process
     *   `--template EPICS-DB TIA-MAP MY-SPECIAL-TEMPLATE`
-*   **--zip**=<created_zip_file>
+*   **--zip**`[=<created_zip_file>]`
     *   \[OPTIONAL\]
     *   Create a zip file containing the generated files. The default file name is derived from _device_
     *   `--zip`
     *   `--zip=foobar.zip`
-*   **--epi-version=<version>**
+*   **--epi-version**`=<version>`
     *   \[OPTIONAL\]
     *   Used to select a version of EPI repositories other than `master`. Please note: it overrides any `EPI VERSION` property specified in CCDB
     *   `--epi-version=v4.0.1`
-*   **--output=<directory>**
+*   **--output**`=<directory>`
     *   \[OPTIONAL\]
     *   Used to control the location of the generated files. The default is `output/<devicename>` in the current directory
     *   `--output=my_output`   will save everything to `my_output`
     *   `--output=+my_device`  will save everything to `output/my_device`
     *   `--output=my_output+`  will save everything to `my_output/<devicename>`
-*   **--ioc**[=<version>]
+*   **--ioc**`[=<version>]`
     *   \[OPTIONAL\]
     *   Used to generate an IOC. If `version` is specified it will be used to create a tag if the IOC has an associated git repository
 
@@ -76,13 +76,13 @@ For further information, see the files in [doc](doc/).
 *   **--ccdb-devel**
     *   \[OPTIONAL\]
     *   Use the development test version of the CCDB database at https://icsvd-app01.esss.lu.se:8443/ccdb-test
-*   **--ccdb=<directory_of_ccdb_dump | path_to_.ccdb.zip | URL to CCDB server>**
+*   **--ccdb**`=<directory_of_ccdb_dump | path_to_.ccdb.zip | URL to CCDB server>`
     *   \[OPTIONAL\]
     *   Use the specified CCDB-dump of _device_ instead of connecting to the CCDB database OR use a custom CCDB server
     *   `--ccdb=VacS-ACCV_Vac-PLC-01001.ccdb.zip`
     *   `--ccdb=modules/m-epics-vacs-accv_vac-plc-01001/misc/ccdb`
     *   `--ccdb=https://my-shiny-ccdb.esss.lu.se`
-*   **--tag <tag_name>**
+*   **--tag**`=<tag_name>`
     *   \[OPTIONAL\]
     *   Used to select the correct artifacet/external link if more than one is found
     *   `--tag mps` will match
@@ -92,12 +92,12 @@ For further information, see the files in [doc](doc/).
 
 #### Options related to EPICS-PLC integration
 
-*   **--plc-siemens**=<tia_version>
+*   **--plc-siemens**`=<tia_version>`
     *   \[OPTIONAL\]
     *   Generate the EPICS db, the communication and the data (de)serialization PLC code for the specified TIA version. The default version is _TIA Portal v15.1_
     *   `--plc-siemens`
     *   `--plc-siemens=13`
-*   **--plc-interface**=<tia_version>
+*   **--plc-interface**`=<tia_version>`
     *   same as **--plc-siemens**
 *   **--plc-beckhoff**
     *   \[OPTIONAL\]
@@ -131,19 +131,19 @@ For further information, see the files in [doc](doc/).
     *   \[OPTIONAL\]
     *   Do not allow command or parameter blocks in the PLC. Modbus will still be enabled to exchange the hash and heartbeat.
     *   `--plc-readonly`
-*   **--eee**[=<module_name>]
+*   **--eee**`[=<module_name>]`
     *   \[OPTIONAL\] \[DEPRECATED\]
     *   Generate a proper EEE module. If not specified, the module name is taken from the _EPICSModule_ property of _device_ with a fallback to being derived from _device_ and of course prefixed with m-epics. The name of the snippet follows a similar algorithm; taken from the _EPICSSnippet_ property and falls back to being derived from the module name. Implicitly adds _EPICS-DB_, _AUTOSAVE-ST-CMD_, and _AUTOSAVE_ to the list of templates (which means you don't have to add any templates explicitly)
     *   `--eee`
     *   `--eee=my-module`
     *   `--eee=m-epics-my-module`
-*   **--e3**[=<module_name>]
+*   **--e3**`[=<module_name>]`
     *   \[OPTIONAL\]
     *   Generate a proper E3 module. If not specified, the module name is taken from the _EPICSModule_ property of _device_ with a fallback to being derived from _device_ and of course prefixed with e3. The name of the snippet follows a similar algorithm; taken from the _EPICSSnippet_ property and falls back to being derived from the module name. Implicitly adds _EPICS-DB_, _AUTOSAVE-ST-CMD_, and _AUTOSAVE_ to the list of templates (which means you don't have to add any templates explicitly)
     *   `--e3`
     *   `--e3=my-module`
     *   `--e3=e3-my-module`
-*   **--root=<prefix>**
+*   **--root**`=<prefix>`
     *   \[OPTIONAL\]
     *   Change the root prefix in the generated EPICS db from _device_ to the specified string.
     *   `--root=my-root`
@@ -151,7 +151,7 @@ For further information, see the files in [doc](doc/).
 
 ## IOC generation
 
-PLCFactory can generate a PLC-IOC if the `--ioc` option is specified. The IOC is generated in the `ioc` folder (of the output folder). The name of the IOC is taken from the ESS name of the device (of type `IOC`) that **directly** controls the PLC. If the IOC device has an External Link with the name **`IOC_REPOSITORY`** that points to a git repository then that repository will be used as an IOC repository. If a `version` is specified (with `--ioc version`) then a tag will also be created and a merge request will be opened (if you have a browser installed and it can be run). The workflow is the following:
+PLCFactory can generate a PLC-IOC if the `--ioc` option is specified. The IOC is generated in the `ioc` folder (of the output folder). The name of the IOC is taken from the ESS name of the device (of type `IOC`) that **directly** controls the PLC. If the IOC device has an External Link with the name **`IOC_REPOSITORY`** that points to a git repository then that repository will be used as an IOC repository. If a `version` is specified (with `--ioc <version>`) then a tag will also be created and a merge request will be opened (if you have a browser installed and it can be run). The workflow is the following:
 
 *   The git repository is cloned / if it is already cloned then the master branch will be updated and checked out
 *   If the repository is empty then it will be initialized
@@ -169,17 +169,17 @@ If no IOC repository is specified the IOC will still be created but without any 
 
 *   `.gitignore`
 *   `.plcfactory_ignore`
-*   'README.md`
+*   `README.md`
 *   `env.sh`
 *   `st.cmd`
 *   `db`
-    *    `plc.db`
-    *    `plc-test.db`
+    *    `<plc>.db`
+    *    `<plc>-test.db`
 *   `iocsh`
-    *    `plc.iocsh`
-    *    `plc-test.iocsh`
+    *    `<plc>.iocsh`
+    *    `<plc>-test.iocsh`
 *   `misc`
-    *    `plc.archive`
+    *    `<plc>.archive`
     *    `.scl` files
     *    CCDB snapshot
 

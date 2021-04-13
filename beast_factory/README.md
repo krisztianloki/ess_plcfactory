@@ -49,7 +49,7 @@ Generates alarm service configuration xml from alarm definition files that are a
 
 Exactly one of them is required and allowed
 
-*   **--ioc <ioc_name_as_in_CCDB>**
+*   **--ioc**`=<ioc_name_as_in_CCDB>`
     *   \[**REQUIRED**\]
     *   The IOC for which alarm configuration should be generated. If specified more than once (`--config` becomes mandatory) a single configuration will be generated merging the alarm trees (and alarms) of the IOCs
     *   `--ioc LEBT-010:Vac-IOC-DAQ001`
@@ -60,7 +60,7 @@ Exactly one of them is required and allowed
 *   **--from-xml**
     *   \[**REQUIRED**\]
     *   Creates .alarm-tree and .alarms file from alarm configuration xml.
-*   **--alarm-tree <alarm_tree_file>**
+*   **--alarm-tree**`=<alarm_tree_file>`
     *   \[**REQUIRED**\]
     *   The filename of the .alarm-tree file
     *   `--alarm-tree tree.alarm-tree`
@@ -81,13 +81,13 @@ Consulted when `--ioc` is specified
 *   **--ccdb-devel**
     *   \[OPTIONAL\]
     *   Use the development test version of the CCDB database at https://icsvd-app01.esss.lu.se:8443/ccdb-test
-*   **--ccdb=<directory_of_ccdb_dump | path_to_.ccdb.zip | URL to CCDB server>**
+*   **--ccdb**`=<directory_of_ccdb_dump | path_to_.ccdb.zip | URL to CCDB server>`
     *   \[OPTIONAL\]
     *   Use the specified CCDB-dump of _device_ instead of connecting to the CCDB database OR use a custom CCDB server
     *   `--ccdb=VacS-ACCV_Vac-PLC-01001.ccdb.zip`
     *   `--ccdb=modules/m-epics-vacs-accv_vac-plc-01001/misc/ccdb`
     *   `--ccdb=https://my-shiny-ccdb.esss.lu.se`
-*   **--tag <tag_name>**
+*   **--tag**`=<tag_name>`
     *   \[OPTIONAL\]
     *   Used to select the correct link if more than one External Link was found
     *   `--tag mps` will match
@@ -95,7 +95,7 @@ Consulted when `--ioc` is specified
 
 #### General purpose options
 
-*   **--config <config_entry_name>**
+*   **--config**`=<config_entry_name>`
     *   \[OPTIONAL\]
     *   Use this name instead of the one specified in the alarm tree. **REQUIRED** if `--ioc` is specified more than once
     *   `--config mytest`
