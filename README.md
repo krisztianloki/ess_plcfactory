@@ -43,6 +43,27 @@ For further information, see the files in [doc](doc/).
     *   \[**REQUIRED** _if not using any plc options_\]
     *   The list of templates to process
     *   `--template EPICS-DB TIA-MAP MY-SPECIAL-TEMPLATE`
+*   **--zip**=<created_zip_file>
+    *   \[OPTIONAL\]
+    *   Create a zip file containing the generated files. The default file name is derived from _device_
+    *   `--zip`
+    *   `--zip=foobar.zip`
+*   **--epi-version=<version>**
+    *   \[OPTIONAL\]
+    *   Used to select a version of EPI repositories other than `master`. Please note: it overrides any `EPI VERSION` property specified in CCDB
+    *   `--epi-version=v4.0.1`
+*   **--output=<directory>**
+    *   \[OPTIONAL\]
+    *   Used to control the location of the generated files. The default is `output/<devicename>` in the current directory
+    *   `--output=my_output`   will save everything to `my_output`
+    *   `--output=+my_device`  will save everything to `output/my_device`
+    *   `--output=my_output+`  will save everything to `my_output/<devicename>`
+*   **--ioc**[=<version>]
+    *   \[OPTIONAL\]
+    *   Used to generate an IOC. If `version` is specified it will be used to create a tag if the IOC has an associated git repository
+
+#### CCDB options
+
 *   **--ccdb-production**
     *   \[OPTIONAL\], \[DEFAULT\]
     *   Use the production version of the CCDB database at https://ccdb.esss.lu.se. This is the default.
@@ -61,48 +82,13 @@ For further information, see the files in [doc](doc/).
     *   `--ccdb=VacS-ACCV_Vac-PLC-01001.ccdb.zip`
     *   `--ccdb=modules/m-epics-vacs-accv_vac-plc-01001/misc/ccdb`
     *   `--ccdb=https://my-shiny-ccdb.esss.lu.se`
-*   **--zip**=<created_zip_file>
+*   **--tag <tag_name>**
     *   \[OPTIONAL\]
-    *   Create a zip file containing the generated files. The default file name is derived from _device_
-    *   `--zip`
-    *   `--zip=foobar.zip`
-*   **--tag=<tag_name>**
-    *   \[OPTIONAL\]
-    *   Used to select the correct template if more than one template was found
-    *   `--tag=mps` will match
+    *   Used to select the correct artifacet/external link if more than one is found
+    *   `--tag mps` will match
         *    template filenames like `*TEMPLATE__mps_<TEMPLATE-NAME>.txt`
         *    Interface Definition filenames like `*__mps.def`
         *    Interface Definition URLs with name `EPI__mps`
-*   **--epi-version=<version>**
-    *   \[OPTIONAL\]
-    *   Used to select a version of EPI repositories other than `master`. Please note: it overrides any `EPI VERSION` property specified in CCDB
-    *   `--epi-version=v4.0.1`
-*   **--output=<directory>**
-    *   \[OPTIONAL\]
-    *   Used to control the location of the generated files. The default is `output/<devicename>` in the current directory
-    *   `--output=my_output`   will save everything to `my_output`
-    *   `--output=+my_device`  will save everything to `output/my_device`
-    *   `--output=my_output+`  will save everything to `my_output/<devicename>`
-
-## EPICS-PLC integration
-
-PLC Factory is capable of integrating (and generating code for) the following PLC types:
-
-*   **Siemens SIMATIC S7-1200 / S7-1500** (selected with the `--plc-siemens` option)
-
-    *   _TIA Portal v13_
-    *   _TIA Portal v14_
-    *   _TIA Portal v15_
-    *   _TIA Portal v15.1_
-
-*   **Beckhoff** (selected with the `--plc-beckhoff` option)
-
-    *   _TwinCAT 3_
-
-### Integrating Safety/Gateway PLCs
-
-Integrating a safety PLC is usually done using a gateway PLC that communicates with the safety PLC in a secure manner. The EPICS integration is done for this gateway PLC. Since the gateway PLC has a dedicated datablock that contains all the variables that are to be exported to EPICS it is possible to greatly simplify the integration. Please set the **`PLC-EPICS-COMMS: GatewayDatablock`** property of the _gateway_ PLC to the name of this dedicated datablock.
-
 
 #### Options related to EPICS-PLC integration
 
@@ -145,14 +131,14 @@ Integrating a safety PLC is usually done using a gateway PLC that communicates w
     *   \[OPTIONAL\]
     *   Do not allow command or parameter blocks in the PLC. Modbus will still be enabled to exchange the hash and heartbeat.
     *   `--plc-readonly`
-*   **--eee**=<module_name>
-    *   \[OPTIONAL\]
+*   **--eee**[=<module_name>]
+    *   \[OPTIONAL\] \[DEPRECATED\]
     *   Generate a proper EEE module. If not specified, the module name is taken from the _EPICSModule_ property of _device_ with a fallback to being derived from _device_ and of course prefixed with m-epics. The name of the snippet follows a similar algorithm; taken from the _EPICSSnippet_ property and falls back to being derived from the module name. Implicitly adds _EPICS-DB_, _AUTOSAVE-ST-CMD_, and _AUTOSAVE_ to the list of templates (which means you don't have to add any templates explicitly)
     *   `--eee`
     *   `--eee=my-module`
     *   `--eee=m-epics-my-module`
-*   **--e3**=<module_name>
-    *   \[OPTIONAL\] \[EXPERIMENTAL\]
+*   **--e3**[=<module_name>]
+    *   \[OPTIONAL\]
     *   Generate a proper E3 module. If not specified, the module name is taken from the _EPICSModule_ property of _device_ with a fallback to being derived from _device_ and of course prefixed with e3. The name of the snippet follows a similar algorithm; taken from the _EPICSSnippet_ property and falls back to being derived from the module name. Implicitly adds _EPICS-DB_, _AUTOSAVE-ST-CMD_, and _AUTOSAVE_ to the list of templates (which means you don't have to add any templates explicitly)
     *   `--e3`
     *   `--e3=my-module`
@@ -163,7 +149,74 @@ Integrating a safety PLC is usually done using a gateway PLC that communicates w
     *   `--root=my-root`
     *   `--root='$(ROOT_PREFIX)'`
 
-One of `--plc-siemens`, `--plc-beckhoff`, or `--plc-opc` is required for EPICS-PLC integration. These options implicitly adds _EPICS-DB_, _IFA_, and the proper _TIA-MAP_ to the list of templates (which means you don't have to add any templates explicitly).
+## IOC generation
+
+PLCFactory can generate a PLC-IOC if the `--ioc` option is specified. The IOC is generated in the `ioc` folder (of the output folder). The name of the IOC is taken from the ESS name of the device (of type `IOC`) that **directly** controls the PLC. If the IOC device has an External Link with the name **`IOC_REPOSITORY`** that points to a git repository then that repository will be used as an IOC repository. If a `version` is specified (with `--ioc version`) then a tag will also be created and a merge request will be opened (if you have a browser installed and it can be run). The workflow is the following:
+
+*   The git repository is cloned / if it is already cloned then the master branch will be updated and checked out
+*   If the repository is empty then it will be initialized
+*   A new branch will be created based on master: `PLCFactory_on_<timestamp>` or `<version>_by_PLCFactory_on_<timestamp>` if `version` is specified
+*   The generated files will be copied to the correct directories
+*   Changes are committed; you will be presented with a commit message that you can customize
+*   If `version` is specified the branch will be tagged
+*   Changes will be pushed
+*   If `version` is specified a merge request will be opened by running a browser and opening the URL provided by the git server
+*   **You should manually accept the merge request or merge the created branch before you deploy this IOC into production. Not doing so will result in incorrect git history (because PLCFactory creates branches based on master)**
+
+If no IOC repository is specified the IOC will still be created but without any git operations.
+
+#### Directory structure of generated IOC
+
+*   `.gitignore`
+*   `.plcfactory_ignore`
+*   'README.md`
+*   `env.sh`
+*   `st.cmd`
+*   `db`
+    *    `plc.db`
+    *    `plc-test.db`
+*   `iocsh`
+    *    `plc.iocsh`
+    *    `plc-test.iocsh`
+*   `misc`
+    *    `plc.archive`
+    *    `.scl` files
+    *    CCDB snapshot
+
+The `*-test.*` files can be used to run the IOC without an actual PLC; all the (status and parameter) PVs are autosaved. I use it for example to test the OPI and create screenshots of the OPI in specific system configurations for documentation purposes.
+
+#### Customizing the created IOC
+
+It is possible to add new variables to `env.sh` or to require other modules/load other `.iocsh` files in `st.cmd`. PLCFactory tries its best to keep those changes intact. However, if you would like to add extra database files, `.iocsh` files or whatnot you have to "protect" them because PLCFactory **actively** removes files in subdirectories of the created IOC that were not generated during the current run. Protecting custom files is done by listing them in the `.plcfactory_ignore` file.
+
+Suppose you created a .db and an .iocsh; `db/my.db` and `iocsh/my.iocsh`. To protect them put their relative path into `.plcfactory_ignore`:
+```
+db/my.db
+iocsh/my.iocsh
+```
+
+## EPICS-PLC integration
+
+PLC Factory is capable of integrating (and generating code for) the following PLC types:
+
+*   **Siemens SIMATIC S7-1200 / S7-1500** (selected with the `--plc-siemens` option)
+
+    *   _TIA Portal v13_
+    *   _TIA Portal v14_
+    *   _TIA Portal v15_
+    *   _TIA Portal v15.1_
+
+*   **Beckhoff** (selected with the `--plc-beckhoff` option)
+
+    *   _TwinCAT 3_
+
+There is a somewhat experimental support for OPC-UA integration too.
+
+One of `--plc-siemens`, `--plc-beckhoff`, or `--plc-opc` is required for EPICS-PLC integration. These options implicitly adds _EPICS-DB_, _IFA_ to the list of templates (which means you don't have to add any templates explicitly).
+
+### Integrating Safety/Gateway PLCs
+
+Integrating a safety PLC is usually done using a gateway PLC that communicates with the safety PLC in a secure manner. The EPICS integration is done for this gateway PLC. Since the gateway PLC has a dedicated datablock that contains all the variables that are to be exported to EPICS it is possible to greatly simplify the integration. Please set the **`PLC-EPICS-COMMS: GatewayDatablock`** property of the _gateway_ PLC to the name of this dedicated datablock.
 
 The information on what is exchanged between EPICS and a PLC is defined in so-called **Interface Definition** files. For further information, please see [template_factory](template_factory/)
 
