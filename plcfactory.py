@@ -1188,15 +1188,6 @@ Exiting.
     if e3 is True:
         e3 = E3.from_device(device)
 
-    if generate_ioc:
-        if not device.properties()["Hostname"]:
-            raise PLCFactoryException("Hostname of '{}' is not specified, required for IOC generation".format(device.name()))
-
-        global ioc
-        ioc = IOC(device)
-        if ioc.repo():
-            git.GIT.check_minimal_config()
-
     cplcf = getPLCF(device)
 
     hash_base = """EPICSToPLCDataBlockStartOffset: [PLCF#EPICSToPLCDataBlockStartOffset]
@@ -1214,6 +1205,20 @@ PLC-EPICS-COMMS: GatewayDatablock: {}""".format(hash_base, gw_db)
 
     # create a stable list of controlled devices
     devices = device.buildControlsList(include_self = True, verbose = True)
+
+    if generate_ioc:
+        try:
+            hostname = device.properties()["Hostname"]
+        except KeyError:
+            hostname = None
+
+        if not hostname:
+            raise PLCFactoryException("Hostname of '{}' is not specified, required for IOC generation".format(device.name()))
+
+        global ioc
+        ioc = IOC(device)
+        if ioc.repo():
+            git.GIT.check_minimal_config()
 
     hash_per_template = dict()
     for templateID in templateIDs:
