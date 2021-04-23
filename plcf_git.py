@@ -28,6 +28,7 @@ class GIT(object):
     def __init__(self, path):
         super(GIT, self).__init__()
 
+        self._master = "master"
         self._path = path
         self._branch = None
         self._url = None
@@ -58,8 +59,8 @@ class GIT(object):
 
     @staticmethod
     def check_minimal_config(path = "."):
-        user_email = GIT.get_config("user.email")
-        user_name = GIT.get_config("user.name")
+        user_email = GIT.get_config("user.email", path)
+        user_name = GIT.get_config("user.name", path)
         if not user_name:
             # os.getlogin() does not handle su
             # but pwd is not available on Windows
@@ -75,7 +76,7 @@ class GIT(object):
             user_email = """
 E-mail address is not set in git. Please set it with:
 
-git config --global user.email my-email@address.se
+git config --global user.email my-email@ess.eu
 """
 
         if user_name == "vagrant":
@@ -134,11 +135,13 @@ git config --global user.name "My Name"
 
         # Check if there are branches (meaning the repository is not empty) and do a git pull
         if update and git.get_branches():
-            if git.get_current_branch() == "master":
-                git.pull("master")
+            # FIXME: If push of initialization failed, then there is no remote master
+
+            if git.get_current_branch() == git._master:
+                git.pull(git._master)
             else:
                 # Not on master, so fetch master and also fetch remote tags
-                git.fetch("master", "master")
+                git.fetch(git._master, git._master)
                 git.fetch_tags()
 
         # Check if we need to (and actually can) checkout 'branch'
@@ -149,6 +152,20 @@ git config --global user.name "My Name"
             git._branch = git.get_current_branch()
 
         return git
+
+
+    def set_config(self, cfg, value):
+        """
+        Sets local configuration item 'cfg' to 'value'
+        """
+        try:
+            return subprocess.check_output(shlex_split("git config {} {}".format(cfg, value)), stderr = subprocess.STDOUT, cwd = self._path, **spkwargs).strip()
+        except subprocess.CalledProcessError as e:
+            if not e.output:
+                return ""
+            print(e.output)
+            print(e)
+            raise
 
 
     def get_toplevel_dir(self):
@@ -190,8 +207,16 @@ git config --global user.name "My Name"
                 print("Cloning {}...".format(url))
             subprocess.check_output(shlex_split("git clone --quiet {} {} .".format(url, "" if branch is None else "--branch {} --depth 1".format(branch))), cwd = self._path, stderr = subprocess.STDOUT, **spkwargs)
             self.__set_url(url)
-            self._branch = "master"
+            self._branch = self._master
             if initialize_if_empty and not self.get_branches():
+                # Try to set credential helper to cache (if not set) so users don't have to specify username/password twice
+                try:
+                    helper = self.get_config("credential.helper", self._path)
+                    if not helper:
+                        self.set_config("credential.helper", "cache")
+                except:
+                    # Not being able to set a credential helper is not fatal
+                    pass
                 # Create a .gitignore file on 'master' so we can create a development branch
                 if verbose:
                     print("Initializing empty repository...")
