@@ -35,6 +35,8 @@ class EPICS_BASE(PRINTER):
     EPICSTOPLC_READ_HASH  = 3
     # Length: 1 word
     EPICSTOPLC_UPLOADSTAT = 5
+    # Length: 1 word
+    EPICSTOPLC_READ_PAYLOAD_SIZE = 6
 
     # Length: 2 words
     PLCTOEPICS_HASH       = 0 * 2
@@ -757,6 +759,13 @@ record(bi, "{root_inst_slot}:AliveR")
 	field(ZNAM,	"Not responding")
 	field(ZSV,      "MAJOR")
 }}
+record(bi, "{root_inst_slot}:PayloadSizeCorrectR")
+{{
+	field(DESC,	"Shows if the payload size is correct")
+	field(ONAM,	"Correct")
+	field(ZNAM,	"Incorrect")
+	field(ZSV,      "MAJOR")
+}}
 record(calcout, "{root_inst_slot}:A_CheckHash")
 {{
 	field(INPA,	"{root_inst_slot}:CommsHashToPLC")
@@ -806,6 +815,22 @@ record(mbbi, "{root_inst_slot}:UploadStat-RB")
 	field(DISS,	"INVALID")
 	field(DISV,	"0")
 	field(SDIS,	"{root_inst_slot}:PLCHashCorrectR")
+}}
+record(longin, "{root_inst_slot}:PayloadSizeR")
+{{
+	field(DESC,	"The configuread payload size")
+	field(DISP,	"1")
+	field(PINI,	"YES")
+	field(VAL,	"${{PAYLOAD_SIZE=-1}}")
+}}
+record(calcout, "{root_inst_slot}:A_CheckPayloadSize")
+{{
+	field(INPA,	"{root_inst_slot}:PayloadSizeR")
+	field(INPB,	"{root_inst_slot}:PayloadSizeFromPLCR")
+	field(INPC,	"{root_inst_slot}:PayloadSizeFromPLCR.STAT")
+	field(CALC,	"A == B && C == 0")
+	field(OOPT,	"On Change")
+	field(OUT,	"{root_inst_slot}:PayloadSizeCorrectR PP")
 }}
 
 ########################################################
@@ -911,16 +936,25 @@ record(ai, "{root_inst_slot}:HeartbeatFromPLCR")
 	field(DISV,	"0")
 	field(SDIS,	"{root_inst_slot}:PLCHashCorrectR")
 }}
+record(longin, "{root_inst_slot}:PayloadSizeFromPLCR")
+{{
+	field(DESC,	"Payload size from PLC using MB map")
+	field(SCAN,	"I/O Intr")
+	field(DTYP,	"asynInt32")
+	field(INP,	"@asyn($(PLCNAME)read, {epics_to_plc_read_payload_size}, 100)INT32_{endianness}")
+	field(FLNK,	"{root_inst_slot}:A_CheckPayloadSize")
+}}
 
 """.format(root_inst_slot  = self.root_inst_slot(),
            endianness      = self._endianness,
-           epics_to_plc_hash        = self.EPICSToPLCDataBlockStartOffset + self.EPICSTOPLC_HASH,
-           epics_to_plc_heartbeat   = self.EPICSToPLCDataBlockStartOffset + self.EPICSTOPLC_HEARTBEAT,
-           epics_to_plc_read_hash   = self.EPICSToPLCDataBlockStartOffset + self.EPICSTOPLC_READ_HASH,
-           epics_to_plc_upload_stat = self.EPICSToPLCDataBlockStartOffset + self.EPICSTOPLC_UPLOADSTAT,
-           plc_to_epics_hash        = self.PLCToEPICSDataBlockStartOffset + self.PLCTOEPICS_HASH,
-           plc_to_epics_heartbeat   = self.PLCToEPICSDataBlockStartOffset + self.PLCTOEPICS_HEARTBEAT,
-           plc_to_epics_upload_stat = self.PLCToEPICSDataBlockStartOffset + self.PLCTOEPICS_UPLOADSTAT)
+           epics_to_plc_hash              = self.EPICSToPLCDataBlockStartOffset + self.EPICSTOPLC_HASH,
+           epics_to_plc_heartbeat         = self.EPICSToPLCDataBlockStartOffset + self.EPICSTOPLC_HEARTBEAT,
+           epics_to_plc_read_hash         = self.EPICSToPLCDataBlockStartOffset + self.EPICSTOPLC_READ_HASH,
+           epics_to_plc_upload_stat       = self.EPICSToPLCDataBlockStartOffset + self.EPICSTOPLC_UPLOADSTAT,
+           plc_to_epics_hash              = self.PLCToEPICSDataBlockStartOffset + self.PLCTOEPICS_HASH,
+           plc_to_epics_heartbeat         = self.PLCToEPICSDataBlockStartOffset + self.PLCTOEPICS_HEARTBEAT,
+           plc_to_epics_upload_stat       = self.PLCToEPICSDataBlockStartOffset + self.PLCTOEPICS_UPLOADSTAT,
+           epics_to_plc_read_payload_size = self.EPICSToPLCDataBlockStartOffset + self.EPICSTOPLC_READ_PAYLOAD_SIZE)
 
 
     #

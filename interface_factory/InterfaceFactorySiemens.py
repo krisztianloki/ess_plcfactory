@@ -1347,6 +1347,11 @@ def WriteCommsEpicsAndDbs():
 	ExternalSourceFile.append("	\"EPICSToPLC\".\"Word\"[{}] := DINT_TO_WORD(SHR(IN := #PLC_Hash, N := 16));".format(IFA.EPICSTOPLC_READ_HASH))
 	ExternalSourceFile.append("")
 
+	ExternalSourceFile.append("")
+	ExternalSourceFile.append("	// Put the payload size (in bytes) into the Modbus map")
+	ExternalSourceFile.append("	\"EPICSToPLC\".\"Word\"[{}] := {};".format(IFA.EPICSTOPLC_READ_PAYLOAD_SIZE, ifa.TOTALPLCTOEPICSLENGTH * 2))
+	ExternalSourceFile.append("")
+
 	ExternalSourceFile.append("	// Call the comms block to provide PLC<->EPICS comms")
 	ExternalSourceFile.append("	\"_CommsPLC_EPICS_DB\"(Enable         := \"Utilities\".AlwaysOn,")
 	ExternalSourceFile.append("	                     SendTrigger    := \"Utilities\"." + ifa.PLC_PULSE + ",")
