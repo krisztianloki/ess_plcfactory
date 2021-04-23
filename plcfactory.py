@@ -458,19 +458,27 @@ class E3(object):
 
 
 class IOC(object):
-    def __init__(self, device):
+    def __init__(self, device_or_devices):
         super(IOC, self).__init__()
 
-        ioc = self.__get_ioc(device)
-        if ioc != device:
+        if isinstance(device_or_devices, list):
+            device = device_or_devices[0]
+            self._controlled_devices = list(device_or_devices)
+        else:
+            device = device_or_devices
+            self._controlled_devices = None
+
+        self._ioc = self.__get_ioc(device)
+        if self._ioc != device:
             # Create our own E3 module
             self._e3 = E3(device.name())
         else:
             self._e3 = None
 
-        self._name = ioc.name()
-        self._dir = helpers.sanitizeFilename(self._name.lower()).replace('-', '_')
-        self._repo = get_repository(ioc, "IOC_REPOSITORY")
+        self._epics_version = self._ioc.properties()["EPICSVersion"]
+        self._require_version = self._ioc.properties()["E3RequireVersion"]
+        self._dir = helpers.sanitizeFilename(self._ioc.name().lower()).replace('-', '_')
+        self._repo = get_repository(self._ioc, "IOC_REPOSITORY")
         if self._repo:
             self._dir = helpers.url_to_path(self._repo).split('/')[-1]
             if self._dir.endswith('.git'):
@@ -613,11 +621,32 @@ class IOC(object):
         return st_cmd
 
 
+    def __create_meta_yaml(self, out_idir):
+        out_mdir = os.path.join(out_idir, "ioc-meta")
+        helpers.makedirs(out_mdir)
+        meta_yml = os.path.join(out_mdir, "ioc.yml")
+        with open(meta_yml, "wt") as meta:
+            print("""ioc_meta_version: "1.0"
+ioc:
+  name: {iocname}
+  epics_version: {epics_version}
+  require_version: {require_version}
+names:
+  - {iocname}""".format(iocname = self.name(),
+                        epics_version = self._epics_version,
+                        require_version = self._require_version), file = meta)
+
+            names = "\n".join(["  - {}".format(dev.name()) for dev in self._controlled_devices])
+            meta.writelines(names)
+
+        return meta_yml
+
+
     def name(self):
         """
         Returns the IOC name
         """
-        return self._name
+        return self._ioc.name()
 
 
     def directory(self):
@@ -685,6 +714,10 @@ class IOC(object):
         # Create env.sh
         env_sh = self.__create_env_sh(out_idir, version)
         created_files.append(env_sh)
+
+        # Create metadata.yml
+        meta_yml = self.__create_meta_yaml(out_idir)
+        created_files.append(meta_yml)
 
         # Update the repository
         if repo:
@@ -1216,7 +1249,7 @@ PLC-EPICS-COMMS: GatewayDatablock: {}""".format(hash_base, gw_db)
             raise PLCFactoryException("Hostname of '{}' is not specified, required for IOC generation".format(device.name()))
 
         global ioc
-        ioc = IOC(device)
+        ioc = IOC(devices)
         if ioc.repo():
             git.GIT.check_minimal_config()
 
