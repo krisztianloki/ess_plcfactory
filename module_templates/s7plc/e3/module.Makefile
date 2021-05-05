@@ -31,6 +31,14 @@ REQUIRED += modbus s7plc calc
 # These are required for operation
 REQUIRED += autosave recsync
 
+ifneq ($(strip $(AUTOSAVE_DEP_VERSION)),)
+autosave_VERSION=$(AUTOSAVE_DEP_VERSION)
+endif
+
+ifneq ($(strip $(CALC_DEP_VERSION)),)
+calc_VERSION=$(CALC_DEP_VERSION)
+endif
+
 ifneq ($(strip $(MODBUS_DEP_VERSION)),)
 modbus_VERSION=$(MODBUS_DEP_VERSION)
 endif
