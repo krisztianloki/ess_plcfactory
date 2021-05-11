@@ -119,7 +119,7 @@ Adding more than one spare bit:
 
 **`add_analog("<name>", "<plc_type>")`**
 
-#### Analog variable alarm limits
+#### PLC controlled analog variable alarm limits
 
 Only allowed in a **STATUS** block
 
@@ -129,9 +129,11 @@ It is possible to specify limits for **analog status** variables and when the va
 3. Minor high limit: **`add_minor_high_limit("<name>", ["<plc_type>"])`**
 4. Major high limit: **`add_major_high_limit("<name>", ["<plc_type>"])`**
 
-The limits are enforced on the previously specified _analog_ variable (the _limited_ variable). If the `<plc_type>` is omitted it is taken from the _analog_ variable. Any number of limits can be defined. _Major low_ should be less then _minor low_ and _major high_ should be greater than _minor high_.
+The limits are enforced on the **previously specified** _analog_ variable (the _limited_ variable); in other words first you define an analog variable with `add_analog()` then **right after** this variable you define the alarm limits with `add_..._limit()`. If the `<plc_type>` is omitted it is taken from the _analog_ variable. Any number of limits can be defined. _Major low_ should be less then _minor low_ and _major high_ should be greater than _minor high_.
 
 **To be clear**: this creates a PLC variable and an EPICS record (one for every limit) and sets one of the HIHI,HIGH,LOLO,LOW fields of the _limited_ variable whenever the value of the limit record changes.
+
+[Examples](#limit-examples)
 
 ### Time variable
 
