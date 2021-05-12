@@ -302,9 +302,15 @@ The following PVs are automatically generated using the ESS name of the PLC as t
 *   `ModVersionR`
     *  The version of the loaded E3 module
     *  `stringin`
+*   `PLCFBranchR`
+    *  The branch of PLCFactory that was used for the integration
+    *  `stringin`
 *   `PLCFCommitR`
     *  The commit hash of PLCFactory that was used for the integration
     *  `stringin`
+*   `PLCFStatusR`
+    *  The status of the PLCFactory working copy at the time of integration
+    *  `bi`
 *   `ModbusConnectedR`
     *  Shows if the MODBUS channel connected
     *  `bi`

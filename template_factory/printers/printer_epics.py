@@ -129,8 +129,9 @@ class EPICS_BASE(PRINTER):
 # Please, DO NOT EDIT by hand!
 #
 #
-# Branch of PLCFactory: {branch}
+# Branch of PLCFactory: {plcf_branch}
 # Commit id of PLCFactory: {plcf_commit}
+# Status of PLCFactory working copy: {plcf_status_string}
 # Command line:
 #
 # {cmdline}
@@ -149,6 +150,19 @@ record(stringin, "{root_inst_slot}:ModVersionR")
 }}
 
 #
+# This can be used to get the branch of PLCFactory that was used to generate this file
+#
+record(stringin, "{root_inst_slot}:PLCFBranchR")
+{{
+	field(DESC,	"Branch of PLCFactory")
+	field(DISP,	"1")
+#{plcf_branch}
+	field(VAL,	"{plcf_branch_39}")
+	field(PINI,	"YES")
+	info("plcf_branch", "{plcf_branch}")
+}}
+
+#
 # This can be used to get the exact same version of PLCFactory that was used to generate this file
 #
 record(stringin, "{root_inst_slot}:PLCFCommitR")
@@ -159,6 +173,19 @@ record(stringin, "{root_inst_slot}:PLCFCommitR")
 	field(VAL,	"{plcf_commit_39}")
 	field(PINI,	"YES")
 	info("plcf_commit", "{plcf_commit}")
+}}
+
+#
+# This shows if the PLCFactory working copy was clean when this file was generated
+#
+record(bi, "{root_inst_slot}:PLCFStatusR")
+{{
+	field(DESC,	"Status of PLCFactory")
+	field(DISP,	"1")
+	field(ZNAM,	"Dirty")
+	field(ONAM,	"Clean")
+	field(VAL,	"{plcf_status}")
+	field(PINI,	"YES")
 }}
 
 #
@@ -182,7 +209,10 @@ record(longin, "{root_inst_slot}:C2")
 """.format(root_inst_slot  = self.root_inst_slot(),
            plcf_commit     = keyword_params.get("COMMIT_ID", "N/A"),
            plcf_commit_39  = keyword_params.get("COMMIT_ID", "N/A")[:39],
-           branch          = self.plcf("ext.plcfactory_branch()"),
+           plcf_status     = int(keyword_params.get("PLCF_STATUS", 0)),
+           plcf_status_string = "Clean" if keyword_params.get("PLCF_STATUS", False) else "Dirty",
+           plcf_branch     = self.plcf("ext.plcfactory_branch()"),
+           plcf_branch_39  = self.plcf("ext.plcfactory_branch()")[:39],
            cmdline         = self.plcf("ext.plcfactory_cmdline()"))
 
         self._append(epics_db_header, output)
@@ -941,7 +971,7 @@ record(longin, "{root_inst_slot}:PayloadSizeFromPLCR")
 	field(DESC,	"Payload size from PLC using MB map")
 	field(SCAN,	"I/O Intr")
 	field(DTYP,	"asynInt32")
-	field(INP,	"@asyn($(PLCNAME)read, {epics_to_plc_read_payload_size}, 100)INT32_{endianness}")
+	field(INP,	"@asyn($(PLCNAME)read, {epics_to_plc_read_payload_size}, 100)INT16")
 	field(FLNK,	"{root_inst_slot}:A_CheckPayloadSize")
 }}
 
