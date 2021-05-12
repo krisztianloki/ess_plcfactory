@@ -302,9 +302,15 @@ The following PVs are automatically generated using the ESS name of the PLC as t
 *   `ModVersionR`
     *  The version of the loaded E3 module
     *  `stringin`
+*   `PLCFBranchR`
+    *  The branch of PLCFactory that was used for the integration
+    *  `stringin`
 *   `PLCFCommitR`
     *  The commit hash of PLCFactory that was used for the integration
     *  `stringin`
+*   `PLCFStatusR`
+    *  The status of the PLCFactory working copy at the time of integration
+    *  `bi`
 *   `ModbusConnectedR`
     *  Shows if the MODBUS channel connected
     *  `bi`
@@ -329,18 +335,27 @@ The following PVs are automatically generated using the ESS name of the PLC as t
 *   `PLCHashCorrectR`
     *  Shows if the comms hash is correct; the PLC and the IOC has the same version of the data structure
     *  `bi`
+*   `PayloadSizeCorrectR`
+    *  Shows if the payload size is correctly configured
+    *  `bi`
 *   `AliveR`
     *  Shows if the PLC is sending heartbeats; i.e. connected, the Hash is correct and communicating
     *  `bi`
 *   `CommsHashToPLC`
     *  The comms hash **to** the PLC
     *  `ao`
+*   `PayloadSizeR`
+    *  The payload size configured on the IOC side
+    *  `longin`
 *   `HeartbeatToPLCS`
     *  Heartbeat **to** the PLC
     *  `ao`
 *   `CommsHashFromPLCR`
     *  The comms hash **from** the PLC
     *  `ai`
+*   `PayloadSizeFromPLCR`
+    *  The payload size configured on the PLC side
+    *  `longin`
 *   `HeartbeatFromPLCR`
     *  Heartbeat **from** the PLC
     *  `ai`

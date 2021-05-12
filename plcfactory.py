@@ -122,7 +122,7 @@ IFDEF_EXTENSION = ".def"
 hashobj         = None
 ifdefs          = dict()
 printers        = dict()
-ifdef_params    = dict(PLC_TYPE = "SIEMENS")
+ifdef_params    = dict(PLC_TYPE = "SIEMENS", PLCF_STATUS = not tainted)
 plcfs           = dict()
 output_files    = dict()
 previous_files  = None
@@ -2087,7 +2087,7 @@ def main(argv):
     if siemens or args.plc_only_diag or beckhoff:
         from interface_factory import IFA
 
-        output_files.update(IFA.produce(OUTPUT_DIR, output_files["IFA"], TIAVersion = tia_version, nodiag = args.plc_no_diag, onlydiag = args.plc_only_diag, commstest = args.plc_test, verify = args.verify, readonly = args.plc_readonly))
+        output_files.update(IFA.produce(OUTPUT_DIR, output_files["IFA"], TIAVersion = tia_version, nodiag = args.plc_no_diag, onlydiag = args.plc_only_diag, commstest = args.plc_test, verify = args.verify, readonly = args.plc_readonly, commit_id = commit_id))
 
     # create a factory of CCDB
     try:

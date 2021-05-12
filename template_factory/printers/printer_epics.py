@@ -35,6 +35,8 @@ class EPICS_BASE(PRINTER):
     EPICSTOPLC_READ_HASH  = 3
     # Length: 1 word
     EPICSTOPLC_UPLOADSTAT = 5
+    # Length: 1 word
+    EPICSTOPLC_READ_PAYLOAD_SIZE = 6
 
     # Length: 2 words
     PLCTOEPICS_HASH       = 0 * 2
@@ -100,7 +102,7 @@ class EPICS_BASE(PRINTER):
         self._validity_calc_names = dict()
         self._gen_validity_pvs = set()
 
-        self._fo_name    = 'iUploadParamS{foc}-FO'
+        self._fo_name    = 'A_UpldParamS{foc}-FO'
         self._params     = []
         self._last_param = None
         self._uploads    = []
@@ -127,8 +129,9 @@ class EPICS_BASE(PRINTER):
 # Please, DO NOT EDIT by hand!
 #
 #
-# Branch of PLCFactory: {branch}
+# Branch of PLCFactory: {plcf_branch}
 # Commit id of PLCFactory: {plcf_commit}
+# Status of PLCFactory working copy: {plcf_status_string}
 # Command line:
 #
 # {cmdline}
@@ -147,6 +150,19 @@ record(stringin, "{root_inst_slot}:ModVersionR")
 }}
 
 #
+# This can be used to get the branch of PLCFactory that was used to generate this file
+#
+record(stringin, "{root_inst_slot}:PLCFBranchR")
+{{
+	field(DESC,	"Branch of PLCFactory")
+	field(DISP,	"1")
+#{plcf_branch}
+	field(VAL,	"{plcf_branch_39}")
+	field(PINI,	"YES")
+	info("plcf_branch", "{plcf_branch}")
+}}
+
+#
 # This can be used to get the exact same version of PLCFactory that was used to generate this file
 #
 record(stringin, "{root_inst_slot}:PLCFCommitR")
@@ -160,9 +176,22 @@ record(stringin, "{root_inst_slot}:PLCFCommitR")
 }}
 
 #
+# This shows if the PLCFactory working copy was clean when this file was generated
+#
+record(bi, "{root_inst_slot}:PLCFStatusR")
+{{
+	field(DESC,	"Status of PLCFactory")
+	field(DISP,	"1")
+	field(ZNAM,	"Dirty")
+	field(ONAM,	"Clean")
+	field(VAL,	"{plcf_status}")
+	field(PINI,	"YES")
+}}
+
+#
 # These are used in DOL links
 #
-record(bi, "{root_inst_slot}:iOne")
+record(bi, "{root_inst_slot}:C1")
 {{
 	field(DESC,	"Constant 1")
 	field(DISP,	"1")
@@ -170,7 +199,7 @@ record(bi, "{root_inst_slot}:iOne")
 	field(VAL,	"1")
 }}
 
-record(longin, "{root_inst_slot}:iTwo")
+record(longin, "{root_inst_slot}:C2")
 {{
 	field(DESC,	"Constant 2")
 	field(DISP,	"1")
@@ -180,7 +209,10 @@ record(longin, "{root_inst_slot}:iTwo")
 """.format(root_inst_slot  = self.root_inst_slot(),
            plcf_commit     = keyword_params.get("COMMIT_ID", "N/A"),
            plcf_commit_39  = keyword_params.get("COMMIT_ID", "N/A")[:39],
-           branch          = self.plcf("ext.plcfactory_branch()"),
+           plcf_status     = int(keyword_params.get("PLCF_STATUS", 0)),
+           plcf_status_string = "Clean" if keyword_params.get("PLCF_STATUS", False) else "Dirty",
+           plcf_branch     = self.plcf("ext.plcfactory_branch()"),
+           plcf_branch_39  = self.plcf("ext.plcfactory_branch()")[:39],
            cmdline         = self.plcf("ext.plcfactory_cmdline()"))
 
         self._append(epics_db_header, output)
@@ -292,7 +324,7 @@ record(ao, "{ilimiter}")
 	field(OMSL, "closed_loop"){disable_template}
 }}
 """.format(limiter   = var.fqdn_pv_name,
-           ilimiter  = self.create_pv_name("i" + var.pv_name()),
+           ilimiter  = self.create_pv_name("A_" + var.pv_name()),
            limited   = self.create_pv_name(var.limit_pv()),
            field     = var.limit_field(),
            disable_template = self.DEFAULT_INDISABLE_TEMPLATE)
@@ -452,13 +484,13 @@ record(calc, "{vbi}")
             raise TemplatePrinterException("Non ESS conformant device name: '{}'".format(name))
         prop = rematch.group(2)
 
-        vbi = "{}i{}vbi".format(ess_name, prop)
+        vbi = "{}A_{}vbi".format(ess_name, prop)
 
         if len(suffixes) == 0:
             return vbi
 
         pvs = [ vbi ]
-        pvs.extend(map(lambda s: "{}i{}{}".format(ess_name, prop, s), suffixes))
+        pvs.extend(map(lambda s: "{}A_{}{}".format(ess_name, prop, s), suffixes))
 
         return pvs
 
@@ -519,38 +551,38 @@ record(fanout, "{inst_slot}:{upload}")
 
         # Generate parameter uploading status monitoring
         self._append("""
-record(bo, "{root_inst_slot}:iInitUploadStat")
+record(bo, "{root_inst_slot}:A_InitUploadStat")
 {{
 	field(DESC, "Initialize parameter uploading status")
-	field(DOL,  "{root_inst_slot}:iOne")
+	field(DOL,  "{root_inst_slot}:C1")
 	field(OMSL, "closed_loop")
-	field(OUT,  "{root_inst_slot}:iUploadStatToPLCS PP")
+	field(OUT,  "{root_inst_slot}:A_UploadStatToPLCS PP")
 
 }}
 
-record(longout, "{root_inst_slot}:iDoneUploadStat")
+record(longout, "{root_inst_slot}:A_DoneUploadStat")
 {{
 	field(DESC, "Done parameter uploading status")
-	field(DOL,  "{root_inst_slot}:iTwo")
+	field(DOL,  "{root_inst_slot}:C2")
 	field(OMSL, "closed_loop")
-	field(OUT,  "{root_inst_slot}:iUploadStatToPLCS PP")
+	field(OUT,  "{root_inst_slot}:A_UploadStatToPLCS PP")
 }}
 
-record(calcout, "{root_inst_slot}:iAssertUploadStat")
+record(calcout, "{root_inst_slot}:A_AssertUploadStat")
 {{
 	field(DESC, "Assert validity of upload statistics")
 	field(INPA, "{root_inst_slot}:UploadStat-RB CP")
-	field(INPB, "{root_inst_slot}:iInitUploadStat.UDF")
-# PLC says we are uploading but iInitUploadStat was never processed ==> reset upload status in the PLC
+	field(INPB, "{root_inst_slot}:A_InitUploadStat.UDF")
+# PLC says we are uploading but A_InitUploadStat was never processed ==> reset upload status in the PLC
 	field(CALC, "A == 1 && B == 1")
 	field(OOPT, "When Non-zero")
 	field(DOPT, "Use OCAL")
 	field(OCAL, "0")
-	field(OUT,  "{root_inst_slot}:iUploadStatToPLCS PP")
+	field(OUT,  "{root_inst_slot}:A_UploadStatToPLCS PP")
 }}
 record(fanout, "{root_inst_slot}:{upload}")
 {{
-	field(LNK0, "{root_inst_slot}:iInitUploadStat")
+	field(LNK0, "{root_inst_slot}:A_InitUploadStat")
 	field(SHFT, "0")
 """.format(root_inst_slot = self.root_inst_slot(),
            upload         = self.UPLOAD_PARAMS), output)
@@ -559,15 +591,15 @@ record(fanout, "{root_inst_slot}:{upload}")
             if self._last_param[1]:
                 # Very last parameter has custom FLNK
                 self._append("""}}
-record(fanout, "{root_inst_slot}:iCustomFLNK")
+record(fanout, "{root_inst_slot}:A_CustomFLNK")
 {{
 	field(LNK1, "{custom_flnk}")
-	field(FLNK, "{root_inst_slot}:iDoneUploadStat")
+	field(FLNK, "{root_inst_slot}:A_DoneUploadStat")
 }}
 
 record("*", "{last_param}")
 {{
-	field(FLNK, "{root_inst_slot}:iCustomFLNK")
+	field(FLNK, "{root_inst_slot}:A_CustomFLNK")
 }}
 """.format(root_inst_slot = self.root_inst_slot(),
            custom_flnk    = self._last_param[1],
@@ -578,13 +610,13 @@ record("*", "{last_param}")
 
 record("*", "{last_param}")
 {{
-	field(FLNK, "{root_inst_slot}:iDoneUploadStat")
+	field(FLNK, "{root_inst_slot}:A_DoneUploadStat")
 }}""".format(root_inst_slot = self.root_inst_slot(),
              last_param     = self._last_param[0]), output)
         else:
             # No parameters, append LNK1 to root_inst_slot:UploadParametersS
             self._append("""
-	field(LNK1, "{root_inst_slot}:iDoneUploadStat")
+	field(LNK1, "{root_inst_slot}:A_DoneUploadStat")
 }}""".format(root_inst_slot = self.root_inst_slot()), output)
 
 
@@ -649,7 +681,7 @@ class EPICS(EPICS_BASE):
 #########################################################
 ########## EPICS <-> PLC connection management ##########
 #########################################################
-record(asyn, "{root_inst_slot}:iAsyn")
+record(asyn, "{root_inst_slot}:Asyn")
 {{
 	field(DTYP,	"asynRecordDevice")
 	field(PORT,	"$(PLCNAME)")
@@ -657,7 +689,7 @@ record(asyn, "{root_inst_slot}:iAsyn")
 record(bi, "{root_inst_slot}:ModbusConnectedR")
 {{
 	field(DESC,	"Shows if the MODBUS channel connected")
-	field(INP,	"{root_inst_slot}:iAsyn.CNCT CP")
+	field(INP,	"{root_inst_slot}:Asyn.CNCT CP")
 	field(ONAM,	"Connected")
 	field(ZNAM,	"Disconnected")
 	field(ZSV,      "MAJOR")
@@ -678,7 +710,7 @@ record(stringin, "{root_inst_slot}:PLCAddr-RB")
 # We assume S7 and Modbus address are the same (as they should be)
 	field(DESC,	"Address of the PLC")
 }}
-record(scalcout, "{root_inst_slot}:iPLCAddr-RB")
+record(scalcout, "{root_inst_slot}:A_CalcPLCAddr")
 {{
 	field(DESC,	"Strip port number of host:port")
 	field(INAA,	"{root_inst_slot}:S7Addr-RB CP")
@@ -688,45 +720,45 @@ record(scalcout, "{root_inst_slot}:iPLCAddr-RB")
 record(stringout, "{root_inst_slot}:PLCAddrS")
 {{
 	field(DESC,	"Set the address of the PLC")
-	field(FLNK,	"{root_inst_slot}:iSetPLCAddrS")
+	field(FLNK,	"{root_inst_slot}:A_SetPLCAddr-FO")
 }}
-record(fanout, "{root_inst_slot}:iSetPLCAddrS")
+record(fanout, "{root_inst_slot}:A_SetPLCAddr-FO")
 {{
-	field(LNK1,	"{root_inst_slot}:iCalcS7AddrS")
-	field(LNK2,	"{root_inst_slot}:iCalcModbusAddrS")
+	field(LNK1,	"{root_inst_slot}:A_CalcS7AddrS")
+	field(LNK2,	"{root_inst_slot}:A_CalcModbusAddrS")
 }}
-record(scalcout, "{root_inst_slot}:iCalcS7AddrS")
+record(scalcout, "{root_inst_slot}:A_CalcS7AddrS")
 {{
 	field(DESC,	"Construct the S7 address")
 	field(INAA,	"{root_inst_slot}:PLCAddrS")
 	field(CALC,	"AA + ':' + '$(S7_PORT)'")
-	field(OUT,	"{root_inst_slot}:iS7AddrS PP")
+	field(OUT,	"{root_inst_slot}:A_S7AddrS PP")
 }}
-record(scalcout, "{root_inst_slot}:iCalcModbusAddrS")
+record(scalcout, "{root_inst_slot}:A_CalcModbusAddrS")
 {{
 	field(DESC,	"Construct the Modbus address")
 	field(INAA,	"{root_inst_slot}:PLCAddrS")
 	field(CALC,	"AA + ':' + '$(MODBUS_PORT)'")
-	field(OUT,	"{root_inst_slot}:iAsyn.HOSTINFO PP")
+	field(OUT,	"{root_inst_slot}:Asyn.HOSTINFO PP")
 }}
 record(stringin, "{root_inst_slot}:ModbusAddr-RB")
 {{
 	field(DESC,	"Address of the PLC")
-	field(INP,	"{root_inst_slot}:iAsyn.HOSTINFO CP")
+	field(INP,	"{root_inst_slot}:Asyn.HOSTINFO CP")
 }}
 record(stringin, "{root_inst_slot}:S7Addr-RB")
 {{
 	field(DESC,	"Address of the PLC")
-	field(INP,	"{root_inst_slot}:iS7AddrS CP")
+	field(INP,	"{root_inst_slot}:A_S7AddrS CP")
 }}
-record(stringout, "{root_inst_slot}:iS7AddrS")
+record(stringout, "{root_inst_slot}:A_S7AddrS")
 {{
 	field(DESC,	"Set address of the PLC")
 	field(DTYP,	"S7plc addr")
 	field(OUT,	"@$(PLCNAME)")
 	field(DISP,	"1")
 }}
-record(calcout, "{root_inst_slot}:iCalcConn")
+record(calcout, "{root_inst_slot}:A_CalcConn")
 {{
 # Need to explicitly scan because using multiple CPs is not robust
 	field(SCAN,	"1 second")
@@ -757,27 +789,36 @@ record(bi, "{root_inst_slot}:AliveR")
 	field(ZNAM,	"Not responding")
 	field(ZSV,      "MAJOR")
 }}
-record(calcout, "{root_inst_slot}:iCheckHash")
+record(bi, "{root_inst_slot}:PayloadSizeCorrectR")
+{{
+	field(DESC,	"Shows if the payload size is correct")
+	field(ONAM,	"Correct")
+	field(ZNAM,	"Incorrect")
+	field(ZSV,      "MAJOR")
+}}
+record(calcout, "{root_inst_slot}:A_CheckHash")
 {{
 	field(INPA,	"{root_inst_slot}:CommsHashToPLC")
-	field(INPB,	"{root_inst_slot}:iIsMBHash")
-	field(INPC,	"{root_inst_slot}:iS7CommsHash")
-	field(INPD,	"{root_inst_slot}:iMBCommsHash")
-	field(INPE,	"{root_inst_slot}:iS7CommsHash.STAT")
-	field(INPF,	"{root_inst_slot}:iMBCommsHash.STAT")
+	field(INPB,	"{root_inst_slot}:A_HasMBHash")
+	field(INPC,	"{root_inst_slot}:S7CommsHash")
+	field(INPD,	"{root_inst_slot}:MBCommsHash")
+	field(INPE,	"{root_inst_slot}:S7CommsHash.STAT")
+	field(INPF,	"{root_inst_slot}:MBCommsHash.STAT")
 # if we have the HASH in the modbus map it should be the same as the one from the S7 stream
 	field(CALC,	"A == C && (B ? C == D : 1) && E == 0 && F == 0")
 	field(OOPT,	"On Change")
 	field(OUT,	"{root_inst_slot}:PLCHashCorrectR PP")
 }}
-record(bo, "{root_inst_slot}:iGotHeartbeat")
+record(bo, "{root_inst_slot}:A_GotHeartbeat")
 {{
-	field(DOL,	"{root_inst_slot}:iOne")
+	field(DESC,	"Update AliveR")
+	field(DOL,	"{root_inst_slot}:C1")
 	field(OMSL,	"closed_loop")
-	field(OUT,	"{root_inst_slot}:iKickAlive PP")
+	field(OUT,	"{root_inst_slot}:A_KickAlive PP")
 }}
-record(bo, "{root_inst_slot}:iKickAlive")
+record(bo, "{root_inst_slot}:A_KickAlive")
 {{
+	field(DESC,	"Set AliveR to true for 2 seconds")
 	field(HIGH,	"5")
 	field(OUT,	"{root_inst_slot}:AliveR PP")
 }}
@@ -805,6 +846,22 @@ record(mbbi, "{root_inst_slot}:UploadStat-RB")
 	field(DISV,	"0")
 	field(SDIS,	"{root_inst_slot}:PLCHashCorrectR")
 }}
+record(longin, "{root_inst_slot}:PayloadSizeR")
+{{
+	field(DESC,	"The configuread payload size")
+	field(DISP,	"1")
+	field(PINI,	"YES")
+	field(VAL,	"${{PAYLOAD_SIZE=-1}}")
+}}
+record(calcout, "{root_inst_slot}:A_CheckPayloadSize")
+{{
+	field(INPA,	"{root_inst_slot}:PayloadSizeR")
+	field(INPB,	"{root_inst_slot}:PayloadSizeFromPLCR")
+	field(INPC,	"{root_inst_slot}:PayloadSizeFromPLCR.STAT")
+	field(CALC,	"A == B && C == 0")
+	field(OOPT,	"On Change")
+	field(OUT,	"{root_inst_slot}:PayloadSizeCorrectR PP")
+}}
 
 ########################################################
 ########## EPICS -> PLC comms management data ##########
@@ -829,10 +886,10 @@ record(ao, "{root_inst_slot}:CommsHashToPLCS")
 	field(DISV,	"0")
 	field(SDIS,	"{root_inst_slot}:ModbusConnectedR")
 }}
-record(calc, "{root_inst_slot}:iHeartbeatToPLC")
+record(calc, "{root_inst_slot}:A_CalcHeartbeatToPLC")
 {{
 	field(SCAN,	"1 second")
-	field(INPA,	"{root_inst_slot}:iHeartbeatToPLC.VAL")
+	field(INPA,	"{root_inst_slot}:A_CalcHeartbeatToPLC.VAL")
 	field(CALC,	"(A >= 32000)? 0 : A + 1")
 	field(FLNK,	"{root_inst_slot}:HeartbeatToPLCS")
 	field(DISV,	"0")
@@ -844,14 +901,14 @@ record(ao, "{root_inst_slot}:HeartbeatToPLCS")
 	field(DTYP,	"asynInt32")
 	field(OUT,	"@asyn($(PLCNAME)write, {epics_to_plc_heartbeat}, 100)")
 	field(OMSL,	"closed_loop")
-	field(DOL,	"{root_inst_slot}:iHeartbeatToPLC.VAL")
+	field(DOL,	"{root_inst_slot}:A_CalcHeartbeatToPLC.VAL")
 	field(OIF,	"Full")
 	field(DRVL,	"0")
 	field(DRVH,	"32000")
 	field(DISV,	"0")
 	field(SDIS,	"{root_inst_slot}:ModbusConnectedR")
 }}
-record(longout, "{root_inst_slot}:iUploadStatToPLCS")
+record(longout, "{root_inst_slot}:A_UploadStatToPLCS")
 {{
 	field(DESC,	"Parameter upload status to the PLC")
 	field(DTYP,	"asynInt32")
@@ -867,7 +924,7 @@ record(longout, "{root_inst_slot}:iUploadStatToPLCS")
 #  does not change the HASH itself so the new SCL is not necessarily downloaded to the PLC
 # AND making sure that iS7CommsHash == iMBCommsHash is a good check to make sure that the size of
 #  the S7 stream is correctly set
-record(ai, "{root_inst_slot}:iS7CommsHash")
+record(ai, "{root_inst_slot}:S7CommsHash")
 {{
 	field(DESC,	"Comms hash from PLC using S7 stream")
 	field(SCAN,	"I/O Intr")
@@ -875,17 +932,17 @@ record(ai, "{root_inst_slot}:iS7CommsHash")
 	field(INP,	"@$(PLCNAME)/{plc_to_epics_hash} T=INT32")
 	field(FLNK,	"{root_inst_slot}:CommsHashFromPLCR")
 }}
-record(ai, "{root_inst_slot}:iMBCommsHash")
+record(ai, "{root_inst_slot}:MBCommsHash")
 {{
 	field(DESC,	"Comms hash from PLC using MB map")
 	field(SCAN,	"I/O Intr")
 	field(DTYP,	"asynInt32")
 	field(INP,	"@asyn($(PLCNAME)read, {epics_to_plc_read_hash}, 100)INT32_{endianness}")
-	field(FLNK,	"{root_inst_slot}:iIsMBHash")
+	field(FLNK,	"{root_inst_slot}:A_HasMBHash")
 }}
-record(calcout, "{root_inst_slot}:iIsMBHash")
+record(calcout, "{root_inst_slot}:A_HasMBHash")
 {{
-	field(INPA,	"{root_inst_slot}:iMBCommsHash")
+	field(INPA,	"{root_inst_slot}:MBCommsHash")
 	field(CALC,	"A != 0")
 # Make sure to process it even if it is being processed right now
 	field(OUT,	"{root_inst_slot}:CommsHashFromPLCR.PROC CA")
@@ -893,10 +950,10 @@ record(calcout, "{root_inst_slot}:iIsMBHash")
 record(sel, "{root_inst_slot}:CommsHashFromPLCR")
 {{
 	field(DESC,	"Comms hash from PLC")
-	field(NVL,	"{root_inst_slot}:iIsMBHash")
-	field(INPA,	"{root_inst_slot}:iS7CommsHash MSS")
-	field(INPB,	"{root_inst_slot}:iMBCommsHash MSS")
-	field(FLNK,	"{root_inst_slot}:iCheckHash")
+	field(NVL,	"{root_inst_slot}:A_HasMBHash")
+	field(INPA,	"{root_inst_slot}:S7CommsHash MSS")
+	field(INPB,	"{root_inst_slot}:MBCommsHash MSS")
+	field(FLNK,	"{root_inst_slot}:A_CheckHash")
 }}
 record(ai, "{root_inst_slot}:HeartbeatFromPLCR")
 {{
@@ -904,21 +961,30 @@ record(ai, "{root_inst_slot}:HeartbeatFromPLCR")
 	field(SCAN,	"I/O Intr")
 	field(DTYP,	"S7plc")
 	field(INP,	"@$(PLCNAME)/{plc_to_epics_heartbeat} T=INT16")
-	field(FLNK,	"{root_inst_slot}:iGotHeartbeat")
+	field(FLNK,	"{root_inst_slot}:A_GotHeartbeat")
 	field(DISS,	"INVALID")
 	field(DISV,	"0")
 	field(SDIS,	"{root_inst_slot}:PLCHashCorrectR")
 }}
+record(longin, "{root_inst_slot}:PayloadSizeFromPLCR")
+{{
+	field(DESC,	"Payload size from PLC using MB map")
+	field(SCAN,	"I/O Intr")
+	field(DTYP,	"asynInt32")
+	field(INP,	"@asyn($(PLCNAME)read, {epics_to_plc_read_payload_size}, 100)INT16")
+	field(FLNK,	"{root_inst_slot}:A_CheckPayloadSize")
+}}
 
 """.format(root_inst_slot  = self.root_inst_slot(),
            endianness      = self._endianness,
-           epics_to_plc_hash        = self.EPICSToPLCDataBlockStartOffset + self.EPICSTOPLC_HASH,
-           epics_to_plc_heartbeat   = self.EPICSToPLCDataBlockStartOffset + self.EPICSTOPLC_HEARTBEAT,
-           epics_to_plc_read_hash   = self.EPICSToPLCDataBlockStartOffset + self.EPICSTOPLC_READ_HASH,
-           epics_to_plc_upload_stat = self.EPICSToPLCDataBlockStartOffset + self.EPICSTOPLC_UPLOADSTAT,
-           plc_to_epics_hash        = self.PLCToEPICSDataBlockStartOffset + self.PLCTOEPICS_HASH,
-           plc_to_epics_heartbeat   = self.PLCToEPICSDataBlockStartOffset + self.PLCTOEPICS_HEARTBEAT,
-           plc_to_epics_upload_stat = self.PLCToEPICSDataBlockStartOffset + self.PLCTOEPICS_UPLOADSTAT)
+           epics_to_plc_hash              = self.EPICSToPLCDataBlockStartOffset + self.EPICSTOPLC_HASH,
+           epics_to_plc_heartbeat         = self.EPICSToPLCDataBlockStartOffset + self.EPICSTOPLC_HEARTBEAT,
+           epics_to_plc_read_hash         = self.EPICSToPLCDataBlockStartOffset + self.EPICSTOPLC_READ_HASH,
+           epics_to_plc_upload_stat       = self.EPICSToPLCDataBlockStartOffset + self.EPICSTOPLC_UPLOADSTAT,
+           plc_to_epics_hash              = self.PLCToEPICSDataBlockStartOffset + self.PLCTOEPICS_HASH,
+           plc_to_epics_heartbeat         = self.PLCToEPICSDataBlockStartOffset + self.PLCTOEPICS_HEARTBEAT,
+           plc_to_epics_upload_stat       = self.PLCToEPICSDataBlockStartOffset + self.PLCTOEPICS_UPLOADSTAT,
+           epics_to_plc_read_payload_size = self.EPICSToPLCDataBlockStartOffset + self.EPICSTOPLC_READ_PAYLOAD_SIZE)
 
 
     #
@@ -1035,7 +1101,7 @@ record(bi, "{root_inst_slot}:S7ConnectedR")
 	field(VAL,	"1")
 	field(PINI,	"YES")
 }}
-record(calcout, "{root_inst_slot}:iCalcConn")
+record(calcout, "{root_inst_slot}:A_CalcConn")
 {{
 # Need to explicitly scan because using multiple CPs is not robust
 	field(SCAN,	"1 second")
@@ -1051,7 +1117,7 @@ record(bi, "{root_inst_slot}:ConnectedR")
 	field(ZNAM,	"Disconnected")
 	field(ZSV,      "MAJOR")
 }}
-record(event, "{root_inst_slot}:iEvent")
+record(event, "{root_inst_slot}:A_Event")
 {{
 	field(DESC,	"Generate S7plc event")
 	field(SCAN,	".2 second")
@@ -1074,7 +1140,7 @@ record(bi, "{root_inst_slot}:AliveR")
 	field(ZNAM,	"Not responding")
 	field(ZSV,      "MAJOR")
 }}
-record(calcout, "{root_inst_slot}:iCheckHash")
+record(calcout, "{root_inst_slot}:A_CheckHash")
 {{
 	field(INPA,	"{root_inst_slot}:CommsHashToPLC")
 	field(INPB,	"{root_inst_slot}:CommsHashFromPLCR")
@@ -1083,15 +1149,17 @@ record(calcout, "{root_inst_slot}:iCheckHash")
 	field(OOPT,	"On Change")
 	field(OUT,	"{root_inst_slot}:PLCHashCorrectR PP")
 }}
-record(bo, "{root_inst_slot}:iGotHeartbeat")
+record(bo, "{root_inst_slot}:A_GotHeartbeat")
 {{
-	field(DOL,	"{root_inst_slot}:iOne")
+	field(DESC,	"Update AliveR")
+	field(DOL,	"{root_inst_slot}:C1")
 	field(OMSL,	"closed_loop")
-	field(OUT,	"{root_inst_slot}:iKickAlive PP")
+	field(OUT,	"{root_inst_slot}:A_KickAlive PP")
 }}
-record(bo, "{root_inst_slot}:iKickAlive")
+record(bo, "{root_inst_slot}:A_KickAlive")
 {{
-	field(HIGH,	"5")
+	field(DESC,	"Set AliveR to true for 2 seconds")
+	field(HIGH,	"2")
 	field(OUT,	"{root_inst_slot}:AliveR PP")
 }}
 record(longin, "{root_inst_slot}:UploadStat-RB")
@@ -1122,10 +1190,10 @@ record(ao, "{root_inst_slot}:CommsHashToPLCS")
 	field(DISV,	"0")
 	field(SDIS,	"{root_inst_slot}:ConnectedR")
 }}
-record(calc, "{root_inst_slot}:iHeartbeatToPLC")
+record(calc, "{root_inst_slot}:A_CalcHeartbeatToPLC")
 {{
 	field(SCAN,	"1 second")
-	field(INPA,	"{root_inst_slot}:iHeartbeatToPLC.VAL")
+	field(INPA,	"{root_inst_slot}:A_CalcHeartbeatToPLC.VAL")
 	field(CALC,	"(A >= 32000)? 0 : A + 1")
 	field(FLNK,	"{root_inst_slot}:HeartbeatToPLCS")
 	field(DISV,	"0")
@@ -1135,12 +1203,12 @@ record(ao, "{root_inst_slot}:HeartbeatToPLCS")
 {{
 	field(DESC,	"Sends heartbeat to PLC")
 	field(OMSL,	"closed_loop")
-	field(DOL,	"{root_inst_slot}:iHeartbeatToPLC.VAL")
+	field(DOL,	"{root_inst_slot}:A_CalcHeartbeatToPLC.VAL")
 	field(OIF,	"Full")
 	field(DRVL,	"0")
 	field(DRVH,	"32000")
 }}
-record(longout, "{root_inst_slot}:iUploadStatToPLCS")
+record(longout, "{root_inst_slot}:A_UploadStatToPLCS")
 {{
 	field(DESC,	"Parameter upload status to the PLC")
 	field(OUT,	"{root_inst_slot}:UploadStat-RB PP")
@@ -1157,13 +1225,13 @@ record(ai, "{root_inst_slot}:CommsHashFromPLCR")
 	field(SCAN,	"1 second")
 	field(PINI,	"YES")
 	field(VAL,	"#HASH")
-	field(FLNK,	"{root_inst_slot}:iCheckHash")
+	field(FLNK,	"{root_inst_slot}:A_CheckHash")
 }}
 record(ai, "{root_inst_slot}:HeartbeatFromPLCR")
 {{
 	field(DESC,	"Heartbeat from PLC")
-	field(INP,	"{root_inst_slot}:iHeartbeatToPLC.VAL CP")
-	field(FLNK,	"{root_inst_slot}:iGotHeartbeat")
+	field(INP,	"{root_inst_slot}:A_CalcHeartbeatToPLC.VAL CP")
+	field(FLNK,	"{root_inst_slot}:A_GotHeartbeat")
 }}
 
 ########################################################
@@ -1180,9 +1248,9 @@ record(ao, "{root_inst_slot}:FixHashS")
 record(bo, "{root_inst_slot}:RuinHashS")
 {{
 	field(DESC,	"Make HASH incorrect")
-	field(FLNK,	"{root_inst_slot}:iRuinHash")
+	field(FLNK,	"{root_inst_slot}:A_RuinHash")
 }}
-record(calcout, "{root_inst_slot}:iRuinHash")
+record(calcout, "{root_inst_slot}:A_RuinHash")
 {{
 	field(DESC,	"Make HASH incorrect")
 	field(INPA,	"{root_inst_slot}:CommsHashToPLC")
