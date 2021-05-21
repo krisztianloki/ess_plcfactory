@@ -131,6 +131,7 @@ epi_version     = None
 hashes          = dict()
 prev_hashes     = None
 generate_ioc    = False
+ioc_git         = True
 ioc             = None
 e3              = None
 plcf_branch     = git.get_current_branch()
@@ -458,7 +459,7 @@ class E3(object):
 
 
 class IOC(object):
-    def __init__(self, device):
+    def __init__(self, device, git = True):
         super(IOC, self).__init__()
 
         ioc = self.__get_ioc(device)
@@ -470,7 +471,7 @@ class IOC(object):
 
         self._name = ioc.name()
         self._dir = helpers.sanitizeFilename(self._name.lower()).replace('-', '_')
-        self._repo = get_repository(ioc, "IOC_REPOSITORY")
+        self._repo = get_repository(ioc, "IOC_REPOSITORY") if git else None
         if self._repo:
             self._dir = helpers.url_to_path(self._repo).split('/')[-1]
             if self._dir.endswith('.git'):
@@ -1216,7 +1217,7 @@ PLC-EPICS-COMMS: GatewayDatablock: {}""".format(hash_base, gw_db)
             raise PLCFactoryException("Hostname of '{}' is not specified, required for IOC generation".format(device.name()))
 
         global ioc
-        ioc = IOC(device)
+        ioc = IOC(device, git = ioc_git)
         if ioc.repo():
             git.GIT.check_minimal_config()
 
@@ -1808,6 +1809,13 @@ def main(argv):
                             const    = "",
                             nargs    = '?')
 
+        parser.add_argument(
+                            '--no-ioc-git',
+                            dest     = "ioc_git",
+                            help     = "Ignore any git repository when generating IOC",
+                            default  = True,
+                            action   = "store_false")
+
         return parser
 
 
@@ -1873,7 +1881,9 @@ def main(argv):
 
     if args.ioc is not None:
         global generate_ioc
+        global ioc_git
         generate_ioc = True
+        ioc_git = args.ioc_git
 
     if args.e3 is not None:
         global e3

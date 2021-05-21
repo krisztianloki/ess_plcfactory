@@ -61,6 +61,9 @@ For further information, see the files in [doc](doc/).
 *   **--ioc**`[=<version>]`
     *   \[OPTIONAL\]
     *   Used to generate an IOC. If `version` is specified it will be used to create a tag if the IOC has an associated git repository
+*   **--no-ioc-git**
+    *   \[OPTIONAL\]
+    *   Ignore any git repository when generating IOC i.e. generate IOC locally only
 
 #### CCDB options
 
