@@ -880,7 +880,7 @@ def getEOL(header):
 #
 # Returns an interface definition object
 #
-def getIfDef(device):
+def getIfDef(device, cplcf):
     # If a definition file is already downloaded (and parsed) for this device then we must use that one
     try:
         return ifdefs[device.name()]
@@ -896,19 +896,10 @@ def getIfDef(device):
             ifdefs[device.name()] = None
             return None
 
-    # If a definition file is already downloaded and parsed then we just use that one
-    try:
-        ifdef = ifdefs[artifact]
-        ifdefs[device.name()] = ifdef
-
-        return ifdef
-    except KeyError:
-        pass
-
-    ifdef = IF_DEF.parse(artifact, **ifdef_params)
+    # We can no longer cache parsed per-device-type definition files; there might be PLCF expressions in them
+    ifdef = IF_DEF.parse(artifact, PLCF = cplcf, **ifdef_params)
 
     if ifdef is not None:
-        ifdefs[artifact] = ifdef
         ifdefs[device.name()] = ifdef
 
     return ifdef
@@ -1021,7 +1012,7 @@ def processTemplateID(templateID, devices):
 
         # Try to process Interface Definition first
         if templatePrinter is not None:
-            ifdef = getIfDef(device)
+            ifdef = getIfDef(device, cplcf)
             if ifdef is not None:
                 print(template_from_def_file)
 
