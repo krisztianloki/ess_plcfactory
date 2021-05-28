@@ -621,25 +621,17 @@ class IOC(object):
         return st_cmd
 
 
-    def __create_meta_yaml(self, out_idir):
-        out_mdir = os.path.join(out_idir, "ioc-meta")
-        helpers.makedirs(out_mdir)
-        meta_yml = os.path.join(out_mdir, "ioc.yml")
-        with open(meta_yml, "wt") as meta:
+    def __create_ioc_yaml(self, out_idir):
+        ioc_yml = os.path.join(out_idir, "ioc.yml")
+        with open(ioc_yml, "wt") as meta:
             print("""ioc_meta_version: "1.0"
 ioc:
-  name: {iocname}
   epics_version: {epics_version}
   require_version: {require_version}
-names:
-  - {iocname}""".format(iocname = self.name(),
-                        epics_version = self._epics_version,
-                        require_version = self._require_version), file = meta)
+  realtime: false""".format(epics_version = self._epics_version,
+                            require_version = self._require_version), file = meta)
 
-            names = "\n".join(["  - {}".format(dev.name()) for dev in self._controlled_devices])
-            meta.writelines(names)
-
-        return meta_yml
+        return ioc_yml
 
 
     def name(self):
@@ -715,9 +707,9 @@ names:
         env_sh = self.__create_env_sh(out_idir, version)
         created_files.append(env_sh)
 
-        # Create metadata.yml
-        meta_yml = self.__create_meta_yaml(out_idir)
-        created_files.append(meta_yml)
+        # Create ioc.yml
+        ioc_yml = self.__create_ioc_yaml(out_idir)
+        created_files.append(ioc_yml)
 
         # Update the repository
         if repo:
