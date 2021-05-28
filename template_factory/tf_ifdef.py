@@ -15,10 +15,10 @@ from collections import OrderedDict
 #import inspect
 
 # FIXME: I don't think it is needed anymore
-try:
-    from plcf import PLCF
-except ImportError:
-    pass
+#try:
+#    from plcf import PLCF
+#except ImportError:
+#    pass
 
 try:
     isinstance("aladar", basestring)
@@ -164,12 +164,14 @@ class IfDefExperimentalError(IfDefSyntaxError):
 
 
 class DummyHash(object):
-    def __init__(self):
-        pass
-
-
     def update(self, string):
         pass
+
+
+
+class DummyPLCF(object):
+    def processLine(self, line):
+        return line
 
 
 
@@ -777,7 +779,6 @@ def ifdef_interface(func):
 class IF_DEF(object):
     DEFAULT_INSTALLATION_SLOT = "INSTALLATION_SLOT"
     DEFAULT_DATABLOCK_NAME    = "DEV_[PLCF#{}]_iDB".format("RAW_INSTALLATION_SLOT")
-    __CACHE                   = dict()
 
 
     @staticmethod
@@ -789,19 +790,13 @@ class IF_DEF(object):
             artifact = def_file
             def_file = artifact.saved_as()
 
-        try:
-            if not keyword_params.get("NO_CACHE", False):
-                return IF_DEF.__CACHE[def_file]
-        except KeyError:
-            pass
+        cplcf = keyword_params.get("PLCF", DummyPLCF())
 
         if_def = IF_DEF(**keyword_params)
 
         if_def._artifact = artifact
-        if_def._read_def(def_file)
+        if_def._read_def(def_file, cplcf)
         if_def._end()
-
-        IF_DEF.__CACHE[def_file] = if_def
 
         return if_def
 
@@ -1045,7 +1040,7 @@ class IF_DEF(object):
             raise
 
 
-    def _read_def(self, def_file):
+    def _read_def(self, def_file, cplcf):
         if self._filename is not None:
             raise IfDefInternalError("Cannot parse more than one Interface Definition file")
 
@@ -1056,6 +1051,8 @@ class IF_DEF(object):
             linenum      = 1
 
             for line in defs:
+                line = cplcf.processLine(line)
+
                 try:
                     if multiline:
                         multiline += line
