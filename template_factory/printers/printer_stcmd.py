@@ -223,15 +223,16 @@ class ST_CMD(eee, MACROS, PRINTER):
             self.advance_offsets_after_body()
 
 
-    def _dbLoadRecords(self, plc_macro):
+    def _dbLoadRecords(self, plc_macro, insize):
         return """#- Load plc interface database
-dbLoadRecords("{modulename}.db", "{PLC_MACRO}={plcname}, MODVERSION=$({modversion}), S7_PORT=$(S7_PORT={s7_port}), MODBUS_PORT=$(MB_PORT={modbus_port}){macros}")""".format(
+dbLoadRecords("{modulename}.db", "{PLC_MACRO}={plcname}, MODVERSION=$({modversion}), S7_PORT=$(S7_PORT={s7_port}), MODBUS_PORT=$(MB_PORT={modbus_port}), PAYLOAD_SIZE={insize}{macros}")""".format(
             PLC_MACRO   = plc_macro,
             plcname     = self.raw_root_inst_slot(),
             modulename  = self.modulename(),
             modversion  = self._modversion(),
             s7_port     = self.plcf("PLC-EPICS-COMMS: S7Port"),
             modbus_port = self.plcf("PLC-EPICS-COMMS: MBPort"),
+            insize      = insize,
             macros      = self._define_macros())
 
 
@@ -249,6 +250,8 @@ dbLoadRecords("{modulename}.db", "{PLC_MACRO}={plcname}, MODVERSION=$({modversio
     #
     def _s7_footer(self, output, **keyword_parameters):
         super(ST_CMD, self).footer(output, **keyword_parameters)
+
+        insize = self._plc_to_epics_offset - self.PLCToEPICSDataBlockStartOffset
 
         st_cmd_footer = """
 #- S7 port           : {s7drvport}
@@ -282,13 +285,13 @@ drvModbusAsynConfigure("{plcname}read", "{plcname}", 0, 3, {start_offset}, 10, 0
            recvtimeout   = self._recvtimeout,
            s7drvport     = self.plcf("PLC-EPICS-COMMS: S7Port"),
            modbusdrvport = self.plcf("PLC-EPICS-COMMS: MBPort"),
-           insize        = self._plc_to_epics_offset - self.PLCToEPICSDataBlockStartOffset,
+           insize        = insize,
            endianness    = "BigEndian" if self._endianness == "BE" else "LittleEndian",
            bigendian     = 1 if self._endianness == "BE" else 0,
            modulename    = self.modulename(),
            modversion    = self._modversion(),
            plcname       = self.raw_root_inst_slot(),
-           dbloadrecords = self._dbLoadRecords("PLCNAME"),
+           dbloadrecords = self._dbLoadRecords("PLCNAME", insize),
            start_offset  = self.EPICSToPLCDataBlockStartOffset,
           )
 
@@ -313,7 +316,7 @@ opcuaCreateSubscription("{plcname}", "{plcname}-session", $(PUBLISHING_INTERVAL)
 """.format(modulename    = self.modulename(),
            modversion    = self._modversion(),
            plcname       = self.raw_root_inst_slot(),
-           dbloadrecords = self._dbLoadRecords("SUBSCRIPTION")
+           dbloadrecords = self._dbLoadRecords("SUBSCRIPTION", 0)
           )
 
         self._append(st_cmd_footer, output)

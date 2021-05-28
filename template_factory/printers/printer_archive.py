@@ -61,8 +61,11 @@ class ARCHIVE(PRINTER):
             archive("ConnectedR", "Global connection state")
             archive("PLCHashCorrectR", "Hash correctness state")
             archive("AliveR", "PLC liveliness")
-            archive("iCommsHashToPLC", "IOC Hash")
+            archive("CommsHashToPLC", "IOC Hash")
             archive("CommsHashFromPLCR", "PLC Hash")
+            archive("PayloadSizeR", "Configured payload size")
+            archive("PayloadSizeFromPLCR", "Payload size configured on the PLC")
+            archive("PayloadSizeCorrectR", "Payload size configuration correctness state")
 
 
 

@@ -79,10 +79,11 @@ class OPC_MAP_XLS(PRINTER):
             if not isinstance(var, BASE_TYPE):
                 continue
 
+            datablock_name = self.expand(var.datablock_name()).replace(':', '_')
             try:
-                ws = self._wb[var.datablock_name()]
+                ws = self._wb[datablock_name]
             except KeyError:
-                ws = self._wb.create_sheet(var.datablock_name())
+                ws = self._wb.create_sheet(datablock_name)
                 self._initialize_ws(ws)
 
             cols = [ var.name(), var.plc_type(), self.create_pv_name(self.inst_slot(if_def), var), var.pv_type() ]

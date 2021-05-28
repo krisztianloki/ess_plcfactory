@@ -10,6 +10,8 @@ class IFA(object):
     EPICSTOPLC_READ_HASH  = 3
     # Length: 1 word
     EPICSTOPLC_UPLOADSTAT = 5
+    # Length: 1 word
+    EPICSTOPLC_READ_PAYLOAD_SIZE = 6
 
     # Length: 2 words
     PLCTOEPICS_HASH       = 0
