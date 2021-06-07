@@ -87,6 +87,14 @@ Consulted when `--ioc` is specified
     *   `--ccdb=VacS-ACCV_Vac-PLC-01001.ccdb.zip`
     *   `--ccdb=modules/m-epics-vacs-accv_vac-plc-01001/misc/ccdb`
     *   `--ccdb=https://my-shiny-ccdb.esss.lu.se`
+*   **--alarm-version**`=<version>`
+    *   \[OPTIONAL\]
+    *   Used to select a version of BEAST / ALARM repositories other than `master`.
+    *   `--alarm-version=v4.0.1`
+*   **--epi-version**`=<version>`
+    *   \[OPTIONAL\]
+    *   Used to select a version of EPI repositories other than `master`. Please note: it overrides any `EPI VERSION` property specified in CCDB. Used when `--verify` is specified
+    *   `--epi-version=v4.0.1`
 *   **--tag**`=<tag_name>`
     *   \[OPTIONAL\]
     *   Used to select the correct link if more than one External Link was found
