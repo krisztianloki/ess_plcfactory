@@ -92,6 +92,10 @@ class AlarmFactory(object):
         def is_config_mandatory(opt):
             return opt is not None and (opt is True or (isinstance(opt, list) and len(opt) > 1))
 
+        def not_empty_string(argument):
+            if argument == "":
+                raise argparse.ArgumentTypeError("empty string not allowed")
+            return argument
 
         parser.add_argument(
                             '--config',
@@ -108,6 +112,18 @@ class AlarmFactory(object):
                             nargs    = '*'
                            )
         CC.addArgs(parser)
+
+        parser.add_argument(
+                            '--alarm-version',
+                            dest     = "alarm_version",
+                            help     = "'ALARM VERSION' to use. Overrides any 'ALARM VERSION' property set in CCDB",
+                            type     = not_empty_string)
+
+        parser.add_argument(
+                            '--epi-version',
+                            dest     = "epi_version",
+                            help     = "'EPI VERSION' to use. Overrides any 'EPI VERSION' property set in CCDB",
+                            type     = not_empty_string)
 
         parser.add_argument(
                             '--tag',
@@ -129,6 +145,8 @@ class AlarmFactory(object):
         self._config     = args.config
 
         self._device_tag = args.tag
+        self._alarm_tag  = args.alarm_version
+        self._epi_tag    = args.epi_version
         self._def_alarms = list() if args.verify else None
 
         os.system('clear')
@@ -201,7 +219,7 @@ class AlarmFactory(object):
 
 
     def _downloadAlarmTree(self, ioc):
-        dArtifact = ioc.downloadExternalLink("BEAST TREE", ".alarm-tree", filetype = "Alarm tree", device_tag = self._device_tag)
+        dArtifact = ioc.downloadExternalLink("BEAST TREE", ".alarm-tree", filetype = "Alarm tree", device_tag = self._device_tag, git_tag = self._alarm_tag)
         if dArtifact is None:
             raise AlarmFactoryException("No alarm tree found")
 
@@ -223,14 +241,14 @@ class AlarmFactory(object):
 
 
     def _parseAlarms(self, beast_def, device):
-        dArtifact = device.downloadExternalLink("BEAST TEMPLATE", ".alarms-template", filetype = "Alarm definition template", device_tag = self._device_tag)
+        dArtifact = device.downloadExternalLink("BEAST TEMPLATE", ".alarms-template", filetype = "Alarm definition template", device_tag = self._device_tag, git_tag = self._alarm_tag)
         if dArtifact:
             alarm_list = dArtifact.saved_as()
             print("Parsing {} of {}".format(alarm_list, device.name()))
             beast_def.parse(alarm_list, device = device)
             print()
 
-        dArtifact = device.downloadExternalLink("BEAST", ".alarms", filetype = "Alarm definition", device_tag = self._device_tag)
+        dArtifact = device.downloadExternalLink("BEAST", ".alarms", filetype = "Alarm definition", device_tag = self._device_tag, git_tag = self._alarm_tag)
         if dArtifact:
             alarm_list = dArtifact.saved_as()
             print("Parsing {} of {}".format(alarm_list, device.name()))
@@ -245,7 +263,7 @@ class AlarmFactory(object):
         dArtifact = device.downloadArtifact(".def", self._device_tag, filetype = "Interface Definition")
         if dArtifact is None:
             # No 'file' artifact found, let's see if there is a URL
-            dArtifact = device.downloadExternalLink("EPI", ".def", filetype = "Interface Definition", device_tag = self._device_tag)
+            dArtifact = device.downloadExternalLink("EPI", ".def", filetype = "Interface Definition", device_tag = self._device_tag, git_tag = self._epi_tag)
             if dArtifact is None:
                 return
 
