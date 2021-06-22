@@ -265,6 +265,22 @@ class TestPLCF(unittest.TestCase):
         self.assertEqual(counters[counter], 42)
 
 
+    def testMultipleCounterPLCFs(self):
+        counter = "Counter1"
+        self.assertTrue(plcf.PLCF.hasCounter(counter))
+
+        line = "[PLCF#{c}] is [PLCF#{c}]".format(c = counter)
+        self.assertTrue(plcf.PLCF.hasCounter(line))
+
+        counters = plcf.PLCF.initializeCounters()
+        counters[counter] = 42
+        expected = "{c} is {c}".format(c = counters[counter])
+        self.assertEqual(plcf.PLCF._evalCounter(line, counters), expected)
+
+        (res, _) = plcf.PLCF.evalCounters([line], counters)
+        self.assertEqual(res, [expected])
+
+
     def testBacktrackInPLCF(self):
         expr = "^(EPICSToPLCDataBlockStartOffset)"
         line = "[PLCF#{}]".format(expr)

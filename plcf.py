@@ -419,14 +419,16 @@ class PLCF(object):
         # substitutions
         for key in counters.keys():
             try:
-                (line, _) = PLCF.substituteWord(line, key, str(counters[key]))
+                while True:
+                    (line, _) = PLCF.substituteWord(line, key, str(counters[key]), True)
             except PLCFNoWordException:
                 pass
 
         # evaluation
-        (_, line) = PLCF._processLineCounter(line)
-
-        return line
+        while True:
+            (expr, line) = PLCF._processLineCounter(line)
+            if expr is None:
+                return line
 
 
     @staticmethod
@@ -543,12 +545,14 @@ class PLCF(object):
 
     # substitutes a variable in an expression with the provided value
     @staticmethod
-    def substituteWord(expr, word, value):
+    def substituteWord(expr, word, value, exception_if_not_found = False):
         assert isinstance(expr,   str), (expr, type(expr))
         assert isinstance(word,   str), (expr, word, type(word))
         assert isinstance(value,  str), (expr, word, value, type(value))
 
         if word not in expr:
+            if exception_if_not_found:
+                raise PLCFNoWordException()
             return (expr, len(expr))
 
         start           = PLCF.wordIndex(expr, word)
