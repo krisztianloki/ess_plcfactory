@@ -374,10 +374,15 @@ class PLCF(object):
 
 
     @staticmethod
-    def evalCounters(lines):
+    def evalCounters(lines, counters = None):
         assert isinstance(lines, list)
 
-        counters = PLCF.initializeCounters()
+        if counters is None:
+            counters = PLCF.initializeCounters()
+        elif not isinstance(counters, dict):
+            raise PLCFException("Invalid counters type")
+        elif len(counters) > PLCF.num_of_counters:
+            raise PLCFException("Too many counters")
 
         output = []
 

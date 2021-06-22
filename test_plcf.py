@@ -174,6 +174,18 @@ class TestPLCF(unittest.TestCase):
         self.assertEqual(self.process([line]), [result])
 
 
+    def testCustomCounters(self):
+        counters = list()
+        with self.assertRaises(plcf.PLCFException):
+            plcf.PLCF.evalCounters([], counters)
+
+        counters = dict()
+        for k in range(0, 20):
+            counters[k] = k
+        with self.assertRaises(plcf.PLCFException):
+            plcf.PLCF.evalCounters([], counters)
+
+
     def testCounterInPLCF(self):
         counter  = "Counter1"
         expr     = "{}".format(counter)
