@@ -195,6 +195,12 @@ class TestPLCF(unittest.TestCase):
         self.assertEqual(plcf.PLCF.wordIndex(expr, counter), 0)
         self.assertEqual(plcf.PLCF.wordIndex(line, counter), 6)
 
+        with self.assertRaises(plcf.PLCFSyntaxError):
+            plcf.PLCF.evalCounters(["[PLCF#foo"])
+
+        with self.assertRaises(plcf.PLCFSyntaxError):
+            plcf.PLCF._evalCounter("[PLCF#foo", {})
+
         counterline = "#COUNTER {} = {}"
         const = 42
         lines = [counterline.format(counter, "[PLCF#{}]".format(const)), line]
@@ -247,6 +253,16 @@ class TestPLCF(unittest.TestCase):
         self.assertTrue(plcf.PLCF.hasCounter(line))
         self.assertEqual(plcf.PLCF._evalCounter(line, counters), str(42 + counters[counter]))
 
+
+    def testCounterIncrease(self):
+        counter = "Counter1"
+        line = "#COUNTER Counter1 = [PLCF#42"
+        with self.assertRaises(plcf.PLCFSyntaxError):
+            plcf.PLCF.evalCounters([line])
+
+        line = "#COUNTER Counter1 = [PLCF#42]"
+        (_, counters) = plcf.PLCF.evalCounters([line])
+        self.assertEqual(counters[counter], 42)
 
 
     def testBacktrackInPLCF(self):

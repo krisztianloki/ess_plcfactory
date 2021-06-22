@@ -408,6 +408,14 @@ class PLCF(object):
         assert isinstance(line,     str )
         assert isinstance(counters, dict)
 
+        s = 0
+        while True:
+            # Check if PLCF# expressions are valid
+            (_, expr, e) = PLCF.getPLCFExpression(line[s:])
+            if e is None:
+                break
+            s += e + 1
+
         # substitutions
         for key in counters.keys():
             try:
@@ -427,9 +435,9 @@ class PLCF(object):
         assert isinstance(counters, dict)
 
         # identify start of expression and substitute
-        pos = line.find(PLCF.plcf_tag)
+        (pos, _, _) = PLCF.getPLCFExpression(line)
 
-        if pos != -1:
+        if pos is not None:
             pre  = line[:pos]
             post = line[pos:]
 
