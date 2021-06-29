@@ -323,6 +323,7 @@ class BLOCK(SOURCE):
     STATUS = "STATUS"
     CMD    = "COMMAND"
     PARAM  = "PARAMETER"
+    GENERAL_INPUT  = "GENERAL_INPUT"
 
     def __init__(self, source, block_type, optimize):
         super(BLOCK, self).__init__(source)
@@ -335,6 +336,7 @@ class BLOCK(SOURCE):
         self._block_type    = block_type
         self._ifaces        = []
         self._block_offset  = 0
+        self._start_offset  = 0
         self._length        = 0
         self._optimize_s7db = optimize
         self._block_printer = None
@@ -345,7 +347,7 @@ class BLOCK(SOURCE):
             return (self._block_offset % 2) == 1
         else:
             # MODBUS cannot address the individual bytes in a WORD
-            return (self.is_cmd_block() or self.is_param_block() or width > 1) and (self._block_offset % 2) == 1
+            return (self.to_plc() or width > 1) and (self._block_offset % 2) == 1
 
 
     def endian_correct_epics_type(self, epics_type):
@@ -358,6 +360,10 @@ class BLOCK(SOURCE):
 
     def length(self):
         return self._length
+
+
+    def start_offset(self):
+        return self._start_offset
 
 
     def offset_for(self, width):
@@ -384,16 +390,28 @@ class BLOCK(SOURCE):
         return OVERLAP(self)
 
 
+    def from_plc(self):
+        return False
+
+
+    def to_plc(self):
+        return False
+
+
     def is_status_block(self):
         return isinstance(self, STATUS_BLOCK)
 
 
-    def is_cmd_block(self):
+    def is_command_block(self):
         return isinstance(self, CMD_BLOCK)
 
 
-    def is_param_block(self):
+    def is_parameter_block(self):
         return isinstance(self, PARAM_BLOCK)
+
+
+    def is_general_input_block(self):
+        return isinstance(self, GEN_INPUT_BLOCK)
 
 
     def type(self):
@@ -456,6 +474,13 @@ class BLOCK(SOURCE):
             raise IfDefSyntaxError("Cannot compute width, unknown type: " + str(num_bytes))
 
 
+    def set_start_offset(self, offs):
+        if offs % 2:
+            raise IfDefInternalError("Block start offset must start on a PLC word boundary")
+
+        self._start_offset = offs
+
+
     def set_endianness(self, endianness):
         self._endianness = endianness
 
@@ -466,6 +491,9 @@ class BLOCK(SOURCE):
 
 
 class STATUS_BLOCK(BLOCK):
+    TYPE = "S7PLC"
+
+
     @staticmethod
     def length_keyword():
         return "StatusWordsLength"
@@ -497,12 +525,21 @@ class STATUS_BLOCK(BLOCK):
         return "$(PLCNAME)"
 
 
-    def inp_out(self, **keyword_params):
-        return 'INP,  "{}"'.format(self._block_printer.field_inp(**keyword_params))
+    @staticmethod
+    def basetype():
+        return STATUS_BLOCK.TYPE
 
 
     def __init__(self, source, optimize):
         super(STATUS_BLOCK, self).__init__(source, BLOCK.STATUS, optimize)
+
+
+    def from_plc(self):
+        return True
+
+
+    def inp_out(self, **keyword_params):
+        return 'INP,  "{}"'.format(self._block_printer.field_inp(**keyword_params))
 
 
     def link_offset(self, var, plc_to_epics_offset, epics_to_plc_offset):
@@ -519,6 +556,8 @@ class STATUS_BLOCK(BLOCK):
 # Special class to handle the similarities between CMD_BLOCK and PARAM_BLOCK
 #
 class MODBUS(object):
+    TYPE = "MODBUS"
+
     _int32_types   = [ "INT32_BE",   "INT32_LE" ]
     _float32_types = [ "FLOAT32_BE", "FLOAT32_LE" ]
     _zstring_types = [ "ZSTRING_HIGH_LOW", "ZSTRING_LOW_HIGH" ]
@@ -566,6 +605,15 @@ class MODBUS(object):
         return "asyn"
 
 
+    @staticmethod
+    def basetype():
+        return MODBUS.TYPE
+
+
+    def to_plc(self):
+        return True
+
+
     def inp_out(self, **keyword_params):
         return 'OUT,  "{}"'.format(self._block_printer.field_out(**keyword_params))
 
@@ -606,7 +654,18 @@ class MODBUS(object):
 
 
 
-class CMD_BLOCK(MODBUS, BLOCK):
+class TOPLC_BLOCK(MODBUS, BLOCK):
+    def __init__(self, source, block_typ, optimize):
+        super(TOPLC_BLOCK, self).__init__(source, block_typ, optimize)
+
+
+    def set_endianness(self, endianness):
+        self.compile_endianness(endianness)
+        super(TOPLC_BLOCK, self).set_endianness(endianness)
+
+
+
+class CMD_BLOCK(TOPLC_BLOCK):
     @staticmethod
     def length_keyword():
         return "CommandWordsLength"
@@ -616,13 +675,8 @@ class CMD_BLOCK(MODBUS, BLOCK):
         super(CMD_BLOCK, self).__init__(source, BLOCK.CMD, optimize)
 
 
-    def set_endianness(self, endianness):
-        self.compile_endianness(endianness)
-        super(CMD_BLOCK, self).set_endianness(endianness)
 
-
-
-class PARAM_BLOCK(MODBUS, BLOCK):
+class PARAM_BLOCK(TOPLC_BLOCK):
     @staticmethod
     def length_keyword():
         return "ParameterWordsLength"
@@ -632,9 +686,15 @@ class PARAM_BLOCK(MODBUS, BLOCK):
         super(PARAM_BLOCK, self).__init__(source, BLOCK.PARAM, optimize)
 
 
-    def set_endianness(self, endianness):
-        self.compile_endianness(endianness)
-        super(PARAM_BLOCK, self).set_endianness(endianness)
+
+class GEN_INPUT_BLOCK(TOPLC_BLOCK):
+    @staticmethod
+    def length_keyword():
+        return "GeneralInputWordsLength"
+
+
+    def __init__(self, source, optimize):
+        super(GEN_INPUT_BLOCK, self).__init__(source, BLOCK.GENERAL_INPUT, optimize)
 
 
 
@@ -812,6 +872,7 @@ class IF_DEF(object):
         self._STATUS                = None
         self._CMD                   = None
         self._PARAM                 = None
+        self._GEN_INPUT             = None
         self._active_BLOCK          = None
         self._overlap               = None
         self._active                = True
@@ -888,6 +949,10 @@ class IF_DEF(object):
 
     def _param_block(self):
         return self._PARAM
+
+
+    def _gen_input_block(self):
+        return self._GEN_INPUT
 
 
     def _active_block(self):
@@ -1086,6 +1151,7 @@ class IF_DEF(object):
         self._calc_block_hash(hashobj, self._preBLOCK)
         self._calc_block_hash(hashobj, self._cmd_block())
         self._calc_block_hash(hashobj, self._param_block())
+        self._calc_block_hash(hashobj, self._gen_input_block())
         self._calc_block_hash(hashobj, self._status_block())
 
         if int(self._to_plc_words_length) or int(self._from_plc_words_length):
@@ -1143,6 +1209,20 @@ class IF_DEF(object):
 
     def parameter_interfaces(self):
         block = self.parameter_block()
+
+        if block:
+            return block.interfaces()
+        return []
+
+
+    def general_input_block(self):
+        self._exception_if_active()
+
+        return self._gen_input_block()
+
+
+    def general_input_interfaces(self):
+        block = self.general_input_block()
 
         if block:
             return block.interfaces()
@@ -1326,6 +1406,17 @@ class IF_DEF(object):
         return self._add(self._PARAM)
 
 
+    @ifdef_interface
+    def define_general_input_block(self):
+        if self._readonly:
+            raise IfDefSyntaxError("Cannot declare input block when in read-only mode")
+        if self._GEN_INPUT is not None:
+            raise IfDefSyntaxError("Block redefinition is not possible!")
+
+        self._active_BLOCK = self._GEN_INPUT = GEN_INPUT_BLOCK(self._source, self._optimize)
+        return self._add(self._GEN_INPUT)
+
+
     @experimental_interface
     @ifdef_interface
     def define_overlap(self):
@@ -1430,7 +1521,7 @@ class IF_DEF(object):
         if not isinstance(alarm_message, str):
             raise IfDefSyntaxError("Alarm message is missing: {func}(\"{name}\", \"Short alarm message\")".format(name = name, func = "add_minor_alarm" if sevr == "MINOR" else "add_major_alarm"))
 
-        if self._active_BLOCK is None or not self._active_BLOCK.is_status_block():
+        if self._active_BLOCK is None or not self._active_BLOCK.from_plc():
             raise IfDefSyntaxError("Alarms can only be defined as STATUS variables!")
 
         if keyword_params.get("INVERSE_LOGIC", False) or keyword_params.get("ALARM_IF", True) == False:
@@ -1462,7 +1553,7 @@ class IF_DEF(object):
         if plc_var_type is not None and not isinstance(plc_var_type, str):
             raise IfDefSyntaxError("PLC type must be a string!")
 
-        if self._active_BLOCK is None or not self._active_BLOCK.is_status_block():
+        if self._active_BLOCK is None or not self._active_BLOCK.from_plc():
             raise IfDefSyntaxError("Limits can only be defined for analog STATUS variables!")
 
         # Get the most recent variable; it must be an ANALOG. It is the one the alarm limits are meant for
@@ -1651,19 +1742,29 @@ class IF_DEF(object):
 
         self._end_block(self._cmd_block())
         self._end_block(self._param_block())
+        self._end_block(self._gen_input_block())
         self._end_block(self._status_block())
 
-        self._to_plc_words_length   = str(self._words_length_of(self._cmd_block()) + self._words_length_of(self._param_block()))
+        self._to_plc_words_length   = str(self._words_length_of(self._cmd_block()) + self._words_length_of(self._param_block()) + self._words_length_of(self._gen_input_block()))
         self._from_plc_words_length = str(self._words_length_of(self._status_block()))
 
         #
-        # Move parameters after commands
+        # Make sure that the order of data TO the PLC is
+        # 1. Commands
+        # 2. Parameters
+        # 3. General inputs
         #
         if self._CMD and self._PARAM:
             cmd_length = self._CMD.length()
-            for src in self._ifaces:
-                if isinstance(src, BASE_TYPE):
-                    src.adjust_parameter(cmd_length)
+            self._PARAM.set_start_offset(cmd_length)
+
+        if self._GEN_INPUT:
+            length = 0
+            if self._PARAM:
+                length = self._PARAM.start_offset() + self._PARAM.length()
+            elif self._CMD:
+                length = self._CMD.length()
+            self._GEN_INPUT.set_start_offset(length)
 
         self._active = False
 
@@ -1758,7 +1859,7 @@ class BASE_TYPE(SOURCE):
 
         self._keyword_params = keyword_params
 
-        if block.is_status_block():
+        if block.from_plc():
             reserved_params = ["DTYP", "INP", "SCAN"]
         else:
             reserved_params = ["DTYP", "OUT"]
@@ -1802,8 +1903,6 @@ class BASE_TYPE(SOURCE):
             self._overlapped = not block.is_empty()
         else:
             self._overlapped = False
-
-        self._param_offset   = 0
 
         self.compute_offset()
 
@@ -1933,15 +2032,16 @@ class BASE_TYPE(SOURCE):
         return 1
 
 
-    def adjust_parameter(self, cmd_length):
-        assert isinstance(cmd_length, int), func_param_msg("cmd_length", "int")
-
-        if self.is_parameter():
-            self._param_offset = cmd_length
-
-
     def offset(self):
-        return self._offset + self._param_offset
+        return self._offset + self._block.start_offset()
+
+
+    def from_plc(self):
+        return self._block.from_plc()
+
+
+    def to_plc(self):
+        return self._block.to_plc()
 
 
     def is_status(self):
@@ -1949,11 +2049,15 @@ class BASE_TYPE(SOURCE):
 
 
     def is_command(self):
-        return self._block.is_cmd_block()
+        return self._block.is_command_block()
 
 
     def is_parameter(self):
-        return self._block.is_param_block()
+        return self._block.is_parameter_block()
+
+
+    def is_general_input(self):
+        return self._block.is_general_input_block()
 
 
     def is_overlapped(self):
@@ -2064,6 +2168,10 @@ class BASE_TYPE(SOURCE):
         return 0
 
 
+    def block_basetype(self):
+        return self._block.basetype()
+
+
     def block_type(self):
         return self._block.type()
 
@@ -2082,8 +2190,8 @@ class BASE_TYPE(SOURCE):
 
 
     def link_extra(self):
-        link_extra_templates = { BLOCK.CMD : BASE_TYPE.ASYN_TIMEOUT,   BLOCK.PARAM : BASE_TYPE.ASYN_TIMEOUT,   BLOCK.STATUS : "" }
-        return link_extra_templates[self.block_type()]
+        link_extra_templates = { MODBUS.TYPE : BASE_TYPE.ASYN_TIMEOUT,   STATUS_BLOCK.TYPE : "" }
+        return link_extra_templates[self.block_basetype()]
 
 
 
@@ -2158,9 +2266,9 @@ class BITS(object):
 
 
     def link_extra(self, bit):
-        if self._block.is_status_block():
+        if self._block.from_plc():
             return " B={bit_num}".format(bit_num = bit.bit_number())
-        elif self._block.is_cmd_block() or self._block.is_param_block():
+        elif self._block.to_plc():
             template = "{mask}, " + BASE_TYPE.ASYN_TIMEOUT
             return template.format(mask = self.calc_mask(bit))
         else:
@@ -2190,7 +2298,7 @@ class BITS(object):
 
 
 class BIT(BASE_TYPE):
-    pv_types       = { BLOCK.CMD : "bo",   BLOCK.PARAM : "bo",   BLOCK.STATUS : "bi" }
+    pv_types       = { MODBUS.TYPE : "bo",   STATUS_BLOCK.TYPE : "bi" }
 
     @staticmethod
     def skip(bit_def, num):
@@ -2215,7 +2323,7 @@ class BIT(BASE_TYPE):
 
 
     def pv_type(self):
-        return BIT.pv_types[self.block_type()]
+        return BIT.pv_types[self.block_basetype()]
 
 
     def plc_type(self):
@@ -2223,21 +2331,21 @@ class BIT(BASE_TYPE):
 
 
     def dtyp(self):
-        if self.is_status():
+        if self.from_plc():
             return super(BIT, self).dtyp()
 
         return "asynUInt32Digital"
 
 
     def inst_io(self):
-        if self.is_status():
+        if self.from_plc():
             return super(BIT, self).inst_io()
 
         return "asynMask"
 
 
     def offset(self):
-        return self._bit_def._offset + self._param_offset
+        return self._bit_def._offset + self._block.start_offset()
 
 
     def bit_number(self):
@@ -2253,7 +2361,7 @@ class BIT(BASE_TYPE):
 
 
     def dtyp_var_type(self):
-        if self.is_command() or self.is_parameter():
+        if self.to_plc():
             return ""
 
         return self._bit_def.dtyp_var_type()
@@ -2281,11 +2389,11 @@ class ALARM(BIT):
 
 
 class ANALOG(BASE_TYPE):
-    pv_types = { BLOCK.CMD : "ao",   BLOCK.PARAM : "ao",   BLOCK.STATUS : "ai" }
+    pv_types = { MODBUS.TYPE : "ao",   STATUS_BLOCK.TYPE : "ai" }
 
     def __init__(self, source, block, name, plc_var_type, keyword_params):
         limit_warnings = []
-        if block.is_cmd_block() or block.is_param_block():
+        if block.to_plc():
             try:
                 limits = PLC_type_limits[plc_var_type]
                 # Set DRVL/DRVH limits
@@ -2315,14 +2423,14 @@ class ANALOG(BASE_TYPE):
 
 
     def dtyp(self):
-        if not self.is_status() and self._dtyp_var_type in self._block.valid_type_pairs()["REAL"]:
+        if not self.from_plc() and self._dtyp_var_type in self._block.valid_type_pairs()["REAL"]:
             return "asynFloat64"
 
         return super(ANALOG, self).dtyp()
 
 
     def pv_type(self):
-        return ANALOG.pv_types[self.block_type()]
+        return ANALOG.pv_types[self.block_basetype()]
 
 
 
@@ -2406,7 +2514,7 @@ class ENUM(BASE_TYPE, nobt_helper):
 
 
 
-    pv_types = { BLOCK.CMD : "mbbo",   BLOCK.PARAM : "mbbo",   BLOCK.STATUS : "mbbi" }
+    pv_types = { MODBUS.TYPE : "mbbo",   STATUS_BLOCK.TYPE : "mbbi" }
     vlst = [ VLST( 0, "ZR"),
              VLST( 1, "ON"),
              VLST( 2, "TW"),
@@ -2434,12 +2542,12 @@ class ENUM(BASE_TYPE, nobt_helper):
 
 
     def pv_type(self):
-        return ENUM.pv_types[self.block_type()]
+        return ENUM.pv_types[self.block_basetype()]
 
 
 
 class BITMASK(BASE_TYPE, nobt_helper):
-    pv_types = { BLOCK.CMD : "mbboDirect",   BLOCK.PARAM : "mbboDirect",   BLOCK.STATUS : "mbbiDirect" }
+    pv_types = { MODBUS.TYPE : "mbboDirect",   STATUS_BLOCK.TYPE : "mbbiDirect" }
 
     def __init__(self, source, block, name, plc_var_type, nobt, shift, keyword_params):
         self._set_nobt(nobt, shift, keyword_params)
@@ -2448,27 +2556,27 @@ class BITMASK(BASE_TYPE, nobt_helper):
 
 
     def pv_type(self):
-        return BITMASK.pv_types[self.block_type()]
+        return BITMASK.pv_types[self.block_basetype()]
 
 
     def dtyp(self):
-        if self.is_status():
+        if self.from_plc():
             return super(BITMASK, self).dtyp()
 
         return "asynUInt32Digital"
 
 
     def inst_io(self):
-        if self.is_status():
+        if self.from_plc():
             return super(BITMASK, self).inst_io()
 
         return "asynMask"
 
 
     def link_extra(self):
-        if self.is_status():
+        if self.from_plc():
             return ""
-        elif self.is_command() or self.is_parameter():
+        elif self.to_plc():
             return "0xFFFF, " + BASE_TYPE.ASYN_TIMEOUT
         else:
             raise IfDefInternalError("Unknown db type: " + self.block_type())
@@ -2476,7 +2584,7 @@ class BITMASK(BASE_TYPE, nobt_helper):
 
 
 class STRING(BASE_TYPE):
-    pv_types = { BLOCK.CMD : "stringout",   BLOCK.PARAM : "stringout",   BLOCK.STATUS : "stringin" }
+    pv_types = { MODBUS.TYPE : "stringout",   STATUS_BLOCK.TYPE : "stringin" }
 
     def __init__(self, source, block, name, max_len, keyword_params):
         if max_len is not None:
@@ -2511,19 +2619,19 @@ class STRING(BASE_TYPE):
 
 
     def pv_type(self):
-        return self.pv_types[self.block_type()]
+        return self.pv_types[self.block_basetype()]
 
 
     def endian_correct_dtyp_var_type(self):
         ec_dtyp_var_type = super(STRING, self).endian_correct_dtyp_var_type()
-        if self.is_status():
+        if self.from_plc():
             return ec_dtyp_var_type
 
         return "{}={}".format(ec_dtyp_var_type, self.dimension())
 
 
     def dtyp(self):
-        if self.is_status():
+        if self.from_plc():
             return super(STRING, self).dtyp()
 
         return "asynOctetWrite"
@@ -2534,7 +2642,7 @@ class STRING(BASE_TYPE):
 
 
     def link_extra(self):
-        if self.is_status():
+        if self.from_plc():
             return " L={}".format(self.dimension())
 
         return super(STRING, self).link_extra()

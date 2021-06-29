@@ -14,7 +14,7 @@ __license__    = "GPLv3"
 
 
 from . import PRINTER, TemplatePrinterException
-from tf_ifdef import IfDefSyntaxError, SOURCE, BLOCK, CMD_BLOCK, STATUS_BLOCK, BASE_TYPE, BIT, ALARM, TIME
+from tf_ifdef import IfDefSyntaxError, SOURCE, BLOCK, BASE_TYPE, BIT, TIME
 
 
 def printer():

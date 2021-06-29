@@ -258,10 +258,12 @@ record(longin, "{root_inst_slot}:C2")
     def _body_block(self, block, output):
         if block.is_status_block():
             comment = "PLC   -> EPICS status  "
-        elif block.is_cmd_block():
+        elif block.is_command_block():
             comment = "EPICS -> PLC commands  "
-        elif block.is_param_block():
+        elif block.is_parameter_block():
             comment = "EPICS -> PLC parameters"
+        elif block.is_general_input_block():
+            comment = "EPICS -> PLC general inputs"
         else:
             raise IfDefInternalError("Unsupported block type: " + block.type())
 
@@ -1012,6 +1014,7 @@ record(longin, "{root_inst_slot}:PayloadSizeFromPLCR")
 
         self._body_register_block_printer(if_def._cmd_block())
         self._body_register_block_printer(if_def._param_block())
+        self._body_register_block_printer(if_def._gen_input_block())
         self._body_register_block_printer(if_def._status_block())
 
         self._append("""
@@ -1021,6 +1024,7 @@ record(longin, "{root_inst_slot}:PayloadSizeFromPLCR")
 """.format(inst_slot = self.raw_inst_slot()))
         self._body_verboseheader(if_def._cmd_block(), output)
         self._body_verboseheader(if_def._param_block(), output)
+        self._body_verboseheader(if_def._gen_input_block(), output)
         self._body_verboseheader(if_def._status_block(), output)
 
         self._append("""##########
@@ -1374,6 +1378,7 @@ record(ao, "{root_inst_slot}:CommsHashToPLCS")
 
         self._body_register_block_printer(if_def._cmd_block())
         self._body_register_block_printer(if_def._param_block())
+        self._body_register_block_printer(if_def._gen_input_block())
         self._body_register_block_printer(if_def._status_block())
 
         self._append("""

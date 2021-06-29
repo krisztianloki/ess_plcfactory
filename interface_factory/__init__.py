@@ -114,10 +114,11 @@ class IFA(object):
             self.status_items    = []
             self.command_items   = []
             self.parameter_items = []
+            self.general_input_items = []
 
 
         def __iter__(self):
-            return IFA.Device.DeviceItemIterator([ iter(self.status_items), iter(self.command_items), iter(self.parameter_items) ])
+            return IFA.Device.DeviceItemIterator([ iter(self.status_items), iter(self.command_items), iter(self.parameter_items), iter(self.general_input_items) ])
 
 
         def append(self, line):
@@ -190,6 +191,20 @@ class IFA(object):
             return True
 
 
+        def is_input(self):
+            """
+            If it contains inputs to the PLC
+            """
+            return self.__block != 'S'
+
+
+        def is_output(self):
+            """
+            If it contains outputs from the PLC
+            """
+            return self.__block == 'S'
+
+
         def is_status(self):
             return self.__block == 'S'
 
@@ -200,6 +215,10 @@ class IFA(object):
 
         def is_parameter(self):
             return self.__block == 'P'
+
+
+        def is_general_input(self):
+            return self.__block == 'G'
 
 
 
@@ -365,6 +384,8 @@ Pre-parsing .ifa file...""".format(self.IfaPath))
                             Area = device.command_items
                         elif line == "PARAMETER":
                             Area = device.parameter_items
+                        elif line == "GENERAL_INPUT":
+                            Area = device.general_input_items
                         else:
                             raise IFA.FatalException("Unknown BLOCK type", line)
                         Area.append(IFA.Block(line))

@@ -6,24 +6,34 @@ The information flow has to directions:
 
 *   from the PLC to EPICS; sent periodically (regardless of any value-change) as a block of data  
 
-    *   **_status information_**
+    *   **_[status information](#status-information)_**
 
 *   from EPICS to the PLC; sent only when requested and sent as individual data elements  
 
-    *   **_commands_**
-    *   **_parameters_**
+    *   **_[commands](#commands)_**
+    *   **_[parameters](#parameters)_**
+    *   **_[general inputs](#general-inputs)_**
 
 ## Status information
 
-Typically these are sensor readings and various state information about the PLC program itself. A word array is constructed at the PLC side that is sent periodically and is disassembled by the IOC into individual PVs. Status information is enclosed in a **status block**.
+Typically these are sensor readings and various state information about the PLC program itself. A word array is constructed at the PLC side that is sent periodically and is disassembled by the IOC into individual PVs.
+Status information is enclosed in a **[status block](#status-block)**.
 
 ## Commands
 
-These are instructions to the PLC program. The PLC code resets every command to the default 0 value upon receiving. This prevents the repetition of the same command and ensures that only commands that are actually resent are interpreted as new instructions. Usually commands are one-bit values, but there is no restriction on their type. Commands are enclosed in a **command block**.
+These are instructions to the PLC program. The PLC code resets every command to the default 0 value upon receiving. This prevents the repetition of the same command and ensures that only commands that are actually resent are interpreted as new instructions. Usually commands are one-bit values, but there is no restriction on their type.
+Commands are enclosed in a **[command block](#command-block)**.
 
 ## Parameters
 
-These are control values sent to the PLC program. Their values are preserved between PLC cycles. Typical parameters are setpoints and alarm limits Parameters are enclosed in a **parameter block**.
+These are control values sent to the PLC program. Their values are preserved between PLC cycles and autosaved on the IOC side. Typical parameters are setpoints and alarm limits.
+Parameters are enclosed in a **[parameter block](#parameter-block)**.
+
+## General Inputs
+
+These are general input / control values sent to the PLC program. Their values are preserved between PLC cycles **BUT not autosaved** on the IOC side. Typical general inputs are measurement values.
+General inputs are enclosed in a **[general input block](#general-input-block)**
+
 
 ## Types
 
@@ -57,7 +67,7 @@ The following PLC types can be used to "back" the variables defined in the inter
 
 ## Data Layout
 
-All the variables in each direction are assembled into a WORD (16-bit integer) array on the PLC side (the command and parameter blocks are concatenated to form one array). The array is filled from top to bottom, meaning that the earlier a variable shows up in the interface definition, the lower its array index will be.
+All the variables in each direction are assembled into a WORD (16-bit integer) array on the PLC side (the command, parameter, and general inputs blocks are concatenated to form one array). The array is filled from top to bottom, meaning that the earlier a variable shows up in the interface definition, the lower its array index will be.
 
 Digital types are packed into WORDs so no space is wasted. The earlier the digital variable shows up, the lower its significance will be in the resulting WORD (ie. the first digital is mapped to 2⁰, the second to 2¹, and so on). If for whatever reason you need to have more control over the mapping to individual bits, spare digitals can be introduced.
 
@@ -91,6 +101,10 @@ A block can only be defined once, empty blocks need not be defined. The scope of
 ### Parameter block
 
 **`define_parameter_block()`**
+
+### General input block
+
+**`define_general_input_block()`**
 
 ## Adding variables to a block
 
