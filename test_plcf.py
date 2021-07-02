@@ -174,6 +174,18 @@ class TestPLCF(unittest.TestCase):
         self.assertEqual(self.process([line]), [result])
 
 
+    def testCustomCounters(self):
+        counters = list()
+        with self.assertRaises(plcf.PLCFException):
+            plcf.PLCF.evalCounters([], counters)
+
+        counters = dict()
+        for k in range(0, 20):
+            counters[k] = k
+        with self.assertRaises(plcf.PLCFException):
+            plcf.PLCF.evalCounters([], counters)
+
+
     def testCounterInPLCF(self):
         counter  = "Counter1"
         expr     = "{}".format(counter)
@@ -182,6 +194,12 @@ class TestPLCF(unittest.TestCase):
         self.assertTrue(plcf.PLCF.hasCounter(line))
         self.assertEqual(plcf.PLCF.wordIndex(expr, counter), 0)
         self.assertEqual(plcf.PLCF.wordIndex(line, counter), 6)
+
+        with self.assertRaises(plcf.PLCFSyntaxError):
+            plcf.PLCF.evalCounters(["[PLCF#foo"])
+
+        with self.assertRaises(plcf.PLCFSyntaxError):
+            plcf.PLCF._evalCounter("[PLCF#foo", {})
 
         counterline = "#COUNTER {} = {}"
         const = 42
@@ -235,6 +253,32 @@ class TestPLCF(unittest.TestCase):
         self.assertTrue(plcf.PLCF.hasCounter(line))
         self.assertEqual(plcf.PLCF._evalCounter(line, counters), str(42 + counters[counter]))
 
+
+    def testCounterIncrease(self):
+        counter = "Counter1"
+        line = "#COUNTER Counter1 = [PLCF#42"
+        with self.assertRaises(plcf.PLCFSyntaxError):
+            plcf.PLCF.evalCounters([line])
+
+        line = "#COUNTER Counter1 = [PLCF#42]"
+        (_, counters) = plcf.PLCF.evalCounters([line])
+        self.assertEqual(counters[counter], 42)
+
+
+    def testMultipleCounterPLCFs(self):
+        counter = "Counter1"
+        self.assertTrue(plcf.PLCF.hasCounter(counter))
+
+        line = "[PLCF#{c}] is [PLCF#{c}]".format(c = counter)
+        self.assertTrue(plcf.PLCF.hasCounter(line))
+
+        counters = plcf.PLCF.initializeCounters()
+        counters[counter] = 42
+        expected = "{c} is {c}".format(c = counters[counter])
+        self.assertEqual(plcf.PLCF._evalCounter(line, counters), expected)
+
+        (res, _) = plcf.PLCF.evalCounters([line], counters)
+        self.assertEqual(res, [expected])
 
 
     def testBacktrackInPLCF(self):

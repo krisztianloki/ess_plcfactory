@@ -374,10 +374,15 @@ class PLCF(object):
 
 
     @staticmethod
-    def evalCounters(lines):
+    def evalCounters(lines, counters = None):
         assert isinstance(lines, list)
 
-        counters = PLCF.initializeCounters()
+        if counters is None:
+            counters = PLCF.initializeCounters()
+        elif not isinstance(counters, dict):
+            raise PLCFException("Invalid counters type")
+        elif len(counters) > PLCF.num_of_counters:
+            raise PLCFException("Too many counters")
 
         output = []
 
@@ -403,17 +408,27 @@ class PLCF(object):
         assert isinstance(line,     str )
         assert isinstance(counters, dict)
 
+        s = 0
+        while True:
+            # Check if PLCF# expressions are valid
+            (_, expr, e) = PLCF.getPLCFExpression(line[s:])
+            if e is None:
+                break
+            s += e + 1
+
         # substitutions
         for key in counters.keys():
             try:
-                (line, _) = PLCF.substituteWord(line, key, str(counters[key]))
+                while True:
+                    (line, _) = PLCF.substituteWord(line, key, str(counters[key]), True)
             except PLCFNoWordException:
                 pass
 
         # evaluation
-        (_, line) = PLCF._processLineCounter(line)
-
-        return line
+        while True:
+            (expr, line) = PLCF._processLineCounter(line)
+            if expr is None:
+                return line
 
 
     @staticmethod
@@ -422,9 +437,9 @@ class PLCF(object):
         assert isinstance(counters, dict)
 
         # identify start of expression and substitute
-        pos = line.find(PLCF.plcf_tag)
+        (pos, _, _) = PLCF.getPLCFExpression(line)
 
-        if pos != -1:
+        if pos is not None:
             pre  = line[:pos]
             post = line[pos:]
 
@@ -530,12 +545,14 @@ class PLCF(object):
 
     # substitutes a variable in an expression with the provided value
     @staticmethod
-    def substituteWord(expr, word, value):
+    def substituteWord(expr, word, value, exception_if_not_found = False):
         assert isinstance(expr,   str), (expr, type(expr))
         assert isinstance(word,   str), (expr, word, type(word))
         assert isinstance(value,  str), (expr, word, value, type(value))
 
         if word not in expr:
+            if exception_if_not_found:
+                raise PLCFNoWordException()
             return (expr, len(expr))
 
         start           = PLCF.wordIndex(expr, word)

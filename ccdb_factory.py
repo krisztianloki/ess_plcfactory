@@ -200,6 +200,8 @@ class CCDB_Factory(CC):
                     # Handle 'controlledBy' is None case
                     device._slot["controlledBy"] = [ self.name() ]
 
+            return self
+
 
         def setProperty(self, key, value, dataType = None):
             if self._slot["properties"] is None:
@@ -212,6 +214,8 @@ class CCDB_Factory(CC):
                     return
 
             self._slot["properties"].append({"name": key, "value": str_value, "dataType": CCDB_Factory.toDatatype(value, dataType)})
+
+            return self
 
 
         def addDevice(self, deviceType, deviceName):
@@ -260,6 +264,8 @@ class CCDB_Factory(CC):
 
             self.__addArtifact(artifactDict)
 
+            return self
+
 
         def addLink(self, name, uri, local_file = None, download = True):
             artifactDict = dict(CCDB_Factory.default_link_dict)
@@ -273,6 +279,8 @@ class CCDB_Factory(CC):
                 artifactDict["full_path"] = local_file
 
             self.__addArtifact(artifactDict)
+
+            return self
 
 
 
@@ -391,6 +399,8 @@ class CCDB_Factory(CC):
 
         self.__addArtifact(deviceType, artifactDict)
 
+        return self
+
 
     def addLink(self, deviceType, name, uri, local_file = None, download = True):
         artifactDict = dict(CCDB_Factory.default_link_dict)
@@ -404,6 +414,8 @@ class CCDB_Factory(CC):
 
         self.__addArtifact(deviceType, artifactDict)
 
+        return self
+
 
     def setProperty(self, deviceType, key, value, dataType = None):
         propDict = dict(CCDB_Factory.default_prop_dict)
@@ -416,6 +428,8 @@ class CCDB_Factory(CC):
             self._properties[deviceType].append(propDict)
         except KeyError:
             self._properties[deviceType] = [ propDict ]
+
+        return self
 
 
     def url(self):

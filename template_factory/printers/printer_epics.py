@@ -979,12 +979,12 @@ record(longin, "{root_inst_slot}:PayloadSizeFromPLCR")
            endianness      = self._endianness,
            epics_to_plc_hash              = self.EPICSToPLCDataBlockStartOffset + self.EPICSTOPLC_HASH,
            epics_to_plc_heartbeat         = self.EPICSToPLCDataBlockStartOffset + self.EPICSTOPLC_HEARTBEAT,
-           epics_to_plc_read_hash         = self.EPICSToPLCDataBlockStartOffset + self.EPICSTOPLC_READ_HASH,
+           epics_to_plc_read_hash         = self.EPICSTOPLC_READ_HASH,
            epics_to_plc_upload_stat       = self.EPICSToPLCDataBlockStartOffset + self.EPICSTOPLC_UPLOADSTAT,
            plc_to_epics_hash              = self.PLCToEPICSDataBlockStartOffset + self.PLCTOEPICS_HASH,
            plc_to_epics_heartbeat         = self.PLCToEPICSDataBlockStartOffset + self.PLCTOEPICS_HEARTBEAT,
            plc_to_epics_upload_stat       = self.PLCToEPICSDataBlockStartOffset + self.PLCTOEPICS_UPLOADSTAT,
-           epics_to_plc_read_payload_size = self.EPICSToPLCDataBlockStartOffset + self.EPICSTOPLC_READ_PAYLOAD_SIZE)
+           epics_to_plc_read_payload_size = self.EPICSTOPLC_READ_PAYLOAD_SIZE)
 
 
     #
