@@ -1561,15 +1561,19 @@ def verify_output(strictness, ignore):
             return True
 
         # The files are different, let's try again skipping comment lines
+        comment = '#'
+        if f1.endswith(".scl"):
+            comment = '//'
+
         with open(f1, "r") as fp1, open(f2, "r") as fp2:
             while True:
                 l1 = fp1.readline(1024)
                 l2 = fp2.readline(1024)
 
-                while l1 and l1[0] == '#':
+                while l1 and l1.strip().startswith(comment):
                     l1 = fp1.readline()
 
-                while l2 and l2[0] == '#':
+                while l2 and l2.strip().startswith(comment):
                     l2 = fp2.readline()
 
                 if l1 != l2:
