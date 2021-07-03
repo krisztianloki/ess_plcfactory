@@ -130,8 +130,7 @@ GATEWAY_DATABLOCK
            plcpulse                 = plcpulse,
            gateway_datablock        = self.get_property("PLC-EPICS-COMMS: GatewayDatablock", "")), output)
 
-        #FIXME: the 10 word offset should be applied here (and not in the footer) and removed from InterfaceFactorySiemens.py and InterfaceFactoryBeckhoff.py
-        #self.advance_offsets_after_header(True)
+        self.advance_offsets_after_header(True)
 
 
     #
@@ -228,10 +227,9 @@ PLCTOEPICSDATABLOCKOFFSET
     def footer(self, output, **keyword_params):
         super(IFF, self).footer(output, **keyword_params)
 
-        #FIXME: the 10 word offset should be applied in the header (and not here) and removed from InterfaceFactorySiemens.py and InterfaceFactoryBeckhoff.py
         self._append("""TOTALEPICSTOPLCLENGTH
 {totalepicstoplclength}
 TOTALPLCTOEPICSLENGTH
 {totalplctoepicslength}
-""".format(totalepicstoplclength = self._epics_to_plc_offset + 10 - self.EPICSToPLCDataBlockStartOffset,
-           totalplctoepicslength = self._plc_to_epics_offset + 10 - self.PLCToEPICSDataBlockStartOffset), output)
+""".format(totalepicstoplclength = self._epics_to_plc_offset - self.EPICSToPLCDataBlockStartOffset,
+           totalplctoepicslength = self._plc_to_epics_offset - self.PLCToEPICSDataBlockStartOffset), output)

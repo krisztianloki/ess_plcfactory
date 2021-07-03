@@ -1187,8 +1187,8 @@ def ProcessIFADevTypes(OutputDir):
 		FC_EPICS_DEVICE_CALLS_BODY.append("//********************************************")
 		FC_EPICS_DEVICE_CALLS_BODY.append("")
 		FC_EPICS_DEVICE_CALLS_BODY.append("EPICS_GVL.FB_DEV_"+ActualDeviceNameWhite+"(")
-		FC_EPICS_DEVICE_CALLS_BODY.append("       nOffsetStatus:= "+str(int(PLCTOEPICSDATABLOCKOFFSET)+10)+",")
-		FC_EPICS_DEVICE_CALLS_BODY.append("       nOffsetCmd:="+str(int(EPICSTOPLCDATABLOCKOFFSET)-12288+10)+");")
+		FC_EPICS_DEVICE_CALLS_BODY.append("       nOffsetStatus:= "+str(int(PLCTOEPICSDATABLOCKOFFSET))+",")
+		FC_EPICS_DEVICE_CALLS_BODY.append("       nOffsetCmd:="+str(int(EPICSTOPLCDATABLOCKOFFSET)-12288)+");")
 
 		EPICS_GVL.append("	FB_DEV_"+ActualDeviceNameWhite+"	:FB_DEVTYPE_"+ActualDeviceType+";					//Device instance("+ActualDeviceName+")")
 
