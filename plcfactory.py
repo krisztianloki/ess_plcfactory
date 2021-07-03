@@ -130,15 +130,16 @@ device_tag      = None
 epi_version     = None
 hashes          = dict()
 prev_hashes     = None
-generate_ioc    = False
+GENERATE_IOC    = False
 ioc_git         = True
 ioc             = None
 e3              = None
-plcf_branch     = git.get_current_branch()
-plcf_url        = helpers.url_strip_user(git.get_origin())
-commit_id       = git.get_local_ref(plcf_branch)
-if commit_id is not None:
-    ifdef_params["COMMIT_ID"] = commit_id
+PLCF_BRANCH     = git.get_current_branch()
+PLCF_URL        = helpers.url_strip_user(git.get_origin())
+COMMIT_ID       = git.get_local_ref(PLCF_BRANCH)
+VERIFY          = False
+if COMMIT_ID is not None:
+    ifdef_params["COMMIT_ID"] = COMMIT_ID
 
 
 class PLCFactoryException(Exception):
@@ -726,9 +727,9 @@ Command line:
 =============
 {cmdline}
 """.format(tstamp  = '{:%Y-%m-%d %H:%M:%S}'.format(glob.raw_timestamp),
-           url     = plcf_url,
-           branch  = plcf_branch,
-           commit  = commit_id,
+           url     = PLCF_URL,
+           branch  = PLCF_BRANCH,
+           commit  = COMMIT_ID,
            cmdline = " ".join(sys.argv))
 
             repo.add(created_files)
@@ -764,6 +765,237 @@ Could not launch browser to create merge request, please visit:
 {}
 
 """.format(link))
+
+
+
+class PLC(object):
+    @staticmethod
+    def add_plc_parser_args(parser):
+        plc_group = parser.add_argument_group("PLC related options")
+
+        plc_args = plc_group.add_mutually_exclusive_group()
+
+        default_tia = "TIAv15.1"
+
+        plc_args.add_argument(
+                              '--plc-siemens',
+                              '--plc-interface',
+                              dest    = "siemens",
+                              help    = 'use the default templates for Siemens PLCs and generate interface PLC comms. The default TIA version is {}'.format(default_tia),
+                              metavar = 'TIA-Portal-version',
+                              nargs   = "?",
+                              const   = default_tia,
+                              type    = str
+                             )
+
+        plc_args.add_argument(
+                              '--plc-beckhoff',
+                              dest    = "beckhoff",
+                              help    = "use the default templates for Beckhoff PLCs and generate interface Beckhoff PLC comms. 'Beckhoff-version' is not used right now",
+                              metavar = 'Beckhoff-version',
+                              nargs   = "?",
+                              const   = 'not-used',
+                              type    = str
+                             )
+
+        plc_args.add_argument(
+                              '--plc-opc',
+                              dest    = "opc",
+                              help    = "use the default templates for OPC-UA. No PLC code is generated!",
+                              action  = "store_true",
+                             )
+
+        diag_args = plc_group.add_mutually_exclusive_group()
+        diag_args.add_argument(
+                               '--plc-no-diag',
+                               dest     = "plc_no_diag",
+                               help     = 'do not generate PLC diagnostics code (if used with --plc-x). This is the default',
+                               action   = 'store_true',
+                               default  = True,
+                               required = False)
+
+        diag_args.add_argument(
+                               '--plc-diag',
+                               dest     = "plc_no_diag",
+                               help     = 'generate PLC diagnostics code (if used with --plc-x)',
+                               action   = 'store_false',
+                               required = False)
+
+        diag_args.add_argument(
+                               '--plc-only-diag',
+                               dest     = "plc_only_diag",
+                               help     = 'generate PLC diagnostics code only (if used with --plc-x)',
+                               action   = 'store_true',
+                               required = False)
+
+        test_args = plc_group.add_mutually_exclusive_group()
+        test_args.add_argument(
+                               '--plc-no-test',
+                               dest     = "plc_test",
+                               help     = 'do not generate PLC comms testing code (if used with --plc-x). This is the default',
+                               action   = 'store_false',
+                               default  = False,
+                               required = False)
+
+        test_args.add_argument(
+                               '--plc-test',
+                               dest     = "plc_test",
+                               help     = 'generate PLC comms testing code (if used with --plc-x)',
+                               action   = 'store_true',
+                               required = False)
+
+        plc_group.add_argument(
+                               '--plc-readonly',
+                               dest     = "plc_readonly",
+                               help     = 'do not generate EPICS --> PLC communication code',
+                               action   = 'store_true',
+                               default  = False)
+
+        return parser
+
+
+    @staticmethod
+    def parse_args(args):
+        if args.siemens is not None:
+            return SIEMENS_PLC(args)
+
+        if args.beckhoff:
+            return BECKHOFF_PLC(args)
+
+        if args.opc:
+            return OPC_PLC(args)
+
+        return None
+
+
+    @staticmethod
+    def type():
+        raise NotImplementedError
+
+
+    def __init__(self, args):
+        super(PLC, self).__init__()
+
+        # FIXME: these arguments should not even be exposed without --plc-siemens
+        if (args.plc_only_diag or args.plc_no_diag is False) and not args.siemens:
+            raise PLCFArgumentError('--plc-only-diag requires --plc-siemens')
+
+        self._readonly = args.plc_readonly
+        self._only_diag = args.plc_only_diag
+        self._no_diag = args.plc_no_diag
+        self._test = args.plc_test
+        self._version = None
+
+
+    def is_readonly(self):
+        return self._readonly
+
+
+    def generate_plc(self, out_dir, commit_id, verify):
+        from interface_factory import IFA
+
+        output_files.update(IFA.produce(out_dir, output_files["IFA"], TIAVersion = self._version, nodiag = self._no_diag, onlydiag = self._only_diag, commstest = self._test, verify = verify, readonly = self._readonly, commit_id = commit_id))
+
+
+
+class SIEMENS_PLC(PLC):
+    @staticmethod
+    def PLC_is_siemens():
+        return False
+
+    PLC.is_siemens = PLC_is_siemens
+
+
+    @staticmethod
+    def update_default_printers(default_printers):
+        default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "IFA", "ARCHIVE", "BEAST", "BEAST-TEMPLATE" ] )
+
+
+    @staticmethod
+    def is_siemens():
+        return True
+
+
+    @staticmethod
+    def type():
+        return "SIEMENS"
+
+
+    def __init__(self, args):
+        super(SIEMENS_PLC, self).__init__(args)
+
+        from interface_factory import IFA
+        tia_version  = args.siemens.lower()
+        try:
+            tia_version  = IFA.consolidate_tia_version(tia_version)
+        except IFA.FatalException as e:
+            raise PLCFArgumentError(e.message)
+
+        self._version = tia_version
+
+
+
+class BECKHOFF_PLC(PLC):
+    @staticmethod
+    def PLC_is_beckhoff():
+        return False
+
+    PLC.is_beckhoff = PLC_is_beckhoff
+
+
+    @staticmethod
+    def update_default_printers(default_printers):
+        default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "IFA", "ARCHIVE", "BEAST", "BEAST-TEMPLATE" ] )
+
+
+    @staticmethod
+    def is_beckhoff():
+        return True
+
+
+    @staticmethod
+    def type():
+        return "BECKHOFF"
+
+
+    def __init__(self, args):
+        super(BECKHOFF_PLC, self).__init__(args)
+
+        if self._only_diag or self._no_diag is False:
+            raise PLCFArgumentError('PLCFactory cannot (yet?) generate diagnostics code for Beckhoff PLCs')
+
+
+
+class OPC_PLC(PLC):
+    @staticmethod
+    def PLC_is_opc():
+        return False
+
+    PLC.is_opc = PLC_is_opc
+
+
+    @staticmethod
+    def update_default_printers(default_printers):
+        # EPICS-DB will be deleted later, but we add it here so that it is enough to check for EPICS-DB
+        default_printers.update( [ "EPICS-DB", "EPICS-OPC-DB", "BEAST", "BEAST-TEMPLATE" ] )
+
+
+    @staticmethod
+    def is_opc():
+        return True
+
+
+    @staticmethod
+    def type():
+        return "OPC"
+
+
+    def __init__(self, args):
+        super(OPC_PLC, self).__init__(args)
+
+
+    def generate_plc(self, *args, **kwargs):
+        return
 
 
 
@@ -1134,8 +1366,9 @@ def get_repository(device, link_name):
     return repo
 
 
-def processDevice(deviceName, templateIDs):
+def processDevice(deviceName, plc, templateIDs):
     assert isinstance(deviceName,  str)
+    assert plc is None or isinstance(plc, PLC)
     assert isinstance(templateIDs, list)
 
     try:
@@ -1218,7 +1451,7 @@ PLC-EPICS-COMMS: GatewayDatablock: {}""".format(hash_base, gw_db)
     # create a stable list of controlled devices
     devices = device.buildControlsList(include_self = True, verbose = True)
 
-    if generate_ioc:
+    if GENERATE_IOC:
         try:
             hostname = device.properties()["Hostname"]
         except KeyError:
@@ -1260,6 +1493,9 @@ PLC-EPICS-COMMS: GatewayDatablock: {}""".format(hash_base, gw_db)
             raise PLCFactoryException("CRC32 collision detected. Please file a bug report")
     except (KeyError, TypeError):
         pass
+
+    if plc:
+        plc.generate_plc(OUTPUT_DIR, COMMIT_ID, VERIFY)
 
     return device
 
@@ -1644,9 +1880,9 @@ def record_args(root_device):
 #PLCFactory branch: {branch}
 #PLCFactory commit: {commit}
 """.format(date   = '{:%Y-%m-%d %H:%M:%S}'.format(glob.raw_timestamp),
-           url    = plcf_url,
-           branch = plcf_branch,
-           commit = commit_id), file = f)
+           url    = PLCF_URL,
+           branch = PLCF_BRANCH,
+           commit = COMMIT_ID), file = f)
         print(" ".join(sys.argv), file = f)
     output_files["CREATOR"] = creator
 
@@ -1696,85 +1932,7 @@ def main(argv):
         #
         # -d/--device cannot be added to the common args, because it is not a required option in the first pass but a required one in the second pass
         #
-        plc_group = parser.add_argument_group("PLC related options")
-
-        plc_args = plc_group.add_mutually_exclusive_group()
-
-        default_tia = "TIAv15.1"
-
-        plc_args.add_argument(
-                              '--plc-siemens',
-                              '--plc-interface',
-                              dest    = "siemens",
-                              help    = 'use the default templates for Siemens PLCs and generate interface PLC comms. The default TIA version is {}'.format(default_tia),
-                              metavar = 'TIA-Portal-version',
-                              nargs   = "?",
-                              const   = default_tia,
-                              type    = str
-                             )
-
-        plc_args.add_argument(
-                              '--plc-beckhoff',
-                              dest    = "beckhoff",
-                              help    = "use the default templates for Beckhoff PLCs and generate interface Beckhoff PLC comms. 'Beckhoff-version' is not used right now",
-                              metavar = 'Beckhoff-version',
-                              nargs   = "?",
-                              const   = 'not-used',
-                              type    = str
-                             )
-
-        plc_args.add_argument(
-                              '--plc-opc',
-                              dest    = "opc",
-                              help    = "use the default templates for OPC-UA. No PLC code is generated!",
-                              action  = "store_true",
-                             )
-
-        diag_args = plc_group.add_mutually_exclusive_group()
-        diag_args.add_argument(
-                               '--plc-no-diag',
-                               dest     = "plc_no_diag",
-                               help     = 'do not generate PLC diagnostics code (if used with --plc-x). This is the default',
-                               action   = 'store_true',
-                               default  = True,
-                               required = False)
-
-        diag_args.add_argument(
-                               '--plc-diag',
-                               dest     = "plc_no_diag",
-                               help     = 'generate PLC diagnostics code (if used with --plc-x)',
-                               action   = 'store_false',
-                               required = False)
-
-        diag_args.add_argument(
-                               '--plc-only-diag',
-                               dest     = "plc_only_diag",
-                               help     = 'generate PLC diagnostics code only (if used with --plc-x)',
-                               action   = 'store_true',
-                               required = False)
-
-        test_args = plc_group.add_mutually_exclusive_group()
-        test_args.add_argument(
-                               '--plc-no-test',
-                               dest     = "plc_test",
-                               help     = 'do not generate PLC comms testing code (if used with --plc-x). This is the default',
-                               action   = 'store_false',
-                               default  = False,
-                               required = False)
-
-        test_args.add_argument(
-                               '--plc-test',
-                               dest     = "plc_test",
-                               help     = 'generate PLC comms testing code (if used with --plc-x)',
-                               action   = 'store_true',
-                               required = False)
-
-        plc_group.add_argument(
-                               '--plc-readonly',
-                               dest     = "plc_readonly",
-                               help     = 'do not generate EPICS --> PLC communication code',
-                               action   = 'store_true',
-                               default  = False)
+        PLC.add_plc_parser_args(parser)
 
         parser.add_argument(
                             '--list-templates',
@@ -1852,28 +2010,12 @@ def main(argv):
     #  get the device
     args   = parser.parse_known_args(argv)[0]
     device = args.device
-    plc    = False
 
     if args.list_templates:
         print(tf.available_printers())
         return
 
-    if args.siemens is not None:
-        from interface_factory import IFA
-        tia_version  = args.siemens.lower()
-        try:
-            tia_version  = IFA.consolidate_tia_version(tia_version)
-        except IFA.FatalException as e:
-            raise PLCFArgumentError(e.message)
-        siemens      = True
-    else:
-        tia_version = None
-        siemens     = False
-
-    beckhoff = args.beckhoff
-
-    opc = args.opc
-
+    plc = PLC.parse_args(args)
 
     # Second pass
     #  get EEE and E3
@@ -1895,9 +2037,9 @@ def main(argv):
         eee = False
 
     if args.ioc is not None:
-        global generate_ioc
+        global GENERATE_IOC
         global ioc_git
-        generate_ioc = True
+        GENERATE_IOC = True
         ioc_git = args.ioc_git
 
     if args.e3 is not None:
@@ -1976,7 +2118,7 @@ def main(argv):
                         nargs    = '+',
                         type     = str,
                         default  = [],
-                        required = not (siemens or eee or e3 or beckhoff or opc))
+                        required = not (plc or eee or e3))
 
     global OUTPUT_DIR
     parser.add_argument(
@@ -2000,9 +2142,11 @@ def main(argv):
 
     ifdef_params["ROOT_INSTALLATION_SLOT"] = glob.root_installation_slot
 
-    glob.commit_id = commit_id if not args.verify else "N/A"
-    glob.branch    = plcf_branch if not args.verify else "N/A"
-    glob.cmdline   = " ".join(sys.argv) if not args.verify else "N/A"
+    global VERIFY
+    VERIFY = args.verify
+    glob.commit_id = COMMIT_ID if not VERIFY else "N/A"
+    glob.branch    = PLCF_BRANCH if not VERIFY else "N/A"
+    glob.cmdline   = " ".join(sys.argv) if not VERIFY else "N/A"
     glob.origin    = git.get_origin()
 
     global device_tag
@@ -2012,32 +2156,21 @@ def main(argv):
 
     default_printers = set(["DEVICE-LIST", "README"])
 
-    if siemens:
-        default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "IFA", "ARCHIVE", "BEAST", "BEAST-TEMPLATE" ] )
-        plc = True
-
-    ifdef_params["PLC_READONLY"] = args.plc_readonly
     ifdef_params["EXPERIMENTAL"] = args.experimental
 
-    if beckhoff:
-        default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "IFA", "ARCHIVE", "BEAST", "BEAST-TEMPLATE" ] )
-        ifdef_params["PLC_TYPE"] = "BECKHOFF"
-        plc = True
+    if plc:
+        plc.update_default_printers(default_printers)
+        ifdef_params["PLC_TYPE"] = plc.type()
+        ifdef_params["PLC_READONLY"] = plc.is_readonly()
 
-    if opc:
-        # EPICS-DB will be deleted later, but we add it here so that it is enough to check for EPICS-DB
-        default_printers.update( [ "EPICS-DB", "EPICS-OPC-DB", "BEAST", "BEAST-TEMPLATE" ] )
-        ifdef_params["PLC_TYPE"] = "OPC"
-        plc = True
-
-    if not plc and (eee or e3):
+    elif eee or e3:
         raise PLCFArgumentError("Generating EEE or E3 modules is only supported with PLC integration")
 
     # FIXME: EEE
     if eee:
         default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "AUTOSAVE-ST-CMD", "AUTOSAVE", "BEAST", "BEAST-TEMPLATE" ] )
 
-    if e3 or (generate_ioc and plc):
+    if e3 or (GENERATE_IOC and plc):
         default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "IOCSH", "AUTOSAVE-IOCSH", "BEAST", "BEAST-TEMPLATE", ] )
 
     if default_printers:
@@ -2048,21 +2181,15 @@ def main(argv):
     else:
         templateIDs = set(args.template)
 
-    if opc and "OPC-MAP.XLS" in tf.available_printers():
+    if plc and plc.is_opc() and "OPC-MAP.XLS" in tf.available_printers():
         templateIDs.update( [ "OPC-MAP.XLS" ] )
-
-    if (args.plc_only_diag or args.plc_no_diag is False) and not siemens:
-        raise PLCFArgumentError('--plc-only-diag requires --plc-interface/--plc-siemens')
-
-    if (args.plc_only_diag or args.plc_no_diag is False) and beckhoff:
-        raise PLCFArgumentError('PLCFactory cannot (yet?) generate diagnostics code for Beckhoff PLCs')
 
     # FIXME: these tests should be put somewhere in the template_factory/printers section
     if eee and "EPICS-TEST-DB" in templateIDs:
         templateIDs.add("AUTOSAVE-TEST")
         templateIDs.add("AUTOSAVE-ST-TEST-CMD")
 
-    if (e3 or generate_ioc) and "EPICS-TEST-DB" in templateIDs:
+    if (e3 or GENERATE_IOC) and "EPICS-TEST-DB" in templateIDs:
         templateIDs.add("AUTOSAVE-TEST-IOCSH")
 
     # FIXME: EEE
@@ -2076,7 +2203,7 @@ def main(argv):
     if "TEST-IOCSH" in templateIDs and "AUTOSAVE-TEST-IOCSH" in templateIDs:
         templateIDs.remove("TEST-IOCSH")
 
-    if "EPICS-DB" in templateIDs and opc:
+    if "EPICS-DB" in templateIDs and plc and plc.is_opc():
         templateIDs.add("EPICS-OPC-DB")
         templateIDs.remove("EPICS-DB")
 
@@ -2102,20 +2229,14 @@ def main(argv):
     helpers.makedirs(OUTPUT_DIR)
 
     read_data_files()
-    if args.verify:
+    if VERIFY:
         obtain_previous_files()
         # Remove commit-id when verifying
-        ifdef_params.pop("COMMIT_ID", commit_id)
+        ifdef_params.pop("COMMIT_ID", COMMIT_ID)
         # Remove plcfactory status when verifying
         ifdef_params.pop("PLCF_STATUS", 0)
 
-
-    root_device = processDevice(device, list(templateIDs))
-
-    if siemens or args.plc_only_diag or beckhoff:
-        from interface_factory import IFA
-
-        output_files.update(IFA.produce(OUTPUT_DIR, output_files["IFA"], TIAVersion = tia_version, nodiag = args.plc_no_diag, onlydiag = args.plc_only_diag, commstest = args.plc_test, verify = args.verify, readonly = args.plc_readonly, commit_id = commit_id))
+    root_device = processDevice(device, plc, list(templateIDs))
 
     # create a factory of CCDB
     try:
@@ -2124,8 +2245,8 @@ def main(argv):
         pass
 
     # Verify created files: they should be the same as the ones from the last run
-    if args.verify:
-        verify_output(args.verify, args.verify_ignore)
+    if VERIFY:
+        verify_output(VERIFY, args.verify_ignore)
 
     create_previous_files()
     write_data_files()
