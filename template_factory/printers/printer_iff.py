@@ -153,7 +153,7 @@ PLCTOEPICSDATABLOCKOFFSET
 {plctoepicsdatablockoffset}
 """.format(inst_slot                 = self.raw_inst_slot(),
            type                      = self._device.deviceType() if if_def._artifact.is_perdevtype() else "{}_as_{}".format(self._device.deviceType(), self._device.name()),
-           datablock                 = if_def.DEFAULT_DATABLOCK_NAME,
+           datablock                 = if_def.datablock_name(),
            epicstoplcdatablockoffset = self._epics_to_plc_offset,
            plctoepicsdatablockoffset = self._plc_to_epics_offset,
            epicstoplclength          = if_def.to_plc_words_length(),
