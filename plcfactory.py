@@ -2102,6 +2102,9 @@ def main(argv):
         obtain_previous_files()
         # Remove commit-id when verifying
         ifdef_params.pop("COMMIT_ID", commit_id)
+        # Remove plcfactory status when verifying
+        ifdef_params.pop("PLCF_STATUS", 0)
+
 
     root_device = processDevice(device, list(templateIDs))
 
