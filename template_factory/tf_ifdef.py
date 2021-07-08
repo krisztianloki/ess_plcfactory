@@ -170,13 +170,17 @@ class DummyHash(object):
 
 
 class DummyPLCF(object):
+    def process(self, what):
+        return what
+
+
     def processLine(self, line):
         return line
 
 
 
 class SOURCE(object):
-    def __init__(self, source, comment = False):
+    def __init__(self, source, comment = False, keyword_params = None):
         super(SOURCE, self).__init__()
 
         if isinstance(source, tuple):
@@ -187,12 +191,14 @@ class SOURCE(object):
         assert isinstance(source,     str),  func_param_msg("source",     "string")
         assert isinstance(sourcenum,  int),  func_param_msg("sourcenum",  "integer")
         assert isinstance(comment,    bool), func_param_msg("comment",    "bool")
+        assert keyword_params is None or isinstance(keyword_params, dict),   func_param_msg("keyword_params", "dict")
 
         self._source    = source.lstrip()
         self._sourcenum = sourcenum
         self._comment   = comment
         self._hashed    = False
         self._warnings  = None
+        self._keyword_params = dict() if keyword_params is None else keyword_params
 
 
     def hash_message(self):
@@ -209,6 +215,13 @@ class SOURCE(object):
 
     def sourcenum(self):
         return self._sourcenum
+
+
+    def get_parameter(self, param_name, *val_if_not_found):
+        if len(val_if_not_found):
+            return self._keyword_params.get(param_name, val_if_not_found[0])
+
+        return self._keyword_params[param_name]
 
 
     @staticmethod
@@ -442,7 +455,7 @@ class BLOCK(SOURCE):
 
 
         for key, value in keyword_params.items():
-            if key.startswith(BASE_TYPE.PV_PREFIX) or not key in PLC_types:
+            if key.startswith(PV.PV_PREFIX) or not key in PLC_types:
                 continue
 
             if not value in _valid_var_types(self):
@@ -865,7 +878,11 @@ class IF_DEF(object):
         assert isinstance(OPTIMIZE, bool)
         super(IF_DEF, self).__init__()
 
+        PV.init(self)
         BASE_TYPE.init()
+
+        self.pv_names               = dict()
+        self.plc_names              = set()
 
         self._ifaces                = []
         self._preBLOCK              = fakeBLOCK()
@@ -1167,6 +1184,18 @@ class IF_DEF(object):
         return hashobj
 
 
+    def register_pv_name(self, var):
+        if var.pv_name() in self.pv_names:
+            raise IfDefSyntaxError("PV Names must be unique")
+        self.pv_names[var.pv_name()] = var
+
+
+    def register_plc_name(self, var):
+        if var.name() in self.plc_names:
+            raise IfDefSyntaxError("PLC variable names must be unique")
+        self.plc_names.add(var.name())
+
+
     def interfaces(self):
         self._exception_if_active()
 
@@ -1290,7 +1319,7 @@ class IF_DEF(object):
         else:
             check = lambda x: x.pv_name() == pv_name or prefix + x.pv_name() == pv_name
         for interfaces in self.status_interfaces(), self.command_interfaces(), self.parameter_interfaces():
-            f = list(filter(lambda pv: isinstance(pv, BASE_TYPE) and check(pv), interfaces))
+            f = list(filter(lambda pv: isinstance(pv, PV) and check(pv), interfaces))
             if f:
                 return f[0]
 
@@ -1482,12 +1511,12 @@ class IF_DEF(object):
 
     @ifdef_interface
     def define_metadata(self, name, **keyword_params):
-        return SOURCE(self._source)
+        return SOURCE(self._source, keyword_params = keyword_params)
 
 
     @ifdef_interface
     def add_metadata(self, *params, **keyword_params):
-        return SOURCE(self._source)
+        return SOURCE(self._source, keyword_params = keyword_params)
 
 
     @ifdef_interface
@@ -1547,7 +1576,7 @@ class IF_DEF(object):
         return self._add_alarm(name, "MAJOR", alarm_message, **keyword_params)
 
 
-    def _add_limit(self, name, plc_var_type, limit_severity, limit_type, **keyword_params):
+    def _add_limit(self, name, plc_var_type, limit_severity, limit_type, keyword_params):
         if not isinstance(name, str):
             raise IfDefSyntaxError("Name must be a string!")
         if plc_var_type is not None and not isinstance(plc_var_type, str):
@@ -1581,7 +1610,7 @@ class IF_DEF(object):
         var.set_pv_field(ANALOG_LIMIT.LIMIT_ALARM_FIELD[(limit_severity, limit_type)], limit_severity)
 
         # Record which PV's limit this is
-        keyword_params[ANALOG_LIMIT.KW_LIMIT_PV] = var
+        keyword_params[ANALOG_LIMIT.KW_LIMITED_PV] = var
         # Record which limit field to set
         keyword_params[ANALOG_LIMIT.KW_LIMIT_FIELD] = ANALOG_LIMIT.LIMIT_FIELD[(limit_severity, limit_type)]
 
@@ -1665,8 +1694,8 @@ class IF_DEF(object):
         if not isinstance(name, str):
             raise IfDefSyntaxError("Name must be a string!")
 
-        if BASE_TYPE.PV_EGU not in keyword_params:
-            keyword_params[BASE_TYPE.PV_EGU] = "ms"
+        if PV.PV_EGU not in keyword_params:
+            keyword_params[PV.PV_EGU] = "ms"
 
         block = self._active_block()
         var = TIME(self._source, block, name, keyword_params)
@@ -1771,41 +1800,37 @@ class IF_DEF(object):
 
 
 #
-# Types
+# PV class
 #
-class BASE_TYPE(SOURCE):
-    PV_PREFIX      = "PV_"
-    PV_ALIAS       = PV_PREFIX + "ALIAS"
-    PV_NAME        = PV_PREFIX + "NAME"
-    PV_DESC        = PV_PREFIX + "DESC"
-    PV_EGU         = PV_PREFIX + "EGU"
-    PV_ONAM        = PV_PREFIX + "ONAM"
-    PV_ZNAM        = PV_PREFIX + "ZNAM"
-    PV_DRVL        = PV_PREFIX + "DRVL"
-    PV_DRVH        = PV_PREFIX + "DRVH"
-    PV_LOPR        = PV_PREFIX + "LOPR"
-    PV_HOPR        = PV_PREFIX + "HOPR"
+class PV(SOURCE):
+    PV_PREFIX = "PV_"
+    PV_ALIAS  = PV_PREFIX + "ALIAS"
+    PV_NAME   = PV_PREFIX + "NAME"
+    PV_DESC   = PV_PREFIX + "DESC"
+    PV_EGU    = PV_PREFIX + "EGU"
+    PV_ONAM   = PV_PREFIX + "ONAM"
+    PV_ZNAM   = PV_PREFIX + "ZNAM"
+    PV_DRVL   = PV_PREFIX + "DRVL"
+    PV_DRVH   = PV_PREFIX + "DRVH"
+    PV_LOPR   = PV_PREFIX + "LOPR"
+    PV_HOPR   = PV_PREFIX + "HOPR"
 
-    PV_ZRST        = PV_PREFIX + "ZRST"
-    PV_ONST        = PV_PREFIX + "ONST"
-    PV_TWST        = PV_PREFIX + "TWST"
-    PV_THST        = PV_PREFIX + "THST"
-    PV_FRST        = PV_PREFIX + "FRST"
-    PV_FVST        = PV_PREFIX + "FVST"
-    PV_SXST        = PV_PREFIX + "SXST"
-    PV_SVST        = PV_PREFIX + "SVST"
-    PV_EIST        = PV_PREFIX + "EIST"
-    PV_NIST        = PV_PREFIX + "NIST"
-    PV_TEST        = PV_PREFIX + "TEST"
-    PV_ELST        = PV_PREFIX + "ELST"
-    PV_TVST        = PV_PREFIX + "TVST"
-    PV_TTST        = PV_PREFIX + "TTST"
-    PV_FTST        = PV_PREFIX + "FTST"
-    PV_FFST        = PV_PREFIX + "FFST"
-
-    ASYN_TIMEOUT   = "100"
-    templates      = dict()
-    pv_names       = set()
+    PV_ZRST   = PV_PREFIX + "ZRST"
+    PV_ONST   = PV_PREFIX + "ONST"
+    PV_TWST   = PV_PREFIX + "TWST"
+    PV_THST   = PV_PREFIX + "THST"
+    PV_FRST   = PV_PREFIX + "FRST"
+    PV_FVST   = PV_PREFIX + "FVST"
+    PV_SXST   = PV_PREFIX + "SXST"
+    PV_SVST   = PV_PREFIX + "SVST"
+    PV_EIST   = PV_PREFIX + "EIST"
+    PV_NIST   = PV_PREFIX + "NIST"
+    PV_TEST   = PV_PREFIX + "TEST"
+    PV_ELST   = PV_PREFIX + "ELST"
+    PV_TVST   = PV_PREFIX + "TVST"
+    PV_TTST   = PV_PREFIX + "TTST"
+    PV_FTST   = PV_PREFIX + "FTST"
+    PV_FFST   = PV_PREFIX + "FFST"
 
     # (len, strict) if strict is True, the text will be truncated
     field_lengths  = { PV_NAME  : (20, False),
@@ -1833,48 +1858,197 @@ class BASE_TYPE(SOURCE):
                        PV_FFST  : (25, True)
                     }
 
+    ifdef = None
+
 
     @staticmethod
-    def init():
-        BASE_TYPE.templates = dict()
-        BASE_TYPE.pv_names  = set()
-        BASE_TYPE.plc_names = set()
+    def init(ifdef):
+        PV.ifdef = ifdef
 
 
     @staticmethod
     def to_pv_field(field):
-        return BASE_TYPE.PV_PREFIX + field
+        return PV.PV_PREFIX + field
 
 
-    def __init__(self, source, block, name, plc_var_type, keyword_params):
-        super(BASE_TYPE, self).__init__(source)
+    def __init__(self, source, name, keyword_params):
+        super(PV, self).__init__(source, keyword_params = keyword_params)
 
-        assert isinstance(block,        BLOCK),                              func_param_msg("block",          "BLOCK")
-        assert isinstance(name,         str),                                func_param_msg("name",           "string")
-        assert isinstance(plc_var_type, str),                                func_param_msg("plc_var_type",   "string")
-        assert keyword_params is None or isinstance(keyword_params, dict),   func_param_msg("keyword_params", "dict")
+        assert isinstance(name, str), func_param_msg("name", "string")
+
+        # Save ifdef locally (class var will be overwritten when a new IF_DEF class is instantiated)
+        self.ifdef = PV.ifdef
 
         if name == "":
             raise IfDefSyntaxError("Empty name")
 
-        self._keyword_params = keyword_params
+        for pv_ in self._keyword_params.keys():
+            if not pv_.startswith(PV.PV_PREFIX):
+                continue
+
+            val = str(self._keyword_params[pv_])
+            if len(val.splitlines()) > 1:
+                raise IfDefSyntaxError("{} cannot span multiple lines".format(pv_))
+
+        self._name = name
+
+        if PV.PV_NAME not in self._keyword_params:
+            self._keyword_params[PV.PV_NAME] = self._name
+
+        self._check_pv_extra()
+        self._pvname = self._keyword_params[PV.PV_NAME]
+
+        if self._pvname == "":
+            raise IfDefSyntaxError("Empty PV_NAME")
+
+        if ' ' in self._pvname:
+            raise IfDefSyntaxError("PV Names cannot contain spaces")
+
+        self._register_pv_name()
+
+
+    def _register_pv_name(self):
+        self.ifdef.register_pv_name(self)
+
+
+    def pv_name(self):
+        """
+            Returns the property part of PV name
+        """
+        return self._pvname
+
+
+    def pv_type(self):
+        """
+            Returns the PV type (ai, ao, bi, etc)
+        """
+        raise NotImplementedError
+
+
+    def get_pv_field(self, field):
+        return self._keyword_params.get(self.PV_PREFIX + field)
+
+
+    def set_pv_field(self, field, value):
+        self._keyword_params[self.PV_PREFIX + field] = value
+
+
+    def build_pv_extra(self):
+        """
+            Returns the PV fields in EPICS format:
+             field(key, "value")
+        """
+
+        pv_field3 = "\tfield({key},  \"{value}\")\n"
+        pv_field4 = "\tfield({key}, \"{value}\")\n"
+
+        pv_extra_fields = "\n"
+        for key in sorted(self._keyword_params.keys()):
+            if key.startswith(PV.PV_PREFIX) and key != PV.PV_ALIAS and key != PV.PV_NAME:
+                if len(key) == 6:
+                    pv_field_formatter = pv_field3
+                else:
+                    pv_field_formatter = pv_field4
+                pv_extra_fields += pv_field_formatter.format(key = key[3:], value = self._keyword_params[key])
+
+        return pv_extra_fields.rstrip('\n')
+
+
+    def build_pv_alias(self, create_pv_name, inst_slot):
+        """
+            Returns the alias specifications for the PV in EPICS format
+            'create_pv_name' is a function to create the fully qualified PV name
+        """
+
+        fmt = "\talias(\"{}\")"
+        if PV.PV_ALIAS in self._keyword_params:
+            # empty line
+            # aliases
+            # empty line
+            return "\n".join([''] + map(lambda alias : fmt.format(create_pv_name(inst_slot, alias)), self._keyword_params[PV.PV_ALIAS]) + [''])
+
+        return ""
+
+
+    def _check_length(self, field, field_val, length_strict):
+        msg_hdr_fmt = "The {field} field of the pv is too long: "
+
+        (length, strict) = length_strict
+        if len(field_val) > length:
+            msg_hdr = msg_hdr_fmt.format(field = field)
+            if self.sourcenum() != -1:
+                print("At line number {lnum}:".format(lnum = self.sourcenum()))
+            print(self._add_warning((msg_hdr + "{value} (length: {len} / {max_len})").format(value   = field_val,
+                                                                                             len     = len(field_val),
+                                                                                             max_len = length)))
+            print(self._add_warning(" " * (len(msg_hdr) + length) + "^"))
+
+            if strict:
+                self._keyword_params[field] = field_val[:length]
+
+
+    def _check_pv_extra(self):
+        msg_hdr_fmt = "The {field} field of the pv is too long: "
+
+        try:
+            if self._keyword_params[PV.PV_ALIAS] == "" or self._keyword_params[PV.PV_ALIAS] == []:
+                raise IfDefSyntaxError("Empty PV_ALIAS")
+
+            if isinstance(self._keyword_params[PV.PV_ALIAS], str):
+                self._keyword_params[PV.PV_ALIAS] = [ self._keyword_params[PV.PV_ALIAS] ]
+            elif not isinstance(self._keyword_params[PV.PV_ALIAS], list):
+                raise IfDefSyntaxError("PV_ALIAS must be a string or a list")
+        except KeyError:
+            pass
+
+        for field, value in self._keyword_params.items():
+            if not field.startswith(PV.PV_PREFIX):
+                continue
+
+            if not isinstance(value, str) and not isinstance(value, int) and field != PV.PV_ALIAS:
+                raise IfDefSyntaxError("{field} can only be a string")
+
+            try:
+                length_strict = PV.field_lengths[field]
+                if not isinstance(value, list):
+                    self._check_length(field, value, length_strict)
+                else:
+                    # Make sure that we don't have to truncate the field value
+                    assert(length_strict[1] == False)
+                    for field_val in value:
+                        self._check_length(field, field_val, length_strict)
+            except KeyError:
+                pass
+
+
+
+#
+# Types
+#
+class BASE_TYPE(PV):
+    ASYN_TIMEOUT   = "100"
+    templates      = dict()
+
+
+    @staticmethod
+    def init():
+        BASE_TYPE.templates = dict()
+
+
+    def __init__(self, source, block, name, plc_var_type, keyword_params):
+        super(BASE_TYPE, self).__init__(source, name, keyword_params)
+
+        assert isinstance(block,        BLOCK),                              func_param_msg("block",          "BLOCK")
+        assert isinstance(plc_var_type, str),                                func_param_msg("plc_var_type",   "string")
 
         if block.from_plc():
             reserved_params = ["DTYP", "INP", "SCAN"]
         else:
             reserved_params = ["DTYP", "OUT"]
 
-        for param in map(lambda x: BASE_TYPE.PV_PREFIX + x, reserved_params):
+        for param in map(lambda x: PV.PV_PREFIX + x, reserved_params):
             if param in self._keyword_params:
                 raise IfDefSyntaxError(param + " is reserved!")
-
-        for pv_ in keyword_params.keys():
-            if not pv_.startswith(BASE_TYPE.PV_PREFIX):
-                continue
-
-            val = str(keyword_params[pv_])
-            if len(val.splitlines()) > 1:
-                raise IfDefSyntaxError("{} cannot span multiple lines".format(pv_))
 
         """
            Check for PLC_TYPE="{S7PLCTYPE|MODBUSTYPE}"
@@ -1892,7 +2066,6 @@ class BASE_TYPE(SOURCE):
         self._dtyp_var_type  = e
 
         self._block          = block
-        self._name           = name
         self._datablock_name = self._keyword_params["DATABLOCK"]
         self._width          = self._calc_width_in_bytes()
 
@@ -1906,29 +2079,14 @@ class BASE_TYPE(SOURCE):
 
         self.compute_offset()
 
-        if BASE_TYPE.PV_NAME not in self._keyword_params:
-            self._keyword_params[BASE_TYPE.PV_NAME] = self._name
-
-        self._check_pv_extra()
-        self._pvname = self._keyword_params[BASE_TYPE.PV_NAME]
-
-        if self._pvname == "":
-            raise IfDefSyntaxError("Empty PV_NAME")
-
-        if self._pvname in BASE_TYPE.pv_names:
-            raise IfDefSyntaxError("PV Names must be unique")
-
-        if ' ' in self._pvname:
-            raise IfDefSyntaxError("PV Names cannot contain spaces")
-
         if self._name == "":
             raise IfDefSyntaxError("Empty PLC variable name")
 
-        if self._name in BASE_TYPE.plc_names:
-            raise IfDefSyntaxError("PLC variable names must be unique")
+        self._register_plc_name()
 
-        BASE_TYPE.pv_names.add(self._pvname)
-        BASE_TYPE.plc_names.add(self._name)
+
+    def _register_plc_name(self):
+        self.ifdef.register_plc_name(self)
 
 
     @staticmethod
@@ -1980,10 +2138,6 @@ class BASE_TYPE(SOURCE):
         return self._name
 
 
-    def pv_name(self):
-        return self._pvname
-
-
     def dtyp_var_type(self):
         return self._dtyp_var_type
 
@@ -2010,10 +2164,6 @@ class BASE_TYPE(SOURCE):
             - STRING
         """
         return self._plc_type
-
-
-    def pv_type(self):
-        raise NotImplementedError
 
 
     def dtyp(self):
@@ -2064,104 +2214,11 @@ class BASE_TYPE(SOURCE):
         return self._overlapped
 
 
-    def get_pv_field(self, field):
-        return self._keyword_params.get(self.PV_PREFIX + field)
-
-
-    def set_pv_field(self, field, value):
-        self._keyword_params[self.PV_PREFIX + field] = value
-
-
-    def get_parameter(self, param_name, *val_if_not_found):
-        if len(val_if_not_found):
-            return self._keyword_params.get(param_name, val_if_not_found[0])
-
-        return self._keyword_params[param_name]
-
-
-    def _check_length(self, field, field_val, length_strict):
-        msg_hdr_fmt = "The {field} field of the pv is too long: "
-
-        (length, strict) = length_strict
-        if len(field_val) > length:
-            msg_hdr = msg_hdr_fmt.format(field = field)
-            if self.sourcenum() != -1:
-                print("At line number {lnum}:".format(lnum = self.sourcenum()))
-            print(self._add_warning((msg_hdr + "{value} (length: {len} / {max_len})").format(value   = field_val,
-                                                                                             len     = len(field_val),
-                                                                                             max_len = length)))
-            print(self._add_warning(" " * (len(msg_hdr) + length) + "^"))
-
-            if strict:
-                self._keyword_params[field] = field_val[:length]
-
-
-    def _check_pv_extra(self):
-        msg_hdr_fmt = "The {field} field of the pv is too long: "
-
-        try:
-            if self._keyword_params[BASE_TYPE.PV_ALIAS] == "" or self._keyword_params[BASE_TYPE.PV_ALIAS] == []:
-                raise IfDefSyntaxError("Empty PV_ALIAS")
-
-            if isinstance(self._keyword_params[BASE_TYPE.PV_ALIAS], str):
-                self._keyword_params[BASE_TYPE.PV_ALIAS] = [ self._keyword_params[BASE_TYPE.PV_ALIAS] ]
-            elif not isinstance(self._keyword_params[BASE_TYPE.PV_ALIAS], list):
-                raise IfDefSyntaxError("PV_ALIAS must be a string or a list")
-        except KeyError:
-            pass
-
-        for field, value in self._keyword_params.items():
-            if not field.startswith(BASE_TYPE.PV_PREFIX):
-                continue
-
-            if not isinstance(value, str) and not isinstance(value, int) and field != BASE_TYPE.PV_ALIAS:
-                raise IfDefSyntaxError("{field} can only be a string")
-
-            try:
-                length_strict = BASE_TYPE.field_lengths[field]
-                if not isinstance(value, list):
-                    self._check_length(field, value, length_strict)
-                else:
-                    # Make sure that we don't have to truncate the field value
-                    assert(length_strict[1] == False)
-                    for field_val in value:
-                        self._check_length(field, field_val, length_strict)
-            except KeyError:
-                pass
-
-
-    def build_pv_extra(self):
-        pv_field3 = "\tfield({key},  \"{value}\")\n"
-        pv_field4 = "\tfield({key}, \"{value}\")\n"
-
-        pv_extra_fields = "\n"
-        for key in sorted(self._keyword_params.keys()):
-            if key.startswith(BASE_TYPE.PV_PREFIX) and key != BASE_TYPE.PV_ALIAS and key != BASE_TYPE.PV_NAME:
-                if len(key) == 6:
-                    pv_field_formatter = pv_field3
-                else:
-                    pv_field_formatter = pv_field4
-                pv_extra_fields += pv_field_formatter.format(key = key[3:], value = self._keyword_params[key])
-
-        return pv_extra_fields.rstrip('\n')
-
-
     def _get_user_link_extra(self):
         try:
             return " " + self._keyword_params["LINK_EXTRA"]
         except KeyError:
             return ""
-
-
-    def _build_pv_alias(self, create_pv_name, inst_slot):
-        fmt = "\talias(\"{}\")"
-        if BASE_TYPE.PV_ALIAS in self._keyword_params:
-            # empty line
-            # aliases
-            # empty line
-            return "\n".join([''] + map(lambda alias : fmt.format(create_pv_name(inst_slot, alias)), self._keyword_params[BASE_TYPE.PV_ALIAS]) + [''])
-
-        return ""
 
 
     def bit_number(self):
@@ -2397,23 +2454,23 @@ class ANALOG(BASE_TYPE):
             try:
                 limits = PLC_type_limits[plc_var_type]
                 # Set DRVL/DRVH limits
-                if keyword_params.get(BASE_TYPE.PV_DRVL, limits[0]) <= limits[0]:
-                    if keyword_params.get(BASE_TYPE.PV_DRVL, limits[0]) < limits[0]:
-                        limit_warnings.append("Specified DRVL ({}) is lower than limit ({}) of PLC data type '{}'".format(keyword_params[BASE_TYPE.PV_DRVL], limits[0], plc_var_type))
-                    keyword_params[BASE_TYPE.PV_DRVL] = limits[0]
-                if keyword_params.get(BASE_TYPE.PV_DRVH, limits[1]) >= limits[1]:
-                    if keyword_params.get(BASE_TYPE.PV_DRVH, limits[1]) > limits[1]:
-                        limit_warnings.append("Specified DRVH ({}) is higher than limit ({}) of PLC data type '{}'".format(keyword_params[BASE_TYPE.PV_DRVH], limits[1], plc_var_type))
-                    keyword_params[BASE_TYPE.PV_DRVH] = limits[1]
+                if keyword_params.get(PV.PV_DRVL, limits[0]) <= limits[0]:
+                    if keyword_params.get(PV.PV_DRVL, limits[0]) < limits[0]:
+                        limit_warnings.append("Specified DRVL ({}) is lower than limit ({}) of PLC data type '{}'".format(keyword_params[PV.PV_DRVL], limits[0], plc_var_type))
+                    keyword_params[PV.PV_DRVL] = limits[0]
+                if keyword_params.get(PV.PV_DRVH, limits[1]) >= limits[1]:
+                    if keyword_params.get(PV.PV_DRVH, limits[1]) > limits[1]:
+                        limit_warnings.append("Specified DRVH ({}) is higher than limit ({}) of PLC data type '{}'".format(keyword_params[PV.PV_DRVH], limits[1], plc_var_type))
+                    keyword_params[PV.PV_DRVH] = limits[1]
                 # Set LOPR/HOPR limits
-                if keyword_params.get(BASE_TYPE.PV_LOPR, limits[0]) <= limits[0]:
-                    if keyword_params.get(BASE_TYPE.PV_LOPR, limits[0]) < limits[0]:
-                        limit_warnings.append("Specified LOPR ({}) is lower than limit ({}) of PLC data type '{}'".format(keyword_params[BASE_TYPE.PV_LOPR], limits[0], plc_var_type))
-                    keyword_params[BASE_TYPE.PV_LOPR] = limits[0]
-                if keyword_params.get(BASE_TYPE.PV_HOPR, limits[1]) >= limits[1]:
-                    if keyword_params.get(BASE_TYPE.PV_HOPR, limits[1]) > limits[1]:
-                        limit_warnings.append("Specified HOPR ({}) is higher than limit ({}) of PLC data type '{}'".format(keyword_params[BASE_TYPE.PV_HOPR], limits[1], plc_var_type))
-                    keyword_params[BASE_TYPE.PV_HOPR] = limits[1]
+                if keyword_params.get(PV.PV_LOPR, limits[0]) <= limits[0]:
+                    if keyword_params.get(PV.PV_LOPR, limits[0]) < limits[0]:
+                        limit_warnings.append("Specified LOPR ({}) is lower than limit ({}) of PLC data type '{}'".format(keyword_params[PV.PV_LOPR], limits[0], plc_var_type))
+                    keyword_params[PV.PV_LOPR] = limits[0]
+                if keyword_params.get(PV.PV_HOPR, limits[1]) >= limits[1]:
+                    if keyword_params.get(PV.PV_HOPR, limits[1]) > limits[1]:
+                        limit_warnings.append("Specified HOPR ({}) is higher than limit ({}) of PLC data type '{}'".format(keyword_params[PV.PV_HOPR], limits[1], plc_var_type))
+                    keyword_params[PV.PV_HOPR] = limits[1]
             except KeyError:
                 pass
 
@@ -2453,8 +2510,9 @@ class ANALOG_LIMIT(ANALOG):
                           (MINOR_SEVERITY, LOW_LIMIT)  : "LSV",
                           (MAJOR_SEVERITY, HIGH_LIMIT) : "HHSV",
                           (MINOR_SEVERITY, HIGH_LIMIT) : "HSV" }
-    KW_LIMIT_PV       = "_LIMIT_PV"
+    KW_LIMITED_PV     = "_LIMIT_PV"
     KW_LIMIT_FIELD    = "_LIMIT_FIELD"
+
 
     def __init__(self, source, block, name, plc_var_type, keyword_params):
         super(ANALOG_LIMIT, self).__init__(source, block, name, plc_var_type, keyword_params)
@@ -2464,8 +2522,8 @@ class ANALOG_LIMIT(ANALOG):
         return self.get_parameter(ANALOG_LIMIT.KW_LIMIT_FIELD)
 
 
-    def limit_pv(self):
-        return self.get_parameter(ANALOG_LIMIT.KW_LIMIT_PV)
+    def limited_pv(self):
+        return self.get_parameter(ANALOG_LIMIT.KW_LIMITED_PV)
 
 
 
@@ -2493,8 +2551,8 @@ class nobt_helper(object):
 
 class ENUM(BASE_TYPE, nobt_helper):
     class VLST(object):
-        _st = BASE_TYPE.PV_PREFIX + "{}ST"
-        _vl = BASE_TYPE.PV_PREFIX + "{}VL"
+        _st = PV.PV_PREFIX + "{}ST"
+        _vl = PV.PV_PREFIX + "{}VL"
 
         def __init__(self, idx, prefix):
             self._idx    = idx
@@ -2667,7 +2725,7 @@ def _test_and_set(keyword_params, key, value):
 
 
 def _test_and_set_pv(keyword_params, key, value):
-    _test_and_set(keyword_params, BASE_TYPE.to_pv_field(key), value)
+    _test_and_set(keyword_params, PV.to_pv_field(key), value)
 
 
 def _bits_in_type(var_type):

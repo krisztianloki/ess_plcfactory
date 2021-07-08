@@ -11,7 +11,7 @@ __license__    = "GPLv3"
 
 
 from . import PRINTER
-from tf_ifdef import IfDefSyntaxError, BASE_TYPE
+from tf_ifdef import IfDefSyntaxError, PV
 
 
 def printer():
@@ -76,7 +76,7 @@ class ARCHIVE(PRINTER):
         inst_slot = self.inst_slot(if_def)
         separator = False
         for var in if_def.interfaces():
-            if isinstance(var, BASE_TYPE) and var.get_parameter("ARCHIVE", False):
+            if isinstance(var, PV) and var.get_parameter("ARCHIVE", False):
                 if not separator:
                     self._append("#" * 60, output)
                     self._append("## {inst_slot}".format(inst_slot = inst_slot), output)

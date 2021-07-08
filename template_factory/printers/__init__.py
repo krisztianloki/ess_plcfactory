@@ -136,12 +136,12 @@ class PRINTER(object):
         try:
             self.EPICSToPLCDataBlockStartOffset = int(self.get_property("EPICSToPLCDataBlockStartOffset", None))
         except (TypeError, ValueError):
-            raise TemplatePrinterException("Invalid EPICSToPLCDataBlockStartOffset property")
+            raise TemplatePrinterException("Invalid EPICSToPLCDataBlockStartOffset property: {}".format(self.get_property("EPICSToPLCDataBlockStartOffset", None)))
 
         try:
             self.PLCToEPICSDataBlockStartOffset = int(self.get_property("PLCToEPICSDataBlockStartOffset", None))
         except (TypeError, ValueError):
-            raise TemplatePrinterException("Invalid PLCToEPICSDataBlockStartOffset property")
+            raise TemplatePrinterException("Invalid PLCToEPICSDataBlockStartOffset property: {}".format(self.get_property("PLCToEPICSDataBlockStartOffset", None)))
 
         self._plc_to_epics_offset = self.PLCToEPICSDataBlockStartOffset
         self._epics_to_plc_offset = self.EPICSToPLCDataBlockStartOffset

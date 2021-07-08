@@ -327,7 +327,7 @@ record(ao, "{ilimiter}")
 }}
 """.format(limiter   = var.fqdn_pv_name,
            ilimiter  = self.create_pv_name("A_" + var.pv_name()),
-           limited   = self.create_pv_name(var.limit_pv()),
+           limited   = self.create_pv_name(var.limited_pv()),
            field     = var.limit_field(),
            disable_template = self.DEFAULT_INDISABLE_TEMPLATE)
 
@@ -668,7 +668,7 @@ class EPICS(EPICS_BASE):
         return (var.source(),
                 var.pv_template(test = self._test).format(recordtype = var.pv_type(),
                                                           pv_name    = var.fqdn_pv_name,
-                                                          alias      = var._build_pv_alias(self.create_pv_name, self.inst_slot(self._if_def)),
+                                                          alias      = var.build_pv_alias(self.create_pv_name, self.inst_slot(self._if_def)),
                                                           dtyp       = var.dtyp(),
                                                           inp_out    = var.inp_out(inst_io       = var.inst_io(),
                                                                                    offset        = var.link_offset(self._plc_to_epics_offset, self._epics_to_plc_offset),
@@ -1297,7 +1297,7 @@ class EPICS_OPC(EPICS_BASE):
         return (var.source(),
                 var.pv_template().format(recordtype = var.pv_type(),
                                          pv_name    = self.create_pv_name(self.inst_slot(self._if_def), var),
-                                         alias      = var._build_pv_alias(self.create_pv_name, self.inst_slot(self._if_def)),
+                                         alias      = var.build_pv_alias(self.create_pv_name, self.inst_slot(self._if_def)),
                                          dtyp       = "OPCUA",
                                          inp_out    = var.inp_out(inst_io   = '$(SUBSCRIPTION)',
                                                                   datablock = var.datablock_name(),
