@@ -817,7 +817,7 @@ def ifdef_interface(func):
             # If function has **keyword_params
             if func.__code__.co_flags & 8:
                 # Expand templates
-                BASE_TYPE.expand_templates(kwargs)
+                args[0]._expand_templates(kwargs)
 
                 def update_params(kwargs, default_params):
                     for kw in default_params:
@@ -879,10 +879,10 @@ class IF_DEF(object):
         super(IF_DEF, self).__init__()
 
         PV.init(self)
-        BASE_TYPE.init()
 
         self.pv_names               = dict()
         self.plc_names              = set()
+        self.templates              = dict()
 
         self._ifaces                = []
         self._preBLOCK              = fakeBLOCK()
@@ -1074,6 +1074,20 @@ class IF_DEF(object):
         keyword_params["DATABLOCK"] = self._datablock_name
 
         return keyword_params
+
+
+    def _expand_templates(self, keyword_params):
+        if "TEMPLATE" not in keyword_params:
+            return
+
+        tname = keyword_params["TEMPLATE"]
+        if tname not in self.templates:
+            raise IfDefSyntaxError("No such template: " + tname)
+
+        template = self.templates[tname]
+        for tkey in template.keys():
+            if tkey not in keyword_params:
+                keyword_params[tkey] = template[tkey]
 
 
     def _parse(self, line, linenum):
@@ -1400,7 +1414,14 @@ class IF_DEF(object):
         if not isinstance(name, str):
             raise IfDefSyntaxError("Template name must be a string!")
 
-        BASE_TYPE.add_template(name, keyword_params)
+        if not isinstance(keyword_params, dict):
+            raise IfDefSyntaxError("Template must be dictionary")
+
+        if name in self.templates:
+            raise IfDefSyntaxError("Template is already defined: " + name)
+
+        self.templates[name] = keyword_params
+
         return self._add_source()
 
 
@@ -2027,12 +2048,6 @@ class PV(SOURCE):
 #
 class BASE_TYPE(PV):
     ASYN_TIMEOUT   = "100"
-    templates      = dict()
-
-
-    @staticmethod
-    def init():
-        BASE_TYPE.templates = dict()
 
 
     def __init__(self, source, block, name, plc_var_type, keyword_params):
@@ -2089,34 +2104,8 @@ class BASE_TYPE(PV):
         self.ifdef.register_plc_name(self)
 
 
-    @staticmethod
-    def add_template(name, template):
-        assert isinstance(name,     str),   func_param_msg("name",     "string")
-        assert isinstance(template, dict),  func_param_msg("template", "dict")
-
-        if name in BASE_TYPE.templates:
-            raise IfDefSyntaxError("Template is already defined: " + name)
-
-        BASE_TYPE.templates[name] = template
-
-
     def _calc_width_in_bytes(self):
         return _bytes_in_type(self._plc_type)
-
-
-    @staticmethod
-    def expand_templates(keyword_params):
-        if "TEMPLATE" not in keyword_params:
-            return
-
-        tname = keyword_params["TEMPLATE"]
-        if tname not in BASE_TYPE.templates:
-            raise IfDefSyntaxError("No such template: " + tname)
-
-        template = BASE_TYPE.templates[tname]
-        for tkey in template.keys():
-            if tkey not in keyword_params:
-                keyword_params[tkey] = template[tkey]
 
 
     def _end_bits(self):
