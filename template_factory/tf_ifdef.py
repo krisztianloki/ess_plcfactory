@@ -146,6 +146,11 @@ class IfDefExperimentalError(IfDefSyntaxError):
         super(IfDefExperimentalError, self).__init__("The function '{}' is experimental. Use '--enable-experimental' to enable.".format(interface))
 
 
+class PVNameLengthException(IfDefException):
+    def __init__(self, name, *args, **keyword_params):
+        super(PVNameLengthException, self).__init__("The PV name '{pv_name}' is longer than permitted ({act_len} / 60)".format(pv_name = name, act_len = len(name)), *args, **keyword_params)
+
+
 
 #def ifdef_assert_instance(var, var_type, var_type_string = None):
 #    frame  = inspect.currentframe()
@@ -880,9 +885,9 @@ class IF_DEF(object):
 
         PV.init(self)
 
-        self.pv_names               = dict()
-        self.plc_names              = set()
-        self.templates              = dict()
+        self._pv_names              = dict()
+        self._plc_names             = set()
+        self._templates             = dict()
 
         self._ifaces                = []
         self._preBLOCK              = fakeBLOCK()
@@ -1081,10 +1086,10 @@ class IF_DEF(object):
             return
 
         tname = keyword_params["TEMPLATE"]
-        if tname not in self.templates:
+        if tname not in self._templates:
             raise IfDefSyntaxError("No such template: " + tname)
 
-        template = self.templates[tname]
+        template = self._templates[tname]
         for tkey in template.keys():
             if tkey not in keyword_params:
                 keyword_params[tkey] = template[tkey]
@@ -1199,15 +1204,15 @@ class IF_DEF(object):
 
 
     def register_pv_name(self, var):
-        if var.pv_name() in self.pv_names:
+        if var.pv_name() in self._pv_names:
             raise IfDefSyntaxError("PV Names must be unique")
-        self.pv_names[var.pv_name()] = var
+        self._pv_names[var.pv_name()] = var
 
 
     def register_plc_name(self, var):
-        if var.name() in self.plc_names:
+        if var.name() in self._plc_names:
             raise IfDefSyntaxError("PLC variable names must be unique")
-        self.plc_names.add(var.name())
+        self._plc_names.add(var.name())
 
 
     def interfaces(self):
@@ -1304,6 +1309,13 @@ class IF_DEF(object):
         return self._from_plc_words_length
 
 
+    def ess_name(self):
+        """
+            Return the ESS name of this 'device'
+        """
+        return self._inst_slot
+
+
     def inst_slot(self, nonnull = True):
         # If nonnull is False and we are using the default installation slot, then return None
         if not nonnull and self._inst_slot == IF_DEF.DEFAULT_INSTALLATION_SLOT:
@@ -1332,10 +1344,9 @@ class IF_DEF(object):
             check = lambda x: x.pv_name() == pv_name
         else:
             check = lambda x: x.pv_name() == pv_name or prefix + x.pv_name() == pv_name
-        for interfaces in self.status_interfaces(), self.command_interfaces(), self.parameter_interfaces():
-            f = list(filter(lambda pv: isinstance(pv, PV) and check(pv), interfaces))
-            if f:
-                return f[0]
+        f = list(filter(lambda pv: check(pv), self._pv_names.values()))
+        if f:
+            return f[0]
 
         return None
 
@@ -1383,6 +1394,8 @@ class IF_DEF(object):
 
     @ifdef_interface
     def define_installation_slot(self, name):
+        if self._pv_names:
+            raise IfDefSyntaxError("Cannot define installation slot after adding PVs!")
         if self._inst_slot != IF_DEF.DEFAULT_INSTALLATION_SLOT:
             raise IfDefSyntaxError("Installation slot redefinition is not possible!")
 
@@ -1417,10 +1430,10 @@ class IF_DEF(object):
         if not isinstance(keyword_params, dict):
             raise IfDefSyntaxError("Template must be dictionary")
 
-        if name in self.templates:
+        if name in self._templates:
             raise IfDefSyntaxError("Template is already defined: " + name)
 
-        self.templates[name] = keyword_params
+        self._templates[name] = keyword_params
 
         return self._add_source()
 
@@ -1892,7 +1905,7 @@ class PV(SOURCE):
         return PV.PV_PREFIX + field
 
 
-    def __init__(self, source, name, keyword_params):
+    def __init__(self, source, name, pv_type = None, disable_with_plc = False, **keyword_params):
         super(PV, self).__init__(source, keyword_params = keyword_params)
 
         assert isinstance(name, str), func_param_msg("name", "string")
@@ -1912,12 +1925,15 @@ class PV(SOURCE):
                 raise IfDefSyntaxError("{} cannot span multiple lines".format(pv_))
 
         self._name = name
+        self.__pv_type = pv_type
+        self._disable_with_plc = disable_with_plc
 
         if PV.PV_NAME not in self._keyword_params:
             self._keyword_params[PV.PV_NAME] = self._name
 
         self._check_pv_extra()
         self._pvname = self._keyword_params[PV.PV_NAME]
+        self._fqpvname = self.fqpn(self._pvname)
 
         if self._pvname == "":
             raise IfDefSyntaxError("Empty PV_NAME")
@@ -1932,6 +1948,10 @@ class PV(SOURCE):
         self.ifdef.register_pv_name(self)
 
 
+    def _exception_params(self):
+        return dict(filename = self.ifdef._filename, line = self.source(), linenum = self.sourcenum())
+
+
     def pv_name(self):
         """
             Returns the property part of PV name
@@ -1939,10 +1959,34 @@ class PV(SOURCE):
         return self._pvname
 
 
+    def ess_name(self):
+        """
+            Returns the ESS name of this PV
+        """
+        return self.ifdef.ess_name()
+
+
+    def fqpn(self, pv_name = None):
+        """
+            Returns the 'fully qualified' PV name
+        """
+        if pv_name is None:
+            return self._fqpvname
+
+        name = "{slot}:{property}".format(slot = self.ess_name(), property = pv_name)
+        if '$' in name or len(name) <= 60:
+            return name
+
+        raise PVNameLengthException(name, self._exception_params())
+
+
     def pv_type(self):
         """
             Returns the PV type (ai, ao, bi, etc)
         """
+        if self.__pv_type:
+            return self.__pv_type
+
         raise NotImplementedError
 
 
@@ -1960,8 +2004,8 @@ class PV(SOURCE):
              field(key, "value")
         """
 
-        pv_field3 = "\tfield({key},  \"{value}\")\n"
-        pv_field4 = "\tfield({key}, \"{value}\")\n"
+        pv_field3 = """\tfield({key},  "{value}")\n"""
+        pv_field4 = """\tfield({key}, "{value}")\n"""
 
         pv_extra_fields = "\n"
         for key in sorted(self._keyword_params.keys()):
@@ -1975,18 +2019,18 @@ class PV(SOURCE):
         return pv_extra_fields.rstrip('\n')
 
 
-    def build_pv_alias(self, create_pv_name, inst_slot):
+    def build_pv_alias(self):
         """
             Returns the alias specifications for the PV in EPICS format
             'create_pv_name' is a function to create the fully qualified PV name
         """
 
-        fmt = "\talias(\"{}\")"
+        fmt = """\talias("{}")"""
         if PV.PV_ALIAS in self._keyword_params:
             # empty line
             # aliases
             # empty line
-            return "\n".join([''] + map(lambda alias : fmt.format(create_pv_name(inst_slot, alias)), self._keyword_params[PV.PV_ALIAS]) + [''])
+            return "\n".join([''] + map(lambda alias : fmt.format(var.fqpn(alias)), self._keyword_params[PV.PV_ALIAS]) + [''])
 
         return ""
 
@@ -2051,10 +2095,10 @@ class BASE_TYPE(PV):
 
 
     def __init__(self, source, block, name, plc_var_type, keyword_params):
-        super(BASE_TYPE, self).__init__(source, name, keyword_params)
+        super(BASE_TYPE, self).__init__(source, name, disable_with_plc = True, **keyword_params)
 
-        assert isinstance(block,        BLOCK),                              func_param_msg("block",          "BLOCK")
-        assert isinstance(plc_var_type, str),                                func_param_msg("plc_var_type",   "string")
+        assert isinstance(block,        BLOCK),  func_param_msg("block",         "BLOCK")
+        assert isinstance(plc_var_type, str),    func_param_msg("plc_var_type",  "string")
 
         if block.from_plc():
             reserved_params = ["DTYP", "INP", "SCAN"]

@@ -278,21 +278,18 @@ record(longin, "{root_inst_slot}:C2")
 
 
     def _body_var(self, var, output):
-        var.fqdn_pv_name = self.create_pv_name(var)
-
         self._append(self._toEPICS(var))
 
         if isinstance(var, ANALOG_LIMIT):
             self._set_alarm_limit(var, output)
 
         if not var.is_parameter():
-            del var.fqdn_pv_name
             return
 
         self._params.append(var)
 
         # Have to resolve PLCF# expressions _now_ otherwise we'd end up with root_inst_slot in footer()
-        self._last_param = (var.fqdn_pv_name, self.expand(var.get_pv_field("FLNK")))
+        self._last_param = (var.fqpn(), self.expand(var.get_pv_field("FLNK")))
 
 
     def _body_source(self, var, output):
@@ -325,7 +322,7 @@ record(ao, "{ilimiter}")
 	field(OUT,  "{limited}.{field}")
 	field(OMSL, "closed_loop"){disable_template}
 }}
-""".format(limiter   = var.fqdn_pv_name,
+""".format(limiter   = var.fqpn(),
            ilimiter  = self.create_pv_name("A_" + var.pv_name()),
            limited   = self.create_pv_name(var.limited_pv()),
            field     = var.limit_field(),
@@ -342,7 +339,7 @@ record(ao, "{ilimiter}")
         validity_pv = self.expand(var.get_parameter("VALIDITY_PV", None))
         validity_condition = var.get_parameter("VALIDITY_CONDITION", None)
 
-        exp_var_pv_name = var.fqdn_pv_name
+        exp_var_pv_name = var.fqpn()
 
         # If this is the PV that some other PVs validity is based on then generate a calcout PV
         # First check if the expanded PV name is already registered as a validity PV
@@ -386,7 +383,7 @@ record(ao, "{ilimiter}")
 
         if not isinstance(var, tuple):
             # This is a class; i.e. a PLC variable
-            vpv = self.create_pv_name(var)
+            vpv = var.fqpn()
             vcond = var.get_parameter("VALIDITY_CONDITION", None)
             if vcond is None:
                 raise TemplatePrinterException("VALIDITY_CONDITION is not specified", IFDEF_SOURCE = var)
@@ -519,12 +516,9 @@ record(calc, "{vbi}")
 
             self._append("""	field(LNK{lnk}, "{upload}")
 """.format(lnk       = self.LNKx[lnk],
-           upload    = upload if footer else upload.fqdn_pv_name), output)
+           upload    = upload if footer else upload.fqpn()), output)
 
             lnk += 1
-
-            if not footer:
-                del upload.fqdn_pv_name
 
         if footer and foc == 0 and lnk == 0:
             # Create an empty UploadParamsS if there are no parameters
@@ -667,8 +661,8 @@ class EPICS(EPICS_BASE):
 
         return (var.source(),
                 var.pv_template(test = self._test).format(recordtype = var.pv_type(),
-                                                          pv_name    = var.fqdn_pv_name,
-                                                          alias      = var.build_pv_alias(self.create_pv_name, self.inst_slot(self._if_def)),
+                                                          pv_name    = var.fqpn(),
+                                                          alias      = var.build_pv_alias(),
                                                           dtyp       = var.dtyp(),
                                                           inp_out    = var.inp_out(inst_io       = var.inst_io(),
                                                                                    offset        = var.link_offset(self._plc_to_epics_offset, self._epics_to_plc_offset),
@@ -1296,8 +1290,8 @@ class EPICS_OPC(EPICS_BASE):
                                                                                                     plc_variable  = var.name())
         return (var.source(),
                 var.pv_template().format(recordtype = var.pv_type(),
-                                         pv_name    = self.create_pv_name(self.inst_slot(self._if_def), var),
-                                         alias      = var.build_pv_alias(self.create_pv_name, self.inst_slot(self._if_def)),
+                                         pv_name    = var.fqpn(),
+                                         alias      = var.build_pv_alias(),
                                          dtyp       = "OPCUA",
                                          inp_out    = var.inp_out(inst_io   = '$(SUBSCRIPTION)',
                                                                   datablock = var.datablock_name(),

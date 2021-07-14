@@ -84,7 +84,7 @@ class ARCHIVE(PRINTER):
                 desc = self._get_desc(var)
                 if desc:
                     self._append("# {}".format(desc), output)
-                self._append("{pv}{policy}".format(pv     = self.create_pv_name(inst_slot, var),
+                self._append("{pv}{policy}".format(pv     = var.fqpn(),
                                                    policy = self._archive(var)), output)
 
 
