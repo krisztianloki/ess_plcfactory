@@ -1338,17 +1338,16 @@ class IF_DEF(object):
 
 
     def has_pv(self, pv_name, prefix = None):
+        """
+            Returns the PV with `pv_name`. If `prefix` is specified and `pv_name` starts with `prefix` then it will be ignored when matching the name
+        """
         self._exception_if_active()
 
-        if prefix is None:
-            check = lambda x: x.pv_name() == pv_name
-        else:
-            check = lambda x: x.pv_name() == pv_name or prefix + x.pv_name() == pv_name
-        f = list(filter(lambda pv: check(pv), self._pv_names.values()))
-        if f:
-            return f[0]
+        # `pv_name` might or might not start with `prefix`
+        if prefix and pv_name.startswith(prefix):
+            pv_name = pv_name[len(prefix):]
 
-        return None
+        return self._pv_names.get(pv_name)
 
 
     def macros(self):
