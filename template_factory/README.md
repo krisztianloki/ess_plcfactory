@@ -79,7 +79,7 @@ Digital types are packed into WORDs so no space is wasted. The earlier the digit
 
 Because in the current implementation every interface definition is a special subset of python the same set of rules apply as to a python script. Basically every "instruction" is a function call; thus parenthesis are mandatory. Optional arguments are represented as keyword arguments and take the form of **`KEYWORD="value"`**.
 
-## Defining the device name A.K.A. installation slot (CCDB-term)
+## Defining the device name A.K.A. installation slot (a CCDB-term)
 
 While it is neither necessary nor recommended to override the default device name (retreived from CCDB by PLCFactory) it is still possible to do so. One use case is the Vacuum Mobile Pumping Kart project; it consists of about a dozen karts with completely identical PLCs (hardware and software wise). Overriding the device name enables the reuse of a base MobilePumpingKart module; just use a macro like `$(VMPG_INSTANCE)`.
 This feature should be used with caution: if there are more than one devices with the same Interface Definition then the same device name will be used for all of them - that is why if the specified device name is not a macro (does not begin with a '$' sign) then it is automatically treated as a CCDB property.
@@ -133,21 +133,33 @@ Adding more than one spare bit:
 
 **`add_analog("<name>", "<plc_type>")`**
 
-#### PLC controlled analog variable alarm limits
+#### Analog variable alarm limits
 
 Only allowed in a **STATUS** block
 
 It is possible to specify limits for **analog status** variables and when the value of that variable is out of a limit EPICS will automatically put the PV into the relevant alarm state. There are 4 possible limits:
+1. Major low limit: **`set_major_low_limit_from("<name>")`**
+2. Minor low limit: **`set_minor_low_limit_from("<name>")`**
+3. Minor high limit: **`set_minor_high_limit_from("<name>")`**
+4. Major high limit: **`set_major_high_limit_from("<name>")`**
+
+The limits are enforced on the **previously specified** _analog_ variable (the _limited_ variable); in other words first you define an analog variable with `add_analog()` then **right after** this variable you define the alarm limits. Any number of limits can be defined (though you shouldn't specify more than 4 ;) ). _Major low_ should be less then _minor low_ and _major high_ should be greater than _minor high_.
+
+This sets one of the _HIHI_,_HIGH_,_LOLO_,_LOW_ fields of the _limited_ variable whenever the value of the limit record changes. The same limit can be applied to more than one variable.
+
+
+There is a shortcut to create the limiting variable and register it as a limit in one line:
 1. Major low limit: **`add_major_low_limit("<name>", ["<plc_type>"])`**
 2. Minor low limit: **`add_minor_low_limit("<name>", ["<plc_type>"])`**
 3. Minor high limit: **`add_minor_high_limit("<name>", ["<plc_type>"])`**
 4. Major high limit: **`add_major_high_limit("<name>", ["<plc_type>"])`**
 
-The limits are enforced on the **previously specified** _analog_ variable (the _limited_ variable); in other words first you define an analog variable with `add_analog()` then **right after** this variable you define the alarm limits with `add_..._limit()`. If the `<plc_type>` is omitted it is taken from the _analog_ variable. Any number of limits can be defined. _Major low_ should be less then _minor low_ and _major high_ should be greater than _minor high_.
+This is the same as `add_analog("foo", "REAL")` followed by a `set_.._limit_from("foo")`
 
-**To be clear**: this creates a PLC variable and an EPICS record (one for every limit) and sets one of the HIHI,HIGH,LOLO,LOW fields of the _limited_ variable whenever the value of the limit record changes.
+If `<plc_type>` is omitted it is taken from the _limited analog_ variable.
 
-[Examples](#limit-examples)
+
+[Examples](#alarm-limit-examples)
 
 ### Time variable
 
@@ -280,15 +292,22 @@ Safety systems use a gateway PLC between the IOC and the safety PLC and this bri
 
 ## Examples
 
-### Limit examples
+### Alarm limit examples
 
-#### Low limit
+#### Low alarm limit
 
+*   `add_analog("Measurement_Minimum", "REAL")`
 *   `add_analog("Measurement",  "REAL")`
-*   `add_minor_low_limit("Measurement_Minimum")`
-    *   Creates two variables: `Measurement` and `Measurement_Minimum` and sets the `LSV` field of `Measurement` to "MINOR" and the `LOW` field to the value of `Measurement_Minimum`
+*   `set_minor_low_limit_from("Measurement_Minimum")`
+    *   Creates two variables: `Measurement_Minimum` and `Measurement` and sets the `LSV` field of `Measurement` to "MINOR" and the `LOW` field to the value of `Measurement_Minimum`
 
-#### Low and high limits
+#### 'External' alarm limit
+
+*   `add_analog("Measurement", "REAL")`
+*   `set_major_low_limit_from("External::Measurement_Minimum")`
+    *   Creates one variable: `Measurement` and assumes that `External::Measurement_Minimum` is a PV defined elsewhere and sets the `LLSV` field of `Measurement` to "MAJOR" and the `LOLO` field to the value of `External::Measurement_Minimum`
+
+#### Low and high alarm limits
 
 *   `add_analog("Measurement",  "REAL")`
 *   `add_minor_low_limit("Measurement_Minimum")`

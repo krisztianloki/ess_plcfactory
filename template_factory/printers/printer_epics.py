@@ -12,7 +12,7 @@ __license__    = "GPLv3"
 import re
 
 from . import PRINTER, TemplatePrinterException
-from tf_ifdef import IfDefInternalError, SOURCE, VERBATIM, BLOCK, CMD_BLOCK, STATUS_BLOCK, BASE_TYPE, ANALOG_LIMIT
+from tf_ifdef import IfDefInternalError, SOURCE, VERBATIM, BLOCK, CMD_BLOCK, STATUS_BLOCK, PV, BASE_TYPE
 
 
 
@@ -278,10 +278,12 @@ record(longin, "{root_inst_slot}:C2")
 
 
     def _body_var(self, var, output):
-        self._append(self._toEPICS(var))
+        if not isinstance(var, BASE_TYPE):
+            # It must be a PV
+            self._append((var.source(), var.to_epics_record(sdis_fields = self.inpv_template(test = self._test, sdis = True, VALIDITY_PV = self._get_validity_pv(var)))), output)
+            return
 
-        if isinstance(var, ANALOG_LIMIT):
-            self._set_alarm_limit(var, output)
+        self._append(self._toEPICS(var))
 
         if not var.is_parameter():
             return
@@ -311,24 +313,6 @@ record(longin, "{root_inst_slot}:C2")
         """
         for pv_cond in if_def.external_validity_pvs().items():
             self._gen_validity_calc(pv_cond, output)
-
-
-    def _set_alarm_limit(self, var, output):
-        limit = """
-record(ao, "{ilimiter}")
-{{
-	field(DESC, "Set alarm limit value")
-	field(DOL,  "{limiter} CP")
-	field(OUT,  "{limited}.{field}")
-	field(OMSL, "closed_loop"){disable_template}
-}}
-""".format(limiter   = var.fqpn(),
-           ilimiter  = self.create_pv_name("A_" + var.pv_name()),
-           limited   = self.create_pv_name(var.limited_pv()),
-           field     = var.limit_field(),
-           disable_template = self.DEFAULT_INDISABLE_TEMPLATE)
-
-        self._append(limit, output)
 
 
     def _get_validity_pv(self, var, output = None):
@@ -1029,7 +1013,7 @@ record(longin, "{root_inst_slot}:PayloadSizeFromPLCR")
         for src in if_def.interfaces():
             if isinstance(src, BLOCK):
                 self._body_block(src, output)
-            elif isinstance(src, BASE_TYPE):
+            elif isinstance(src, PV):
                 self._body_var(src, output)
             elif isinstance(src, VERBATIM):
                 self._append((src.source(), str(src)))
@@ -1386,7 +1370,7 @@ record(ao, "{root_inst_slot}:CommsHashToPLCS")
         for src in if_def.interfaces():
             if isinstance(src, BLOCK):
                 self._body_block(src, output)
-            elif isinstance(src, BASE_TYPE):
+            elif isinstance(src, PV):
                 self._body_var(src, output)
             elif isinstance(src, VERBATIM):
                 self._append((src.source(), str(src)))
