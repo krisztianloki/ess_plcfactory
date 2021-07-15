@@ -137,7 +137,7 @@ Adding more than one spare bit:
 
 Only allowed in a **STATUS** block
 
-It is possible to specify limits for **analog status** variables and when the value of that variable is out of a limit EPICS will automatically put the PV into the relevant alarm state. There are 4 possible limits:
+It is possible to specify alarm limits for **analog status** variables and when the value of that variable is out of a limit EPICS will automatically put the PV into the relevant alarm state. There are 4 possible limits:
 1. Major low limit: **`set_major_low_limit_from("<name>")`**
 2. Minor low limit: **`set_minor_low_limit_from("<name>")`**
 3. Minor high limit: **`set_minor_high_limit_from("<name>")`**
@@ -145,7 +145,7 @@ It is possible to specify limits for **analog status** variables and when the va
 
 The limits are enforced on the **previously specified** _analog_ variable (the _limited_ variable); in other words first you define an analog variable with `add_analog()` then **right after** this variable you define the alarm limits. Any number of limits can be defined (though you shouldn't specify more than 4 ;) ). _Major low_ should be less then _minor low_ and _major high_ should be greater than _minor high_.
 
-This sets one of the _HIHI_,_HIGH_,_LOLO_,_LOW_ fields of the _limited_ variable whenever the value of the limit record changes. The same limit can be applied to more than one variable.
+This sets one of the _HIHI_,_HIGH_,_LOLO_,_LOW_ fields of the _limited_ variable whenever the value of the limit record changes. The same limit can be applied to at most 8 variable.
 
 
 There is a shortcut to create the limiting variable and register it as a limit in one line:
@@ -160,6 +160,21 @@ If `<plc_type>` is omitted it is taken from the _limited analog_ variable.
 
 
 [Examples](#alarm-limit-examples)
+
+#### Analog variable drive limits
+
+Only allowed in **COMMAND**, **PARAMETER**, or **GENERAL INPUT** blocks
+
+It is possible to specify drive limits for **analog command / parameter / general input** variables meaning that the value of the variable must be within the drive limits (if not it will be clamped). Whenever the value of limit changes the limit will be updated in the _limited_ analog variable. There are 2 possible limits:
+1. Low drive limit: **`set_low_drive_limit_from("<name>")`**
+2. High drive limit: **`set_high_drive_limit_from("<name>")`**
+
+The limits are enforced on the **previously specified** _analog_ variable (the _limited_ variable); in other words first you define an analog variable with `add_analog()` then **right after** this variable you define the drive limits. Although it is not enforced by PLCFactory you should set both limits; EPICS only enforces limits when low < high.
+
+This sets one of the _DRVL_,_DRVH_ fields of the _limited_ variable whenever the value of the limit record changes. The same limit can be applied to at most 8 variable.
+
+
+[Examples](#drive-limit-examples)
 
 ### Time variable
 
@@ -304,8 +319,8 @@ Safety systems use a gateway PLC between the IOC and the safety PLC and this bri
 #### 'External' alarm limit
 
 *   `add_analog("Measurement", "REAL")`
-*   `set_major_low_limit_from("External::Measurement_Minimum")`
-    *   Creates one variable: `Measurement` and assumes that `External::Measurement_Minimum` is a PV defined elsewhere and sets the `LLSV` field of `Measurement` to "MAJOR" and the `LOLO` field to the value of `External::Measurement_Minimum`
+*   `set_major_low_limit_from("Measurement_Minimum")`
+    *   Creates one variable: `Measurement` and sets the `LLSV` field of `Measurement` to "MAJOR" and the `LOLO` field to the value of `Measurement_Minimum`
 
 #### Low and high alarm limits
 
@@ -313,6 +328,13 @@ Safety systems use a gateway PLC between the IOC and the safety PLC and this bri
 *   `add_minor_low_limit("Measurement_Minimum")`
 *   `add_major_high_limit("Measurement_Maximum")`
     *   Creates three variables: `Measurement`, `Measurement_Minimum`, and `Measurement_Maximum` and sets the `LSV` field of `Measurement` to "MINOR", the `HHSV` field to "MAJOR", the `LOW` field to the value of `Measurement_Minimum`, and the `HIHI` field to the value of `Measurement_Maximum`
+
+### Drive limit examples
+
+*   `add_analog("Setpoint", "REAL")`
+*   `set_low_drive_limit_from("LowestAllowedSetpoint")`
+*   `set_high_drive_limit_from("HighestAllowedSetpoint")`
+    *   Creates one variable: `Setpoint` and sets the `DRVL` field of `Setpoint` to the value of `LowestAllowedSetpoint` and the `DRVH` field of `Setpoint` to the value of `HighestAllowedSetpoint`
 
 ### Archiving examples
 

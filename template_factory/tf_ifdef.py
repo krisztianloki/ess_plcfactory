@@ -1609,12 +1609,8 @@ class IF_DEF(object):
         return self._add_alarm(name, "MAJOR", alarm_message, **keyword_params)
 
 
-    def _get_alarm_limited_var(self, limit_severity, limit_type):
-        if self._active_BLOCK is None or not self._active_BLOCK.from_plc():
-            raise IfDefSyntaxError("Limits can only be defined for analog STATUS variables!")
-
-        # Get the most recent variable; it must be an ANALOG. It is the one the alarm limits are meant for
-        # At most 4 limits can be defined (including this one) so the last 4 interface variable have to be checked
+    def _get_previous_analog_var(self, type_to_skip):
+        # Get the most recent variable; it must be an ANALOG.
         var = None
         try:
             sifaces = self._active_BLOCK.interfaces()
@@ -1622,7 +1618,7 @@ class IF_DEF(object):
             while True:
                 var = sifaces[i]
                 i -= 1
-                if isinstance(var, ANALOG_ALARM_LIMIT) or not isinstance(var, BASE_TYPE):
+                if isinstance(var, type_to_skip) or not isinstance(var, BASE_TYPE):
                     continue
                 if isinstance(var, BASE_TYPE):
                     break
@@ -1631,6 +1627,15 @@ class IF_DEF(object):
 
         if not isinstance(var, ANALOG):
             raise IfDefSyntaxError("Limits can only be defined for analog variables!")
+
+        return var
+
+
+    def _get_alarm_limited_var(self, limit_severity, limit_type):
+        if self._active_BLOCK is None or not self._active_BLOCK.from_plc():
+            raise IfDefSyntaxError("Alarm limits can only be defined for analog STATUS variables!")
+
+        var = self._get_previous_analog_var(ANALOG_ALARM_LIMIT)
 
         # Set limit severity of _limited_ PV
         var.set_pv_field(ANALOG_ALARM_LIMIT.LIMIT_ALARM_FIELD[(limit_severity, limit_type)], limit_severity)
@@ -1660,12 +1665,13 @@ class IF_DEF(object):
         if limited_var is None:
             limited_var = self._get_alarm_limited_var(limit_severity, limit_type)
 
-        var = self._pv_names.get(name)
+        var = self._pv_names.get(PV.determine_pv_name(name, keyword_params))
+
         if var:
             if not isinstance(var, ANALOG_ALARM_LIMIT):
                 raise IfDefSyntaxError("Internal variable already exists: {}".format(var.pv_name()))
 
-            var.outx(limited_var, limit_severity, limit_type)
+            var.set_outx(limited_var, limit_severity, limit_type)
             return self._add_source()
 
         var = ANALOG_ALARM_LIMIT(self._source, name, limit_severity, limit_type, limited_var, keyword_params)
@@ -1711,6 +1717,38 @@ class IF_DEF(object):
     @ifdef_interface
     def set_major_high_limit_from(self, name, **keyword_params):
         return self._set_alarm_limit(name, ANALOG_ALARM_LIMIT.MAJOR_SEVERITY, ANALOG_ALARM_LIMIT.HIGH_LIMIT, **keyword_params)
+
+
+    def _set_drive(self, name, drive_type, **keyword_params):
+        if not isinstance(name, str):
+            raise IfDefSyntaxError("Name must be a string!")
+
+        if self._active_BLOCK is None or not self._active_BLOCK.to_plc():
+            raise IfDefSyntaxError("Drive limits can only be defined for analog OUTPUT variables!")
+
+        driven_var = self._get_previous_analog_var(ANALOG_DRIVE_LIMIT)
+
+        var = self._pv_names.get(PV.determine_pv_name(name, keyword_params))
+        if var:
+            if not isinstance(var, ANALOG_DRIVE_LIMIT):
+                raise IfDefSyntaxError("Internal variable already exists: {}".format(var.pv_name()))
+
+            var.set_outx(driven_var, drive_type)
+            return self._add_source()
+
+        var = ANALOG_DRIVE_LIMIT(self._source, name, drive_type, driven_var, keyword_params)
+
+        return self._add(var)
+
+
+    @ifdef_interface
+    def set_low_drive_limit_from(self, name, **keyword_params):
+        return self._set_drive(name, ANALOG_DRIVE_LIMIT.LOW, **keyword_params)
+
+
+    @ifdef_interface
+    def set_high_drive_limit_from(self, name, **keyword_params):
+        return self._set_drive(name, ANALOG_DRIVE_LIMIT.HIGH, **keyword_params)
 
 
     @ifdef_interface
@@ -1943,6 +1981,11 @@ class PV(SOURCE):
         return PV.PV_PREFIX + field
 
 
+    @staticmethod
+    def determine_pv_name(name, keyword_params):
+        return keyword_params.get(PV.PV_NAME, name)
+
+
     def __init__(self, source, name, pv_type = None, disable_with_plc = False, **keyword_params):
         super(PV, self).__init__(source, keyword_params = keyword_params)
 
@@ -1966,8 +2009,7 @@ class PV(SOURCE):
         self.__pv_type = pv_type
         self._disable_with_plc = disable_with_plc
 
-        if PV.PV_NAME not in self._keyword_params:
-            self._keyword_params[PV.PV_NAME] = self._name
+        self._keyword_params[PV.PV_NAME] = self.determine_pv_name(self._name, self._keyword_params)
 
         self._check_pv_extra()
         self._pvname = self._keyword_params[PV.PV_NAME]
@@ -2580,7 +2622,40 @@ class TIME(ANALOG):
 
 
 
-class ANALOG_ALARM_LIMIT(PV):
+class DFANOUT(PV):
+    OUTx    = [ 'OUTA', 'OUTB', 'OUTC', 'OUTD', 'OUTE', 'OUTF', 'OUTG', 'OUTH' ]
+
+
+    @staticmethod
+    def construct_name(input_name):
+        return "#{}".format(input_name)
+
+
+    def __init__(self, source, name, affected_pv, link, disable_with_plc, keyword_params):
+        self.__outx = 0
+
+        keyword_params[PV.PV_DESC] = "Set alarm limit value"
+        keyword_params[PV.to_pv_field("OMSL")] = "closed_loop"
+        keyword_params[PV.to_pv_field("DOL")] = "{} CP".format(affected_pv.fqpn(name))
+        self._set_outx(link, keyword_params)
+
+        super(DFANOUT, self).__init__(source, self.construct_name(name), "dfanout", disable_with_plc, **keyword_params)
+
+
+    def _set_outx(self, link, keyword_params = None):
+        try:
+            outx = PV.to_pv_field(self.OUTx[self.__outx])
+        except IndexError:
+            raise IfDefSyntaxError("Sorry, cannot add more outputs :(")
+
+        self.__outx += 1
+        if keyword_params is None:
+            keyword_params = self._keyword_params
+        keyword_params[outx] = link
+
+
+
+class ANALOG_ALARM_LIMIT(DFANOUT):
     MAJOR_SEVERITY    = "MAJOR"
     MINOR_SEVERITY    = "MINOR"
     HIGH_LIMIT        = "HIGH"
@@ -2594,35 +2669,37 @@ class ANALOG_ALARM_LIMIT(PV):
                           (MAJOR_SEVERITY, HIGH_LIMIT) : "HHSV",
                           (MINOR_SEVERITY, HIGH_LIMIT) : "HSV" }
 
-    OUTx    = [ 'OUTA', 'OUTB', 'OUTC', 'OUTD', 'OUTE', 'OUTF', 'OUTG', 'OUTH' ]
+
+    def __init__(self, source, name, limit_severity, limit_type, limited_pv, keyword_params):
+        super(ANALOG_ALARM_LIMIT, self).__init__(source, name, limited_pv, self.__construct_link(limited_pv, limit_severity, limit_type), True, keyword_params)
 
 
     @staticmethod
-    def construct_name(input_name):
-        return "#{}".format(input_name)
+    def __construct_link(limited_pv, limit_severity, limit_type):
+        return "{}.{}".format(limited_pv.fqpn(), ANALOG_ALARM_LIMIT.LIMIT_FIELD[(limit_severity, limit_type)])
 
 
-    def __init__(self, source, name, limit_severity, limit_type, limited_pv, keyword_params):
-        self.__outx = 0
-
-        keyword_params[PV.PV_DESC] = "Set alarm limit value"
-        keyword_params[PV.to_pv_field("OMSL")] = "closed_loop"
-        keyword_params[PV.to_pv_field("DOL")] = "{} CP".format(limited_pv.fqpn(name))
-        self.outx(limited_pv, limit_severity, limit_type, keyword_params)
-
-        super(ANALOG_ALARM_LIMIT, self).__init__(source, self.construct_name(name), "dfanout", disable_with_plc = True, **keyword_params)
+    def set_outx(self, limited_pv, limit_severity, limit_type, keyword_params = None):
+        self._set_outx(self.__construct_link(limited_pv, limit_severity, limit_type), keyword_params)
 
 
-    def outx(self, limited_pv, limit_severity, limit_type, keyword_params = None):
-        try:
-            outx = PV.to_pv_field(self.OUTx[self.__outx])
-        except IndexError:
-            raise IfDefSyntaxError("Sorry, cannot drive more alarm limits :(")
 
-        self.__outx += 1
-        if keyword_params is None:
-            keyword_params = self._keyword_params
-        keyword_params[outx] = "{}.{}".format(limited_pv.fqpn(), ANALOG_ALARM_LIMIT.LIMIT_FIELD[(limit_severity, limit_type)])
+class ANALOG_DRIVE_LIMIT(DFANOUT):
+    HIGH = "DRVH"
+    LOW  = "DRVL"
+
+
+    def __init__(self, source, name, drive_field, driven_pv, keyword_params):
+        super(ANALOG_DRIVE_LIMIT, self).__init__(source, name, driven_pv, self.__construct_link(driven_pv, drive_field), True, keyword_params)
+
+
+    @staticmethod
+    def __construct_link(driven_pv, drive_field):
+        return "{}.{}".format(driven_pv.fqpn(), drive_field)
+
+
+    def set_outx(self, driven_pv, drive_field, keyword_params = None):
+        self._set_outx(self.__construct_link(driven_pv, drive_field), keyword_params)
 
 
 
