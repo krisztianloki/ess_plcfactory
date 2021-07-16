@@ -2149,7 +2149,7 @@ class PV(SOURCE):
             # empty line
             # aliases
             # empty line
-            return "\n".join([''] + map(lambda alias : fmt.format(var.fqpn(alias)), self._keyword_params[PV.PV_ALIAS]) + [''])
+            return "\n".join([''] + map(lambda alias : fmt.format(self.fqpn(alias)), self._keyword_params[PV.PV_ALIAS]) + [''])
 
         return ""
 
@@ -2678,7 +2678,6 @@ class DFANOUT(PV):
         else:
             source_pv = affected_pv.fqpn(name)
 
-        keyword_params[PV.PV_DESC] = "Set alarm limit value"
         keyword_params[PV.to_pv_field("OMSL")] = "closed_loop"
         keyword_params[PV.to_pv_field("DOL")] = "{} CP".format(source_pv)
         self._set_outx(link, keyword_params)
@@ -2715,6 +2714,7 @@ class ANALOG_ALARM_LIMIT(DFANOUT):
 
 
     def __init__(self, source, name, limit_severity, limit_type, limited_pv, keyword_params):
+        keyword_params[PV.PV_DESC] = "Set alarm limit value"
         super(ANALOG_ALARM_LIMIT, self).__init__(source, name, limited_pv, self.__construct_link(limited_pv, limit_severity, limit_type), True, keyword_params)
 
 
@@ -2734,6 +2734,7 @@ class ANALOG_DRIVE_LIMIT(DFANOUT):
 
 
     def __init__(self, source, name, drive_field, driven_pv, keyword_params):
+        keyword_params[PV.PV_DESC] = "Set drive limit value"
         super(ANALOG_DRIVE_LIMIT, self).__init__(source, name, driven_pv, self.__construct_link(driven_pv, drive_field), True, keyword_params)
 
 
