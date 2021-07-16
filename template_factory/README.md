@@ -138,12 +138,14 @@ Adding more than one spare bit:
 Only allowed in a **STATUS** block
 
 It is possible to specify alarm limits for **analog status** variables and when the value of that variable is out of a limit EPICS will automatically put the PV into the relevant alarm state. There are 4 possible limits:
-1. Major low limit: **`set_major_low_limit_from("<name>")`**
-2. Minor low limit: **`set_minor_low_limit_from("<name>")`**
-3. Minor high limit: **`set_minor_high_limit_from("<name>")`**
-4. Major high limit: **`set_major_high_limit_from("<name>")`**
+1. Major low limit: **`set_major_low_limit_from("<name>"[, EXTERNAL_PV=True])`**
+2. Minor low limit: **`set_minor_low_limit_from("<name>"[, EXTERNAL_PV=True])`**
+3. Minor high limit: **`set_minor_high_limit_from("<name>"[, EXTERNAL_PV=True])`**
+4. Major high limit: **`set_major_high_limit_from("<name>"[, EXTERNAL_PV=True])`**
 
 The limits are enforced on the **previously specified** _analog_ variable (the _limited_ variable); in other words first you define an analog variable with `add_analog()` then **right after** this variable you define the alarm limits. Any number of limits can be defined (though you shouldn't specify more than 4 ;) ). _Major low_ should be less then _minor low_ and _major high_ should be greater than _minor high_.
+
+`"<name>"` is assumed to have the same ESS name as the limited variable unless it contains a `:` or `EXTERNAL_PV` is True
 
 This sets one of the _HIHI_,_HIGH_,_LOLO_,_LOW_ fields of the _limited_ variable whenever the value of the limit record changes. The same limit can be applied to at most 8 variable.
 
@@ -166,10 +168,12 @@ If `<plc_type>` is omitted it is taken from the _limited analog_ variable.
 Only allowed in **COMMAND**, **PARAMETER**, or **GENERAL INPUT** blocks
 
 It is possible to specify drive limits for **analog command / parameter / general input** variables meaning that the value of the variable must be within the drive limits (if not it will be clamped). Whenever the value of limit changes the limit will be updated in the _limited_ analog variable. There are 2 possible limits:
-1. Low drive limit: **`set_low_drive_limit_from("<name>")`**
-2. High drive limit: **`set_high_drive_limit_from("<name>")`**
+1. Low drive limit: **`set_low_drive_limit_from("<name>"[, EXTERNAL_PV=True])`**
+2. High drive limit: **`set_high_drive_limit_from("<name>"[, EXTERNAL_PV=True])`**
 
 The limits are enforced on the **previously specified** _analog_ variable (the _limited_ variable); in other words first you define an analog variable with `add_analog()` then **right after** this variable you define the drive limits. Although it is not enforced by PLCFactory you should set both limits; EPICS only enforces limits when low < high.
+
+`"<name>"` is assumed to have the same ESS name as the limited variable unless it contains a `:` or `EXTERNAL_PV` is True
 
 This sets one of the _DRVL_,_DRVH_ fields of the _limited_ variable whenever the value of the limit record changes. The same limit can be applied to at most 8 variable.
 

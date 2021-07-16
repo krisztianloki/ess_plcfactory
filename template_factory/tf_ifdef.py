@@ -1655,7 +1655,13 @@ class IF_DEF(object):
         self.add_analog(name, plc_var_type, **keyword_params)
 
         # Add helper PV to set alarm limit
-        return self._set_alarm_limit(name, limit_severity, limit_type, var, **keyword_params)
+        # Sanitize keyword_params: they were meant to the add_analog() part
+        s_keyword_params = dict()
+        try:
+            s_keyword_params[PV.PV_NAME] = keyword_params[PV.PV_NAME]
+        except KeyError:
+            pass
+        return self._set_alarm_limit(name, limit_severity, limit_type, var, **s_keyword_params)
 
 
     def _set_alarm_limit(self, name, limit_severity, limit_type, limited_var = None, **keyword_params):
@@ -1700,23 +1706,23 @@ class IF_DEF(object):
 
 
     @ifdef_interface
-    def set_minor_low_limit_from(self, name, **keyword_params):
-        return self._set_alarm_limit(name, ANALOG_ALARM_LIMIT.MINOR_SEVERITY, ANALOG_ALARM_LIMIT.LOW_LIMIT, **keyword_params)
+    def set_minor_low_limit_from(self, name, EXTERNAL_PV = False):
+        return self._set_alarm_limit(name, ANALOG_ALARM_LIMIT.MINOR_SEVERITY, ANALOG_ALARM_LIMIT.LOW_LIMIT, EXTERNAL_PV = EXTERNAL_PV)
 
 
     @ifdef_interface
-    def set_major_low_limit_from(self, name, **keyword_params):
-        return self._set_alarm_limit(name, ANALOG_ALARM_LIMIT.MAJOR_SEVERITY, ANALOG_ALARM_LIMIT.LOW_LIMIT, **keyword_params)
+    def set_major_low_limit_from(self, name, EXTERNAL_PV = False):
+        return self._set_alarm_limit(name, ANALOG_ALARM_LIMIT.MAJOR_SEVERITY, ANALOG_ALARM_LIMIT.LOW_LIMIT, EXTERNAL_PV = EXTERNAL_PV)
 
 
     @ifdef_interface
-    def set_minor_high_limit_from(self, name, **keyword_params):
-        return self._set_alarm_limit(name, ANALOG_ALARM_LIMIT.MINOR_SEVERITY, ANALOG_ALARM_LIMIT.HIGH_LIMIT, **keyword_params)
+    def set_minor_high_limit_from(self, name, EXTERNAL_PV = False):
+        return self._set_alarm_limit(name, ANALOG_ALARM_LIMIT.MINOR_SEVERITY, ANALOG_ALARM_LIMIT.HIGH_LIMIT, EXTERNAL_PV = EXTERNAL_PV)
 
 
     @ifdef_interface
-    def set_major_high_limit_from(self, name, **keyword_params):
-        return self._set_alarm_limit(name, ANALOG_ALARM_LIMIT.MAJOR_SEVERITY, ANALOG_ALARM_LIMIT.HIGH_LIMIT, **keyword_params)
+    def set_major_high_limit_from(self, name, EXTERNAL_PV = False):
+        return self._set_alarm_limit(name, ANALOG_ALARM_LIMIT.MAJOR_SEVERITY, ANALOG_ALARM_LIMIT.HIGH_LIMIT, EXTERNAL_PV = EXTERNAL_PV)
 
 
     def _set_drive(self, name, drive_type, **keyword_params):
@@ -1742,13 +1748,13 @@ class IF_DEF(object):
 
 
     @ifdef_interface
-    def set_low_drive_limit_from(self, name, **keyword_params):
-        return self._set_drive(name, ANALOG_DRIVE_LIMIT.LOW, **keyword_params)
+    def set_low_drive_limit_from(self, name, EXTERNAL_PV = False):
+        return self._set_drive(name, ANALOG_DRIVE_LIMIT.LOW, EXTERNAL_PV = EXTERNAL_PV)
 
 
     @ifdef_interface
-    def set_high_drive_limit_from(self, name, **keyword_params):
-        return self._set_drive(name, ANALOG_DRIVE_LIMIT.HIGH, **keyword_params)
+    def set_high_drive_limit_from(self, name, EXTERNAL_PV = False):
+        return self._set_drive(name, ANALOG_DRIVE_LIMIT.HIGH, EXTERNAL_PV = EXTERNAL_PV)
 
 
     @ifdef_interface
@@ -1913,6 +1919,8 @@ class IF_DEF(object):
 # PV class
 #
 class PV(SOURCE):
+    FQPN_LEN  = 60
+
     PV_PREFIX = "PV_"
     PV_ALIAS  = PV_PREFIX + "ALIAS"
     PV_NAME   = PV_PREFIX + "NAME"
@@ -1978,12 +1986,35 @@ class PV(SOURCE):
 
     @staticmethod
     def to_pv_field(field):
+        """
+            Returns the internal representation of field name `field`
+        """
         return PV.PV_PREFIX + field
 
 
     @staticmethod
     def determine_pv_name(name, keyword_params):
+        """
+            Returns the PV name; `name` or "PV_NAME" from `keyword_params` if set
+        """
         return keyword_params.get(PV.PV_NAME, name)
+
+
+    @staticmethod
+    def get_non_fpqn(name):
+        """
+            Returns the property part of `name`
+            Assumes that everything after the last ':' is the property
+        """
+        return name.rpartition(':')[2]
+
+
+    @staticmethod
+    def is_fqpn(name):
+        """
+            Returns True if name is a FQPN
+        """
+        return False if name.find(':') == -1 else True
 
 
     def __init__(self, source, name, pv_type = None, disable_with_plc = False, **keyword_params):
@@ -2054,7 +2085,7 @@ class PV(SOURCE):
             return self._fqpvname
 
         name = "{slot}:{property}".format(slot = self.ess_name(), property = pv_name)
-        if '$' in name or len(name) <= 60:
+        if '$' in name or len(name) <= self.FQPN_LEN:
             return name
 
         raise PVNameLengthException(name, self._exception_params())
@@ -2071,11 +2102,19 @@ class PV(SOURCE):
 
 
     def get_pv_field(self, field):
-        return self._keyword_params.get(self.PV_PREFIX + field)
+        """
+            Returns the PV field `field` or None if no such field is set
+        """
+        return self._keyword_params.get(self.to_pv_field(field))
 
 
     def set_pv_field(self, field, value):
-        self._keyword_params[self.PV_PREFIX + field] = value
+        """
+            Sets the PV field `field` to `value`
+        """
+        self._keyword_params[self.to_pv_field(field)] = value
+        # This is a bit excessive but fine for now
+        self._check_pv_extra()
 
 
     def build_pv_extra(self):
@@ -2628,15 +2667,20 @@ class DFANOUT(PV):
 
     @staticmethod
     def construct_name(input_name):
-        return "#{}".format(input_name)
+        return "#{}".format(PV.get_non_fpqn(input_name))
 
 
     def __init__(self, source, name, affected_pv, link, disable_with_plc, keyword_params):
         self.__outx = 0
 
+        if PV.is_fqpn(name) or keyword_params.get("EXTERNAL_PV", False):
+            source_pv = name
+        else:
+            source_pv = affected_pv.fqpn(name)
+
         keyword_params[PV.PV_DESC] = "Set alarm limit value"
         keyword_params[PV.to_pv_field("OMSL")] = "closed_loop"
-        keyword_params[PV.to_pv_field("DOL")] = "{} CP".format(affected_pv.fqpn(name))
+        keyword_params[PV.to_pv_field("DOL")] = "{} CP".format(source_pv)
         self._set_outx(link, keyword_params)
 
         super(DFANOUT, self).__init__(source, self.construct_name(name), "dfanout", disable_with_plc, **keyword_params)
