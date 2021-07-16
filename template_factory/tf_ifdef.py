@@ -1940,6 +1940,7 @@ class PV(SOURCE):
     PV_DRVH   = PV_PREFIX + "DRVH"
     PV_LOPR   = PV_PREFIX + "LOPR"
     PV_HOPR   = PV_PREFIX + "HOPR"
+    PV_FLNK   = PV_PREFIX + "FLNK"
 
     PV_ZRST   = PV_PREFIX + "ZRST"
     PV_ONST   = PV_PREFIX + "ONST"
@@ -2165,9 +2166,28 @@ class PV(SOURCE):
         pv_field3 = """\tfield({key},  "{value}")"""
         pv_field4 = """\tfield({key}, "{value}")"""
 
+        if sort:
+            fields = sorted(self._pv_fields.keys())
+
+            # Make DESC the first field
+            try:
+                fields.remove(PV.PV_DESC)
+                fields.insert(0, PV.PV_DESC)
+            except ValueError:
+                pass
+
+            # Make FLNK the last field
+            try:
+                fields.remove(PV.PV_FLNK)
+                fields.append(PV.PV_FLNK)
+            except ValueError:
+                pass
+        else:
+            fields = self._pv_fields.keys()
+
         formatter = lambda f: pv_field3 if len(f) == 6 else pv_field4
         return """
-{}""".format('\n'.join(map(lambda f: formatter(f).format(key = f[3:], value = self._pv_fields[f]), sorted(self._pv_fields.keys()) if sort else self._pv_fields.keys())))
+{}""".format('\n'.join(map(lambda f: formatter(f).format(key = f[3:], value = self._pv_fields[f]), fields)))
 
 
     def build_pv_alias(self):
