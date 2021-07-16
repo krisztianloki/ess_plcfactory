@@ -1921,6 +1921,8 @@ class IF_DEF(object):
 
         self._active = False
 
+        self._ifaces.extend(PARAMETER_UPLOAD_FO.create_pvs(self.parameter_interfaces()))
+
 
 
 #
@@ -2755,6 +2757,36 @@ class DFANOUT(PV):
 
 
 
+class FANOUT(PV):
+    LNKx = [ 'LNK1', 'LNK2', 'LNK3', 'LNK4', 'LNK5', 'LNK6', 'LNK7', 'LNK8', 'LNK9', 'LNKA', 'LNKB', 'LNKC', 'LNKD', 'LNKE', 'LNKF' ]
+
+
+    class NoMoreLinksException(RuntimeError):
+        pass
+
+
+    @staticmethod
+    def construct_name(input_name):
+        return "#{}-FO".format(PV.get_non_fpqn(input_name))
+
+
+    def __init__(self, source, name, link, disable_with_plc, keyword_params):
+        super(FANOUT, self).__init__(source, self.construct_name(name), "fanout", disable_with_plc, **keyword_params)
+        self.__lnkx = 0
+        self._set_lnkx(link)
+
+
+    def _set_lnkx(self, link):
+        try:
+            lnkx = PV.to_pv_field(self.LNKx[self.__lnkx])
+        except IndexError:
+            raise FANOUT.NoMoreLinksException()
+
+        self.__lnkx += 1
+        self.set_pv_field(lnkx, link)
+
+
+
 class ANALOG_ALARM_LIMIT(DFANOUT):
     MAJOR_SEVERITY    = "MAJOR"
     MINOR_SEVERITY    = "MINOR"
@@ -2849,6 +2881,58 @@ class ANALOG_DRIVE_LIMIT(DFANOUT):
 
     def set_outx(self, driven_pv, drive_field):
         self._set_outx(driven_pv, self.__construct_link(driven_pv, drive_field))
+
+
+
+class PARAMETER_UPLOAD_FO(FANOUT):
+    INITIAL_PV = "UploadParametersCmd"
+
+    pvs = []
+
+
+    @staticmethod
+    def create_pvs(parameters):
+        PARAMETER_UPLOAD_FO.pvs = []
+        upload = None
+        for param in parameters:
+            if isinstance(param, BASE_TYPE):
+                upload = PARAMETER_UPLOAD_FO.__add_parameter(upload, param)
+
+        return PARAMETER_UPLOAD_FO.pvs
+
+
+    @staticmethod
+    def __add_parameter(upload_fo, parameter):
+        if upload_fo is None:
+            keyword_params = dict()
+            keyword_params[PV.PV_ALIAS] = "UploadParametersS"
+            upload_fo = PARAMETER_UPLOAD_FO("UploadParametersCmd", parameter, **keyword_params)
+        else:
+            try:
+                upload_fo.set_lnkx(parameter)
+            except FANOUT.NoMoreLinksException:
+                new_upload_fo = PARAMETER_UPLOAD_FO("foo", parameter)
+                upload_fo.set_pv_field("FLNK", new_upload_fo.fqpn())
+                upload_fo = new_upload_fo
+
+        return upload_fo
+
+
+    @staticmethod
+    def construct_name(input_name):
+        if input_name == PARAMETER_UPLOAD_FO.INITIAL_PV:
+            return input_name
+        return "#UploadParam{}-FO".format(len(PARAMETER_UPLOAD_FO.pvs))
+
+
+    def __init__(self, name, parameter, **keyword_params):
+        keyword_params[PV.PV_DESC] = "Upload parameter values"
+        super(PARAMETER_UPLOAD_FO, self).__init__("", name, parameter.fqpn(), True, keyword_params)
+        PARAMETER_UPLOAD_FO.pvs.append(self)
+
+
+    def set_lnkx(self, param):
+        self._set_lnkx(param.fqpn())
 
 
 
