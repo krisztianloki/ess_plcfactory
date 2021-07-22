@@ -1789,8 +1789,11 @@ def verify_output(strictness, ignore):
 
     ignored_templates = [ 'PREVIOUS_FILES', 'CREATOR', 'CCDB-DUMP' ]
     ignored_templates.extend(ignore.split(','))
+    files_to_delete = []
     for template in ignored_templates:
-        previous_files.pop(template, None)
+        fname = previous_files.pop(template, None)
+        if fname is not None:
+            files_to_delete.append(fname)
 
     def my_filecmp(f1, f2):
         if filecmp.cmp(f1, f2, shallow = 0):
@@ -1835,11 +1838,11 @@ def verify_output(strictness, ignore):
         # compare prev and output
         try:
             if my_filecmp(prev, output):
-                previous_files.pop(template)
+                files_to_delete.append(previous_files.pop(template))
         except OSError as e:
             if e.errno == 2:
                 not_checked[template] = output
-                previous_files.pop(template)
+                files_to_delete.append(previous_files.pop(template))
                 continue
             raise
 
@@ -1868,6 +1871,9 @@ THE FOLLOWING FILES WERE NOT CHECKED:
             create_previous_files()
 
             exit(1)
+
+    for fname in files_to_delete:
+        os.remove(fname)
 
 
 def record_args(root_device):
