@@ -885,10 +885,37 @@ class PLC(object):
         self._no_diag = args.plc_no_diag
         self._test = args.plc_test
         self._version = None
+        self._plc = None
 
 
     def is_readonly(self):
         return self._readonly
+
+
+    def _validate_plc_device(self):
+        pass
+
+
+    def set_plc(self, plc):
+        self._plc = plc
+        self._validate_plc_device()
+
+        cplcf = getPLCF(self._plc)
+
+        hash_base = """EPICSToPLCDataBlockStartOffset: [PLCF#EPICSToPLCDataBlockStartOffset]
+PLCToEPICSDataBlockStartOffset: [PLCF#PLCToEPICSDataBlockStartOffset]
+PLC-EPICS-COMMS:Endianness: [PLCF#PLC-EPICS-COMMS:Endianness]"""
+        # GatewayDatablock is a relatively new feature; do not break the hash for PLCs not using it
+        try:
+            gw_db = cplcf.getProperty("PLC-EPICS-COMMS: GatewayDatablock")
+            if gw_db:
+                hash_base = """{}
+PLC-EPICS-COMMS: GatewayDatablock: {}""".format(hash_base, gw_db)
+        except plcf.PLCFNoPropertyException:
+            pass
+        hash_base = "\n".join(cplcf.process(hash_base.splitlines()))
+
+        return hash_base
 
 
     def generate_plc(self, out_dir, commit_id, verify):
@@ -898,7 +925,32 @@ class PLC(object):
 
 
 
-class SIEMENS_PLC(PLC):
+class S7PLC_MODBUS_PLC(PLC):
+    def __init__(self, args):
+        super(S7PLC_MODBUS_PLC, self).__init__(args)
+
+
+    def _validate_plc_device(self):
+        cplcf = getPLCF(self._plc)
+        toplc_offset = None
+        fromplc_offset = None
+        try:
+            toplc_offset = int(cplcf.getProperty("EPICSToPLCDataBlockStartOffset"))
+            if int(toplc_offset) < 0:
+                raise ValueError
+        except (TypeError, ValueError):
+            raise PLCFactoryException("Invalid EPICSToPLCDataBlockStartOffset property: {}".format(toplc_offset))
+
+        try:
+            fromplc_offset = int(cplcf.getProperty("PLCToEPICSDataBlockStartOffset"))
+            if int(fromplc_offset) < 0:
+                raise ValueError
+        except (TypeError, ValueError):
+            raise PLCFactoryException("Invalid PLCToEPICSDataBlockStartOffset property: {}".format(fromplc_offset))
+
+
+
+class SIEMENS_PLC(S7PLC_MODBUS_PLC):
     @staticmethod
     def PLC_is_siemens():
         return False
@@ -934,8 +986,19 @@ class SIEMENS_PLC(PLC):
         self._version = tia_version
 
 
+    def _validate_plc_device(self):
+        super(SIEMENS_PLC, self)._validate_plc_device()
 
-class BECKHOFF_PLC(PLC):
+        cplcf = getPLCF(self._plc)
+        try:
+            print(cplcf.getProperty("PLC-EPICS-COMMS: InterfaceID"))
+            interface_id = int(cplcf.getProperty("PLC-EPICS-COMMS: InterfaceID"))
+        except (TypeError, ValueError) as e:
+            raise PLCFactoryException("Missing/invalid 'PLC-EPICS-COMMS: InterfaceID'")
+
+
+
+class BECKHOFF_PLC(S7PLC_MODBUS_PLC):
     @staticmethod
     def PLC_is_beckhoff():
         return False
@@ -963,6 +1026,14 @@ class BECKHOFF_PLC(PLC):
 
         if self._only_diag or self._no_diag is False:
             raise PLCFArgumentError('PLCFactory cannot (yet?) generate diagnostics code for Beckhoff PLCs')
+
+
+    def _validate_plc_device(self):
+        super(BECKHOFF_PLC, self)._validate_plc_device()
+
+        cplcf = getPLCF(self._plc)
+        if int(cplcf.getProperty("EPICSToPLCDataBlockStartOffset")) < 12288:
+            raise PLCFactoryException("PLCF#EPICSToPLCDataBlockStartOffset property must be at least 12288! Are you using PLC_BECKHOFF?")
 
 
 
@@ -1433,20 +1504,9 @@ Exiting.
     if e3 is True:
         e3 = E3.from_device(device)
 
-    cplcf = getPLCF(device)
-
-    hash_base = """EPICSToPLCDataBlockStartOffset: [PLCF#EPICSToPLCDataBlockStartOffset]
-PLCToEPICSDataBlockStartOffset: [PLCF#PLCToEPICSDataBlockStartOffset]
-PLC-EPICS-COMMS:Endianness: [PLCF#PLC-EPICS-COMMS:Endianness]"""
-    # GatewayDatablock is a relatively new feature; do not break the hash for PLCs not using it
-    try:
-        gw_db = cplcf.getProperty("PLC-EPICS-COMMS: GatewayDatablock")
-        if gw_db:
-            hash_base = """{}
-PLC-EPICS-COMMS: GatewayDatablock: {}""".format(hash_base, gw_db)
-    except plcf.PLCFNoPropertyException:
-        pass
-    hash_base = "\n".join(cplcf.process(hash_base.splitlines()))
+    hash_base = ""
+    if plc:
+        hash_base = plc.set_plc(device)
 
     # create a stable list of controlled devices
     devices = device.buildControlsList(include_self = True, verbose = True)
