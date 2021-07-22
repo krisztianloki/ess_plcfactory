@@ -886,6 +886,7 @@ class PLC(object):
         self._test = args.plc_test
         self._version = None
         self._plc = None
+        self._plc_plcf = None
         self._hashobj = None
         self._ifdefs = []
 
@@ -900,22 +901,22 @@ class PLC(object):
 
     def set_plc(self, plc):
         self._plc = plc
+        self._plc_plcf = getPLCF(self._plc)
         self._validate_plc_device()
 
-        cplcf = getPLCF(self._plc)
 
         hash_base = """EPICSToPLCDataBlockStartOffset: [PLCF#EPICSToPLCDataBlockStartOffset]
 PLCToEPICSDataBlockStartOffset: [PLCF#PLCToEPICSDataBlockStartOffset]
 PLC-EPICS-COMMS:Endianness: [PLCF#PLC-EPICS-COMMS:Endianness]"""
         # GatewayDatablock is a relatively new feature; do not break the hash for PLCs not using it
         try:
-            gw_db = cplcf.getProperty("PLC-EPICS-COMMS: GatewayDatablock")
+            gw_db = self._plc_plcf.getProperty("PLC-EPICS-COMMS: GatewayDatablock")
             if gw_db:
                 hash_base = """{}
 PLC-EPICS-COMMS: GatewayDatablock: {}""".format(hash_base, gw_db)
         except plcf.PLCFNoPropertyException:
             pass
-        hash_base = "\n".join(cplcf.process(hash_base.splitlines()))
+        hash_base = "\n".join(self._plc_plcf.process(hash_base.splitlines()))
 
         self._hashobj = initializeHash(hash_base)
 
@@ -923,8 +924,6 @@ PLC-EPICS-COMMS: GatewayDatablock: {}""".format(hash_base, gw_db)
 
 
     def get_ifdefs(self, devices):
-        cplcf = getPLCF(self._plc)
-
         print("Downloading Interface Definition files...")
         print("-----------------------------------------")
         for device in devices:
@@ -956,18 +955,17 @@ class S7PLC_MODBUS_PLC(PLC):
 
 
     def _validate_plc_device(self):
-        cplcf = getPLCF(self._plc)
         toplc_offset = None
         fromplc_offset = None
         try:
-            toplc_offset = int(cplcf.getProperty("EPICSToPLCDataBlockStartOffset"))
+            toplc_offset = int(self._plc_plcf.getProperty("EPICSToPLCDataBlockStartOffset"))
             if int(toplc_offset) < 0:
                 raise ValueError
         except (TypeError, ValueError):
             raise PLCFactoryException("Invalid EPICSToPLCDataBlockStartOffset property: {}".format(toplc_offset))
 
         try:
-            fromplc_offset = int(cplcf.getProperty("PLCToEPICSDataBlockStartOffset"))
+            fromplc_offset = int(self._plc_plcf.getProperty("PLCToEPICSDataBlockStartOffset"))
             if int(fromplc_offset) < 0:
                 raise ValueError
         except (TypeError, ValueError):
@@ -1014,10 +1012,8 @@ class SIEMENS_PLC(S7PLC_MODBUS_PLC):
     def _validate_plc_device(self):
         super(SIEMENS_PLC, self)._validate_plc_device()
 
-        cplcf = getPLCF(self._plc)
         try:
-            print(cplcf.getProperty("PLC-EPICS-COMMS: InterfaceID"))
-            interface_id = int(cplcf.getProperty("PLC-EPICS-COMMS: InterfaceID"))
+            interface_id = int(self._plc_plcf.getProperty("PLC-EPICS-COMMS: InterfaceID"))
         except (TypeError, ValueError) as e:
             raise PLCFactoryException("Missing/invalid 'PLC-EPICS-COMMS: InterfaceID'")
 
@@ -1056,8 +1052,7 @@ class BECKHOFF_PLC(S7PLC_MODBUS_PLC):
     def _validate_plc_device(self):
         super(BECKHOFF_PLC, self)._validate_plc_device()
 
-        cplcf = getPLCF(self._plc)
-        if int(cplcf.getProperty("EPICSToPLCDataBlockStartOffset")) < 12288:
+        if int(self._plc_plcf.getProperty("EPICSToPLCDataBlockStartOffset")) < 12288:
             raise PLCFactoryException("PLCF#EPICSToPLCDataBlockStartOffset property must be at least 12288! Are you using PLC_BECKHOFF?")
 
 
