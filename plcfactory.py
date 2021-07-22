@@ -886,6 +886,8 @@ class PLC(object):
         self._test = args.plc_test
         self._version = None
         self._plc = None
+        self._hashobj = None
+        self._ifdefs = []
 
 
     def is_readonly(self):
@@ -915,7 +917,30 @@ PLC-EPICS-COMMS: GatewayDatablock: {}""".format(hash_base, gw_db)
             pass
         hash_base = "\n".join(cplcf.process(hash_base.splitlines()))
 
+        self._hashobj = initializeHash(hash_base)
+
         return hash_base
+
+
+    def get_ifdefs(self, devices):
+        cplcf = getPLCF(self._plc)
+
+        print("Downloading Interface Definition files...")
+        print("-----------------------------------------")
+        for device in devices:
+            cplcf = getPLCF(device)
+
+            print(device.name())
+#            print("Device type: " + device.deviceType())
+
+            self._hashobj.update(device.name())
+
+            ifdef = getIfDef(device, cplcf)
+            if ifdef is not None:
+                ifdef.calculate_hash(self._hashobj)
+                self._ifdefs.append(ifdef)
+
+            print("=" * 40)
 
 
     def generate_plc(self, out_dir, commit_id, verify):
@@ -1473,6 +1498,8 @@ Exiting.
 """)
         exit(1)
 
+    # FIXME: EEE
+#####################################################
     # Get the EPICSModule and EPICSSnippet properties
     dev_props = device.properties()
     modulename = dev_props.get("EPICSModule", [])
@@ -1499,6 +1526,8 @@ Exiting.
     if not glob.eee_modulename:
         glob.eee_modulename = modulename
         glob.eee_snippet    = snippet
+#####################################################
+    # FIXME: EEE
 
     global e3
     if e3 is True:
@@ -1524,6 +1553,9 @@ Exiting.
         ioc = IOC(device, git = ioc_git)
         if ioc.repo():
             git.GIT.check_minimal_config()
+
+    if plc:
+        plc.get_ifdefs(devices)
 
     hash_per_template = dict()
     for templateID in templateIDs:
