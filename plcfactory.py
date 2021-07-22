@@ -1188,7 +1188,7 @@ def findTag(lines, tag):
     return tagPos
 
 
-def processHash(header):
+def processHash(header, hashobj):
     assert isinstance(header, list)
 
     tag     = "#HASH"
@@ -1418,8 +1418,8 @@ def processTemplateID(templateID, devices):
         footer = rcplcf.process(footer)
 
     # process #HASH keyword in header and footer
-    header      = processHash(header)
-    footer      = processHash(footer)
+    header      = processHash(header, hashobj)
+    footer      = processHash(footer, hashobj)
 
     output      = header + output + footer
 
