@@ -941,6 +941,129 @@ PLC-EPICS-COMMS: GatewayDatablock: {}""".format(hash_base, gw_db)
 
             print("=" * 40)
 
+        cur_hash = (self._hashobj.getHash(), self._hashobj.getCRC32())
+
+        global hashes
+        hashes[self._plc.name()] = cur_hash
+
+        try:
+            prev_hash = prev_hashes[self._plc.name()]
+            # Check if CRC32 is the same but the actual hash is different
+            if prev_hash[0] is not None and prev_hash[0] != cur_hash[0] and prev_hash[1] == cur_hash[1]:
+                raise PLCFactoryException("CRC32 collision detected. Please file a bug report")
+        except (KeyError, TypeError):
+            pass
+
+
+    def generate_files(self, devices, templates):
+        remaining_templates = []
+        for template in templates:
+            if not self._generate_file(devices, template):
+                remaining_templates.append(template)
+
+        return remaining_templates
+
+
+    def _get_printer(self, template):
+        try:
+            return printers[template]
+        except KeyError:
+            templatePrinter = tf.get_printer(template)
+
+        if templatePrinter is not None:
+            printers[template] = templatePrinter
+
+        return templatePrinter
+
+
+    def _generate_file(self, devices, template):
+        printer = self._get_printer(template)
+        if printer is None:
+            return False
+
+        start_time = time.time()
+
+        self._plc_plcf.register_template(template)
+
+        if device_tag:
+            tagged_templateID = "_".join([ device_tag, template ])
+        else:
+            tagged_templateID = template
+
+        print("#" * 60)
+        print("Template ID " + tagged_templateID)
+        print("Device at root: " + str(self._plc) + "\n")
+
+        header = []
+        printer.header(header, ROOT_DEVICE = self._plc, PLCF = self._plc_plcf, OUTPUT_DIR = OUTPUT_DIR, HELPERS = helpers, **ifdef_params)
+        # has to acquire filename _before_ processing the header
+        # there are some special tags that are only valid in the header
+        outputFile = os.path.join(OUTPUT_DIR, createFilename(self._plc_plcf, header))
+
+        if header:
+            header = self._plc_plcf.process(header)
+            header = processHash(header, self._hashobj)
+
+        print("Processing entire tree of controls-relationships:\n")
+
+        template_from_def_file = "Generating '{}' template from Definition File...".format(template)
+
+        # for each device, find corresponding template and process it
+        output     = []
+        for device in devices:
+            deviceType = device.deviceType()
+            cplcf      = getPLCF(device)
+            cplcf.register_template(template)
+
+            print(device.name())
+            print("Device type: " + deviceType)
+
+            ifdef = getIfDef(device, cplcf)
+            if ifdef is not None:
+                print(template_from_def_file)
+
+                try:
+                    printer.body(ifdef, output, DEVICE = device, PLCF = cplcf)
+                except (tf.TemplatePrinterException, plcf.PLCFException, PLCFExtException) as e:
+                    raise ProcessTemplateException(device.name(), template, e)
+
+            print("=" * 40)
+
+        print("\n")
+
+        footer = []
+        printer.footer(footer, PLCF = self._plc_plcf)
+        if footer:
+            footer = self._plc_plcf.process(footer)
+            footer = processHash(footer, self._hashobj)
+
+        output = header + output + footer
+
+        if not output:
+            print("There were no templates for ID = {}.\n".format(tagged_templateID))
+            return
+
+        # Process counters
+        (output, _) = plcf.PLCF.evalCounters(output)
+
+        eol = getEOL(header)
+        # write file
+        with open(outputFile, 'w') as f:
+            for line in output:
+                line = line.rstrip()
+                if not line.startswith("#COUNTER") \
+                   and not line.startswith("#FILENAME") \
+                   and not line.startswith("#EOL"):
+                    print(line, end = eol, file = f)
+
+        output_files[template] = outputFile
+
+        print("Output file written:", outputFile)
+        print("Hash sum:", self._hashobj.getCRC32())
+        print("--- %s %.1f seconds ---\n" % (tagged_templateID, time.time() - start_time))
+
+        return True
+
 
     def generate_plc(self, out_dir, commit_id, verify):
         from interface_factory import IFA
@@ -1551,35 +1674,18 @@ Exiting.
 
     if plc:
         plc.get_ifdefs(devices)
+        templateIDs = plc.generate_files(devices, templateIDs)
 
-    hash_per_template = dict()
     for templateID in templateIDs:
         global hashobj
         hashobj = initializeHash(hash_base)
 
         processTemplateID(templateID, devices)
 
-        hash_per_template[templateID] = (hashobj.getHash(), hashobj.getCRC32())
-
-    # Check if IFA and EPICS-DB hashes are the same and obtain hash for PLC
-    try:
-        cur_hash = hash_per_template["IFA"]
-        if cur_hash[0] != hash_per_template["EPICS-DB"][0]:
-            raise PLCFactoryException("Hash mismatch detected between EPICS and PLC. Please file a bug report")
-    except KeyError:
-        # Fall back to the current hash
+    if plc is None:
         cur_hash = (hashobj.getHash(), hashobj.getCRC32())
-
-    global hashes
-    hashes[device.name()] = cur_hash
-
-    try:
-        prev_hash = prev_hashes[device.name()]
-        # Check if CRC32 is the same but the actual hash is different
-        if prev_hash[0] is not None and prev_hash[0] != cur_hash[0] and prev_hash[1] == cur_hash[1]:
-            raise PLCFactoryException("CRC32 collision detected. Please file a bug report")
-    except (KeyError, TypeError):
-        pass
+        global hashes
+        hashes[device.name()] = cur_hash
 
     if plc:
         plc.generate_plc(OUTPUT_DIR, COMMIT_ID, VERIFY)
