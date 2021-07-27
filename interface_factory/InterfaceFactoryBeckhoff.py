@@ -1080,6 +1080,7 @@ def ProcessIFADevTypes(OutputDir):
 	MaxCommandReg = 0
 	TotalStatusReg = 0
 	TotalCommandReg = 0
+	GlobalIDCounter = 0
 
 	InArrayName = None
 	InArrayNum  = None
