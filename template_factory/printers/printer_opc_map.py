@@ -47,8 +47,8 @@ class OPC_MAP_XLS(PRINTER):
     #
     # HEADER
     #
-    def header(self, output, **keyword_params):
-        super(OPC_MAP_XLS, self).header(output, **keyword_params)
+    def header(self, header_if_def, output, **keyword_params):
+        super(OPC_MAP_XLS, self).header(header_if_def, output, **keyword_params)
         self._wb = Workbook()
         try:
             self._filename = self._helpers.sanitizeFilename(keyword_params["PLCF"].process(self.filename(extension = "xlsx")))
@@ -97,8 +97,8 @@ class OPC_MAP_XLS(PRINTER):
     #
     # FOOTER
     #
-    def footer(self, output, **keyword_params):
-        super(OPC_MAP_XLS, self).footer(output, **keyword_params)
+    def footer(self, footer_if_def, output, **keyword_params):
+        super(OPC_MAP_XLS, self).footer(footer_if_def, output, **keyword_params)
         if self._wb is None:
             return
         self._wb.remove(self._wb.active)

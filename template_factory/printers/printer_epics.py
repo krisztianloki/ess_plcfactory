@@ -112,8 +112,8 @@ class EPICS_BASE(PRINTER):
     #
     # HEADER
     #
-    def header(self, output, **keyword_params):
-        super(EPICS_BASE, self).header(output, **keyword_params)
+    def header(self, header_if_def, output, **keyword_params):
+        super(EPICS_BASE, self).header(header_if_def, output, **keyword_params)
 
         # Expand the disable PV
         self.DISABLE_PV = self.expand(self.DISABLE_PV)
@@ -521,8 +521,8 @@ record(fanout, "{inst_slot}:{upload}")
     #
     # FOOTER
     #
-    def footer(self, output, **keyword_params):
-        super(EPICS_BASE, self).footer(output, **keyword_params)
+    def footer(self, footer_if_def, output, **keyword_params):
+        super(EPICS_BASE, self).footer(footer_if_def, output, **keyword_params)
 
         if not self._gen_validity_pvs == set(self._validity_pvs.keys()):
             raise TemplatePrinterException("The following validity PVs were not found or are missing VALIDITY_CONDITION:{}".format(set(self._validity_pvs.keys()) - self._gen_validity_pvs))
@@ -970,8 +970,8 @@ record(longin, "{root_inst_slot}:PayloadSizeFromPLCR")
     #
     # HEADER
     #
-    def header(self, output, **keyword_params):
-        super(EPICS, self).header(output, **keyword_params).add_filename_header(output, extension = "db")
+    def header(self, header_if_def, output, **keyword_params):
+        super(EPICS, self).header(header_if_def, output, **keyword_params).add_filename_header(output, extension = "db")
 
         self.get_endianness()
 
@@ -1286,9 +1286,9 @@ class EPICS_OPC(EPICS_BASE):
     #
     # HEADER
     #
-    def header(self, output, **keyword_params):
+    def header(self, header_if_def, output, **keyword_params):
         # This is intentional but check if it is possible to call super(EPICS_OPC, self).header
-        PRINTER.header(self, output, **keyword_params).add_filename_header(output, extension = "db")
+        PRINTER.header(self, header_if_def, output, **keyword_params).add_filename_header(output, extension = "db")
 
         # Expand the disable PV
         self.DISABLE_PV = self.expand(self.DISABLE_PV)

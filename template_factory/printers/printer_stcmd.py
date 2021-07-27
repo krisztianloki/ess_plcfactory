@@ -153,8 +153,8 @@ class ST_CMD(eee, MACROS, PRINTER):
     #
     # HEADER
     #
-    def header(self, output, **keyword_parameters):
-        super(ST_CMD, self).header(output, **keyword_parameters).add_filename_header(output, inst_slot = self.snippet(), template = False if not self._autosave else "autosave", extension = self._extension())
+    def header(self, header_if_def, output, **keyword_parameters):
+        super(ST_CMD, self).header(header_if_def, output, **keyword_parameters).add_filename_header(output, inst_slot = self.snippet(), template = False if not self._autosave else "autosave", extension = self._extension())
         self._opc = True if 'OPC' in keyword_parameters.get('PLC_TYPE', '') else False
 
         if not self._opc:
@@ -239,17 +239,17 @@ dbLoadRecords("{modulename}.db", "{PLC_MACRO}={plcname}, MODVERSION=$({modversio
     #
     # FOOTER
     #
-    def footer(self, output, **keyword_parameters):
+    def footer(self, footer_if_def, output, **keyword_parameters):
         if self._opc:
-            self._opc_footer(output, **keyword_parameters)
+            self._opc_footer(footer_if_def, output, **keyword_parameters)
         else:
-            self._s7_footer(output, **keyword_parameters)
+            self._s7_footer(footer_if_def, output, **keyword_parameters)
 
     #
     # S7 + MODBUS FOOTER
     #
-    def _s7_footer(self, output, **keyword_parameters):
-        super(ST_CMD, self).footer(output, **keyword_parameters)
+    def _s7_footer(self, footer_if_def, output, **keyword_parameters):
+        super(ST_CMD, self).footer(footer_if_def, output, **keyword_parameters)
 
         insize = self._plc_to_epics_offset - self.PLCToEPICSDataBlockStartOffset
 
@@ -301,8 +301,8 @@ drvModbusAsynConfigure("{plcname}read", "{plcname}", 0, 3, {start_offset}, 10, 0
     #
     # OPC-UA FOOTER
     #
-    def _opc_footer(self, output, **keyword_parameters):
-        super(ST_CMD, self).footer(output, **keyword_parameters)
+    def _opc_footer(self, footer_if_def, output, **keyword_parameters):
+        super(ST_CMD, self).footer(footer_if_def, output, **keyword_parameters)
 
         st_cmd_footer = """
 #- Session name : {plcname}-session
@@ -359,8 +359,8 @@ class ST_TEST_CMD(eee, MACROS, PRINTER):
     #
     # HEADER
     #
-    def header(self, output, **keyword_parameters):
-        super(ST_TEST_CMD, self).header(output, **keyword_parameters).add_filename_header(output, inst_slot = self.snippet(), template = "test", extension = self._extension())
+    def header(self, header_if_def, output, **keyword_parameters):
+        super(ST_TEST_CMD, self).header(header_if_def, output, **keyword_parameters).add_filename_header(output, inst_slot = self.snippet(), template = "test", extension = self._extension())
 
         st_cmd_header = """{require}
 # @field {modversion}
@@ -382,8 +382,8 @@ class ST_TEST_CMD(eee, MACROS, PRINTER):
     #
     # FOOTER
     #
-    def footer(self, output, **keyword_parameters):
-        super(ST_TEST_CMD, self).footer(output, **keyword_parameters)
+    def footer(self, footer_if_def, output, **keyword_parameters):
+        super(ST_TEST_CMD, self).footer(footer_if_def, output, **keyword_parameters)
 
         st_cmd_footer = """
 #- Load plc interface database
@@ -477,8 +477,8 @@ class AUTOSAVE_ST_CMD(ST_CMD):
     #
     # HEADER
     #
-    def header(self, output, **keyword_parameters):
-        super(AUTOSAVE_ST_CMD, self).header(output, **keyword_parameters)
+    def header(self, header_if_def, output, **keyword_parameters):
+        super(AUTOSAVE_ST_CMD, self).header(header_if_def, output, **keyword_parameters)
 
         self._append(autosave_header(self), output)
 
@@ -499,8 +499,8 @@ class AUTOSAVE_ST_CMD(ST_CMD):
     #
     # FOOTER
     #
-    def footer(self, output, **keyword_parameters):
-        super(AUTOSAVE_ST_CMD, self).footer(output, **keyword_parameters)
+    def footer(self, footer_if_def, output, **keyword_parameters):
+        super(AUTOSAVE_ST_CMD, self).footer(footer_if_def, output, **keyword_parameters)
 
         if self._has_params:
             self._append(autosave_footer(self), output)
@@ -530,8 +530,8 @@ require autosave
     #
     # HEADER
     #
-    def header(self, output, **keyword_parameters):
-        super(AUTOSAVE_IOCSH, self).header(output, **keyword_parameters)
+    def header(self, header_if_def, output, **keyword_parameters):
+        super(AUTOSAVE_IOCSH, self).header(header_if_def, output, **keyword_parameters)
 
         self._append(e3_autosave_header(self), output)
 
@@ -552,8 +552,8 @@ require autosave
     #
     # FOOTER
     #
-    def footer(self, output, **keyword_parameters):
-        super(AUTOSAVE_IOCSH, self).footer(output, **keyword_parameters)
+    def footer(self, footer_if_def, output, **keyword_parameters):
+        super(AUTOSAVE_IOCSH, self).footer(footer_if_def, output, **keyword_parameters)
 
         if self._has_params:
             self._append("""
@@ -577,8 +577,8 @@ class AUTOSAVE_ST_TEST_CMD(ST_TEST_CMD):
     #
     # HEADER
     #
-    def header(self, output, **keyword_parameters):
-        super(AUTOSAVE_ST_TEST_CMD, self).header(output, **keyword_parameters)
+    def header(self, header_if_def, output, **keyword_parameters):
+        super(AUTOSAVE_ST_TEST_CMD, self).header(header_if_def, output, **keyword_parameters)
 
         self._append(autosave_header(self), output)
 
@@ -586,8 +586,8 @@ class AUTOSAVE_ST_TEST_CMD(ST_TEST_CMD):
     #
     # FOOTER
     #
-    def footer(self, output, **keyword_parameters):
-        super(AUTOSAVE_ST_TEST_CMD, self).footer(output, **keyword_parameters)
+    def footer(self, footer_if_def, output, **keyword_parameters):
+        super(AUTOSAVE_ST_TEST_CMD, self).footer(footer_if_def, output, **keyword_parameters)
 
         self._append(autosave_footer(self), output)
 
@@ -614,8 +614,8 @@ require autosave
     #
     # HEADER
     #
-    def header(self, output, **keyword_parameters):
-        super(AUTOSAVE_TEST_IOCSH, self).header(output, **keyword_parameters)
+    def header(self, header_if_def, output, **keyword_parameters):
+        super(AUTOSAVE_TEST_IOCSH, self).header(header_if_def, output, **keyword_parameters)
 
         self._append(e3_autosave_header(self), output)
 
@@ -623,8 +623,8 @@ require autosave
     #
     # FOOTER
     #
-    def footer(self, output, **keyword_parameters):
-        super(AUTOSAVE_TEST_IOCSH, self).footer(output, **keyword_parameters)
+    def footer(self, footer_if_def, output, **keyword_parameters):
+        super(AUTOSAVE_TEST_IOCSH, self).footer(footer_if_def, output, **keyword_parameters)
 
         self._append("""
 #- Load autosave config

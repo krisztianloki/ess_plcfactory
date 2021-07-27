@@ -326,7 +326,7 @@ class PRINTER(object):
         return "_any_body" not in self.__class__.__dict__
 
 
-    def header(self, output, **keyword_params):
+    def header(self, header_if_def, output, **keyword_params):
         self._check_if_list(output)
         self._output_dir     = keyword_params.get("OUTPUT_DIR", ".")
         self._helpers        = keyword_params.get("HELPERS", None)
@@ -335,6 +335,7 @@ class PRINTER(object):
 
         self._parse_keyword_args(keyword_params)
         self._device = self._root_device
+        self._header_if_def = header_if_def
 
         self._reset_body()
 
@@ -366,10 +367,12 @@ class PRINTER(object):
         pass
 
 
-    def footer(self, output, **keyword_params):
+    def footer(self, footer_if_def, output, **keyword_params):
         self._check_if_list(output)
 
         self._parse_keyword_args(keyword_params)
+
+        self._footer_if_def = footer_if_def
 
         self._reset_body()
 

@@ -40,11 +40,11 @@ class ARCHIVE(PRINTER):
     #
     # HEADER
     #
-    def header(self, output, **keyword_params):
+    def header(self, header_if_def, output, **keyword_params):
         #
         # No need to initialize anything
         #
-        super(ARCHIVE, self).header(output, **keyword_params).add_filename_header(output, extension = "archive")
+        super(ARCHIVE, self).header(header_if_def, output, **keyword_params).add_filename_header(output, extension = "archive")
         if keyword_params.get("PLC_TYPE", False):
             self._append("#" * 60, output)
             self._append("## {root_inst_slot}".format(root_inst_slot = self.root_inst_slot()), output)

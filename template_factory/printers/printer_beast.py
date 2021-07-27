@@ -29,8 +29,8 @@ class BEAST_BASE(PRINTER):
     #
     # HEADER
     #
-    def header(self, output, **keyword_params):
-        super(BEAST_BASE, self).header(output, **keyword_params)
+    def header(self, header_if_def, output, **keyword_params):
+        super(BEAST_BASE, self).header(header_if_def, output, **keyword_params)
         self.add_filename_header(output, extension = self._extension())
 
 

@@ -32,8 +32,8 @@ class AUTOSAVE(PRINTER):
     #
     # HEADER
     #
-    def header(self, output, **keyword_params):
-        super(AUTOSAVE, self).header(output, **keyword_params).add_filename_header(output, extension = "req")
+    def header(self, header_if_def, output, **keyword_params):
+        super(AUTOSAVE, self).header(header_if_def, output, **keyword_params).add_filename_header(output, extension = "req")
 
         return self
 
@@ -64,8 +64,8 @@ class AUTOSAVE_TEST(PRINTER):
     #
     # HEADER
     #
-    def header(self, output, **keyword_params):
-        super(AUTOSAVE_TEST, self).header(output, **keyword_params).add_filename_header(output, custom = "{inst_slot}-[PLCF#TEMPLATE]-[PLCF#TIMESTAMP]-test.req".format(inst_slot = self.raw_inst_slot()))
+    def header(self, header_if_def, output, **keyword_params):
+        super(AUTOSAVE_TEST, self).header(header_if_def, output, **keyword_params).add_filename_header(output, custom = "{inst_slot}-[PLCF#TEMPLATE]-[PLCF#TIMESTAMP]-test.req".format(inst_slot = self.raw_inst_slot()))
 
         self._append("{root_inst_slot}:UploadStat-RB.VAL".format(root_inst_slot = self.root_inst_slot()), output)
 

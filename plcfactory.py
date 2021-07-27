@@ -995,7 +995,7 @@ PLC-EPICS-COMMS: GatewayDatablock: {}""".format(hash_base, gw_db)
         print("Device at root: " + str(self._plc) + "\n")
 
         header = []
-        printer.header(header, ROOT_DEVICE = self._plc, PLCF = self._plc_plcf, OUTPUT_DIR = OUTPUT_DIR, HELPERS = helpers, **ifdef_params)
+        printer.header(None, header, ROOT_DEVICE = self._plc, PLCF = self._plc_plcf, OUTPUT_DIR = OUTPUT_DIR, HELPERS = helpers, **ifdef_params)
         # has to acquire filename _before_ processing the header
         # there are some special tags that are only valid in the header
         outputFile = os.path.join(OUTPUT_DIR, createFilename(self._plc_plcf, header))
@@ -1032,7 +1032,7 @@ PLC-EPICS-COMMS: GatewayDatablock: {}""".format(hash_base, gw_db)
         print("\n")
 
         footer = []
-        printer.footer(footer, PLCF = self._plc_plcf)
+        printer.footer(None, footer, PLCF = self._plc_plcf)
         if footer:
             footer = self._plc_plcf.process(footer)
             footer = processHash(footer, self._hashobj)
@@ -1384,7 +1384,7 @@ def getHeader(device, templateID, plcf):
         print("Using built-in '{}' template header".format(templateID))
         printers[templateID] = templatePrinter
         header = []
-        templatePrinter.header(header, ROOT_DEVICE = device, PLCF = plcf, OUTPUT_DIR = OUTPUT_DIR, HELPERS = helpers, **ifdef_params)
+        templatePrinter.header(None, header, ROOT_DEVICE = device, PLCF = plcf, OUTPUT_DIR = OUTPUT_DIR, HELPERS = helpers, **ifdef_params)
     else:
         header = openHeaderFooter(device, HEADER_TAG, templateID)
 
@@ -1404,7 +1404,7 @@ def getFooter(device, templateID, plcf):
 
     print("Using built-in '{}' template footer".format(templateID))
     footer = []
-    templatePrinter.footer(footer, PLCF = plcf)
+    templatePrinter.footer(None, footer, PLCF = plcf)
 
     return footer
 
