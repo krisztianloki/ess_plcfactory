@@ -1976,7 +1976,21 @@ def create_previous_files():
         output_files["PREVIOUS_FILES"] = fname
 
 
-def verify_output(strictness, ignore):
+class PLCFactoryVerifyException(PLCFactoryException):
+    def __init__(self, device, template_filename_tuple):
+        self.device = device
+        self.template_filename_tuple = template_filename_tuple
+
+        message = """
+THE FOLLOWING FILES WERE CHANGED:
+"""
+        for (template, output) in template_filename_tuple:
+            message += """\t{template}:\t{filename}
+""".format(template = template, filename = output)
+        super(PLCFactoryVerifyException, self).__init__(message)
+
+
+def verify_output(devicename, strictness, ignore):
     if strictness == 0 or (previous_files is None and strictness < 3):
         return
 
@@ -2040,15 +2054,7 @@ def verify_output(strictness, ignore):
             raise
 
     if previous_files:
-        print("\n" + "=*" * 40)
-        print("""
-THE FOLLOWING FILES WERE CHANGED:
-""")
-        for (template, output) in previous_files.items():
-            print("\t{template}:\t{filename}".format(template = template, filename = output))
-        print("\n" + "=*" * 40)
-
-        exit(1)
+        raise PLCFactoryVerifyException(devicename, previous_files.items())
 
     if not_checked:
         print("\n" + "=*" * 40)
@@ -2406,12 +2412,6 @@ def main(argv):
         templateIDs.add("EPICS-OPC-DB")
         templateIDs.remove("EPICS-DB")
 
-    os.system('clear')
-
-    banner()
-
-    glob.ccdb = CC.open_from_args(args)
-
     if args.output_dir[0] == '+':
         OUTPUT_DIR = os.path.join(OUTPUT_DIR, args.output_dir[1:])
     elif args.output_dir[-1] == '+':
@@ -2425,6 +2425,13 @@ def main(argv):
         OUTPUT_DIR = os.path.join(OUTPUT_DIR, helpers.sanitizeFilename(CC.TAG_SEPARATOR.join([ "", "tag", device_tag ])))
 
     OUTPUT_DIR = os.path.abspath(OUTPUT_DIR)
+
+    os.system('clear')
+
+    banner()
+
+    glob.ccdb = CC.open_from_args(args)
+
     helpers.makedirs(OUTPUT_DIR)
 
     read_data_files()
@@ -2445,7 +2452,7 @@ def main(argv):
 
     # Verify created files: they should be the same as the ones from the last run
     if VERIFY:
-        verify_output(VERIFY, args.verify_ignore)
+        verify_output(root_device.name(), VERIFY, args.verify_ignore)
 
     create_previous_files()
     write_data_files()
