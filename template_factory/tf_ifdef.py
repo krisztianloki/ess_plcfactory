@@ -1989,15 +1989,18 @@ class PV(SOURCE):
         """
             Returns the internal representation of field name `field`
         """
+        if field.startswith(PV.PV_PREFIX):
+            return field
+
         return PV.PV_PREFIX + field
 
 
     @staticmethod
-    def determine_pv_name(name, keyword_params):
+    def determine_pv_name(name, pv_fields):
         """
-            Returns the PV name; `name` or "PV_NAME" from `keyword_params` if set
+            Returns the PV name; `name` or "PV_NAME" from `pv_fields` if set
         """
-        return keyword_params.get(PV.PV_NAME, name)
+        return pv_fields.get(PV.PV_NAME, name)
 
 
     @staticmethod
@@ -2042,8 +2045,12 @@ class PV(SOURCE):
 
         self._keyword_params[PV.PV_NAME] = self.determine_pv_name(self._name, self._keyword_params)
 
-        self._check_pv_extra()
-        self._pvname = self._keyword_params[PV.PV_NAME]
+        self._pv_fields = {}
+        self._pv_aliases = []
+
+        self._create_pv_fields()
+
+        self._pvname = self._pv_fields[PV.PV_NAME]
         self._fqpvname = self.fqpn(self._pvname)
 
         if self._pvname == "":
@@ -2105,16 +2112,31 @@ class PV(SOURCE):
         """
             Returns the PV field `field` or None if no such field is set
         """
-        return self._keyword_params.get(self.to_pv_field(field))
+        return self._pv_fields.get(self.to_pv_field(field))
 
 
     def set_pv_field(self, field, value):
         """
             Sets the PV field `field` to `value`
         """
-        self._keyword_params[self.to_pv_field(field)] = value
-        # This is a bit excessive but fine for now
-        self._check_pv_extra()
+        field = self.to_pv_field(field)
+        self._pv_fields[field] = self._check_pv_field(field, value)
+
+
+    def add_alias(self, alias):
+        """
+            Adds an alias to the PV
+        """
+
+        if alias == "" or alias == []:
+            raise IfDefSyntaxError("Empty PV_ALIAS")
+
+        if isinstance(alias, str):
+            self._pv_aliases.append(self._check_pv_field(PV.PV_ALIAS, alias))
+        elif isinstance(alias, list):
+            self._pv_aliases.extend(map(lambda a: self._check_pv_field(PV.PV_ALIAS, a), alias))
+        elif not isinstance(alias, list):
+            raise IfDefSyntaxError("PV_ALIAS must be a string or a list")
 
 
     def build_pv_extra(self):
@@ -2127,13 +2149,13 @@ class PV(SOURCE):
         pv_field4 = """\tfield({key}, "{value}")\n"""
 
         pv_extra_fields = "\n"
-        for key in sorted(self._keyword_params.keys()):
-            if key.startswith(PV.PV_PREFIX) and key != PV.PV_ALIAS and key != PV.PV_NAME:
+        for key in sorted(self._pv_fields.keys()):
+            if key != PV.PV_NAME:
                 if len(key) == 6:
                     pv_field_formatter = pv_field3
                 else:
                     pv_field_formatter = pv_field4
-                pv_extra_fields += pv_field_formatter.format(key = key[3:], value = self._keyword_params[key])
+                pv_extra_fields += pv_field_formatter.format(key = key[3:], value = self._pv_fields[key])
 
         return pv_extra_fields.rstrip('\n')
 
@@ -2144,14 +2166,14 @@ class PV(SOURCE):
             'create_pv_name' is a function to create the fully qualified PV name
         """
 
-        fmt = """\talias("{}")"""
-        if PV.PV_ALIAS in self._keyword_params:
-            # empty line
-            # aliases
-            # empty line
-            return "\n".join([''] + map(lambda alias : fmt.format(self.fqpn(alias)), self._keyword_params[PV.PV_ALIAS]) + [''])
+        if not self._pv_aliases:
+            return ""
 
-        return ""
+        fmt = """\talias("{}")"""
+        # empty line
+        # aliases
+        # empty line
+        return "\n".join([''] + map(lambda alias : fmt.format(self.fqpn(alias)), self._pv_aliases) + [''])
 
 
     def to_epics_record(self, sdis_fields = ""):
@@ -2166,8 +2188,10 @@ class PV(SOURCE):
            sdis_fields = sdis_fields if self._disable_with_plc else "")
 
 
-    def _check_length(self, field, field_val, length_strict):
+    def _check_pv_field_length(self, field, field_val, length_strict):
         msg_hdr_fmt = "The {field} field of the pv is too long: "
+
+        field_val = str(field_val)
 
         (length, strict) = length_strict
         if len(field_val) > length:
@@ -2180,41 +2204,32 @@ class PV(SOURCE):
             print(self._add_warning(" " * (len(msg_hdr) + length) + "^"))
 
             if strict:
-                self._keyword_params[field] = field_val[:length]
+                return field_val[:length]
+
+        return field_val
 
 
-    def _check_pv_extra(self):
-        msg_hdr_fmt = "The {field} field of the pv is too long: "
-
-        try:
-            if self._keyword_params[PV.PV_ALIAS] == "" or self._keyword_params[PV.PV_ALIAS] == []:
-                raise IfDefSyntaxError("Empty PV_ALIAS")
-
-            if isinstance(self._keyword_params[PV.PV_ALIAS], str):
-                self._keyword_params[PV.PV_ALIAS] = [ self._keyword_params[PV.PV_ALIAS] ]
-            elif not isinstance(self._keyword_params[PV.PV_ALIAS], list):
-                raise IfDefSyntaxError("PV_ALIAS must be a string or a list")
-        except KeyError:
-            pass
-
+    def _create_pv_fields(self):
         for field, value in self._keyword_params.items():
             if not field.startswith(PV.PV_PREFIX):
                 continue
 
-            if not isinstance(value, str) and not isinstance(value, int) and field != PV.PV_ALIAS:
-                raise IfDefSyntaxError("{field} can only be a string")
+            if field == PV.PV_ALIAS:
+                self.add_alias(value)
+            else:
+                self._pv_fields[field] = self._check_pv_field(field, value)
 
-            try:
-                length_strict = PV.field_lengths[field]
-                if not isinstance(value, list):
-                    self._check_length(field, value, length_strict)
-                else:
-                    # Make sure that we don't have to truncate the field value
-                    assert(length_strict[1] == False)
-                    for field_val in value:
-                        self._check_length(field, field_val, length_strict)
-            except KeyError:
-                pass
+
+    def _check_pv_field(self, field, value):
+        if not isinstance(value, str) and not isinstance(value, int):
+            raise IfDefSyntaxError("Field {} can only be a string".format(field))
+
+        try:
+            length_strict = PV.field_lengths[field]
+        except KeyError:
+            return value
+
+        return self._check_pv_field_length(field, value, length_strict)
 
 
 
@@ -2237,7 +2252,7 @@ class BASE_TYPE(PV):
             reserved_params = ["DTYP", "OUT"]
 
         for param in map(lambda x: PV.PV_PREFIX + x, reserved_params):
-            if param in self._keyword_params:
+            if param in self._pv_fields:
                 raise IfDefSyntaxError(param + " is reserved!")
 
         """
@@ -2693,7 +2708,7 @@ class DFANOUT(PV):
 
         self.__outx += 1
         if keyword_params is None:
-            keyword_params = self._keyword_params
+            keyword_params = self._pv_fields
         keyword_params[outx] = link
 
 
