@@ -2182,7 +2182,9 @@ class PV(SOURCE):
         # empty line
         # aliases
         # empty line
-        return "\n".join([''] + map(lambda alias : fmt.format(self.fqpn(alias)), self._pv_aliases) + [''])
+        return """
+{}
+""".format("\n".join(map(lambda alias : fmt.format(self.fqpn(alias)), self._pv_aliases)))
 
 
     def to_epics_record(self, sdis_fields = ""):
