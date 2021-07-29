@@ -2052,14 +2052,14 @@ class PV(SOURCE):
         self.__pv_type = pv_type
         self._disable_with_plc = disable_with_plc
 
-        self._keyword_params[PV.PV_NAME] = self.determine_pv_name(self._name, self._keyword_params)
+        self._keyword_params[PV.PV_NAME] = self._check_pv_field(PV.PV_NAME, self.determine_pv_name(self._name, self._keyword_params))
 
         self._pv_fields = {}
         self._pv_aliases = []
 
         self._create_pv_fields()
 
-        self._pvname = self._pv_fields[PV.PV_NAME]
+        self._pvname = self._keyword_params[PV.PV_NAME]
         self._fqpvname = self.fqpn(self._pvname)
 
         if self._pvname == "":
@@ -2222,7 +2222,7 @@ class PV(SOURCE):
 
     def _create_pv_fields(self):
         for field, value in self._keyword_params.items():
-            if not field.startswith(PV.PV_PREFIX):
+            if not field.startswith(PV.PV_PREFIX) or field == PV.PV_NAME:
                 continue
 
             if field == PV.PV_ALIAS:
