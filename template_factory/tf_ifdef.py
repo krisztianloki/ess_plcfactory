@@ -2154,19 +2154,15 @@ class PV(SOURCE):
              field(key, "value")
         """
 
-        pv_field3 = """\tfield({key},  "{value}")\n"""
-        pv_field4 = """\tfield({key}, "{value}")\n"""
+        if not self._pv_fields:
+            return ""
 
-        pv_extra_fields = "\n"
-        for key in sorted(self._pv_fields.keys()):
-            if key != PV.PV_NAME:
-                if len(key) == 6:
-                    pv_field_formatter = pv_field3
-                else:
-                    pv_field_formatter = pv_field4
-                pv_extra_fields += pv_field_formatter.format(key = key[3:], value = self._pv_fields[key])
+        pv_field3 = """\tfield({key},  "{value}")"""
+        pv_field4 = """\tfield({key}, "{value}")"""
 
-        return pv_extra_fields.rstrip('\n')
+        formatter = lambda f: pv_field3 if len(f) == 6 else pv_field4
+        return """
+{}""".format('\n'.join(map(lambda f: formatter(f).format(key = f[3:], value = self._pv_fields[f]), sorted(self._pv_fields.keys()))))
 
 
     def build_pv_alias(self):
