@@ -175,8 +175,12 @@ class DummyHash(object):
 
 
 class DummyPLCF(object):
+    def __init__(self, presets = {}):
+        self._presets = presets
+
+
     def process(self, what):
-        return what
+        return self._presets.get(what, what)
 
 
     def processLine(self, line):
@@ -860,6 +864,11 @@ class IF_DEF(object):
 
 
     @staticmethod
+    def create_dummy_plcf():
+        return DummyPLCF({ "[PLCF#{}]".format(IF_DEF.DEFAULT_INSTALLATION_SLOT) : "INST:SLOT" })
+
+
+    @staticmethod
     def parse(def_file, **keyword_params):
         # TODO: change to str once we moved to Python3
         if isinstance(def_file, basestring):
@@ -868,7 +877,8 @@ class IF_DEF(object):
             artifact = def_file
             def_file = artifact.saved_as()
 
-        cplcf = keyword_params.get("PLCF", DummyPLCF())
+        keyword_params["PLCF"] = keyword_params.get("PLCF", IF_DEF.create_dummy_plcf())
+        cplcf = keyword_params["PLCF"]
 
         if_def = IF_DEF(**keyword_params)
 
@@ -885,9 +895,16 @@ class IF_DEF(object):
 
         PV.init(self)
 
-        self._pv_names              = dict()
-        self._plc_names             = set()
-        self._templates             = dict()
+        self._pv_names  = dict()
+        self._plc_names = set()
+        self._templates = dict()
+
+        cplcf = keyword_params.get("PLCF", self.create_dummy_plcf())
+
+        self._datablock_name           = cplcf.process(IF_DEF.DEFAULT_DATABLOCK_NAME)
+        self.DEFAULT_DATABLOCK_NAME    = self._datablock_name
+        self._inst_slot                = cplcf.process("[PLCF#{}]".format(IF_DEF.DEFAULT_INSTALLATION_SLOT))
+        self.DEFAULT_INSTALLATION_SLOT = self._inst_slot
 
         self._ifaces                = []
         self._preBLOCK              = fakeBLOCK()
@@ -905,8 +922,6 @@ class IF_DEF(object):
         self._plc_array             = None
         self._filename              = None
         self._artifact              = None
-        self._inst_slot             = IF_DEF.DEFAULT_INSTALLATION_SLOT
-        self._datablock_name        = IF_DEF.DEFAULT_DATABLOCK_NAME
         self._readonly              = keyword_params.get("PLC_READONLY", False)
         self._experimental          = keyword_params.get("EXPERIMENTAL", False)
         self._quiet                 = keyword_params.get("QUIET",        False)
@@ -1144,12 +1159,6 @@ class IF_DEF(object):
     def _read_def(self, def_file, cplcf):
         if self._filename is not None:
             raise IfDefInternalError("Cannot parse more than one Interface Definition file")
-
-        self._datablock_name = cplcf.process(IF_DEF.DEFAULT_DATABLOCK_NAME)
-        self.DEFAULT_DATABLOCK_NAME = self._datablock_name
-
-        self._inst_slot = cplcf.process("[PLCF#{}]".format(IF_DEF.DEFAULT_INSTALLATION_SLOT))
-        self.DEFAULT_INSTALLATION_SLOT = self._inst_slot
 
         self._filename = def_file
         with open(def_file, 'r') as defs:
