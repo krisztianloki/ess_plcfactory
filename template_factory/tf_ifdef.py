@@ -1708,7 +1708,7 @@ class IF_DEF(object):
             var.set_outx(limited_var, limit_severity, limit_type)
             return self._add_source()
 
-        var = ANALOG_ALARM_LIMIT(self._source, name, limit_severity, limit_type, limited_var, keyword_params)
+        var = ANALOG_ALARM_LIMIT(self._source, name, limit_severity, limit_type, limited_var, **keyword_params)
 
         return self._add(var)
 
@@ -1770,7 +1770,7 @@ class IF_DEF(object):
             var.set_outx(driven_var, drive_type)
             return self._add_source()
 
-        var = ANALOG_DRIVE_LIMIT(self._source, name, drive_type, driven_var, keyword_params)
+        var = ANALOG_DRIVE_LIMIT(self._source, name, drive_type, driven_var, **keyword_params)
 
         return self._add(var)
 
@@ -2718,7 +2718,8 @@ class DFANOUT(PV):
         return "#{}".format(PV.get_non_fpqn(input_name))
 
 
-    def __init__(self, source, name, affected_pv, link, disable_with_plc, keyword_params):
+    def __init__(self, source, name, affected_pv, link, disable_with_plc, **keyword_params):
+        super(DFANOUT, self).__init__(source, self.construct_name(name), "dfanout", disable_with_plc, **keyword_params)
         self.__outx = 0
 
         if PV.is_fqpn(name) or keyword_params.get("EXTERNAL_PV", False):
@@ -2726,23 +2727,19 @@ class DFANOUT(PV):
         else:
             source_pv = affected_pv.fqpn(name)
 
-        keyword_params[PV.to_pv_field("OMSL")] = "closed_loop"
-        keyword_params[PV.to_pv_field("DOL")] = "{} CP".format(source_pv)
-        self._set_outx(link, keyword_params)
-
-        super(DFANOUT, self).__init__(source, self.construct_name(name), "dfanout", disable_with_plc, **keyword_params)
+        self.set_pv_field("DOL", "{} CP".format(source_pv))
+        self.set_pv_field("OMSL", "closed_loop")
+        self._set_outx(link)
 
 
-    def _set_outx(self, link, keyword_params = None):
+    def _set_outx(self, link):
         try:
             outx = PV.to_pv_field(self.OUTx[self.__outx])
         except IndexError:
             raise IfDefSyntaxError("Sorry, cannot add more outputs :(")
 
         self.__outx += 1
-        if keyword_params is None:
-            keyword_params = self._pv_fields
-        keyword_params[outx] = link
+        self.set_pv_field(outx, link)
 
 
 
@@ -2761,9 +2758,9 @@ class ANALOG_ALARM_LIMIT(DFANOUT):
                           (MINOR_SEVERITY, HIGH_LIMIT) : "HSV" }
 
 
-    def __init__(self, source, name, limit_severity, limit_type, limited_pv, keyword_params):
-        keyword_params[PV.PV_DESC] = "Set alarm limit value"
-        super(ANALOG_ALARM_LIMIT, self).__init__(source, name, limited_pv, self.__construct_link(limited_pv, limit_severity, limit_type), True, keyword_params)
+    def __init__(self, source, name, limit_severity, limit_type, limited_pv, **keyword_params):
+        super(ANALOG_ALARM_LIMIT, self).__init__(source, name, limited_pv, self.__construct_link(limited_pv, limit_severity, limit_type), True, **keyword_params)
+        self.set_pv_field(PV.PV_DESC, "Set alarm limit value")
 
 
     @staticmethod
@@ -2771,8 +2768,8 @@ class ANALOG_ALARM_LIMIT(DFANOUT):
         return "{}.{}".format(limited_pv.fqpn(), ANALOG_ALARM_LIMIT.LIMIT_FIELD[(limit_severity, limit_type)])
 
 
-    def set_outx(self, limited_pv, limit_severity, limit_type, keyword_params = None):
-        self._set_outx(self.__construct_link(limited_pv, limit_severity, limit_type), keyword_params)
+    def set_outx(self, limited_pv, limit_severity, limit_type):
+        self._set_outx(self.__construct_link(limited_pv, limit_severity, limit_type))
 
 
 
@@ -2781,9 +2778,9 @@ class ANALOG_DRIVE_LIMIT(DFANOUT):
     LOW  = "DRVL"
 
 
-    def __init__(self, source, name, drive_field, driven_pv, keyword_params):
-        keyword_params[PV.PV_DESC] = "Set drive limit value"
-        super(ANALOG_DRIVE_LIMIT, self).__init__(source, name, driven_pv, self.__construct_link(driven_pv, drive_field), True, keyword_params)
+    def __init__(self, source, name, drive_field, driven_pv, **keyword_params):
+        super(ANALOG_DRIVE_LIMIT, self).__init__(source, name, driven_pv, self.__construct_link(driven_pv, drive_field), True, **keyword_params)
+        self.set_pv_field(PV.PV_DESC, "Set drive limit value")
 
 
     @staticmethod
@@ -2791,8 +2788,8 @@ class ANALOG_DRIVE_LIMIT(DFANOUT):
         return "{}.{}".format(driven_pv.fqpn(), drive_field)
 
 
-    def set_outx(self, driven_pv, drive_field, keyword_params = None):
-        self._set_outx(self.__construct_link(driven_pv, drive_field), keyword_params)
+    def set_outx(self, driven_pv, drive_field):
+        self._set_outx(self.__construct_link(driven_pv, drive_field))
 
 
 
