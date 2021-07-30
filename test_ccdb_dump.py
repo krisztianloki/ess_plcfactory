@@ -24,7 +24,8 @@ class mkdtemp(object):
 
 
     def __exit__(self, type, value, traceback):
-        shutil.rmtree(self.dirpath)
+        if type is None:
+            shutil.rmtree(self.dirpath)
 
 
 
