@@ -1699,7 +1699,7 @@ class IF_DEF(object):
         if limited_var is None:
             limited_var = self._get_alarm_limited_var(limit_severity, limit_type, False)
 
-        var = self._pv_names.get(PV.determine_pv_name(name, keyword_params))
+        var = self._pv_names.get(ANALOG_ALARM_LIMIT.construct_name(PV.determine_pv_name(name, keyword_params)))
 
         if var:
             if not isinstance(var, ANALOG_ALARM_LIMIT):
@@ -1762,7 +1762,7 @@ class IF_DEF(object):
 
         driven_var = self._get_previous_analog_var(ANALOG_DRIVE_LIMIT, False)
 
-        var = self._pv_names.get(PV.determine_pv_name(name, keyword_params))
+        var = self._pv_names.get(ANALOG_DRIVE_LIMIT.construct_name(PV.determine_pv_name(name, keyword_params)))
         if var:
             if not isinstance(var, ANALOG_DRIVE_LIMIT):
                 raise IfDefSyntaxError("Internal variable already exists: {}".format(var.pv_name()))
