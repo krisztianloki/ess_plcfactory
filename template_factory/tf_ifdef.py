@@ -1618,7 +1618,13 @@ class IF_DEF(object):
         return self._add_alarm(name, "MAJOR", alarm_message, **keyword_params)
 
 
-    def _get_previous_analog_var(self, type_to_skip):
+    def _get_previous_analog_var(self, type_to_skip, skip2):
+        """
+            Returns the most recent BASE_TYPE variable skipping non-BASE_TYPE-s and `type_to_skip` types
+            If `skip2` is True then it will skip two variables when a `type_to_skip` is found.
+             this is used to skip the BASE_TYPE created in response to `add_x_y_limit()`
+        """
+
         # Get the most recent variable; it must be an ANALOG.
         var = None
         try:
@@ -1627,7 +1633,11 @@ class IF_DEF(object):
             while True:
                 var = sifaces[i]
                 i -= 1
-                if isinstance(var, type_to_skip) or not isinstance(var, BASE_TYPE):
+                if isinstance(var, type_to_skip):
+                    if skip2:
+                        i -= 1
+                    continue
+                if not isinstance(var, BASE_TYPE):
                     continue
                 if isinstance(var, BASE_TYPE):
                     break
@@ -1640,11 +1650,16 @@ class IF_DEF(object):
         return var
 
 
-    def _get_alarm_limited_var(self, limit_severity, limit_type):
+    def _get_alarm_limited_var(self, limit_severity, limit_type, for_add_alarm):
+        """
+            Returns the "limited" variable and sets its field of `limit_type` to `limit_severity`
+            `for_add_alarm` must be True if this is called from _add_alarm_limit()
+        """
+
         if self._active_BLOCK is None or not self._active_BLOCK.from_plc():
             raise IfDefSyntaxError("Alarm limits can only be defined for analog STATUS variables!")
 
-        var = self._get_previous_analog_var(ANALOG_ALARM_LIMIT)
+        var = self._get_previous_analog_var(ANALOG_ALARM_LIMIT, for_add_alarm)
 
         # Set limit severity of _limited_ PV
         var.set_pv_field(ANALOG_ALARM_LIMIT.LIMIT_ALARM_FIELD[(limit_severity, limit_type)], limit_severity)
@@ -1653,10 +1668,14 @@ class IF_DEF(object):
 
 
     def _add_alarm_limit(self, name, plc_var_type, limit_severity, limit_type, **keyword_params):
+        """
+            Adds alarm limit variable and helper PV to set the limit of the limited variable based on the value of the alarm limit variable
+        """
+
         if plc_var_type is not None and not isinstance(plc_var_type, str):
             raise IfDefSyntaxError("PLC type must be a string!")
 
-        var = self._get_alarm_limited_var(limit_severity, limit_type)
+        var = self._get_alarm_limited_var(limit_severity, limit_type, True)
         if plc_var_type is None:
             plc_var_type = var.plc_type()
 
@@ -1678,7 +1697,7 @@ class IF_DEF(object):
             raise IfDefSyntaxError("Name must be a string!")
 
         if limited_var is None:
-            limited_var = self._get_alarm_limited_var(limit_severity, limit_type)
+            limited_var = self._get_alarm_limited_var(limit_severity, limit_type, False)
 
         var = self._pv_names.get(PV.determine_pv_name(name, keyword_params))
 
@@ -1741,7 +1760,7 @@ class IF_DEF(object):
         if self._active_BLOCK is None or not self._active_BLOCK.to_plc():
             raise IfDefSyntaxError("Drive limits can only be defined for analog OUTPUT variables!")
 
-        driven_var = self._get_previous_analog_var(ANALOG_DRIVE_LIMIT)
+        driven_var = self._get_previous_analog_var(ANALOG_DRIVE_LIMIT, False)
 
         var = self._pv_names.get(PV.determine_pv_name(name, keyword_params))
         if var:
