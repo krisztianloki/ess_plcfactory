@@ -2151,6 +2151,9 @@ class PV(SOURCE):
             Sets the PV field `field` to `value`
         """
         field = self.to_pv_field(field)
+        # Add the unmodfied (i.e. not truncated) field value to _keyword_params
+        self._keyword_params[field] = value
+        # Add the (possibly) truncated field value to _pv_fields
         self._pv_fields[field] = self._check_pv_field(field, value)
 
 
