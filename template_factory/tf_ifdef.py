@@ -2054,7 +2054,10 @@ class PV(SOURCE):
 
         self._keyword_params[PV.PV_NAME] = self._check_pv_field(PV.PV_NAME, self.determine_pv_name(self._name, self._keyword_params))
 
-        self._pv_fields = {}
+        if isinstance(self, BASE_TYPE):
+            self._pv_fields = {}
+        else:
+            self._pv_fields = OrderedDict()
         self._pv_aliases = []
 
         self._create_pv_fields()
@@ -2148,7 +2151,7 @@ class PV(SOURCE):
             raise IfDefSyntaxError("PV_ALIAS must be a string or a list")
 
 
-    def build_pv_extra(self):
+    def build_pv_extra(self, sort = False):
         """
             Returns the PV fields in EPICS format:
              field(key, "value")
@@ -2162,7 +2165,7 @@ class PV(SOURCE):
 
         formatter = lambda f: pv_field3 if len(f) == 6 else pv_field4
         return """
-{}""".format('\n'.join(map(lambda f: formatter(f).format(key = f[3:], value = self._pv_fields[f]), sorted(self._pv_fields.keys()))))
+{}""".format('\n'.join(map(lambda f: formatter(f).format(key = f[3:], value = self._pv_fields[f]), sorted(self._pv_fields.keys()) if sort else self._pv_fields.keys())))
 
 
     def build_pv_alias(self):
@@ -2426,6 +2429,10 @@ class BASE_TYPE(PV):
 
     def link_offset(self, plc_to_epics_offset, epics_to_plc_offset):
         return self._block.link_offset(self, plc_to_epics_offset, epics_to_plc_offset)
+
+
+    def build_pv_extra(self):
+        return super(BASE_TYPE, self).build_pv_extra(True)
 
 
     def pv_template(self, **keyword_params):
