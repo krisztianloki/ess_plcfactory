@@ -45,7 +45,7 @@ add_digital("both")
 add_digital("plc", PV_NAME="epics")
 """, file = def_file)
 
-            ifdef = tf_ifdef.IF_DEF.parse(pv_name_def)
+            ifdef = tf_ifdef.IF_DEF.parse(pv_name_def, QUIET = True)
 
             var = ifdef.has_pv("both")
             self.assertIsInstance(var, tf_ifdef.BIT)
@@ -78,7 +78,7 @@ add_digital("foo2", PV_ALIAS=["bar2", "foobar2"])
 add_digital("short", PV_ALIAS="an-alias-that-is-a-lot-longer-than-permitted-because-I-had-so-much-to-write")
 """, file = def_file)
 
-            ifdef = tf_ifdef.IF_DEF.parse(alias_def)
+            ifdef = tf_ifdef.IF_DEF.parse(alias_def, QUIET = True)
 
             var = ifdef.has_pv("no-alias")
             self.assertIsInstance(var, tf_ifdef.BIT)
@@ -149,7 +149,7 @@ add_digital("long-desc", PV_DESC="this-description-is-a-lot-longer-than-permitte
 add_digital("moar-fields", PV_DESC="desc", PV_HIGH="0")
 """, file = def_file)
 
-            ifdef = tf_ifdef.IF_DEF.parse(field_def)
+            ifdef = tf_ifdef.IF_DEF.parse(field_def, QUIET = True)
 
             var = ifdef.has_pv("no-field")
             self.assertIsInstance(var, tf_ifdef.BIT)
@@ -210,7 +210,7 @@ add_minor_high_limit("mihigh", "REAL")
 add_major_high_limit("mahigh", "INT")
 """, file = def_file)
 
-            ifdef = tf_ifdef.IF_DEF.parse(alarm_def)
+            ifdef = tf_ifdef.IF_DEF.parse(alarm_def, QUIET = True)
 
             meas = ifdef.has_pv("meas")
             self.assertIsInstance(meas, tf_ifdef.ANALOG)
@@ -285,7 +285,7 @@ set_minor_high_limit_from("mihigh")
 set_major_high_limit_from("ext:mahigh")
 """, file = def_file)
 
-            ifdef = tf_ifdef.IF_DEF.parse(alarm_def)
+            ifdef = tf_ifdef.IF_DEF.parse(alarm_def, QUIET = True)
 
             meas = ifdef.has_pv("meas")
             self.assertIsInstance(meas, tf_ifdef.ANALOG)
@@ -340,26 +340,31 @@ define_status_block()
 
 add_analog("meas", "REAL")
 set_minor_low_limit_from("limit")
+set_major_high_limit_from("limit2")
 
 add_analog("meas2", "INT")
+#set_minor_high_limit_from("")
+set_major_high_limit_from("limit2")
 set_major_low_limit_from("limit")
 
 add_analog("meas3", "WORD")
 set_minor_high_limit_from("limit")
 """, file = def_file)
 
-            ifdef = tf_ifdef.IF_DEF.parse(alarm_def)
+            ifdef = tf_ifdef.IF_DEF.parse(alarm_def, QUIET = True)
 
-            def check_limited(name, typ, field, sevr):
+            def check_limited(name, typ, field, sevr, field_num):
                 meas = ifdef.has_pv(name)
                 self.assertIsInstance(meas, tf_ifdef.ANALOG)
                 self.assertEqual(meas.plc_type(), typ)
                 self.assertEqual(meas.get_pv_field(field), sevr)
-                self.assertEqual(len(meas._pv_fields), 1)
+                self.assertEqual(len(meas._pv_fields), field_num)
 
-            check_limited("meas", "REAL", "LSV", "MINOR")
-            check_limited("meas2", "INT", "LLSV", "MAJOR")
-            check_limited("meas3", "WORD", "HSV", "MINOR")
+            check_limited("meas", "REAL", "LSV", "MINOR", 2)
+            check_limited("meas", "REAL", "HHSV", "MAJOR", 2)
+            check_limited("meas2", "INT", "LLSV", "MAJOR", 2)
+            check_limited("meas2", "INT", "HHSV", "MAJOR", 2)
+            check_limited("meas3", "WORD", "HSV", "MINOR", 1)
 
             limit = ifdef.has_pv("#limit")
             self.assertIsInstance(limit, tf_ifdef.ANALOG_ALARM_LIMIT)
@@ -370,6 +375,15 @@ set_minor_high_limit_from("limit")
             self.assertEqual(limit.get_pv_field("OUTC"), "INST:SLOT:meas3.HIGH")
             self.assertTrue(limit.get_pv_field("DESC"))
             self.assertEqual(len(limit._pv_fields), 6)
+
+            limit = ifdef.has_pv("#limit2")
+            self.assertIsInstance(limit, tf_ifdef.ANALOG_ALARM_LIMIT)
+            self.assertEqual(limit.get_pv_field("DOL"), "INST:SLOT:limit2 CP")
+            self.assertEqual(limit.get_pv_field("OMSL"), "closed_loop")
+            self.assertEqual(limit.get_pv_field("OUTA"), "INST:SLOT:meas.HIHI")
+            self.assertEqual(limit.get_pv_field("OUTB"), "INST:SLOT:meas2.HIHI")
+            self.assertTrue(limit.get_pv_field("DESC"))
+            self.assertEqual(len(limit._pv_fields), 5)
 
 
     def test_set_drive_limits_from(self):
@@ -384,7 +398,7 @@ set_low_drive_limit_from("dlow")
 set_high_drive_limit_from("ext:dhigh")
 """, file = def_file)
 
-            ifdef = tf_ifdef.IF_DEF.parse(drive_def)
+            ifdef = tf_ifdef.IF_DEF.parse(drive_def, QUIET = True)
 
             param = ifdef.has_pv("param")
             self.assertIsInstance(param, tf_ifdef.ANALOG)
@@ -399,13 +413,13 @@ set_high_drive_limit_from("ext:dhigh")
             ivar = ifdef.has_pv("#dlow")
             self.assertIsInstance(ivar, tf_ifdef.ANALOG_DRIVE_LIMIT)
             self.assertEqual(ivar.get_pv_field("DOL"), "INST:SLOT:dlow CP")
-            self.assertEqual(ivar.get_pv_field("OUTA"), "INST:SLOT:param.DRVL")
+            self.assertEqual(ivar.get_pv_field("OUTA"), "INST:SLOT:param.LOPR")
             check_common_limit(ivar)
 
             ivar = ifdef.has_pv("#dhigh")
             self.assertIsInstance(ivar, tf_ifdef.ANALOG_DRIVE_LIMIT)
             self.assertEqual(ivar.get_pv_field("DOL"), "ext:dhigh CP")
-            self.assertEqual(ivar.get_pv_field("OUTA"), "INST:SLOT:param.DRVH")
+            self.assertEqual(ivar.get_pv_field("OUTA"), "INST:SLOT:param.HOPR")
             check_common_limit(ivar)
 
 
@@ -426,7 +440,7 @@ add_analog("param2", "WORD")
 set_high_drive_limit_from("dlow")
 """, file = def_file)
 
-            ifdef = tf_ifdef.IF_DEF.parse(drive_def)
+            ifdef = tf_ifdef.IF_DEF.parse(drive_def, QUIET = True)
 
             def check_driven(var, typ, limits):
                 self.assertIsInstance(var, tf_ifdef.ANALOG)
@@ -453,9 +467,9 @@ set_high_drive_limit_from("dlow")
             ivar = ifdef.has_pv("#dlow")
             self.assertIsInstance(ivar, tf_ifdef.ANALOG_DRIVE_LIMIT)
             self.assertEqual(ivar.get_pv_field("DOL"), "INST:SLOT:dlow CP")
-            self.assertEqual(ivar.get_pv_field("OUTA"), "INST:SLOT:param.DRVL")
-            self.assertEqual(ivar.get_pv_field("OUTB"), "INST:SLOT:param1.DRVL")
-            self.assertEqual(ivar.get_pv_field("OUTC"), "INST:SLOT:param2.DRVH")
+            self.assertEqual(ivar.get_pv_field("OUTA"), "INST:SLOT:param.LOPR")
+            self.assertEqual(ivar.get_pv_field("OUTB"), "INST:SLOT:param1.LOPR")
+            self.assertEqual(ivar.get_pv_field("OUTC"), "INST:SLOT:param2.HOPR")
             check_common_limit(ivar)
 
 

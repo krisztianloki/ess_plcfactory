@@ -147,7 +147,7 @@ The limits are enforced on the **previously specified** _analog_ variable (the _
 
 `"<name>"` is assumed to have the same ESS name as the limited variable unless it contains a `:` or `EXTERNAL_PV` is True
 
-This sets one of the _HIHI_,_HIGH_,_LOLO_,_LOW_ fields of the _limited_ variable whenever the value of the limit record changes. The same limit can be applied to at most 8 variable.
+This sets one of the _HIHI_,_HIGH_,_LOLO_,_LOW_ fields of the _limited_ variable whenever the value of the limit record changes. The same limit can be applied to at most 8 variables.
 
 
 There is a shortcut to create the limiting variable and register it as a limit in one line:
@@ -167,15 +167,15 @@ If `<plc_type>` is omitted it is taken from the _limited analog_ variable.
 
 Only allowed in **COMMAND**, **PARAMETER**, or **GENERAL INPUT** blocks
 
-It is possible to specify drive limits for **analog command / parameter / general input** variables meaning that the value of the variable must be within the drive limits (if not it will be clamped). Whenever the value of limit changes the limit will be updated in the _limited_ analog variable. There are 2 possible limits:
+It is possible to specify OPI drive limits (`LOPR` and `HOPR`) for **analog command / parameter / general input** variables meaning that the OPI control widget's input range will be set to these limits. Whenever the value of limit changes the limit will be updated in the _limited_ analog variable. There are 2 possible limits:
 1. Low drive limit: **`set_low_drive_limit_from("<name>"[, EXTERNAL_PV=True])`**
 2. High drive limit: **`set_high_drive_limit_from("<name>"[, EXTERNAL_PV=True])`**
 
-The limits are enforced on the **previously specified** _analog_ variable (the _limited_ variable); in other words first you define an analog variable with `add_analog()` then **right after** this variable you define the drive limits. Although it is not enforced by PLCFactory you should set both limits; EPICS only enforces limits when low < high.
+The limits are enforced on the **previously specified** _analog_ variable (the _limited_ variable); in other words first you define an analog variable with `add_analog()` then **right after** this variable you define the drive limits. Although it is not enforced by PLCFactory you should set both limits (either with `set_*_drive_limit_from` or `PV_HOPR`/`PV_LOPR` keywords); Phoebus might get confused if only one limit is set.
 
 `"<name>"` is assumed to have the same ESS name as the limited variable unless it contains a `:` or `EXTERNAL_PV` is True
 
-This sets one of the _DRVL_,_DRVH_ fields of the _limited_ variable whenever the value of the limit record changes. The same limit can be applied to at most 8 variable.
+This sets one of the _LOPR_,_HOPR_ fields of the _limited_ variable whenever the value of the limit record changes. The same limit can be applied to at most 8 variables.
 
 
 [Examples](#drive-limit-examples)

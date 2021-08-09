@@ -2793,8 +2793,8 @@ class ANALOG_ALARM_LIMIT(DFANOUT):
 
 
 class ANALOG_DRIVE_LIMIT(DFANOUT):
-    HIGH = "DRVH"
-    LOW  = "DRVL"
+    HIGH = "HOPR"
+    LOW  = "LOPR"
 
 
     def __init__(self, source, name, drive_field, driven_pv, **keyword_params):
