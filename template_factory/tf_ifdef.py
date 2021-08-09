@@ -1618,11 +1618,9 @@ class IF_DEF(object):
         return self._add_alarm(name, "MAJOR", alarm_message, **keyword_params)
 
 
-    def _get_previous_analog_var(self, type_to_skip, skip2):
+    def _get_previous_analog_var(self):
         """
-            Returns the most recent BASE_TYPE variable skipping non-BASE_TYPE-s and `type_to_skip` types
-            If `skip2` is True then it will skip two variables when a `type_to_skip` is found.
-             this is used to skip the BASE_TYPE created in response to `add_x_y_limit()`
+            Returns the most recent `BASE_TYPE` variable skipping `non-BASE_TYPE`-s. If it finds a `DFANOUT` then returns its affected PV
         """
 
         # Get the most recent variable; it must be an ANALOG.
@@ -1633,10 +1631,9 @@ class IF_DEF(object):
             while True:
                 var = sifaces[i]
                 i -= 1
-                if isinstance(var, type_to_skip):
-                    if skip2:
-                        i -= 1
-                    continue
+                if isinstance(var, DFANOUT):
+                    var = var.affected_pv()
+                    break
                 if not isinstance(var, BASE_TYPE):
                     continue
                 if isinstance(var, BASE_TYPE):
@@ -1650,7 +1647,7 @@ class IF_DEF(object):
         return var
 
 
-    def _get_alarm_limited_var(self, limit_severity, limit_type, for_add_alarm):
+    def _get_alarm_limited_var(self, limit_severity, limit_type):
         """
             Returns the "limited" variable and sets its field of `limit_type` to `limit_severity`
             `for_add_alarm` must be True if this is called from _add_alarm_limit()
@@ -1659,7 +1656,7 @@ class IF_DEF(object):
         if self._active_BLOCK is None or not self._active_BLOCK.from_plc():
             raise IfDefSyntaxError("Alarm limits can only be defined for analog STATUS variables!")
 
-        var = self._get_previous_analog_var(ANALOG_ALARM_LIMIT, for_add_alarm)
+        var = self._get_previous_analog_var()
 
         # Set limit severity of _limited_ PV
         var.set_pv_field(ANALOG_ALARM_LIMIT.LIMIT_ALARM_FIELD[(limit_severity, limit_type)], limit_severity)
@@ -1675,7 +1672,7 @@ class IF_DEF(object):
         if plc_var_type is not None and not isinstance(plc_var_type, str):
             raise IfDefSyntaxError("PLC type must be a string!")
 
-        var = self._get_alarm_limited_var(limit_severity, limit_type, True)
+        var = self._get_alarm_limited_var(limit_severity, limit_type)
         if plc_var_type is None:
             plc_var_type = var.plc_type()
 
@@ -1697,7 +1694,7 @@ class IF_DEF(object):
             raise IfDefSyntaxError("Name must be a string!")
 
         if limited_var is None:
-            limited_var = self._get_alarm_limited_var(limit_severity, limit_type, False)
+            limited_var = self._get_alarm_limited_var(limit_severity, limit_type)
 
         var = self._pv_names.get(ANALOG_ALARM_LIMIT.construct_name(PV.determine_pv_name(name, keyword_params)))
 
@@ -1760,7 +1757,7 @@ class IF_DEF(object):
         if self._active_BLOCK is None or not self._active_BLOCK.to_plc():
             raise IfDefSyntaxError("Drive limits can only be defined for analog OUTPUT variables!")
 
-        driven_var = self._get_previous_analog_var(ANALOG_DRIVE_LIMIT, False)
+        driven_var = self._get_previous_analog_var()
 
         var = self._pv_names.get(ANALOG_DRIVE_LIMIT.construct_name(PV.determine_pv_name(name, keyword_params)))
         if var:
@@ -2724,6 +2721,7 @@ class DFANOUT(PV):
     def __init__(self, source, name, affected_pv, link, disable_with_plc, **keyword_params):
         super(DFANOUT, self).__init__(source, self.construct_name(name), "dfanout", disable_with_plc, **keyword_params)
         self.__outx = 0
+        self.__affected_pv = affected_pv
 
         if PV.is_fqpn(name) or keyword_params.get("EXTERNAL_PV", False):
             source_pv = name
@@ -2733,6 +2731,10 @@ class DFANOUT(PV):
         self.set_pv_field("DOL", "{} CP".format(source_pv))
         self.set_pv_field("OMSL", "closed_loop")
         self._set_outx(link)
+
+
+    def affected_pv(self):
+        return self.__affected_pv
 
 
     def _set_outx(self, link):
@@ -2771,6 +2773,10 @@ class ANALOG_ALARM_LIMIT(DFANOUT):
         return "{}.{}".format(limited_pv.fqpn(), ANALOG_ALARM_LIMIT.LIMIT_FIELD[(limit_severity, limit_type)])
 
 
+    def limited_pv(self):
+        return self.affected_pv()
+
+
     def set_outx(self, limited_pv, limit_severity, limit_type):
         self._set_outx(self.__construct_link(limited_pv, limit_severity, limit_type))
 
@@ -2789,6 +2795,10 @@ class ANALOG_DRIVE_LIMIT(DFANOUT):
     @staticmethod
     def __construct_link(driven_pv, drive_field):
         return "{}.{}".format(driven_pv.fqpn(), drive_field)
+
+
+    def driven_pv(self):
+        return self.affected_pv()
 
 
     def set_outx(self, driven_pv, drive_field):
