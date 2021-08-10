@@ -2075,6 +2075,9 @@ class PV(SOURCE):
 
         self._register_pv_name()
 
+        self.__comment = []
+        self.add_comment(keyword_params.get("COMMENT"))
+
 
     def _register_pv_name(self):
         self.ifdef.register_pv_name(self)
@@ -2138,6 +2141,27 @@ class PV(SOURCE):
         self._keyword_params[field] = value
         # Add the (possibly) truncated field value to _pv_fields
         self._pv_fields[field] = self._check_pv_field(field, value)
+
+
+    def add_comment(self, comment):
+        if comment is None:
+            return
+
+        if not isinstance(comment, list):
+            comment = comment.splitlines()
+
+        # Remove last element; it must be an empty string
+        if self.__comment:
+            self.__comment.pop()
+
+        for c in comment:
+            if not c.startswith("#"):
+                c = "#".join(['', c])
+
+            self.__comment.append(c)
+
+        # This will cause "\n".join to append a newline in to_epics_record()
+        self.__comment.append("")
 
 
     def add_alias(self, alias):
@@ -2211,11 +2235,12 @@ class PV(SOURCE):
 
 
     def to_epics_record(self, sdis_fields = ""):
-        return """record({recordtype}, "{pv_name}")
+        return """{comment}record({recordtype}, "{pv_name}")
 {{{alias}{pv_extra}{sdis_fields}
 }}
 
-""".format(recordtype  = self.pv_type(),
+""".format(comment     = "\n".join(self.__comment) if self.__comment else "",
+           recordtype  = self.pv_type(),
            pv_name     = self.fqpn(),
            alias       = self.build_pv_alias(),
            pv_extra    = self.build_pv_extra(),
