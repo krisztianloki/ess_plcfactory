@@ -82,7 +82,7 @@ tf_dir     = os.path.join(parent_dir, 'template_factory')
 sys.path.append(tf_dir)
 del tf_dir
 
-from tf_ifdef import IF_DEF
+from tf_ifdef import IF_DEF, FOOTER_IF_DEF
 
 try:
     import tf
@@ -946,6 +946,8 @@ PLC-EPICS-COMMS: GatewayDatablock: {}""".format(hash_base, gw_db)
         global hashes
         hashes[self._plc.name()] = cur_hash
 
+        self._footer_ifdef = FOOTER_IF_DEF(self._plc, self._ifdefs, PLCF = self._plc_plcf, **ifdef_params)
+
         try:
             prev_hash = prev_hashes[self._plc.name()]
             # Check if CRC32 is the same but the actual hash is different
@@ -1032,7 +1034,7 @@ PLC-EPICS-COMMS: GatewayDatablock: {}""".format(hash_base, gw_db)
         print("\n")
 
         footer = []
-        printer.footer(None, footer, PLCF = self._plc_plcf)
+        printer.footer(self._footer_ifdef, footer, PLCF = self._plc_plcf)
         if footer:
             footer = self._plc_plcf.process(footer)
             footer = processHash(footer, self._hashobj)

@@ -491,6 +491,215 @@ set_high_drive_limit_from("dlow")
             check_common_limit(ivar)
 
 
+    def test_no_parameters(self):
+        ifdef = tf_ifdef.IF_DEF(QUIET = True)
+        ifdef._end()
+
+        footer_ifdef = tf_ifdef.FOOTER_IF_DEF(None, [ifdef])
+
+        upc = footer_ifdef.has_pv("UploadParametersCmd")
+        self.assertIsInstance(upc, tf_ifdef.PARAMETER_UPLOAD_FO)
+        self.assertTrue(upc.get_pv_field("DESC"))
+        self.assertEqual(upc.get_pv_field("SHFT"), "0")
+        self.assertEqual(upc.get_pv_field("LNK0"), "ROOT-INST:SLOT:#InitUploadStat")
+        self.assertEqual(upc.get_pv_field("LNK1"), "ROOT-INST:SLOT:#DoneUploadStat")
+        self.assertEqual(len(upc._pv_fields), 4)
+
+        self.assertIsInstance(footer_ifdef.has_pv("#InitUploadStat"), tf_ifdef.PV)
+        self.assertIsInstance(footer_ifdef.has_pv("#DoneUploadStat"), tf_ifdef.PV)
+        self.assertIsInstance(footer_ifdef.has_pv("#AssertUploadStat"), tf_ifdef.PV)
+
+        self.assertEqual(len(footer_ifdef._pv_names), 4)
+
+
+    def test_parameters(self):
+        with mkdtemp(prefix = "test-ifdef-parameters") as tmpdir:
+            param_def = os.path.join(tmpdir, "param.def")
+            with open(param_def, "w") as def_file:
+                print("""
+define_parameter_block()
+
+add_digital("p1")
+add_digital("p2")
+add_digital("p3")
+""", file = def_file)
+
+            ifdef = tf_ifdef.IF_DEF.parse(param_def, QUIET = True)
+
+            params = ["p1", "p2", "p3"]
+            for param in params:
+                pv = ifdef.has_pv(param)
+                self.assertIsInstance(pv, tf_ifdef.BIT)
+                self.assertIsNone(pv.get_pv_field("FLNK"))
+
+            upc = ifdef.has_pv("UploadParametersCmd")
+            self.assertIsInstance(upc, tf_ifdef.PARAMETER_UPLOAD_FO)
+            self.assertTrue(upc.get_pv_field("DESC"))
+            self.assertEqual(upc.get_pv_field("LNK1"), "INST:SLOT:p1")
+            self.assertEqual(upc.get_pv_field("LNK2"), "INST:SLOT:p2")
+            self.assertEqual(upc.get_pv_field("LNK3"), "INST:SLOT:p3")
+            self.assertEqual(len(upc._pv_fields), 4)
+
+            self.assertEqual(len(ifdef._pv_names), 4)
+
+            footer_ifdef = tf_ifdef.FOOTER_IF_DEF(None, [ifdef])
+
+            upc = footer_ifdef.has_pv("UploadParametersCmd")
+            self.assertIsInstance(upc, tf_ifdef.PARAMETER_UPLOAD_FO)
+            self.assertTrue(upc.get_pv_field("DESC"))
+            self.assertEqual(upc.get_pv_field("SHFT"), "0")
+            self.assertEqual(upc.get_pv_field("LNK0"), "ROOT-INST:SLOT:#InitUploadStat")
+            self.assertEqual(upc.get_pv_field("LNK1"), "INST:SLOT:UploadParametersCmd")
+            self.assertEqual(len(upc._pv_fields), 4)
+
+            for param in params[:-1]:
+                pv = ifdef.has_pv(param)
+                self.assertIsInstance(pv, tf_ifdef.BIT)
+                self.assertIsNone(pv.get_pv_field("FLNK"))
+
+            self.assertEqual(ifdef.has_pv(params[-1]).get_pv_field("FLNK"), "ROOT-INST:SLOT:#DoneUploadStat")
+
+            self.assertIsInstance(footer_ifdef.has_pv("#InitUploadStat"), tf_ifdef.PV)
+            self.assertIsInstance(footer_ifdef.has_pv("#DoneUploadStat"), tf_ifdef.PV)
+            self.assertIsInstance(footer_ifdef.has_pv("#AssertUploadStat"), tf_ifdef.PV)
+
+            self.assertEqual(len(footer_ifdef._pv_names), 4)
+
+
+    def test_last_parameter_with_flnk(self):
+        with mkdtemp(prefix = "test-ifdef-last-parameter-with-flnk") as tmpdir:
+            param_def = os.path.join(tmpdir, "param.def")
+            with open(param_def, "w") as def_file:
+                print("""
+define_parameter_block()
+
+add_digital("p", PV_FLNK="foo:bar")
+""", file = def_file)
+
+            ifdef = tf_ifdef.IF_DEF.parse(param_def, QUIET = True)
+
+            param = ifdef.has_pv("p")
+            self.assertIsInstance(param, tf_ifdef.BIT)
+            self.assertEqual(param.get_pv_field("FLNK"), "foo:bar")
+
+            upc = ifdef.has_pv("UploadParametersCmd")
+            self.assertIsInstance(upc, tf_ifdef.PARAMETER_UPLOAD_FO)
+            self.assertTrue(upc.get_pv_field("DESC"))
+            self.assertEqual(upc.get_pv_field("LNK1"), "INST:SLOT:p")
+            self.assertEqual(len(upc._pv_fields), 2)
+
+            self.assertEqual(len(ifdef._pv_names), 2)
+
+            footer_ifdef = tf_ifdef.FOOTER_IF_DEF(None, [ifdef])
+
+            upc = footer_ifdef.has_pv("UploadParametersCmd")
+            self.assertIsInstance(upc, tf_ifdef.PARAMETER_UPLOAD_FO)
+            self.assertTrue(upc.get_pv_field("DESC"))
+            self.assertEqual(upc.get_pv_field("SHFT"), "0")
+            self.assertEqual(upc.get_pv_field("LNK0"), "ROOT-INST:SLOT:#InitUploadStat")
+            self.assertEqual(upc.get_pv_field("LNK1"), "INST:SLOT:UploadParametersCmd")
+            self.assertEqual(len(upc._pv_fields), 4)
+
+            helper = footer_ifdef.has_pv("#LastParamHelper-FO")
+            self.assertIsInstance(helper, tf_ifdef.PV)
+            self.assertTrue(helper.get_pv_field("DESC"))
+            self.assertEqual(helper.get_pv_field("LNK1"), "foo:bar")
+            self.assertEqual(helper.get_pv_field("FLNK"), "ROOT-INST:SLOT:#DoneUploadStat")
+            self.assertEqual(len(helper._pv_fields), 3)
+
+            self.assertEqual(param.get_pv_field("FLNK"), "ROOT-INST:SLOT:#LastParamHelper-FO")
+
+
+    def test_many_parameters(self):
+        with mkdtemp(prefix = "test-ifdef-many-parameters") as tmpdir:
+            param_def = os.path.join(tmpdir, "param.def")
+            with open(param_def, "w") as def_file:
+                print("""
+define_parameter_block()
+
+add_digital("p1")
+add_digital("p2")
+add_digital("p3")
+add_digital("p4")
+add_digital("p5")
+add_digital("p6")
+add_digital("p7")
+add_digital("p8")
+add_digital("p9")
+add_digital("pA")
+add_digital("pB")
+add_digital("pC")
+add_digital("pD")
+add_digital("pE")
+add_digital("pF")
+
+add_digital("q1")
+add_digital("q2")
+""", file = def_file)
+
+            ifdef = tf_ifdef.IF_DEF.parse(param_def, QUIET = True)
+
+            params = ["p1", "p2", "p3", "p4", "p5", "p6", "p7", "p8", "p9", "pA", "pB", "pC", "pD", "pE", "pF", "q1", "q2"]
+            for pv in params:
+                self.assertIsInstance(ifdef.has_pv(pv), tf_ifdef.BIT)
+
+            upc = ifdef.has_pv("UploadParametersCmd")
+            self.assertIsInstance(upc, tf_ifdef.PARAMETER_UPLOAD_FO)
+            self.assertTrue(upc.get_pv_field("DESC"))
+            self.assertEqual(upc.get_pv_field("LNK1"), "INST:SLOT:p1")
+            self.assertEqual(upc.get_pv_field("LNK2"), "INST:SLOT:p2")
+            self.assertEqual(upc.get_pv_field("LNK3"), "INST:SLOT:p3")
+            self.assertEqual(upc.get_pv_field("LNK4"), "INST:SLOT:p4")
+            self.assertEqual(upc.get_pv_field("LNK5"), "INST:SLOT:p5")
+            self.assertEqual(upc.get_pv_field("LNK6"), "INST:SLOT:p6")
+            self.assertEqual(upc.get_pv_field("LNK7"), "INST:SLOT:p7")
+            self.assertEqual(upc.get_pv_field("LNK8"), "INST:SLOT:p8")
+            self.assertEqual(upc.get_pv_field("LNK9"), "INST:SLOT:p9")
+            self.assertEqual(upc.get_pv_field("LNKA"), "INST:SLOT:pA")
+            self.assertEqual(upc.get_pv_field("LNKB"), "INST:SLOT:pB")
+            self.assertEqual(upc.get_pv_field("LNKC"), "INST:SLOT:pC")
+            self.assertEqual(upc.get_pv_field("LNKD"), "INST:SLOT:pD")
+            self.assertEqual(upc.get_pv_field("LNKE"), "INST:SLOT:pE")
+            self.assertEqual(upc.get_pv_field("LNKF"), "INST:SLOT:pF")
+            self.assertEqual(upc.get_pv_field("FLNK"), "INST:SLOT:#UploadParam01-FO")
+            self.assertEqual(len(upc._pv_fields), 17)
+
+            upc = ifdef.has_pv("#UploadParam01-FO")
+            self.assertIsInstance(upc, tf_ifdef.PARAMETER_UPLOAD_FO)
+            self.assertTrue(upc.get_pv_field("DESC"))
+            self.assertEqual(upc.get_pv_field("LNK1"), "INST:SLOT:q1")
+            self.assertEqual(upc.get_pv_field("LNK2"), "INST:SLOT:q2")
+            self.assertEqual(len(upc._pv_fields), 3)
+
+            self.assertEqual(len(ifdef._pv_names), 19)
+
+            extra_ifdef = tf_ifdef.IF_DEF(QUIET = True, PLCF = tf_ifdef.DummyPLCF({ "[PLCF#{}]".format(tf_ifdef.IF_DEF.DEFAULT_INSTALLATION_SLOT) : "INST:SLOT2", "[PLCF#ROOT_INSTALLATION_SLOT]" : "ROOT-INST:SLOT" }))
+            extra_ifdef.define_parameter_block()
+            extra_ifdef.add_digital("foo")
+            extra_ifdef._end()
+
+            # `extra_ifdef` comes first then comes `ifdef`
+            footer_ifdef = tf_ifdef.FOOTER_IF_DEF(None, [extra_ifdef, ifdef])
+
+            upc = footer_ifdef.has_pv("UploadParametersCmd")
+            self.assertIsInstance(upc, tf_ifdef.PARAMETER_UPLOAD_FO)
+            self.assertTrue(upc.get_pv_field("DESC"))
+            self.assertEqual(upc.get_pv_field("SHFT"), "0")
+            self.assertEqual(upc.get_pv_field("LNK0"), "ROOT-INST:SLOT:#InitUploadStat")
+            self.assertEqual(upc.get_pv_field("LNK1"), "INST:SLOT2:UploadParametersCmd")
+            self.assertEqual(upc.get_pv_field("LNK2"), "INST:SLOT:UploadParametersCmd")
+            self.assertEqual(len(upc._pv_fields), 5)
+
+            self.assertIsInstance(footer_ifdef.has_pv("#InitUploadStat"), tf_ifdef.PV)
+            self.assertIsInstance(footer_ifdef.has_pv("#DoneUploadStat"), tf_ifdef.PV)
+            self.assertIsInstance(footer_ifdef.has_pv("#AssertUploadStat"), tf_ifdef.PV)
+
+            self.assertEqual(len(footer_ifdef._pv_names), 4)
+
+            self.assertIsNone(extra_ifdef.has_pv("foo").get_pv_field("FLNK"))
+            self.assertEqual(ifdef.has_pv(params[-1]).get_pv_field("FLNK"), "ROOT-INST:SLOT:#DoneUploadStat")
+
+
 
 if __name__ == "__main__":
     unittest.main()

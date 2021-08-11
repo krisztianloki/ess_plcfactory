@@ -357,6 +357,7 @@ class BLOCK(SOURCE):
 
         self._block_type    = block_type
         self._ifaces        = []
+# TODO: remove _block_offset and use _length instead
         self._block_offset  = 0
         self._start_offset  = 0
         self._length        = 0
@@ -1245,6 +1246,15 @@ class IF_DEF(object):
         return []
 
 
+    def has_status_pvs(self):
+        block = self.status_block()
+
+        if block:
+            return block.length() > 0
+
+        return False
+
+
     def command_block(self):
         self._exception_if_active()
 
@@ -1257,6 +1267,15 @@ class IF_DEF(object):
         if block:
             return block.interfaces()
         return []
+
+
+    def has_command_pvs(self):
+        block = self.command_block()
+
+        if block:
+            return block.length() > 0
+
+        return False
 
 
     def parameter_block(self):
@@ -1273,6 +1292,15 @@ class IF_DEF(object):
         return []
 
 
+    def has_parameter_pvs(self):
+        block = self.parameter_block()
+
+        if block:
+            return block.length() > 0
+
+        return False
+
+
     def general_input_block(self):
         self._exception_if_active()
 
@@ -1285,6 +1313,15 @@ class IF_DEF(object):
         if block:
             return block.interfaces()
         return []
+
+
+    def has_general_input_pvs(self):
+        block = self.general_input_block()
+
+        if block:
+            return block.length() > 0
+
+        return False
 
 
     def warnings(self):
@@ -1929,7 +1966,90 @@ class IF_DEF(object):
 
         self._active = False
 
-        self._ifaces.extend(PARAMETER_UPLOAD_FO.create_pvs(self.parameter_interfaces()))
+        param_uploads = PARAMETER_UPLOAD_FO.create_pvs_for_parameters(self.parameter_interfaces())
+        self._param_uploader = param_uploads[0] if param_uploads else None
+        self._ifaces.extend(param_uploads)
+
+        PV.init(None)
+
+
+
+class ROOT_IF_DEF(IF_DEF):
+    @staticmethod
+    def create_dummy_plcf():
+        return DummyPLCF({ "[PLCF#{}]".format(IF_DEF.DEFAULT_INSTALLATION_SLOT) : "ROOT-INST:SLOT", "[PLCF#ROOT_INSTALLATION_SLOT]" : "ROOT-INST:SLOT" })
+
+
+    def __init__(self, **keyword_params):
+        if "PLCF" not in keyword_params:
+            keyword_params["PLCF"] = ROOT_IF_DEF.create_dummy_plcf()
+        super(ROOT_IF_DEF, self).__init__(**keyword_params)
+
+
+
+class HEADER_IF_DEF(ROOT_IF_DEF):
+    def __init__(self, device, **keyword_params):
+        super(HEADER_IF_DEF, self).__init__(**keyword_params)
+
+        self.__device = device
+
+
+    def calculate_hash(self, hashobj):
+        self._hash = hashobj.getCRC32()
+
+
+
+class FOOTER_IF_DEF(ROOT_IF_DEF):
+    def __init__(self, device, ifdefs, **keyword_params):
+        super(FOOTER_IF_DEF, self).__init__(**keyword_params)
+
+        self.__device = device
+        self.__ifdefs = ifdefs
+
+        self.__upload_parameters_cmd()
+        self._end()
+
+
+    def __upload_parameters_cmd(self):
+        # Create the InitUploadStat, DoneUploadStat, AssertUploadStat helper PVs
+        helper_pvs = PARAMETER_UPLOAD_FO.create_stat_pvs()
+
+        # Create the main UploadParametersCmd PV(s)
+        self._ifaces.extend(PARAMETER_UPLOAD_FO.create_pvs(map(lambda x: x._param_uploader, filter(lambda ifdef: ifdef._param_uploader, self.__ifdefs)), True))
+
+        # Add the helper PVs; not added before because previous versions had the UploadParametersCmd first and maintaining that order makes verifying this version easier
+        self._ifaces.extend(helper_pvs)
+
+        # Augment the very last parameter so that it calls DoneUploadStat when its done
+        if not self.__ifdefs:
+            return
+
+        last_param = None
+        for i in reversed(self.__ifdefs):
+            for p in reversed(i.parameter_interfaces()):
+                if isinstance(p, BASE_TYPE):
+                    last_param = p
+                    break
+            if last_param:
+                break
+
+        if not last_param:
+            return
+
+        # FIXME: it will call DoneUploadStat even when it was not started by UploadParametersCmd!!
+        if last_param.get_pv_field(PV.PV_FLNK):
+            self._ifaces.append(PARAMETER_UPLOAD_FO.create_helper_to_doneupload(last_param))
+        else:
+            last_param.set_pv_field(PV.PV_FLNK, PV.create_fqpn(PARAMETER_UPLOAD_FO.DONE_UPLOAD_STAT_PV))
+
+
+    def calculate_hash(self, hashobj):
+        pass
+
+
+    def _end(self):
+        self._active = False
+        PV.init(None)
 
 
 
@@ -1937,6 +2057,9 @@ class IF_DEF(object):
 # PV class
 #
 class PV(SOURCE):
+    DISABLE_WITH_PLC = True
+    DONT_DISABLE_WITH_PLC = False
+
     FQPN_LEN  = 60
 
     PV_PREFIX = "PV_"
@@ -2829,7 +2952,7 @@ class DFANOUT(PV):
         self.__affected_pv = affected_pv
 
         try:
-            outx = PV.to_pv_field(self.OUTx[self.__outx])
+            outx = self.OUTx[self.__outx]
         except IndexError:
             raise IfDefSyntaxError("Sorry, cannot add more outputs :(")
 
@@ -2839,6 +2962,9 @@ class DFANOUT(PV):
 
 
 class FANOUT(PV):
+    # LNK0 is intentionally left out;
+    #  - it needs SHFT set to '0'
+    #  - allows late inserting of links
     LNKx = [ 'LNK1', 'LNK2', 'LNK3', 'LNK4', 'LNK5', 'LNK6', 'LNK7', 'LNK8', 'LNK9', 'LNKA', 'LNKB', 'LNKC', 'LNKD', 'LNKE', 'LNKF' ]
 
 
@@ -2859,7 +2985,7 @@ class FANOUT(PV):
 
     def _set_lnkx(self, link):
         try:
-            lnkx = PV.to_pv_field(self.LNKx[self.__lnkx])
+            lnkx = self.LNKx[self.__lnkx]
         except IndexError:
             raise FANOUT.NoMoreLinksException()
 
@@ -2884,7 +3010,7 @@ class ANALOG_ALARM_LIMIT(DFANOUT):
 
 
     def __init__(self, source, name, limit_severity, limit_type, limited_pv, **keyword_params):
-        super(ANALOG_ALARM_LIMIT, self).__init__(source, name, limited_pv, self.__construct_link(limited_pv, limit_severity, limit_type), True, **keyword_params)
+        super(ANALOG_ALARM_LIMIT, self).__init__(source, name, limited_pv, self.__construct_link(limited_pv, limit_severity, limit_type), PV.DISABLE_WITH_PLC, **keyword_params)
         self.set_pv_field(PV.PV_DESC, "Set alarm limit value")
 
         # Set limit severity of _limited_ PV
@@ -2931,7 +3057,7 @@ class ANALOG_DRIVE_LIMIT(DFANOUT):
 
 
     def __init__(self, source, name, drive_field, driven_pv, **keyword_params):
-        super(ANALOG_DRIVE_LIMIT, self).__init__(source, name, driven_pv, self.__construct_link(driven_pv, drive_field), True, **keyword_params)
+        super(ANALOG_DRIVE_LIMIT, self).__init__(source, name, driven_pv, self.__construct_link(driven_pv, drive_field), PV.DISABLE_WITH_PLC, **keyword_params)
         self.set_pv_field(PV.PV_DESC, "Set drive limit value")
 
 
@@ -2967,27 +3093,96 @@ class ANALOG_DRIVE_LIMIT(DFANOUT):
 
 class PARAMETER_UPLOAD_FO(FANOUT):
     INITIAL_PV = "UploadParametersCmd"
+    INIT_UPLOAD_STAT_PV = "#InitUploadStat"
+    DONE_UPLOAD_STAT_PV = "#DoneUploadStat"
+    ASSERT_UPLOAD_STAT_PV = "#AssertUploadStat"
+    INTERMEDIATE_FO_PV = "#LastParamHelper-FO"
 
-    pvs = []
+    __pvs = []
+    __inituploadstat = None
+    __doneuploadstat = None
+    __assertuploadst = None
 
 
     @staticmethod
-    def create_pvs(parameters):
-        PARAMETER_UPLOAD_FO.pvs = []
+    def create_pvs_for_parameters(parameters):
+        """
+            Create uploader fanouts for all the `BASE_TYPE` interfaces in `parameters`
+        """
+        return PARAMETER_UPLOAD_FO.create_pvs(filter(lambda param: isinstance(param, BASE_TYPE), parameters))
+
+
+    @staticmethod
+    def create_pvs(parameters, initialize = False):
+        """
+            Create uploader fanouts for all the PVs in `parameters`
+            If `initialize` is True then the very first fanout's first link will initialize upload statistics PV
+        """
+        PARAMETER_UPLOAD_FO.__pvs = []
+
         upload = None
         for param in parameters:
-            if isinstance(param, BASE_TYPE):
-                upload = PARAMETER_UPLOAD_FO.__add_parameter(upload, param)
+            upload = PARAMETER_UPLOAD_FO.__add_parameter(upload, param, initialize)
 
-        return PARAMETER_UPLOAD_FO.pvs
+        # Create an empty UploadParametersCmd PV when there are no parameters and we are initializing
+        if upload is None and initialize:
+            PARAMETER_UPLOAD_FO.__add_parameter(None, PARAMETER_UPLOAD_FO.__doneuploadstat, True)
+
+        pvs = PARAMETER_UPLOAD_FO.__pvs
+        PARAMETER_UPLOAD_FO.__pvs = []
+
+        return pvs
 
 
     @staticmethod
-    def __add_parameter(upload_fo, parameter):
+    def create_stat_pvs():
+        PARAMETER_UPLOAD_FO.__inituploadstat = PV("", PARAMETER_UPLOAD_FO.INIT_UPLOAD_STAT_PV, "bo", PV.DONT_DISABLE_WITH_PLC)
+        PARAMETER_UPLOAD_FO.__inituploadstat.set_pv_field(PV.PV_DESC,"Initialize parameter uploading status")
+        PARAMETER_UPLOAD_FO.__inituploadstat.set_pv_field("DOL", PV.create_fqpn("C1"))
+        PARAMETER_UPLOAD_FO.__inituploadstat.set_pv_field("OMSL", "closed_loop")
+        PARAMETER_UPLOAD_FO.__inituploadstat.set_pv_field("OUT", PV.create_fqpn("A_UploadStatToPLCS PP"))
+
+        PARAMETER_UPLOAD_FO.__doneuploadstat = PV("", PARAMETER_UPLOAD_FO.DONE_UPLOAD_STAT_PV, "fanout", PV.DONT_DISABLE_WITH_PLC)
+        PARAMETER_UPLOAD_FO.__doneuploadstat.set_pv_field(PV.PV_DESC, "Done parameter uploading status")
+        PARAMETER_UPLOAD_FO.__doneuploadstat.set_pv_field("DOL", PV.create_fqpn("C2"))
+        PARAMETER_UPLOAD_FO.__doneuploadstat.set_pv_field("OMSL", "closed_loop")
+        PARAMETER_UPLOAD_FO.__doneuploadstat.set_pv_field("OUT", PV.create_fqpn("A_UploadStatToPLCS PP"))
+
+        PARAMETER_UPLOAD_FO.__assertuploadst = PV("", PARAMETER_UPLOAD_FO.ASSERT_UPLOAD_STAT_PV, "calcout", PV.DONT_DISABLE_WITH_PLC, COMMENT = "If PLC says we are uploading but A_InitUploadStat was never processed ==> reset upload status in the PLC")
+        PARAMETER_UPLOAD_FO.__assertuploadst.set_pv_field(PV.PV_DESC, "Assert validity of upload statistics")
+        PARAMETER_UPLOAD_FO.__assertuploadst.set_pv_field("INPA", PV.create_fqpn("UploadStat-RB CP"))
+        PARAMETER_UPLOAD_FO.__assertuploadst.set_pv_field("INPB", PV.create_fqpn("#InitUploadStat.UDF"))
+        PARAMETER_UPLOAD_FO.__assertuploadst.set_pv_field("CALC", "A == 1 && B == 1")
+        PARAMETER_UPLOAD_FO.__assertuploadst.set_pv_field("OOPT", "When Non-zero")
+        PARAMETER_UPLOAD_FO.__assertuploadst.set_pv_field("DOPT", "Use OCAL")
+        PARAMETER_UPLOAD_FO.__assertuploadst.set_pv_field("OCAL", "0")
+        PARAMETER_UPLOAD_FO.__assertuploadst.set_pv_field("OUT", PV.create_fqpn("A_UploadStatToPLCS PP"))
+
+        return [PARAMETER_UPLOAD_FO.__inituploadstat, PARAMETER_UPLOAD_FO.__doneuploadstat, PARAMETER_UPLOAD_FO.__assertuploadst]
+
+
+    @staticmethod
+    def create_helper_to_doneupload(last_param):
+        intermediate_fo = PV("", PARAMETER_UPLOAD_FO.INTERMEDIATE_FO_PV, "fanout", PV.DONT_DISABLE_WITH_PLC)
+        intermediate_fo.set_pv_field(PV.PV_DESC, "Helper PV to inject processing of #DoneUploadStat")
+        intermediate_fo.set_pv_field("LNK1", last_param.get_pv_field(PV.PV_FLNK))
+        intermediate_fo.set_pv_field(PV.PV_FLNK, PARAMETER_UPLOAD_FO.__doneuploadstat.fqpn())
+
+        # Inject the intermediate fanout as the last parameter's FLNK
+        last_param.set_pv_field(PV.PV_FLNK, intermediate_fo.fqpn())
+
+        return intermediate_fo
+
+
+    @staticmethod
+    def __add_parameter(upload_fo, parameter, initialize = False):
         if upload_fo is None:
             keyword_params = dict()
+            if initialize:
+                keyword_params["PV_SHFT"] = "0"
+                keyword_params["PV_LNK0"] = PV.create_root_fqpn(PARAMETER_UPLOAD_FO.INIT_UPLOAD_STAT_PV)
             keyword_params[PV.PV_ALIAS] = "UploadParametersS"
-            upload_fo = PARAMETER_UPLOAD_FO("UploadParametersCmd", parameter, **keyword_params)
+            upload_fo = PARAMETER_UPLOAD_FO(PARAMETER_UPLOAD_FO.INITIAL_PV, parameter, **keyword_params)
         else:
             try:
                 upload_fo.set_lnkx(parameter)
@@ -3003,13 +3198,13 @@ class PARAMETER_UPLOAD_FO(FANOUT):
     def construct_name(input_name):
         if input_name == PARAMETER_UPLOAD_FO.INITIAL_PV:
             return input_name
-        return "#UploadParam{}-FO".format(len(PARAMETER_UPLOAD_FO.pvs))
+        return "#UploadParam{:02X}-FO".format(len(PARAMETER_UPLOAD_FO.__pvs))
 
 
     def __init__(self, name, parameter, **keyword_params):
-        keyword_params[PV.PV_DESC] = "Upload parameter values"
-        super(PARAMETER_UPLOAD_FO, self).__init__("", name, parameter.fqpn(), True, keyword_params)
-        PARAMETER_UPLOAD_FO.pvs.append(self)
+        super(PARAMETER_UPLOAD_FO, self).__init__("", name, parameter.fqpn(), PV.DISABLE_WITH_PLC, keyword_params)
+        self.set_pv_field(PV.PV_DESC, "Upload parameter values")
+        PARAMETER_UPLOAD_FO.__pvs.append(self)
 
 
     def set_lnkx(self, param):

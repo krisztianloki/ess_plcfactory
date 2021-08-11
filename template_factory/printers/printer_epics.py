@@ -88,12 +88,6 @@ class EPICS_BASE(PRINTER):
 	info("plc_variable", "{plc_variable}")"""
 
 
-    UPLOAD_PARAMS = "UploadParametersS"
-
-    LNKx    = [ '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F' ]
-    MAX_LNK = len(LNKx)
-
-
     def __init__(self, test = False):
         super(EPICS_BASE, self).__init__(comments = True, show_origin = True, preserve_empty_lines = True)
 
@@ -102,10 +96,6 @@ class EPICS_BASE(PRINTER):
         self._validity_calc_names = dict()
         self._gen_validity_pvs = set()
 
-        self._fo_name    = 'A_UpldParamS{foc}-FO'
-        self._params     = []
-        self._last_param = None
-        self._uploads    = []
         self._endianness = None
 
 
@@ -285,26 +275,9 @@ record(longin, "{root_inst_slot}:C2")
 
         self._append(self._toEPICS(var))
 
-        if not var.is_parameter():
-            return
-
-        self._params.append(var)
-
-        # Have to resolve PLCF# expressions _now_ otherwise we'd end up with root_inst_slot in footer()
-        self._last_param = (var.fqpn(), self.expand(var.get_pv_field("FLNK")))
-
 
     def _body_source(self, var, output):
         self._append(var)
-
-
-    def _body_end_param(self, if_def, output):
-        if not self._params:
-            return
-
-        self._uploads.append("{}:{}".format(self.inst_slot(if_def), self.UPLOAD_PARAMS))
-
-        self._gen_param_fanouts(self._params, self.inst_slot(if_def), output)
 
 
     def _body_end(self, if_def, output):
@@ -478,46 +451,6 @@ record(calc, "{vbi}")
         return pvs
 
 
-    def _gen_param_fanouts(self, param_list, inst_slot, output, footer = False):
-        foc = 0
-        lnk = 0
-
-        for upload in param_list:
-            if lnk == self.MAX_LNK:
-                foc += 1
-                self._append("""	field(FLNK, "{inst_slot}:{upload}")
-}}
-""".format(inst_slot = inst_slot,
-           upload    = self._fo_name.format(foc = foc)), output)
-
-                lnk = 0
-
-            if lnk == 0:
-                self._append("""record(fanout, "{inst_slot}:{upload}")
-{{
-""".format(inst_slot = inst_slot,
-           upload    = self.UPLOAD_PARAMS if foc == 0 else self._fo_name.format(foc = foc)), output)
-
-            self._append("""	field(LNK{lnk}, "{upload}")
-""".format(lnk       = self.LNKx[lnk],
-           upload    = upload if footer else upload.fqpn()), output)
-
-            lnk += 1
-
-        if footer and foc == 0 and lnk == 0:
-            # Create an empty UploadParamsS if there are no parameters
-            epics_db_footer = """
-record(fanout, "{inst_slot}:{upload}")
-{{
-""".format(inst_slot = inst_slot,
-           upload    = self.UPLOAD_PARAMS)
-
-            self._append(epics_db_footer, output)
-
-        self._append("}", output)
-
-
-
     #
     # FOOTER
     #
@@ -527,78 +460,11 @@ record(fanout, "{inst_slot}:{upload}")
         if not self._gen_validity_pvs == set(self._validity_pvs.keys()):
             raise TemplatePrinterException("The following validity PVs were not found or are missing VALIDITY_CONDITION:{}".format(set(self._validity_pvs.keys()) - self._gen_validity_pvs))
 
-        self._gen_param_fanouts(self._uploads, self.root_inst_slot(), output, True)
-
-        # Generate parameter uploading status monitoring
-        self._append("""
-record(bo, "{root_inst_slot}:A_InitUploadStat")
-{{
-	field(DESC, "Initialize parameter uploading status")
-	field(DOL,  "{root_inst_slot}:C1")
-	field(OMSL, "closed_loop")
-	field(OUT,  "{root_inst_slot}:A_UploadStatToPLCS PP")
-
-}}
-
-record(longout, "{root_inst_slot}:A_DoneUploadStat")
-{{
-	field(DESC, "Done parameter uploading status")
-	field(DOL,  "{root_inst_slot}:C2")
-	field(OMSL, "closed_loop")
-	field(OUT,  "{root_inst_slot}:A_UploadStatToPLCS PP")
-}}
-
-record(calcout, "{root_inst_slot}:A_AssertUploadStat")
-{{
-	field(DESC, "Assert validity of upload statistics")
-	field(INPA, "{root_inst_slot}:UploadStat-RB CP")
-	field(INPB, "{root_inst_slot}:A_InitUploadStat.UDF")
-# PLC says we are uploading but A_InitUploadStat was never processed ==> reset upload status in the PLC
-	field(CALC, "A == 1 && B == 1")
-	field(OOPT, "When Non-zero")
-	field(DOPT, "Use OCAL")
-	field(OCAL, "0")
-	field(OUT,  "{root_inst_slot}:A_UploadStatToPLCS PP")
-}}
-record(fanout, "{root_inst_slot}:{upload}")
-{{
-	field(LNK0, "{root_inst_slot}:A_InitUploadStat")
-	field(SHFT, "0")
-""".format(root_inst_slot = self.root_inst_slot(),
-           upload         = self.UPLOAD_PARAMS), output)
-
-        if self._last_param:
-            if self._last_param[1]:
-                # Very last parameter has custom FLNK
-                self._append("""}}
-record(fanout, "{root_inst_slot}:A_CustomFLNK")
-{{
-	field(LNK1, "{custom_flnk}")
-	field(FLNK, "{root_inst_slot}:A_DoneUploadStat")
-}}
-
-record("*", "{last_param}")
-{{
-	field(FLNK, "{root_inst_slot}:A_CustomFLNK")
-}}
-""".format(root_inst_slot = self.root_inst_slot(),
-           custom_flnk    = self._last_param[1],
-           last_param     = self._last_param[0]), output)
-            else:
-                # No custom FLNK for very last parameter
-                self._append("""}}
-
-record("*", "{last_param}")
-{{
-	field(FLNK, "{root_inst_slot}:A_DoneUploadStat")
-}}""".format(root_inst_slot = self.root_inst_slot(),
-             last_param     = self._last_param[0]), output)
-        else:
-            # No parameters, append LNK1 to root_inst_slot:UploadParametersS
-            self._append("""
-	field(LNK1, "{root_inst_slot}:A_DoneUploadStat")
-}}""".format(root_inst_slot = self.root_inst_slot()), output)
-
+        if footer_if_def:
+            for var in footer_if_def.interfaces():
+                if isinstance(var, PV):
+                    # It must be a PV
+                    self._append((var.source(), var.to_epics_record(sdis_fields = self.inpv_template(test = self._test, sdis = True, VALIDITY_PV = self._get_validity_pv(var)))), output)
 
 
 
@@ -1009,7 +875,6 @@ record(longin, "{root_inst_slot}:PayloadSizeFromPLCR")
 
 """)
 
-        self._params = []
         for src in if_def.interfaces():
             if isinstance(src, BLOCK):
                 self._body_block(src, output)
@@ -1022,7 +887,6 @@ record(longin, "{root_inst_slot}:PayloadSizeFromPLCR")
             else:
                 self._append(self._toEPICS(src))
 
-        self._body_end_param(if_def, output)
         self._append("\n\n")
         self._body_end_epics_to_plc(if_def, output)
         self._body_end_plc_to_epics(if_def, output)
@@ -1366,7 +1230,6 @@ record(ao, "{root_inst_slot}:CommsHashToPLCS")
 
 """.format(inst_slot = self.raw_inst_slot()))
 
-        self._params = []
         for src in if_def.interfaces():
             if isinstance(src, BLOCK):
                 self._body_block(src, output)
@@ -1379,5 +1242,4 @@ record(ao, "{root_inst_slot}:CommsHashToPLCS")
             else:
                 self._append(self._toEPICS(src))
 
-        self._body_end_param(if_def, output)
         self._append("\n\n")
