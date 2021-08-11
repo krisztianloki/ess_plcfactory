@@ -2056,6 +2056,13 @@ def verify_output(devicename, strictness, ignore):
             raise
 
     if previous_files:
+        # Save the list of files so that it is easy to delete them after checking
+        fname = os.path.join(OUTPUT_DIR, ".current-files")
+        with open(fname, 'w') as lf:
+            for n in output_files.values():
+                # Make sure not to include a CCDB-dump or anything from outside
+                if n.startswith(OUTPUT_DIR):
+                    print(n, file = lf)
         raise PLCFactoryVerifyException(devicename, previous_files.items())
 
     if not_checked:
@@ -2452,18 +2459,18 @@ def main(argv):
     except CC.Exception:
         pass
 
+    # record the arguments used to run this instance
+    record_args(root_device)
+
+    # create a dump of CCDB
+    output_files["CCDB-DUMP"] = glob.ccdb.save("-".join([ device, glob.timestamp ]), OUTPUT_DIR)
+
     # Verify created files: they should be the same as the ones from the last run
     if VERIFY:
         verify_output(root_device.name(), VERIFY, args.verify_ignore)
 
     create_previous_files()
     write_data_files()
-
-    # create a dump of CCDB
-    output_files["CCDB-DUMP"] = glob.ccdb.save("-".join([ device, glob.timestamp ]), OUTPUT_DIR)
-
-    # record the arguments used to run this instance
-    record_args(root_device)
 
     if plc:
         # FIXME: EEE
