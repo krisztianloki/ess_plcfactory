@@ -64,6 +64,24 @@ add_digital("plc", PV_NAME="epics")
             self.assertEqual(var.fqpn(), "INST:SLOT:epics")
             self.assertEqual(len(var._pv_fields), 0)
 
+            with self.assertRaises(tf_ifdef.IfDefInternalError):
+                tf_ifdef.PV.create_fqpn("foo")
+
+            with self.assertRaises(tf_ifdef.IfDefInternalError):
+                tf_ifdef.PV.create_root_fqpn("foo")
+
+            ifdef = tf_ifdef.IF_DEF(QUIET = True)
+
+            ifdef.define_status_block()
+            with self.assertRaises(tf_ifdef.PVNameLengthException):
+                ifdef.add_digital("foo", PV_NAME="bar-and-then-some-that-is-a-lot-longer-than-permitted-because-I-had-so-much-to-write")
+            bar = ifdef.add_digital("foo", PV_NAME="$(bar)-and-then-some-that-is-a-lot-longer-than-permitted-because-I-had-so-much-to-write")._var
+            with self.assertRaises(tf_ifdef.PVNameLengthException):
+                bar.fqpn("foobar-and-then-some-that-is-a-lot-longer-than-permitted-because-I-had-so-much-to-write")
+            with self.assertRaises(tf_ifdef.PVNameLengthException):
+                bar.fqpn("foobar-and-then-some-that-is-a-lot-longer-than-permitted-because-I-had-so-much-to-write.DESC")
+            bar.fqpn("foobar.and-then-some-that-is-a-lot-longer-than-permitted-because-I-had-so-much-to-write")
+
 
     def test_alias(self):
         with mkdtemp(prefix = "test-ifdef-alias") as tmpdir:

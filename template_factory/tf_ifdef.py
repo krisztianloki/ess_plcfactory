@@ -148,7 +148,7 @@ class IfDefExperimentalError(IfDefSyntaxError):
 
 class PVNameLengthException(IfDefException):
     def __init__(self, name, *args, **keyword_params):
-        super(PVNameLengthException, self).__init__("The PV name '{pv_name}' is longer than permitted ({act_len} / 60)".format(pv_name = name, act_len = len(name)), *args, **keyword_params)
+        super(PVNameLengthException, self).__init__("The PV name '{pv_name}' is longer than permitted ({act_len} / {max_len})".format(pv_name = name, act_len = len(name), max_len = PV.FQPN_LEN), *args, **keyword_params)
 
 
 
@@ -865,7 +865,7 @@ class IF_DEF(object):
 
     @staticmethod
     def create_dummy_plcf():
-        return DummyPLCF({ "[PLCF#{}]".format(IF_DEF.DEFAULT_INSTALLATION_SLOT) : "INST:SLOT" })
+        return DummyPLCF({ "[PLCF#{}]".format(IF_DEF.DEFAULT_INSTALLATION_SLOT) : "INST:SLOT", "[PLCF#ROOT_INSTALLATION_SLOT]" : "ROOT-INST:SLOT" })
 
 
     @staticmethod
@@ -905,6 +905,7 @@ class IF_DEF(object):
         self.DEFAULT_DATABLOCK_NAME    = self._datablock_name
         self._inst_slot                = cplcf.process("[PLCF#{}]".format(IF_DEF.DEFAULT_INSTALLATION_SLOT))
         self.DEFAULT_INSTALLATION_SLOT = self._inst_slot
+        self._root_inst_slot           = cplcf.process("[PLCF#ROOT_INSTALLATION_SLOT]")
 
         self._ifaces                = []
         self._preBLOCK              = fakeBLOCK()
@@ -1320,9 +1321,16 @@ class IF_DEF(object):
 
     def ess_name(self):
         """
-            Return the ESS name of this 'device'
+            Returns the ESS name of this 'device'
         """
         return self._inst_slot
+
+
+    def root_ess_name(self):
+        """
+            Returns the ESS name of the root device
+        """
+        return self._root_inst_slot
 
 
     def inst_slot(self, nonnull = True):
@@ -2024,6 +2032,53 @@ class PV(SOURCE):
 
 
     @staticmethod
+    def __fqpn(q, p):
+        name = "{slot}:{property}".format(slot = q, property = p)
+        try:
+            # If it has a macro then the length cannot be determined
+            # If it has a field then that should not be counted in the length
+            if '$' in name or len(name) <= PV.FQPN_LEN or name.index('.') < PV.FQPN_LEN:
+                return (True, name)
+        except ValueError:
+            # No `.` in name and longer than PV.FQPN_LEN
+            pass
+
+        return (False, name)
+
+
+    @staticmethod
+    def create_fqpn(q, p = None):
+        """
+            Creates an FQPN from `q` and `p`; `q` being the ESS-name or and IF_DEF and `p` the property name. If `p` is omitted then `q` is assumed to be the property and ESS-name is taken from PV.ifdef
+        """
+        if p is None:
+            if PV.ifdef is None:
+                raise IfDefInternalError("No PV.ifdef")
+
+            p = q
+            q = PV.ifdef.ess_name()
+
+        if not isinstance(q, str):
+            q = q.ess_name()
+
+        valid, name = PV.__fqpn(q, p)
+        if valid:
+            return name
+
+        raise PVNameLengthException(name)
+
+
+    @staticmethod
+    def create_root_fqpn(p):
+        """
+            Creates an FQPN where ESS-name is taken from the root device
+        """
+        if PV.ifdef is None:
+            raise IfDefInternalError("No PV.ifdef")
+        return PV.create_fqpn(PV.ifdef.root_ess_name(), p)
+
+
+    @staticmethod
     def is_fqpn(name):
         """
             Returns True if name is a FQPN
@@ -2109,7 +2164,8 @@ class PV(SOURCE):
             return self._fqpvname
 
         name = "{slot}:{property}".format(slot = self.ess_name(), property = pv_name)
-        if '$' in name or len(name) <= self.FQPN_LEN:
+        valid, name = PV.__fqpn(self.ess_name(), pv_name)
+        if valid:
             return name
 
         raise PVNameLengthException(name, self._exception_params())
