@@ -1214,9 +1214,14 @@ class IF_DEF(object):
         return hashobj
 
 
-    def register_pv_name(self, var):
-        if var.pv_name() in self._pv_names:
+    @staticmethod
+    def _check_pv_name(pv_names, var):
+        if var.pv_name() in pv_names:
             raise IfDefSyntaxError("PV Names must be unique")
+
+
+    def register_pv_name(self, var):
+        self._check_pv_name(self._pv_names, var)
         self._pv_names[var.pv_name()] = var
 
 
@@ -2006,8 +2011,23 @@ class FOOTER_IF_DEF(ROOT_IF_DEF):
         self.__device = device
         self.__ifdefs = ifdefs
 
+        # Check if we have an IFDEF that belongs to the PLC
+        self.__plc_ifdef = None
+        for ifdef in self.__ifdefs:
+            if ifdef.ess_name() == self.ess_name():
+                self.__plc_ifdef = ifdef
+                break
+
+        if self.__plc_ifdef:
+            self.register_pv_name = self.__register_pv_name
+
         self.__upload_parameters_cmd()
         self._end()
+
+
+    def __register_pv_name(self, var):
+        self._check_pv_name(self.__plc_ifdef._pv_names, var)
+        super(FOOTER_IF_DEF, self).register_pv_name(var)
 
 
     def __upload_parameters_cmd(self):
@@ -3092,7 +3112,12 @@ class ANALOG_DRIVE_LIMIT(DFANOUT):
 
 
 class PARAMETER_UPLOAD_FO(FANOUT):
-    INITIAL_PV = "UploadParametersCmd"
+    INITIAL_GLOBAL_PV = "UploadParametersCmd"
+    INITIAL_DEVICE_PV = "#plcfDUplParamsCmd"
+
+    GLOBAL_FO_PV = "#plcfGUplParam{:02X}-FO"
+    DEVICE_FO_PV = "#plcfDUplParam{:02X}-FO"
+
     INIT_UPLOAD_STAT_PV = "#InitUploadStat"
     DONE_UPLOAD_STAT_PV = "#DoneUploadStat"
     ASSERT_UPLOAD_STAT_PV = "#AssertUploadStat"
@@ -3109,11 +3134,11 @@ class PARAMETER_UPLOAD_FO(FANOUT):
         """
             Create uploader fanouts for all the `BASE_TYPE` interfaces in `parameters`
         """
-        return PARAMETER_UPLOAD_FO.create_pvs(filter(lambda param: isinstance(param, BASE_TYPE), parameters))
+        return PARAMETER_UPLOAD_FO.create_pvs(filter(lambda param: isinstance(param, BASE_TYPE), parameters), device_uploader = True)
 
 
     @staticmethod
-    def create_pvs(parameters, initialize = False):
+    def create_pvs(parameters, initialize = False, device_uploader = False):
         """
             Create uploader fanouts for all the PVs in `parameters`
             If `initialize` is True then the very first fanout's first link will initialize upload statistics PV
@@ -3122,11 +3147,11 @@ class PARAMETER_UPLOAD_FO(FANOUT):
 
         upload = None
         for param in parameters:
-            upload = PARAMETER_UPLOAD_FO.__add_parameter(upload, param, initialize)
+            upload = PARAMETER_UPLOAD_FO.__add_parameter(upload, param, initialize = initialize, device_uploader = device_uploader)
 
         # Create an empty UploadParametersCmd PV when there are no parameters and we are initializing
         if upload is None and initialize:
-            PARAMETER_UPLOAD_FO.__add_parameter(None, PARAMETER_UPLOAD_FO.__doneuploadstat, True)
+            PARAMETER_UPLOAD_FO.__add_parameter(None, PARAMETER_UPLOAD_FO.__doneuploadstat, initialize = True)
 
         pvs = PARAMETER_UPLOAD_FO.__pvs
         PARAMETER_UPLOAD_FO.__pvs = []
@@ -3142,7 +3167,7 @@ class PARAMETER_UPLOAD_FO(FANOUT):
         PARAMETER_UPLOAD_FO.__inituploadstat.set_pv_field("OMSL", "closed_loop")
         PARAMETER_UPLOAD_FO.__inituploadstat.set_pv_field("OUT", PV.create_fqpn("A_UploadStatToPLCS PP"))
 
-        PARAMETER_UPLOAD_FO.__doneuploadstat = PV("", PARAMETER_UPLOAD_FO.DONE_UPLOAD_STAT_PV, "fanout", PV.DONT_DISABLE_WITH_PLC)
+        PARAMETER_UPLOAD_FO.__doneuploadstat = PV("", PARAMETER_UPLOAD_FO.DONE_UPLOAD_STAT_PV, "longout", PV.DONT_DISABLE_WITH_PLC)
         PARAMETER_UPLOAD_FO.__doneuploadstat.set_pv_field(PV.PV_DESC, "Done parameter uploading status")
         PARAMETER_UPLOAD_FO.__doneuploadstat.set_pv_field("DOL", PV.create_fqpn("C2"))
         PARAMETER_UPLOAD_FO.__doneuploadstat.set_pv_field("OMSL", "closed_loop")
@@ -3175,19 +3200,20 @@ class PARAMETER_UPLOAD_FO(FANOUT):
 
 
     @staticmethod
-    def __add_parameter(upload_fo, parameter, initialize = False):
+    def __add_parameter(upload_fo, parameter, initialize = False, device_uploader = False):
         if upload_fo is None:
             keyword_params = dict()
             if initialize:
                 keyword_params["PV_SHFT"] = "0"
                 keyword_params["PV_LNK0"] = PV.create_root_fqpn(PARAMETER_UPLOAD_FO.INIT_UPLOAD_STAT_PV)
-            keyword_params[PV.PV_ALIAS] = "UploadParametersS"
-            upload_fo = PARAMETER_UPLOAD_FO(PARAMETER_UPLOAD_FO.INITIAL_PV, parameter, **keyword_params)
+            if not device_uploader:
+                keyword_params[PV.PV_ALIAS] = "UploadParametersS"
+            upload_fo = PARAMETER_UPLOAD_FO(PARAMETER_UPLOAD_FO.INITIAL_DEVICE_PV if device_uploader else PARAMETER_UPLOAD_FO.INITIAL_GLOBAL_PV, parameter, **keyword_params)
         else:
             try:
                 upload_fo.set_lnkx(parameter)
             except FANOUT.NoMoreLinksException:
-                new_upload_fo = PARAMETER_UPLOAD_FO("foo", parameter)
+                new_upload_fo = PARAMETER_UPLOAD_FO(PARAMETER_UPLOAD_FO.DEVICE_FO_PV if device_uploader else PARAMETER_UPLOAD_FO.GLOBAL_FO_PV, parameter)
                 upload_fo.set_pv_field("FLNK", new_upload_fo.fqpn())
                 upload_fo = new_upload_fo
 
@@ -3196,9 +3222,10 @@ class PARAMETER_UPLOAD_FO(FANOUT):
 
     @staticmethod
     def construct_name(input_name):
-        if input_name == PARAMETER_UPLOAD_FO.INITIAL_PV:
+        if input_name == PARAMETER_UPLOAD_FO.INITIAL_GLOBAL_PV or input_name == PARAMETER_UPLOAD_FO.INITIAL_DEVICE_PV:
             return input_name
-        return "#UploadParam{:02X}-FO".format(len(PARAMETER_UPLOAD_FO.__pvs))
+
+        return input_name.format(len(PARAMETER_UPLOAD_FO.__pvs))
 
 
     def __init__(self, name, parameter, **keyword_params):

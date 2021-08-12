@@ -64,9 +64,13 @@ add_digital("plc", PV_NAME="epics")
             self.assertEqual(var.fqpn(), "INST:SLOT:epics")
             self.assertEqual(len(var._pv_fields), 0)
 
+            # Check that IF_DEF.parse() properly closed the creation
+            #  and PV no longer has a link to an ifdef
             with self.assertRaises(tf_ifdef.IfDefInternalError):
                 tf_ifdef.PV.create_fqpn("foo")
 
+            # Check that IF_DEF.parse() properly closed the creation
+            #  and PV no longer has a link to an ifdef
             with self.assertRaises(tf_ifdef.IfDefInternalError):
                 tf_ifdef.PV.create_root_fqpn("foo")
 
@@ -81,6 +85,41 @@ add_digital("plc", PV_NAME="epics")
             with self.assertRaises(tf_ifdef.PVNameLengthException):
                 bar.fqpn("foobar-and-then-some-that-is-a-lot-longer-than-permitted-because-I-had-so-much-to-write.DESC")
             bar.fqpn("foobar.and-then-some-that-is-a-lot-longer-than-permitted-because-I-had-so-much-to-write")
+
+
+    def test_pv_duplication(self):
+        ifdef = tf_ifdef.IF_DEF(QUIET = True)
+
+        foo = tf_ifdef.PV("", "foo", "bo")
+
+        with self.assertRaises(tf_ifdef.IfDefSyntaxError) as exp:
+            tf_ifdef.PV("", "foo", "ao")
+        exp = exp.exception
+        self.assertEqual(exp.args[0], "PV Names must be unique")
+
+        ifdef.define_parameter_block()
+        ifdef.add_analog("pfoo", "INT", PV_NAME="analog_foo")
+
+        with self.assertRaises(tf_ifdef.IfDefSyntaxError) as exp:
+            ifdef.add_digital("pfoo", PV_NAME="digital_foo")
+        exp = exp.exception
+        self.assertEqual(exp.args[0], "PLC variable names must be unique")
+
+        ifdef._end()
+
+        self.assertIsInstance(ifdef.has_pv("foo"), tf_ifdef.PV)
+        self.assertIsInstance(ifdef.has_pv("analog_foo"), tf_ifdef.ANALOG)
+
+    def test_pv_duplication_plc_footer(self):
+        ifdef = tf_ifdef.IF_DEF(QUIET = True, PLCF = tf_ifdef.ROOT_IF_DEF.create_dummy_plcf())
+
+        tf_ifdef.PV("", tf_ifdef.PARAMETER_UPLOAD_FO.INITIAL_GLOBAL_PV, "bo")
+        ifdef._end()
+
+        with self.assertRaises(tf_ifdef.IfDefSyntaxError) as exp:
+            tf_ifdef.FOOTER_IF_DEF(None, [ifdef])
+        exp = exp.exception
+        self.assertEqual(exp.args[0], "PV Names must be unique")
 
 
     def test_alias(self):
@@ -495,9 +534,12 @@ set_high_drive_limit_from("dlow")
         ifdef = tf_ifdef.IF_DEF(QUIET = True)
         ifdef._end()
 
+        self.assertIsNone(ifdef.has_pv(tf_ifdef.PARAMETER_UPLOAD_FO.INITIAL_DEVICE_PV))
+        self.assertEqual(len(ifdef._pv_names), 0)
+
         footer_ifdef = tf_ifdef.FOOTER_IF_DEF(None, [ifdef])
 
-        upc = footer_ifdef.has_pv("UploadParametersCmd")
+        upc = footer_ifdef.has_pv(tf_ifdef.PARAMETER_UPLOAD_FO.INITIAL_GLOBAL_PV)
         self.assertIsInstance(upc, tf_ifdef.PARAMETER_UPLOAD_FO)
         self.assertTrue(upc.get_pv_field("DESC"))
         self.assertEqual(upc.get_pv_field("SHFT"), "0")
@@ -532,24 +574,24 @@ add_digital("p3")
                 self.assertIsInstance(pv, tf_ifdef.BIT)
                 self.assertIsNone(pv.get_pv_field("FLNK"))
 
-            upc = ifdef.has_pv("UploadParametersCmd")
-            self.assertIsInstance(upc, tf_ifdef.PARAMETER_UPLOAD_FO)
-            self.assertTrue(upc.get_pv_field("DESC"))
-            self.assertEqual(upc.get_pv_field("LNK1"), "INST:SLOT:p1")
-            self.assertEqual(upc.get_pv_field("LNK2"), "INST:SLOT:p2")
-            self.assertEqual(upc.get_pv_field("LNK3"), "INST:SLOT:p3")
-            self.assertEqual(len(upc._pv_fields), 4)
+            dupc = ifdef.has_pv(tf_ifdef.PARAMETER_UPLOAD_FO.INITIAL_DEVICE_PV)
+            self.assertIsInstance(dupc, tf_ifdef.PARAMETER_UPLOAD_FO)
+            self.assertTrue(dupc.get_pv_field("DESC"))
+            self.assertEqual(dupc.get_pv_field("LNK1"), "INST:SLOT:p1")
+            self.assertEqual(dupc.get_pv_field("LNK2"), "INST:SLOT:p2")
+            self.assertEqual(dupc.get_pv_field("LNK3"), "INST:SLOT:p3")
+            self.assertEqual(len(dupc._pv_fields), 4)
 
             self.assertEqual(len(ifdef._pv_names), 4)
 
             footer_ifdef = tf_ifdef.FOOTER_IF_DEF(None, [ifdef])
 
-            upc = footer_ifdef.has_pv("UploadParametersCmd")
+            upc = footer_ifdef.has_pv(tf_ifdef.PARAMETER_UPLOAD_FO.INITIAL_GLOBAL_PV)
             self.assertIsInstance(upc, tf_ifdef.PARAMETER_UPLOAD_FO)
             self.assertTrue(upc.get_pv_field("DESC"))
             self.assertEqual(upc.get_pv_field("SHFT"), "0")
             self.assertEqual(upc.get_pv_field("LNK0"), "ROOT-INST:SLOT:#InitUploadStat")
-            self.assertEqual(upc.get_pv_field("LNK1"), "INST:SLOT:UploadParametersCmd")
+            self.assertEqual(upc.get_pv_field("LNK1"), dupc.fqpn())
             self.assertEqual(len(upc._pv_fields), 4)
 
             for param in params[:-1]:
@@ -582,22 +624,22 @@ add_digital("p", PV_FLNK="foo:bar")
             self.assertIsInstance(param, tf_ifdef.BIT)
             self.assertEqual(param.get_pv_field("FLNK"), "foo:bar")
 
-            upc = ifdef.has_pv("UploadParametersCmd")
-            self.assertIsInstance(upc, tf_ifdef.PARAMETER_UPLOAD_FO)
-            self.assertTrue(upc.get_pv_field("DESC"))
-            self.assertEqual(upc.get_pv_field("LNK1"), "INST:SLOT:p")
-            self.assertEqual(len(upc._pv_fields), 2)
+            dupc = ifdef.has_pv(tf_ifdef.PARAMETER_UPLOAD_FO.INITIAL_DEVICE_PV)
+            self.assertIsInstance(dupc, tf_ifdef.PARAMETER_UPLOAD_FO)
+            self.assertTrue(dupc.get_pv_field("DESC"))
+            self.assertEqual(dupc.get_pv_field("LNK1"), "INST:SLOT:p")
+            self.assertEqual(len(dupc._pv_fields), 2)
 
             self.assertEqual(len(ifdef._pv_names), 2)
 
             footer_ifdef = tf_ifdef.FOOTER_IF_DEF(None, [ifdef])
 
-            upc = footer_ifdef.has_pv("UploadParametersCmd")
+            upc = footer_ifdef.has_pv(tf_ifdef.PARAMETER_UPLOAD_FO.INITIAL_GLOBAL_PV)
             self.assertIsInstance(upc, tf_ifdef.PARAMETER_UPLOAD_FO)
             self.assertTrue(upc.get_pv_field("DESC"))
             self.assertEqual(upc.get_pv_field("SHFT"), "0")
             self.assertEqual(upc.get_pv_field("LNK0"), "ROOT-INST:SLOT:#InitUploadStat")
-            self.assertEqual(upc.get_pv_field("LNK1"), "INST:SLOT:UploadParametersCmd")
+            self.assertEqual(upc.get_pv_field("LNK1"), dupc.fqpn())
             self.assertEqual(len(upc._pv_fields), 4)
 
             helper = footer_ifdef.has_pv("#LastParamHelper-FO")
@@ -643,33 +685,34 @@ add_digital("q2")
             for pv in params:
                 self.assertIsInstance(ifdef.has_pv(pv), tf_ifdef.BIT)
 
-            upc = ifdef.has_pv("UploadParametersCmd")
-            self.assertIsInstance(upc, tf_ifdef.PARAMETER_UPLOAD_FO)
-            self.assertTrue(upc.get_pv_field("DESC"))
-            self.assertEqual(upc.get_pv_field("LNK1"), "INST:SLOT:p1")
-            self.assertEqual(upc.get_pv_field("LNK2"), "INST:SLOT:p2")
-            self.assertEqual(upc.get_pv_field("LNK3"), "INST:SLOT:p3")
-            self.assertEqual(upc.get_pv_field("LNK4"), "INST:SLOT:p4")
-            self.assertEqual(upc.get_pv_field("LNK5"), "INST:SLOT:p5")
-            self.assertEqual(upc.get_pv_field("LNK6"), "INST:SLOT:p6")
-            self.assertEqual(upc.get_pv_field("LNK7"), "INST:SLOT:p7")
-            self.assertEqual(upc.get_pv_field("LNK8"), "INST:SLOT:p8")
-            self.assertEqual(upc.get_pv_field("LNK9"), "INST:SLOT:p9")
-            self.assertEqual(upc.get_pv_field("LNKA"), "INST:SLOT:pA")
-            self.assertEqual(upc.get_pv_field("LNKB"), "INST:SLOT:pB")
-            self.assertEqual(upc.get_pv_field("LNKC"), "INST:SLOT:pC")
-            self.assertEqual(upc.get_pv_field("LNKD"), "INST:SLOT:pD")
-            self.assertEqual(upc.get_pv_field("LNKE"), "INST:SLOT:pE")
-            self.assertEqual(upc.get_pv_field("LNKF"), "INST:SLOT:pF")
-            self.assertEqual(upc.get_pv_field("FLNK"), "INST:SLOT:#UploadParam01-FO")
-            self.assertEqual(len(upc._pv_fields), 17)
+            dupc = ifdef.has_pv(tf_ifdef.PARAMETER_UPLOAD_FO.INITIAL_DEVICE_PV)
+            self.assertIsInstance(dupc, tf_ifdef.PARAMETER_UPLOAD_FO)
+            self.assertTrue(dupc.get_pv_field("DESC"))
+            self.assertEqual(dupc.get_pv_field("LNK1"), "INST:SLOT:p1")
+            self.assertEqual(dupc.get_pv_field("LNK2"), "INST:SLOT:p2")
+            self.assertEqual(dupc.get_pv_field("LNK3"), "INST:SLOT:p3")
+            self.assertEqual(dupc.get_pv_field("LNK4"), "INST:SLOT:p4")
+            self.assertEqual(dupc.get_pv_field("LNK5"), "INST:SLOT:p5")
+            self.assertEqual(dupc.get_pv_field("LNK6"), "INST:SLOT:p6")
+            self.assertEqual(dupc.get_pv_field("LNK7"), "INST:SLOT:p7")
+            self.assertEqual(dupc.get_pv_field("LNK8"), "INST:SLOT:p8")
+            self.assertEqual(dupc.get_pv_field("LNK9"), "INST:SLOT:p9")
+            self.assertEqual(dupc.get_pv_field("LNKA"), "INST:SLOT:pA")
+            self.assertEqual(dupc.get_pv_field("LNKB"), "INST:SLOT:pB")
+            self.assertEqual(dupc.get_pv_field("LNKC"), "INST:SLOT:pC")
+            self.assertEqual(dupc.get_pv_field("LNKD"), "INST:SLOT:pD")
+            self.assertEqual(dupc.get_pv_field("LNKE"), "INST:SLOT:pE")
+            self.assertEqual(dupc.get_pv_field("LNKF"), "INST:SLOT:pF")
+            self.assertEqual(len(dupc._pv_fields), 17)
 
-            upc = ifdef.has_pv("#UploadParam01-FO")
-            self.assertIsInstance(upc, tf_ifdef.PARAMETER_UPLOAD_FO)
-            self.assertTrue(upc.get_pv_field("DESC"))
-            self.assertEqual(upc.get_pv_field("LNK1"), "INST:SLOT:q1")
-            self.assertEqual(upc.get_pv_field("LNK2"), "INST:SLOT:q2")
-            self.assertEqual(len(upc._pv_fields), 3)
+            dupc1 = ifdef.has_pv(tf_ifdef.PARAMETER_UPLOAD_FO.DEVICE_FO_PV.format(1))
+            self.assertIsInstance(dupc1, tf_ifdef.PARAMETER_UPLOAD_FO)
+            self.assertTrue(dupc1.get_pv_field("DESC"))
+            self.assertEqual(dupc1.get_pv_field("LNK1"), "INST:SLOT:q1")
+            self.assertEqual(dupc1.get_pv_field("LNK2"), "INST:SLOT:q2")
+            self.assertEqual(len(dupc1._pv_fields), 3)
+
+            self.assertEqual(dupc.get_pv_field("FLNK"), dupc1.fqpn())
 
             self.assertEqual(len(ifdef._pv_names), 19)
 
@@ -681,13 +724,13 @@ add_digital("q2")
             # `extra_ifdef` comes first then comes `ifdef`
             footer_ifdef = tf_ifdef.FOOTER_IF_DEF(None, [extra_ifdef, ifdef])
 
-            upc = footer_ifdef.has_pv("UploadParametersCmd")
+            upc = footer_ifdef.has_pv(tf_ifdef.PARAMETER_UPLOAD_FO.INITIAL_GLOBAL_PV)
             self.assertIsInstance(upc, tf_ifdef.PARAMETER_UPLOAD_FO)
             self.assertTrue(upc.get_pv_field("DESC"))
             self.assertEqual(upc.get_pv_field("SHFT"), "0")
             self.assertEqual(upc.get_pv_field("LNK0"), "ROOT-INST:SLOT:#InitUploadStat")
-            self.assertEqual(upc.get_pv_field("LNK1"), "INST:SLOT2:UploadParametersCmd")
-            self.assertEqual(upc.get_pv_field("LNK2"), "INST:SLOT:UploadParametersCmd")
+            self.assertEqual(upc.get_pv_field("LNK1"), extra_ifdef.has_pv(tf_ifdef.PARAMETER_UPLOAD_FO.INITIAL_DEVICE_PV).fqpn())
+            self.assertEqual(upc.get_pv_field("LNK2"), dupc.fqpn())
             self.assertEqual(len(upc._pv_fields), 5)
 
             self.assertIsInstance(footer_ifdef.has_pv("#InitUploadStat"), tf_ifdef.PV)
