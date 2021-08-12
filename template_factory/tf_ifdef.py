@@ -2393,7 +2393,12 @@ class PV(SOURCE):
 
         if sort:
             fields = sorted(self._pv_fields.keys())
+        elif PV.PV_DESC in self._pv_fields.keys():
+            fields = list(self._pv_fields.keys())
+        else:
+            fields = None
 
+        if fields:
             # Make DESC the first field
             try:
                 fields.remove(PV.PV_DESC)
