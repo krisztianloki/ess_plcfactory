@@ -881,11 +881,9 @@ class IF_DEF(object):
         keyword_params["PLCF"] = keyword_params.get("PLCF", IF_DEF.create_dummy_plcf())
         cplcf = keyword_params["PLCF"]
 
-        if_def = IF_DEF(**keyword_params)
-
-        if_def._artifact = artifact
-        if_def._read_def(def_file, cplcf)
-        if_def._end()
+        with IF_DEF(**keyword_params) as if_def:
+            if_def._artifact = artifact
+            if_def._read_def(def_file, cplcf)
 
         return if_def
 
@@ -952,6 +950,16 @@ class IF_DEF(object):
             if val.__name__ in ["ifdef_interface_func", "hashed_interface_func", "experimental_interface_func"]:
                 self._interface_funcs[val] = f
                 self._evalEnv[f] = val
+
+
+    def __enter__(self):
+        return self
+
+
+    def __exit__(self, type, value, traceback):
+        # Close ifdef if there was no exception
+        if type is None:
+            self._end()
 
 
     def _eval(self, line):

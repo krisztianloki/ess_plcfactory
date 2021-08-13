@@ -75,7 +75,7 @@ add_digital("plc", PV_NAME="epics")
             with self.assertRaises(tf_ifdef.IfDefInternalError):
                 tf_ifdef.PV.create_root_fqpn("foo")
 
-            ifdef = tf_ifdef.IF_DEF(QUIET = True)
+        with tf_ifdef.IF_DEF(QUIET = True) as ifdef:
 
             ifdef.define_status_block()
             with self.assertRaises(tf_ifdef.PVNameLengthException):
@@ -89,36 +89,34 @@ add_digital("plc", PV_NAME="epics")
 
 
     def test_pv_duplication(self):
-        ifdef = tf_ifdef.IF_DEF(QUIET = True)
+        with tf_ifdef.IF_DEF(QUIET = True) as ifdef:
 
-        foo = tf_ifdef.PV("", "foo", "bo")
+            foo = tf_ifdef.PV("", "foo", "bo")
 
-        with self.assertRaises(tf_ifdef.IfDefSyntaxError) as exp:
-            tf_ifdef.PV("", "foo", "ao")
-        exp = exp.exception
-        self.assertEqual(exp.args[0], "PV Names must be unique")
+            with self.assertRaises(tf_ifdef.IfDefSyntaxError) as exp:
+                tf_ifdef.PV("", "foo", "ao")
+            exp = exp.exception
+            self.assertEqual(exp.args[0], "PV Names must be unique")
 
-        ifdef.define_parameter_block()
-        ifdef.add_analog("pfoo", "INT", PV_NAME="analog_foo")
+            ifdef.define_parameter_block()
+            ifdef.add_analog("pfoo", "INT", PV_NAME="analog_foo")
 
-        with self.assertRaises(tf_ifdef.IfDefSyntaxError) as exp:
-            ifdef.add_digital("pfoo", PV_NAME="digital_foo")
-        exp = exp.exception
-        self.assertEqual(exp.args[0], "PLC variable names must be unique")
-
-        ifdef._end()
+            with self.assertRaises(tf_ifdef.IfDefSyntaxError) as exp:
+                ifdef.add_digital("pfoo", PV_NAME="digital_foo")
+            exp = exp.exception
+            self.assertEqual(exp.args[0], "PLC variable names must be unique")
 
         self.assertIsInstance(ifdef.has_pv("foo"), tf_ifdef.PV)
         self.assertIsInstance(ifdef.has_pv("analog_foo"), tf_ifdef.ANALOG)
 
-    def test_pv_duplication_plc_footer(self):
-        ifdef = tf_ifdef.IF_DEF(QUIET = True, PLCF = tf_ifdef.ROOT_IF_DEF.create_dummy_plcf())
 
-        tf_ifdef.PV("", tf_ifdef.PARAMETER_UPLOAD_FO.INITIAL_GLOBAL_PV, "bo")
-        ifdef._end()
+    def test_pv_duplication_plc_footer(self):
+        with tf_ifdef.IF_DEF(QUIET = True, PLCF = tf_ifdef.ROOT_IF_DEF.create_dummy_plcf()) as ifdef:
+            tf_ifdef.PV("", tf_ifdef.PARAMETER_UPLOAD_FO.INITIAL_GLOBAL_PV, "bo")
 
         with self.assertRaises(tf_ifdef.IfDefSyntaxError) as exp:
-            tf_ifdef.FOOTER_IF_DEF(None, [ifdef])
+            with tf_ifdef.FOOTER_IF_DEF(None, [ifdef]) as footer_ifdef:
+                pass
         exp = exp.exception
         self.assertEqual(exp.args[0], "PV Names must be unique")
 
@@ -532,8 +530,8 @@ set_high_drive_limit_from("dlow")
 
 
     def test_no_parameters(self):
-        ifdef = tf_ifdef.IF_DEF(QUIET = True)
-        ifdef._end()
+        with tf_ifdef.IF_DEF(QUIET = True) as ifdef:
+            pass
 
         self.assertIsNone(ifdef.has_pv(tf_ifdef.PARAMETER_UPLOAD_FO.INITIAL_DEVICE_PV))
         self.assertEqual(len(ifdef._pv_names), 0)
@@ -717,10 +715,9 @@ add_digital("q2")
 
             self.assertEqual(len(ifdef._pv_names), 19)
 
-            extra_ifdef = tf_ifdef.IF_DEF(QUIET = True, PLCF = tf_ifdef.DummyPLCF({ "[PLCF#{}]".format(tf_ifdef.IF_DEF.DEFAULT_INSTALLATION_SLOT) : "INST:SLOT2", "[PLCF#ROOT_INSTALLATION_SLOT]" : "ROOT-INST:SLOT" }))
-            extra_ifdef.define_parameter_block()
-            extra_ifdef.add_digital("foo")
-            extra_ifdef._end()
+            with tf_ifdef.IF_DEF(QUIET = True, PLCF = tf_ifdef.DummyPLCF({ "[PLCF#{}]".format(tf_ifdef.IF_DEF.DEFAULT_INSTALLATION_SLOT) : "INST:SLOT2", "[PLCF#ROOT_INSTALLATION_SLOT]" : "ROOT-INST:SLOT" })) as extra_ifdef:
+                extra_ifdef.define_parameter_block()
+                extra_ifdef.add_digital("foo")
 
             # `extra_ifdef` comes first then comes `ifdef`
             footer_ifdef = tf_ifdef.FOOTER_IF_DEF(None, [extra_ifdef, ifdef])
