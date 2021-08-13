@@ -27,7 +27,8 @@ class mkdtemp(object):
 
 class TestIF_DEF(unittest.TestCase):
     def setUp(self):
-        pass
+        # Clear any previous ifdef registration
+        tf_ifdef.PV.init(None)
 
 
     def tearDown(self):

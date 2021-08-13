@@ -2143,6 +2143,9 @@ class PV(SOURCE):
 
     @staticmethod
     def init(ifdef):
+        if PV.ifdef and ifdef:
+            raise IfDefInternalError("Previous IF_DEF is not closed yet!")
+
         PV.ifdef = ifdef
 
 
