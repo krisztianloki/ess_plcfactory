@@ -3225,14 +3225,23 @@ class PARAMETER_UPLOAD_FO(FANOUT):
             if initialize:
                 keyword_params["PV_SHFT"] = "0"
                 keyword_params["PV_LNK0"] = PV.create_root_fqpn(PARAMETER_UPLOAD_FO.INIT_UPLOAD_STAT_PV)
-            if not device_uploader:
+            if device_uploader:
+                # Start with sending a heartbeat; uploading parameters can take a while and we don't want the PLC to think we are dead
+                keyword_params["PV_SHFT"] = "0"
+                keyword_params["PV_LNK0"] = PV.create_root_fqpn("HeartbeatToPLCS")
+            else:
                 keyword_params[PV.PV_ALIAS] = "UploadParametersS"
             upload_fo = PARAMETER_UPLOAD_FO(PARAMETER_UPLOAD_FO.INITIAL_DEVICE_PV if device_uploader else PARAMETER_UPLOAD_FO.INITIAL_GLOBAL_PV, parameter, **keyword_params)
         else:
             try:
                 upload_fo.set_lnkx(parameter)
             except FANOUT.NoMoreLinksException:
-                new_upload_fo = PARAMETER_UPLOAD_FO(PARAMETER_UPLOAD_FO.DEVICE_FO_PV if device_uploader else PARAMETER_UPLOAD_FO.GLOBAL_FO_PV, parameter)
+                keyword_params = dict()
+                if device_uploader:
+                    # Start with sending a heartbeat; uploading parameters can take a while and we don't want the PLC to think we are dead
+                    keyword_params["PV_SHFT"] = "0"
+                    keyword_params["PV_LNK0"] = PV.create_root_fqpn("HeartbeatToPLCS")
+                new_upload_fo = PARAMETER_UPLOAD_FO(PARAMETER_UPLOAD_FO.DEVICE_FO_PV if device_uploader else PARAMETER_UPLOAD_FO.GLOBAL_FO_PV, parameter, **keyword_params)
                 upload_fo.set_pv_field("FLNK", new_upload_fo.fqpn())
                 upload_fo = new_upload_fo
 
