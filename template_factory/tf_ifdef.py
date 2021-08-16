@@ -2064,7 +2064,6 @@ class FOOTER_IF_DEF(ROOT_IF_DEF):
         if not last_param:
             return
 
-        # FIXME: it will call DoneUploadStat even when it was not started by UploadParametersCmd!!
         if last_param.get_pv_field(PV.PV_FLNK):
             self._ifaces.append(PARAMETER_UPLOAD_FO.create_helper_to_doneupload(last_param))
         else:
@@ -3188,6 +3187,10 @@ class PARAMETER_UPLOAD_FO(FANOUT):
         PARAMETER_UPLOAD_FO.__doneuploadstat.set_pv_field("DOL", PV.create_fqpn("C2"))
         PARAMETER_UPLOAD_FO.__doneuploadstat.set_pv_field("OMSL", "closed_loop")
         PARAMETER_UPLOAD_FO.__doneuploadstat.set_pv_field("OUT", PV.create_fqpn("A_UploadStatToPLCS PP"))
+        # Disable this PV if not uploading:
+        #  `uploading` is '1', `uploaded` is '2', so we disable on `never_uploaded` (0)
+        PARAMETER_UPLOAD_FO.__doneuploadstat.set_pv_field("SDIS", PV.create_fqpn("UploadStat-RB"))
+        PARAMETER_UPLOAD_FO.__doneuploadstat.set_pv_field("DISV", "0")
 
         PARAMETER_UPLOAD_FO.__assertuploadst = PV("", PARAMETER_UPLOAD_FO.ASSERT_UPLOAD_STAT_PV, "calcout", PV.DONT_DISABLE_WITH_PLC, COMMENT = "If PLC says we are uploading but A_InitUploadStat was never processed ==> reset upload status in the PLC")
         PARAMETER_UPLOAD_FO.__assertuploadst.set_pv_field(PV.PV_DESC, "Assert validity of upload statistics")
