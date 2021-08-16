@@ -165,8 +165,12 @@ class CCDB_Dump(object):
 
 
         # return zipfile
-        def save(self, filename, dir = None):
+        def save(self, filename, directory = "."):
             if isinstance(filename, str):
-                return self._zipfilename
+                filename = self._save_filename(directory, filename)
+                if not filename == self._zipfilename:
+                    from shutil import copy
+                    copy(self._zipfilename, filename)
+                return filename
 
             return None
