@@ -3133,10 +3133,10 @@ class PARAMETER_UPLOAD_FO(FANOUT):
     GLOBAL_FO_PV = "#plcfGUplParam{:02X}-FO"
     DEVICE_FO_PV = "#plcfDUplParam{:02X}-FO"
 
-    INIT_UPLOAD_STAT_PV = "#InitUploadStat"
-    DONE_UPLOAD_STAT_PV = "#DoneUploadStat"
-    ASSERT_UPLOAD_STAT_PV = "#AssertUploadStat"
-    INTERMEDIATE_FO_PV = "#LastParamHelper-FO"
+    INIT_UPLOAD_STAT_PV = "#plcfInitUploadStat"
+    DONE_UPLOAD_STAT_PV = "#plcfDoneUploadStat"
+    ASSERT_UPLOAD_STAT_PV = "#plcfAssertUplStat"
+    INTERMEDIATE_FO_PV = "#plcfLastPrmHlper-FO"
 
     __pvs = []
     __inituploadstat = None
@@ -3195,7 +3195,7 @@ class PARAMETER_UPLOAD_FO(FANOUT):
         PARAMETER_UPLOAD_FO.__assertuploadst = PV("", PARAMETER_UPLOAD_FO.ASSERT_UPLOAD_STAT_PV, "calcout", PV.DONT_DISABLE_WITH_PLC, COMMENT = "If PLC says we are uploading but A_InitUploadStat was never processed ==> reset upload status in the PLC")
         PARAMETER_UPLOAD_FO.__assertuploadst.set_pv_field(PV.PV_DESC, "Assert validity of upload statistics")
         PARAMETER_UPLOAD_FO.__assertuploadst.set_pv_field("INPA", PV.create_fqpn("UploadStat-RB CP"))
-        PARAMETER_UPLOAD_FO.__assertuploadst.set_pv_field("INPB", PV.create_fqpn("#InitUploadStat.UDF"))
+        PARAMETER_UPLOAD_FO.__assertuploadst.set_pv_field("INPB", "{}.UDF".format(PARAMETER_UPLOAD_FO.__inituploadstat.fqpn()))
         PARAMETER_UPLOAD_FO.__assertuploadst.set_pv_field("CALC", "A == 1 && B == 1")
         PARAMETER_UPLOAD_FO.__assertuploadst.set_pv_field("OOPT", "When Non-zero")
         PARAMETER_UPLOAD_FO.__assertuploadst.set_pv_field("DOPT", "Use OCAL")

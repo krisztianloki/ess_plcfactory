@@ -542,13 +542,13 @@ set_high_drive_limit_from("dlow")
         self.assertIsInstance(upc, tf_ifdef.PARAMETER_UPLOAD_FO)
         self.assertTrue(upc.get_pv_field("DESC"))
         self.assertEqual(upc.get_pv_field("SHFT"), "0")
-        self.assertEqual(upc.get_pv_field("LNK0"), "ROOT-INST:SLOT:#InitUploadStat")
-        self.assertEqual(upc.get_pv_field("LNK1"), "ROOT-INST:SLOT:#DoneUploadStat")
+        self.assertEqual(upc.get_pv_field("LNK0"), "ROOT-INST:SLOT:#plcfInitUploadStat")
+        self.assertEqual(upc.get_pv_field("LNK1"), "ROOT-INST:SLOT:#plcfDoneUploadStat")
         self.assertEqual(len(upc._pv_fields), 4)
 
-        self.assertIsInstance(footer_ifdef.has_pv("#InitUploadStat"), tf_ifdef.PV)
-        self.assertIsInstance(footer_ifdef.has_pv("#DoneUploadStat"), tf_ifdef.PV)
-        self.assertIsInstance(footer_ifdef.has_pv("#AssertUploadStat"), tf_ifdef.PV)
+        self.assertIsInstance(footer_ifdef.has_pv("#plcfInitUploadStat"), tf_ifdef.PV)
+        self.assertIsInstance(footer_ifdef.has_pv("#plcfDoneUploadStat"), tf_ifdef.PV)
+        self.assertIsInstance(footer_ifdef.has_pv("#plcfAssertUplStat"), tf_ifdef.PV)
 
         self.assertEqual(len(footer_ifdef._pv_names), 4)
 
@@ -589,7 +589,7 @@ add_digital("p3")
             self.assertIsInstance(upc, tf_ifdef.PARAMETER_UPLOAD_FO)
             self.assertTrue(upc.get_pv_field("DESC"))
             self.assertEqual(upc.get_pv_field("SHFT"), "0")
-            self.assertEqual(upc.get_pv_field("LNK0"), "ROOT-INST:SLOT:#InitUploadStat")
+            self.assertEqual(upc.get_pv_field("LNK0"), "ROOT-INST:SLOT:#plcfInitUploadStat")
             self.assertEqual(upc.get_pv_field("LNK1"), dupc.fqpn())
             self.assertEqual(len(upc._pv_fields), 4)
 
@@ -598,11 +598,11 @@ add_digital("p3")
                 self.assertIsInstance(pv, tf_ifdef.BIT)
                 self.assertIsNone(pv.get_pv_field("FLNK"))
 
-            self.assertEqual(ifdef.has_pv(params[-1]).get_pv_field("FLNK"), "ROOT-INST:SLOT:#DoneUploadStat")
+            self.assertEqual(ifdef.has_pv(params[-1]).get_pv_field("FLNK"), "ROOT-INST:SLOT:#plcfDoneUploadStat")
 
-            self.assertIsInstance(footer_ifdef.has_pv("#InitUploadStat"), tf_ifdef.PV)
-            self.assertIsInstance(footer_ifdef.has_pv("#DoneUploadStat"), tf_ifdef.PV)
-            self.assertIsInstance(footer_ifdef.has_pv("#AssertUploadStat"), tf_ifdef.PV)
+            self.assertIsInstance(footer_ifdef.has_pv("#plcfInitUploadStat"), tf_ifdef.PV)
+            self.assertIsInstance(footer_ifdef.has_pv("#plcfDoneUploadStat"), tf_ifdef.PV)
+            self.assertIsInstance(footer_ifdef.has_pv("#plcfAssertUplStat"), tf_ifdef.PV)
 
             self.assertEqual(len(footer_ifdef._pv_names), 4)
 
@@ -637,18 +637,18 @@ add_digital("p", PV_FLNK="foo:bar")
             self.assertIsInstance(upc, tf_ifdef.PARAMETER_UPLOAD_FO)
             self.assertTrue(upc.get_pv_field("DESC"))
             self.assertEqual(upc.get_pv_field("SHFT"), "0")
-            self.assertEqual(upc.get_pv_field("LNK0"), "ROOT-INST:SLOT:#InitUploadStat")
+            self.assertEqual(upc.get_pv_field("LNK0"), "ROOT-INST:SLOT:#plcfInitUploadStat")
             self.assertEqual(upc.get_pv_field("LNK1"), dupc.fqpn())
             self.assertEqual(len(upc._pv_fields), 4)
 
-            helper = footer_ifdef.has_pv("#LastParamHelper-FO")
+            helper = footer_ifdef.has_pv("#plcfLastPrmHlper-FO")
             self.assertIsInstance(helper, tf_ifdef.PV)
             self.assertTrue(helper.get_pv_field("DESC"))
             self.assertEqual(helper.get_pv_field("LNK1"), "foo:bar")
-            self.assertEqual(helper.get_pv_field("FLNK"), "ROOT-INST:SLOT:#DoneUploadStat")
+            self.assertEqual(helper.get_pv_field("FLNK"), "ROOT-INST:SLOT:#plcfDoneUploadStat")
             self.assertEqual(len(helper._pv_fields), 3)
 
-            self.assertEqual(param.get_pv_field("FLNK"), "ROOT-INST:SLOT:#LastParamHelper-FO")
+            self.assertEqual(param.get_pv_field("FLNK"), "ROOT-INST:SLOT:#plcfLastPrmHlper-FO")
 
 
     def test_many_parameters(self):
@@ -726,19 +726,19 @@ add_digital("q2")
             self.assertIsInstance(upc, tf_ifdef.PARAMETER_UPLOAD_FO)
             self.assertTrue(upc.get_pv_field("DESC"))
             self.assertEqual(upc.get_pv_field("SHFT"), "0")
-            self.assertEqual(upc.get_pv_field("LNK0"), "ROOT-INST:SLOT:#InitUploadStat")
+            self.assertEqual(upc.get_pv_field("LNK0"), "ROOT-INST:SLOT:#plcfInitUploadStat")
             self.assertEqual(upc.get_pv_field("LNK1"), extra_ifdef.has_pv(tf_ifdef.PARAMETER_UPLOAD_FO.INITIAL_DEVICE_PV).fqpn())
             self.assertEqual(upc.get_pv_field("LNK2"), dupc.fqpn())
             self.assertEqual(len(upc._pv_fields), 5)
 
-            self.assertIsInstance(footer_ifdef.has_pv("#InitUploadStat"), tf_ifdef.PV)
-            self.assertIsInstance(footer_ifdef.has_pv("#DoneUploadStat"), tf_ifdef.PV)
-            self.assertIsInstance(footer_ifdef.has_pv("#AssertUploadStat"), tf_ifdef.PV)
+            self.assertIsInstance(footer_ifdef.has_pv("#plcfInitUploadStat"), tf_ifdef.PV)
+            self.assertIsInstance(footer_ifdef.has_pv("#plcfDoneUploadStat"), tf_ifdef.PV)
+            self.assertIsInstance(footer_ifdef.has_pv("#plcfAssertUplStat"), tf_ifdef.PV)
 
             self.assertEqual(len(footer_ifdef._pv_names), 4)
 
             self.assertIsNone(extra_ifdef.has_pv("foo").get_pv_field("FLNK"))
-            self.assertEqual(ifdef.has_pv(params[-1]).get_pv_field("FLNK"), "ROOT-INST:SLOT:#DoneUploadStat")
+            self.assertEqual(ifdef.has_pv(params[-1]).get_pv_field("FLNK"), "ROOT-INST:SLOT:#plcfDoneUploadStat")
 
 
 
