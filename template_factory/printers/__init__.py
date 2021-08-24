@@ -199,12 +199,7 @@ class PRINTER(object):
 
     def __get_inst_slot(self, default_slot, if_def):
         if if_def is not None:
-            slot = if_def.inst_slot(nonnull = False)
-            if slot is not None:
-                if slot[0] == '$':
-                    return slot
-
-                return self.plcf(slot)
+            return if_def.inst_slot()
 
         return self.plcf(default_slot)
 

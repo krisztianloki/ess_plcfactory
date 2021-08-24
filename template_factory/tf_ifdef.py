@@ -1044,6 +1044,12 @@ class IF_DEF(object):
         if self._filename is not None:
             raise IfDefInternalError("Cannot parse more than one Interface Definition file")
 
+        self._datablock_name = cplcf.process(IF_DEF.DEFAULT_DATABLOCK_NAME)
+        self.DEFAULT_DATABLOCK_NAME = self._datablock_name
+
+        self._inst_slot = cplcf.process("[PLCF#{}]".format(IF_DEF.DEFAULT_INSTALLATION_SLOT))
+        self.DEFAULT_INSTALLATION_SLOT = self._inst_slot
+
         self._filename = def_file
         with open(def_file, 'r') as defs:
             multiline    = None
@@ -1181,6 +1187,10 @@ class IF_DEF(object):
             return None
 
         return self._inst_slot
+
+
+    def datablock_name(self):
+        return self._datablock_name
 
 
     def alarms(self):
@@ -1342,7 +1352,7 @@ class IF_DEF(object):
     @ifdef_interface
     def define_datablock(self, name):
         if name is None:
-            name = IF_DEF.DEFAULT_DATABLOCK_NAME
+            name = self.DEFAULT_DATABLOCK_NAME
 
         self._datablock_name = name
 

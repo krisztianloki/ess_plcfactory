@@ -1476,9 +1476,9 @@ def ProcessIFADevTypes(OutputDir, TIAVersion, CommsTest):
 		EPICS_device_calls_body.append("        //********************************************")
 		EPICS_device_calls_body.append("")
 		EPICS_device_calls_body.append("      "+ActualDataBlock+" (EPICSToPLCLength:="+EPICSTOPLCLENGTH+",")
-		EPICS_device_calls_body.append("      EPICSToPLCDataBlockOffset:="+EPICSTOPLCDATABLOCKOFFSET+"+10,")
+		EPICS_device_calls_body.append("      EPICSToPLCDataBlockOffset:="+EPICSTOPLCDATABLOCKOFFSET+",")
 		EPICS_device_calls_body.append("      PLCToEPICSLength:="+PLCTOEPICSLENGTH+",")
-		EPICS_device_calls_body.append("      PLCToEPICSDataBlockOffset:="+PLCTOEPICSDATABLOCKOFFSET+"+10);")
+		EPICS_device_calls_body.append("      PLCToEPICSDataBlockOffset:="+PLCTOEPICSDATABLOCKOFFSET+");")
 
 		EndDeviceString = ActualDeviceName
 		EPICS_device_calls_test_body.append("")
@@ -1488,9 +1488,9 @@ def ProcessIFADevTypes(OutputDir, TIAVersion, CommsTest):
 		EPICS_device_calls_test_body.append("      //********************************************")
 		EPICS_device_calls_test_body.append("")
 		EPICS_device_calls_test_body.append("      "+ActualDataBlock+" (EPICSToPLCLength:="+EPICSTOPLCLENGTH+",")
-		EPICS_device_calls_test_body.append("      EPICSToPLCDataBlockOffset:="+EPICSTOPLCDATABLOCKOFFSET+"+10,")
+		EPICS_device_calls_test_body.append("      EPICSToPLCDataBlockOffset:="+EPICSTOPLCDATABLOCKOFFSET+",")
 		EPICS_device_calls_test_body.append("      PLCToEPICSLength:="+PLCTOEPICSLENGTH+",")
-		EPICS_device_calls_test_body.append("      PLCToEPICSDataBlockOffset:="+PLCTOEPICSDATABLOCKOFFSET+"+10,")
+		EPICS_device_calls_test_body.append("      PLCToEPICSDataBlockOffset:="+PLCTOEPICSDATABLOCKOFFSET+",")
 
 		#Check if DeviceType is already generated
 		if ActualDeviceType not in DeviceTypeList:

@@ -657,7 +657,7 @@ class EPICS(EPICS_BASE):
 
 
     def _toEPICS(self, var):
-        pv_extra = var.pv_template(sdis = True, VALIDITY_PV = self._get_validity_pv(var)) + var.build_pv_extra() + EPICS_BASE.PLC_INFO_FIELDS.format(plc_datablock = self._if_def.DEFAULT_DATABLOCK_NAME,
+        pv_extra = var.pv_template(sdis = True, VALIDITY_PV = self._get_validity_pv(var)) + var.build_pv_extra() + EPICS_BASE.PLC_INFO_FIELDS.format(plc_datablock = self._if_def.datablock_name(),
                                                                                                            plc_variable  = var.name())
         if var.is_parameter() or self._test:
             pv_extra = pv_extra + """
