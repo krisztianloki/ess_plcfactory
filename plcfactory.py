@@ -459,6 +459,21 @@ class E3(object):
 
 
 class IOC(object):
+    @staticmethod
+    def check_requirements():
+        try:
+            import yaml
+        except ImportError:
+            raise NotImplementedError("""
+++++++++++++++++++++++++++++++
+Could not find package `yaml`!
+Please install it by running:
+
+pip install --user pyyaml
+
+""")
+
+
     def __init__(self, device_s, git = True):
         super(IOC, self).__init__()
 
@@ -623,13 +638,21 @@ class IOC(object):
 
 
     def __create_ioc_yaml(self, out_idir):
+        import yaml
+
         ioc_yml = os.path.join(out_idir, "ioc.yml")
-        with open(ioc_yml, "wt") as meta:
-            print("""ioc_meta_version: "1.0"
-ioc:
-  epics_version: {epics_version}
-  require_version: {require_version}""".format(epics_version = self._epics_version,
-                                               require_version = self._require_version), file = meta)
+        try:
+            with open(ioc_yml, "rt") as f:
+                meta_yml = yaml.safe_load(f)
+        except IOError:
+            meta_yml = dict()
+
+        meta_yml["ioc_type"] = "nfs"
+        meta_yml["epics_version"] = self._epics_version
+        meta_yml["require_version"] = self._require_version
+
+        with open(ioc_yml, "wt") as f:
+            yaml.dump(meta_yml, f)
 
         return ioc_yml
 
@@ -1919,6 +1942,7 @@ def main(argv):
         global generate_ioc
         global ioc_git
         generate_ioc = True
+        IOC.check_requirements()
         ioc_git = args.ioc_git
 
     if args.e3 is not None:
