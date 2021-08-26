@@ -3178,21 +3178,21 @@ class PARAMETER_UPLOAD_FO(FANOUT):
     def create_stat_pvs():
         PARAMETER_UPLOAD_FO.__inituploadstat = PV("", PARAMETER_UPLOAD_FO.INIT_UPLOAD_STAT_PV, "bo", PV.DONT_DISABLE_WITH_PLC)
         PARAMETER_UPLOAD_FO.__inituploadstat.set_pv_field(PV.PV_DESC,"Initialize parameter uploading status")
-        PARAMETER_UPLOAD_FO.__inituploadstat.set_pv_field("DOL", PV.create_fqpn("C1"))
+        PARAMETER_UPLOAD_FO.__inituploadstat.set_pv_field("DOL", PV.create_fqpn("#plcfC1"))
         PARAMETER_UPLOAD_FO.__inituploadstat.set_pv_field("OMSL", "closed_loop")
-        PARAMETER_UPLOAD_FO.__inituploadstat.set_pv_field("OUT", PV.create_fqpn("A_UploadStatToPLCS PP"))
+        PARAMETER_UPLOAD_FO.__inituploadstat.set_pv_field("OUT", PV.create_fqpn("#plcfUploadStatToPLCS PP"))
 
         PARAMETER_UPLOAD_FO.__doneuploadstat = PV("", PARAMETER_UPLOAD_FO.DONE_UPLOAD_STAT_PV, "longout", PV.DONT_DISABLE_WITH_PLC)
         PARAMETER_UPLOAD_FO.__doneuploadstat.set_pv_field(PV.PV_DESC, "Done parameter uploading status")
-        PARAMETER_UPLOAD_FO.__doneuploadstat.set_pv_field("DOL", PV.create_fqpn("C2"))
+        PARAMETER_UPLOAD_FO.__doneuploadstat.set_pv_field("DOL", PV.create_fqpn("#plcfC2"))
         PARAMETER_UPLOAD_FO.__doneuploadstat.set_pv_field("OMSL", "closed_loop")
-        PARAMETER_UPLOAD_FO.__doneuploadstat.set_pv_field("OUT", PV.create_fqpn("A_UploadStatToPLCS PP"))
+        PARAMETER_UPLOAD_FO.__doneuploadstat.set_pv_field("OUT", PV.create_fqpn("#plcfUploadStatToPLCS PP"))
         # Disable this PV if not uploading:
         #  `uploading` is '1', `uploaded` is '2', so we disable on `never_uploaded` (0)
         PARAMETER_UPLOAD_FO.__doneuploadstat.set_pv_field("SDIS", PV.create_fqpn("UploadStat-RB"))
         PARAMETER_UPLOAD_FO.__doneuploadstat.set_pv_field("DISV", "0")
 
-        PARAMETER_UPLOAD_FO.__assertuploadst = PV("", PARAMETER_UPLOAD_FO.ASSERT_UPLOAD_STAT_PV, "calcout", PV.DONT_DISABLE_WITH_PLC, COMMENT = "If PLC says we are uploading but A_InitUploadStat was never processed ==> reset upload status in the PLC")
+        PARAMETER_UPLOAD_FO.__assertuploadst = PV("", PARAMETER_UPLOAD_FO.ASSERT_UPLOAD_STAT_PV, "calcout", PV.DONT_DISABLE_WITH_PLC, COMMENT = "If PLC says we are uploading but #plcfInitUploadStat was never processed ==> reset upload status in the PLC")
         PARAMETER_UPLOAD_FO.__assertuploadst.set_pv_field(PV.PV_DESC, "Assert validity of upload statistics")
         PARAMETER_UPLOAD_FO.__assertuploadst.set_pv_field("INPA", PV.create_fqpn("UploadStat-RB CP"))
         PARAMETER_UPLOAD_FO.__assertuploadst.set_pv_field("INPB", "{}.UDF".format(PARAMETER_UPLOAD_FO.__inituploadstat.fqpn()))
@@ -3200,7 +3200,7 @@ class PARAMETER_UPLOAD_FO(FANOUT):
         PARAMETER_UPLOAD_FO.__assertuploadst.set_pv_field("OOPT", "When Non-zero")
         PARAMETER_UPLOAD_FO.__assertuploadst.set_pv_field("DOPT", "Use OCAL")
         PARAMETER_UPLOAD_FO.__assertuploadst.set_pv_field("OCAL", "0")
-        PARAMETER_UPLOAD_FO.__assertuploadst.set_pv_field("OUT", PV.create_fqpn("A_UploadStatToPLCS PP"))
+        PARAMETER_UPLOAD_FO.__assertuploadst.set_pv_field("OUT", PV.create_fqpn("#plcfUploadStatToPLCS PP"))
 
         return [PARAMETER_UPLOAD_FO.__inituploadstat, PARAMETER_UPLOAD_FO.__doneuploadstat, PARAMETER_UPLOAD_FO.__assertuploadst]
 

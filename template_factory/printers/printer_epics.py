@@ -181,7 +181,7 @@ record(bi, "{root_inst_slot}:PLCFStatusR")
 #
 # These are used in DOL links
 #
-record(bi, "{root_inst_slot}:C1")
+record(bi, "{root_inst_slot}:#plcfC1")
 {{
 	field(DESC,	"Constant 1")
 	field(DISP,	"1")
@@ -189,7 +189,7 @@ record(bi, "{root_inst_slot}:C1")
 	field(VAL,	"1")
 }}
 
-record(longin, "{root_inst_slot}:C2")
+record(longin, "{root_inst_slot}:#plcfC2")
 {{
 	field(DESC,	"Constant 2")
 	field(DISP,	"1")
@@ -556,7 +556,7 @@ record(stringin, "{root_inst_slot}:PLCAddr-RB")
 # We assume S7 and Modbus address are the same (as they should be)
 	field(DESC,	"Address of the PLC")
 }}
-record(scalcout, "{root_inst_slot}:A_CalcPLCAddr")
+record(scalcout, "{root_inst_slot}:#plcfCalcPLCAddr")
 {{
 	field(DESC,	"Strip port number of host:port")
 	field(INAA,	"{root_inst_slot}:S7Addr-RB CP")
@@ -566,21 +566,21 @@ record(scalcout, "{root_inst_slot}:A_CalcPLCAddr")
 record(stringout, "{root_inst_slot}:PLCAddrS")
 {{
 	field(DESC,	"Set the address of the PLC")
-	field(FLNK,	"{root_inst_slot}:A_SetPLCAddr-FO")
+	field(FLNK,	"{root_inst_slot}:#plcfSetPLCAddr-FO")
 }}
-record(fanout, "{root_inst_slot}:A_SetPLCAddr-FO")
+record(fanout, "{root_inst_slot}:#plcfSetPLCAddr-FO")
 {{
-	field(LNK1,	"{root_inst_slot}:A_CalcS7AddrS")
-	field(LNK2,	"{root_inst_slot}:A_CalcModbusAddrS")
+	field(LNK1,	"{root_inst_slot}:#plcfCalcS7AddrS")
+	field(LNK2,	"{root_inst_slot}:#plcfCalcModbusAddrS")
 }}
-record(scalcout, "{root_inst_slot}:A_CalcS7AddrS")
+record(scalcout, "{root_inst_slot}:#plcfCalcS7AddrS")
 {{
 	field(DESC,	"Construct the S7 address")
 	field(INAA,	"{root_inst_slot}:PLCAddrS")
 	field(CALC,	"AA + ':' + '$(S7_PORT)'")
-	field(OUT,	"{root_inst_slot}:A_S7AddrS PP")
+	field(OUT,	"{root_inst_slot}:#plcfS7AddrS PP")
 }}
-record(scalcout, "{root_inst_slot}:A_CalcModbusAddrS")
+record(scalcout, "{root_inst_slot}:#plcfCalcModbusAddrS")
 {{
 	field(DESC,	"Construct the Modbus address")
 	field(INAA,	"{root_inst_slot}:PLCAddrS")
@@ -595,16 +595,16 @@ record(stringin, "{root_inst_slot}:ModbusAddr-RB")
 record(stringin, "{root_inst_slot}:S7Addr-RB")
 {{
 	field(DESC,	"Address of the PLC")
-	field(INP,	"{root_inst_slot}:A_S7AddrS CP")
+	field(INP,	"{root_inst_slot}:#plcfS7AddrS CP")
 }}
-record(stringout, "{root_inst_slot}:A_S7AddrS")
+record(stringout, "{root_inst_slot}:#plcfS7AddrS")
 {{
 	field(DESC,	"Set address of the PLC")
 	field(DTYP,	"S7plc addr")
 	field(OUT,	"@$(PLCNAME)")
 	field(DISP,	"1")
 }}
-record(calcout, "{root_inst_slot}:A_CalcConn")
+record(calcout, "{root_inst_slot}:#plcfCalcConn")
 {{
 # Need to explicitly scan because using multiple CPs is not robust
 	field(SCAN,	"1 second")
@@ -642,10 +642,10 @@ record(bi, "{root_inst_slot}:PayloadSizeCorrectR")
 	field(ZNAM,	"Incorrect")
 	field(ZSV,      "MAJOR")
 }}
-record(calcout, "{root_inst_slot}:A_CheckHash")
+record(calcout, "{root_inst_slot}:#plcfCheckHash")
 {{
 	field(INPA,	"{root_inst_slot}:CommsHashToPLC")
-	field(INPB,	"{root_inst_slot}:A_HasMBHash")
+	field(INPB,	"{root_inst_slot}:#plcfHasMBHash")
 	field(INPC,	"{root_inst_slot}:S7CommsHash")
 	field(INPD,	"{root_inst_slot}:MBCommsHash")
 	field(INPE,	"{root_inst_slot}:S7CommsHash.STAT")
@@ -655,14 +655,14 @@ record(calcout, "{root_inst_slot}:A_CheckHash")
 	field(OOPT,	"On Change")
 	field(OUT,	"{root_inst_slot}:PLCHashCorrectR PP")
 }}
-record(bo, "{root_inst_slot}:A_GotHeartbeat")
+record(bo, "{root_inst_slot}:#plcfGotHeartbeat")
 {{
 	field(DESC,	"Update AliveR")
-	field(DOL,	"{root_inst_slot}:C1")
+	field(DOL,	"{root_inst_slot}:#plcfC1")
 	field(OMSL,	"closed_loop")
-	field(OUT,	"{root_inst_slot}:A_KickAlive PP")
+	field(OUT,	"{root_inst_slot}:#plcfKickAlive PP")
 }}
-record(bo, "{root_inst_slot}:A_KickAlive")
+record(bo, "{root_inst_slot}:#plcfKickAlive")
 {{
 	field(DESC,	"Set AliveR to true for 2 seconds")
 	field(HIGH,	"5")
@@ -699,7 +699,7 @@ record(longin, "{root_inst_slot}:PayloadSizeR")
 	field(PINI,	"YES")
 	field(VAL,	"${{PAYLOAD_SIZE=-1}}")
 }}
-record(calcout, "{root_inst_slot}:A_CheckPayloadSize")
+record(calcout, "{root_inst_slot}:#plcfCheckPayloadSize")
 {{
 	field(INPA,	"{root_inst_slot}:PayloadSizeR")
 	field(INPB,	"{root_inst_slot}:PayloadSizeFromPLCR")
@@ -732,10 +732,10 @@ record(ao, "{root_inst_slot}:CommsHashToPLCS")
 	field(DISV,	"0")
 	field(SDIS,	"{root_inst_slot}:ModbusConnectedR")
 }}
-record(calc, "{root_inst_slot}:A_CalcHeartbeatToPLC")
+record(calc, "{root_inst_slot}:#plcfCalcHeartbeatToPLC")
 {{
 	field(SCAN,	"1 second")
-	field(INPA,	"{root_inst_slot}:A_CalcHeartbeatToPLC.VAL")
+	field(INPA,	"{root_inst_slot}:#plcfCalcHeartbeatToPLC.VAL")
 	field(CALC,	"(A >= 32000)? 0 : A + 1")
 	field(FLNK,	"{root_inst_slot}:HeartbeatToPLCS")
 	field(DISV,	"0")
@@ -747,14 +747,14 @@ record(ao, "{root_inst_slot}:HeartbeatToPLCS")
 	field(DTYP,	"asynInt32")
 	field(OUT,	"@asyn($(PLCNAME)write, {epics_to_plc_heartbeat}, 100)")
 	field(OMSL,	"closed_loop")
-	field(DOL,	"{root_inst_slot}:A_CalcHeartbeatToPLC.VAL")
+	field(DOL,	"{root_inst_slot}:#plcfCalcHeartbeatToPLC.VAL")
 	field(OIF,	"Full")
 	field(DRVL,	"0")
 	field(DRVH,	"32000")
 	field(DISV,	"0")
 	field(SDIS,	"{root_inst_slot}:ModbusConnectedR")
 }}
-record(longout, "{root_inst_slot}:A_UploadStatToPLCS")
+record(longout, "{root_inst_slot}:#plcfUploadStatToPLCS")
 {{
 	field(DESC,	"Parameter upload status to the PLC")
 	field(DTYP,	"asynInt32")
@@ -784,9 +784,9 @@ record(ai, "{root_inst_slot}:MBCommsHash")
 	field(SCAN,	"I/O Intr")
 	field(DTYP,	"asynInt32")
 	field(INP,	"@asyn($(PLCNAME)read, {epics_to_plc_read_hash}, 100)INT32_{endianness}")
-	field(FLNK,	"{root_inst_slot}:A_HasMBHash")
+	field(FLNK,	"{root_inst_slot}:#plcfHasMBHash")
 }}
-record(calcout, "{root_inst_slot}:A_HasMBHash")
+record(calcout, "{root_inst_slot}:#plcfHasMBHash")
 {{
 	field(INPA,	"{root_inst_slot}:MBCommsHash")
 	field(CALC,	"A != 0")
@@ -796,10 +796,10 @@ record(calcout, "{root_inst_slot}:A_HasMBHash")
 record(sel, "{root_inst_slot}:CommsHashFromPLCR")
 {{
 	field(DESC,	"Comms hash from PLC")
-	field(NVL,	"{root_inst_slot}:A_HasMBHash")
+	field(NVL,	"{root_inst_slot}:#plcfHasMBHash")
 	field(INPA,	"{root_inst_slot}:S7CommsHash MSS")
 	field(INPB,	"{root_inst_slot}:MBCommsHash MSS")
-	field(FLNK,	"{root_inst_slot}:A_CheckHash")
+	field(FLNK,	"{root_inst_slot}:#plcfCheckHash")
 }}
 record(ai, "{root_inst_slot}:HeartbeatFromPLCR")
 {{
@@ -807,7 +807,7 @@ record(ai, "{root_inst_slot}:HeartbeatFromPLCR")
 	field(SCAN,	"I/O Intr")
 	field(DTYP,	"S7plc")
 	field(INP,	"@$(PLCNAME)/{plc_to_epics_heartbeat} T=INT16")
-	field(FLNK,	"{root_inst_slot}:A_GotHeartbeat")
+	field(FLNK,	"{root_inst_slot}:#plcfGotHeartbeat")
 	field(DISS,	"INVALID")
 	field(DISV,	"0")
 	field(SDIS,	"{root_inst_slot}:PLCHashCorrectR")
@@ -818,7 +818,7 @@ record(longin, "{root_inst_slot}:PayloadSizeFromPLCR")
 	field(SCAN,	"I/O Intr")
 	field(DTYP,	"asynInt32")
 	field(INP,	"@asyn($(PLCNAME)read, {epics_to_plc_read_payload_size}, 100)INT16")
-	field(FLNK,	"{root_inst_slot}:A_CheckPayloadSize")
+	field(FLNK,	"{root_inst_slot}:#plcfCheckPayloadSize")
 }}
 
 """.format(root_inst_slot  = self.root_inst_slot(),
@@ -947,7 +947,7 @@ record(bi, "{root_inst_slot}:S7ConnectedR")
 	field(VAL,	"1")
 	field(PINI,	"YES")
 }}
-record(calcout, "{root_inst_slot}:A_CalcConn")
+record(calcout, "{root_inst_slot}:#plcfCalcConn")
 {{
 # Need to explicitly scan because using multiple CPs is not robust
 	field(SCAN,	"1 second")
@@ -963,7 +963,7 @@ record(bi, "{root_inst_slot}:ConnectedR")
 	field(ZNAM,	"Disconnected")
 	field(ZSV,      "MAJOR")
 }}
-record(event, "{root_inst_slot}:A_Event")
+record(event, "{root_inst_slot}:#plcfEvent")
 {{
 	field(DESC,	"Generate S7plc event")
 	field(SCAN,	".2 second")
@@ -986,7 +986,7 @@ record(bi, "{root_inst_slot}:AliveR")
 	field(ZNAM,	"Not responding")
 	field(ZSV,      "MAJOR")
 }}
-record(calcout, "{root_inst_slot}:A_CheckHash")
+record(calcout, "{root_inst_slot}:#plcfCheckHash")
 {{
 	field(INPA,	"{root_inst_slot}:CommsHashToPLC")
 	field(INPB,	"{root_inst_slot}:CommsHashFromPLCR")
@@ -995,14 +995,14 @@ record(calcout, "{root_inst_slot}:A_CheckHash")
 	field(OOPT,	"On Change")
 	field(OUT,	"{root_inst_slot}:PLCHashCorrectR PP")
 }}
-record(bo, "{root_inst_slot}:A_GotHeartbeat")
+record(bo, "{root_inst_slot}:#plcfGotHeartbeat")
 {{
 	field(DESC,	"Update AliveR")
-	field(DOL,	"{root_inst_slot}:C1")
+	field(DOL,	"{root_inst_slot}:#plcfC1")
 	field(OMSL,	"closed_loop")
-	field(OUT,	"{root_inst_slot}:A_KickAlive PP")
+	field(OUT,	"{root_inst_slot}:#plcfKickAlive PP")
 }}
-record(bo, "{root_inst_slot}:A_KickAlive")
+record(bo, "{root_inst_slot}:#plcfKickAlive")
 {{
 	field(DESC,	"Set AliveR to true for 2 seconds")
 	field(HIGH,	"2")
@@ -1036,10 +1036,10 @@ record(ao, "{root_inst_slot}:CommsHashToPLCS")
 	field(DISV,	"0")
 	field(SDIS,	"{root_inst_slot}:ConnectedR")
 }}
-record(calc, "{root_inst_slot}:A_CalcHeartbeatToPLC")
+record(calc, "{root_inst_slot}:#plcfCalcHeartbeatToPLC")
 {{
 	field(SCAN,	"1 second")
-	field(INPA,	"{root_inst_slot}:A_CalcHeartbeatToPLC.VAL")
+	field(INPA,	"{root_inst_slot}:#plcfCalcHeartbeatToPLC.VAL")
 	field(CALC,	"(A >= 32000)? 0 : A + 1")
 	field(FLNK,	"{root_inst_slot}:HeartbeatToPLCS")
 	field(DISV,	"0")
@@ -1049,12 +1049,12 @@ record(ao, "{root_inst_slot}:HeartbeatToPLCS")
 {{
 	field(DESC,	"Sends heartbeat to PLC")
 	field(OMSL,	"closed_loop")
-	field(DOL,	"{root_inst_slot}:A_CalcHeartbeatToPLC.VAL")
+	field(DOL,	"{root_inst_slot}:#plcfCalcHeartbeatToPLC.VAL")
 	field(OIF,	"Full")
 	field(DRVL,	"0")
 	field(DRVH,	"32000")
 }}
-record(longout, "{root_inst_slot}:A_UploadStatToPLCS")
+record(longout, "{root_inst_slot}:#plcfUploadStatToPLCS")
 {{
 	field(DESC,	"Parameter upload status to the PLC")
 	field(OUT,	"{root_inst_slot}:UploadStat-RB PP")
@@ -1071,13 +1071,13 @@ record(ai, "{root_inst_slot}:CommsHashFromPLCR")
 	field(SCAN,	"1 second")
 	field(PINI,	"YES")
 	field(VAL,	"#HASH")
-	field(FLNK,	"{root_inst_slot}:A_CheckHash")
+	field(FLNK,	"{root_inst_slot}:#plcfCheckHash")
 }}
 record(ai, "{root_inst_slot}:HeartbeatFromPLCR")
 {{
 	field(DESC,	"Heartbeat from PLC")
-	field(INP,	"{root_inst_slot}:A_CalcHeartbeatToPLC.VAL CP")
-	field(FLNK,	"{root_inst_slot}:A_GotHeartbeat")
+	field(INP,	"{root_inst_slot}:#plcfCalcHeartbeatToPLC.VAL CP")
+	field(FLNK,	"{root_inst_slot}:#plcfGotHeartbeat")
 }}
 
 ########################################################
@@ -1094,9 +1094,9 @@ record(ao, "{root_inst_slot}:FixHashS")
 record(bo, "{root_inst_slot}:RuinHashS")
 {{
 	field(DESC,	"Make HASH incorrect")
-	field(FLNK,	"{root_inst_slot}:A_RuinHash")
+	field(FLNK,	"{root_inst_slot}:#plcfRuinHash")
 }}
-record(calcout, "{root_inst_slot}:A_RuinHash")
+record(calcout, "{root_inst_slot}:#plcfRuinHash")
 {{
 	field(DESC,	"Make HASH incorrect")
 	field(INPA,	"{root_inst_slot}:CommsHashToPLC")
