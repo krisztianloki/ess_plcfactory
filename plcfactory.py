@@ -578,6 +578,9 @@ pip install --user pyyaml
 
         common_config = [ '# Load standard IOC startup scripts\n', 'require essioc\n', 'iocshLoad("$(essioc_DIR)/common_config.iocsh")\n' ]
 
+        db_path = '"$(E3_CMD_TOP)/db:$(EPICS_DB_INCLUDE_PATH=.)"'
+        register_db_path = [ '# Register our db directory\n', 'epicsEnvSet(EPICS_DB_INCLUDE_PATH, {})\n'.format(db_path) ]
+
         load_plc = [ '# Load PLC specific startup script\n', 'iocshLoad("iocsh/{}")\n'.format(self._e3.iocsh()) ]
 
         st_cmd = os.path.join(out_idir, 'st.cmd')
@@ -586,6 +589,7 @@ pip install --user pyyaml
         # Try to determine what is already in st.cmd
         iocsh_loads = list()
         requires = dict()
+        epics_db_include_path = list()
         for i in range(len(lines)):
             sp = lines[i].strip()
             if not sp or sp[0] == '#':
@@ -603,33 +607,68 @@ pip install --user pyyaml
 
             elif sp.startswith("iocshLoad"):
                 # (Try to) Remove any comments
-                sp = sp[len("iocshLoad"):].split('#', 1)
+                sp = sp[len("iocshLoad"):].split('#', 1)[0]
 
                 # Store the iocshLoad parameters and its location
-                iocsh_loads.append((i, sp[0].strip()))
+                iocsh_loads.append((i, sp.strip()))
+
+            elif sp.startswith("epicsEnvSet"):
+                # (Try to) Remove any comments
+                sp = sp[len("epicsEnvSet"):].split('#', 1)[0]
+                if sp[0] == '(':
+                    sp = sp[1:-1]
+                elif sp[0] == ' ':
+                    sp = sp[1:]
+                else:
+                    raise PLCFactoryException("Cannot interpret epicsEnvSet line: '{}'".format(sp))
+                (env_var, value) = sp.split(',', 1)
+                if not env_var.strip() == 'EPICS_DB_INCLUDE_PATH':
+                    continue
+                epics_db_include_path.append((i, value.strip()))
 
         # If essioc is loaded we don't need to load it again
         if "essioc" in requires:
             common_config.pop(1)
 
+        load_plc_at = None
         # Check what is iocshLoad-ed
-        for i, l in iocsh_loads:
+        for i, line in iocsh_loads:
             # If common_config.iocsh is loaded we don't need to load it again
-            if "common_config.iocsh" in l:
+            if "common_config.iocsh" in line:
                 common_config = []
             # If plc.iocsh is loaded we don't need to load it again
-            elif self._e3.iocsh() in l:
+            elif self._e3.iocsh() in line:
                 load_plc = []
+                load_plc_at = i
+
+        # If our db directory is registered in EPICS_DB_INCLUDE_PATH then we don't need to do it again
+        for i, dbp in epics_db_include_path:
+            if db_path in dbp:
+                # Make sure to register DB path _before_ loading plc.iocsh
+                if load_plc_at is not None and load_plc_at < i:
+                    lines.pop(i)
+                    lines[load_plc_at:load_plc_at] = register_db_path
+                register_db_path = []
+                break
+
+        # Make sure to register DB path _before_ loading plc.iocsh
+        if register_db_path and load_plc_at is not None:
+            lines[load_plc_at:load_plc_at] = register_db_path
+            register_db_path = []
 
         with open(st_cmd, "wt") as f:
             if not lines or "startup for " not in lines[0].lower():
                 print(startup, file = f)
             f.writelines(lines)
-            if lines and common_config:
+            if lines and common_config and lines[-1].strip() != "":
                 # Add extra newline
                 print(file = f)
             f.writelines(common_config)
-            if common_config and load_plc:
+            if common_config and register_db_path:
+                # Add extra newline
+                print(file = f)
+            f.writelines(register_db_path)
+            if register_db_path and load_plc:
                 # Add extra newline
                 print(file = f)
             f.writelines(load_plc)
