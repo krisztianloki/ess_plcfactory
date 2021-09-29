@@ -120,6 +120,16 @@ class TestHelpers(unittest.TestCase):
         self.assertEqual(helpers.urljoin(rest, endpoint), "{}/{}".format(rest, endpoint))
 
 
+    def test_sanitize_url(self):
+        self.assertEqual(helpers.sanitize_url("https://gitlab.esss.lu.se"), "https://gitlab.esss.lu.se")
+        self.assertEqual(helpers.sanitize_url("https://gitlab.esss.lu.se/"), "https://gitlab.esss.lu.se/")
+        self.assertEqual(helpers.sanitize_url("https://gitlab.esss.lu.se/ioc"), "https://gitlab.esss.lu.se/ioc")
+        self.assertEqual(helpers.sanitize_url("https://gitlab.esss.lu.se/ioc/"), "https://gitlab.esss.lu.se/ioc/")
+        self.assertEqual(helpers.sanitize_url("https://gitlab.esss.lu.se//ioc"), "https://gitlab.esss.lu.se/ioc")
+        self.assertEqual(helpers.sanitize_url("https://gitlab.esss.lu.se///ioc"), "https://gitlab.esss.lu.se/ioc")
+        self.assertEqual(helpers.sanitize_url("https://gitlab.esss.lu.se////ioc"), "https://gitlab.esss.lu.se/ioc")
+
+
     def test_tounicode(self):
         import sys
         string = "this-is-a-string"

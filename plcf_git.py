@@ -116,6 +116,7 @@ git config --global user.name "My Name"
         If 'update' is True then the master branch will be updated
         """
         # FIXME: I've deleted and recreated the repo but an old working copy was still in the output folder and git.fetch choked on it
+        url = helpers.sanitize_url(url)
         git = GIT(path)
         if not git.is_repo():
             # If 'path' is not a repository then clone url
@@ -128,8 +129,8 @@ git config --global user.name "My Name"
             return git
 
         # Have to check if this repository is the one we need
-        if helpers.url_strip_user(git.get_origin()) != helpers.url_strip_user(url):
-            raise GITException("Found unrelated git repository in {}, refusing to overwrite".format(path))
+        if helpers.sanitize_url(helpers.url_strip_user(git.get_origin())) != helpers.url_strip_user(url):
+            raise GITException("Found unrelated git repository in {} (belongs to {}), refusing to overwrite".format(path, git.get_origin()))
 
         git.__set_url(url)
 
