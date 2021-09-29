@@ -460,19 +460,42 @@ class E3(object):
 
 
 class IOC(object):
-    def __init__(self, device, git = True):
+    @staticmethod
+    def check_requirements():
+        try:
+            import yaml
+        except ImportError:
+            raise NotImplementedError("""
+++++++++++++++++++++++++++++++
+Could not find package `yaml`!
+Please install it by running:
+
+pip install --user pyyaml
+
+""")
+
+
+    def __init__(self, device_s, git = True):
         super(IOC, self).__init__()
 
-        ioc = self.__get_ioc(device)
-        if ioc != device:
+        if isinstance(device_s, list):
+            device = device_s[0]
+            self._controlled_devices = list(device_s)
+        else:
+            device = device_s
+            self._controlled_devices = None
+
+        self._ioc = self.__get_ioc(device)
+        if self._ioc != device:
             # Create our own E3 module
             self._e3 = E3(device.name())
         else:
             self._e3 = None
 
-        self._name = ioc.name()
-        self._dir = helpers.sanitizeFilename(self._name.lower()).replace('-', '_')
-        self._repo = get_repository(ioc, "IOC_REPOSITORY") if git else None
+        self._epics_version = self._ioc.properties()["EPICSVersion"]
+        self._require_version = self._ioc.properties()["E3RequireVersion"]
+        self._dir = helpers.sanitizeFilename(self._ioc.name().lower()).replace('-', '_')
+        self._repo = get_repository(self._ioc, "IOC_REPOSITORY") if git else None
         if self._repo:
             self._dir = helpers.url_to_path(self._repo).split('/')[-1]
             if self._dir.endswith('.git'):
@@ -556,6 +579,9 @@ class IOC(object):
 
         common_config = [ '# Load standard IOC startup scripts\n', 'require essioc\n', 'iocshLoad("$(essioc_DIR)/common_config.iocsh")\n' ]
 
+        db_path = '"$(E3_CMD_TOP)/db:$(EPICS_DB_INCLUDE_PATH=.)"'
+        register_db_path = [ '# Register our db directory\n', 'epicsEnvSet(EPICS_DB_INCLUDE_PATH, {})\n'.format(db_path) ]
+
         load_plc = [ '# Load PLC specific startup script\n', 'iocshLoad("iocsh/{}")\n'.format(self._e3.iocsh()) ]
 
         st_cmd = os.path.join(out_idir, 'st.cmd')
@@ -564,6 +590,7 @@ class IOC(object):
         # Try to determine what is already in st.cmd
         iocsh_loads = list()
         requires = dict()
+        epics_db_include_path = list()
         for i in range(len(lines)):
             sp = lines[i].strip()
             if not sp or sp[0] == '#':
@@ -581,38 +608,93 @@ class IOC(object):
 
             elif sp.startswith("iocshLoad"):
                 # (Try to) Remove any comments
-                sp = sp[len("iocshLoad"):].split('#', 1)
+                sp = sp[len("iocshLoad"):].split('#', 1)[0]
 
                 # Store the iocshLoad parameters and its location
-                iocsh_loads.append((i, sp[0].strip()))
+                iocsh_loads.append((i, sp.strip()))
+
+            elif sp.startswith("epicsEnvSet"):
+                # (Try to) Remove any comments
+                sp = sp[len("epicsEnvSet"):].split('#', 1)[0]
+                if sp[0] == '(':
+                    sp = sp[1:-1]
+                elif sp[0] == ' ':
+                    sp = sp[1:]
+                else:
+                    raise PLCFactoryException("Cannot interpret epicsEnvSet line: '{}'".format(sp))
+                (env_var, value) = sp.split(',', 1)
+                if not env_var.strip() == 'EPICS_DB_INCLUDE_PATH':
+                    continue
+                epics_db_include_path.append((i, value.strip()))
 
         # If essioc is loaded we don't need to load it again
         if "essioc" in requires:
             common_config.pop(1)
 
+        load_plc_at = None
         # Check what is iocshLoad-ed
-        for i, l in iocsh_loads:
+        for i, line in iocsh_loads:
             # If common_config.iocsh is loaded we don't need to load it again
-            if "common_config.iocsh" in l:
+            if "common_config.iocsh" in line:
                 common_config = []
             # If plc.iocsh is loaded we don't need to load it again
-            elif self._e3.iocsh() in l:
+            elif self._e3.iocsh() in line:
                 load_plc = []
+                load_plc_at = i
+
+        # If our db directory is registered in EPICS_DB_INCLUDE_PATH then we don't need to do it again
+        for i, dbp in epics_db_include_path:
+            if db_path in dbp:
+                # Make sure to register DB path _before_ loading plc.iocsh
+                if load_plc_at is not None and load_plc_at < i:
+                    lines.pop(i)
+                    lines[load_plc_at:load_plc_at] = register_db_path
+                register_db_path = []
+                break
+
+        # Make sure to register DB path _before_ loading plc.iocsh
+        if register_db_path and load_plc_at is not None:
+            lines[load_plc_at:load_plc_at] = register_db_path
+            register_db_path = []
 
         with open(st_cmd, "wt") as f:
             if not lines or "startup for " not in lines[0].lower():
                 print(startup, file = f)
             f.writelines(lines)
-            if lines and common_config:
+            if lines and common_config and lines[-1].strip() != "":
                 # Add extra newline
                 print(file = f)
             f.writelines(common_config)
-            if common_config and load_plc:
+            if common_config and register_db_path:
+                # Add extra newline
+                print(file = f)
+            f.writelines(register_db_path)
+            if register_db_path and load_plc:
                 # Add extra newline
                 print(file = f)
             f.writelines(load_plc)
 
         return st_cmd
+
+
+    def __create_ioc_yaml(self, out_idir):
+        import yaml
+
+        ioc_yml = os.path.join(out_idir, "ioc.yml")
+        try:
+            with open(ioc_yml, "rt") as f:
+                meta_yml = yaml.safe_load(f)
+        except IOError:
+            meta_yml = dict()
+
+        meta_yml["ioc_type"] = "nfs"
+        meta_yml["epics_version"] = self._epics_version
+        meta_yml["require_version"] = self._require_version
+
+        with open(ioc_yml, "wt") as f:
+            yaml.dump(meta_yml, f)
+
+        return ioc_yml
 
 
     def __create_custom_iocsh(self, out_idir):
@@ -631,7 +713,7 @@ class IOC(object):
         """
         Returns the IOC name
         """
-        return self._name
+        return self._ioc.name()
 
 
     def directory(self):
@@ -700,6 +782,11 @@ class IOC(object):
         env_sh = self.__create_env_sh(out_idir, version)
         created_files.append(env_sh)
 
+        # Create ioc.yml
+        ioc_yml = self.__create_ioc_yaml(out_idir)
+        created_files.append(ioc_yml)
+
+        # Create custom.iocsh
         custom_iocsh = self.__create_custom_iocsh(out_idir)
         created_files.append(custom_iocsh)
 
@@ -1670,7 +1757,7 @@ Exiting.
             raise PLCFactoryException("Hostname of '{}' is not specified, required for IOC generation".format(device.name()))
 
         global ioc
-        ioc = IOC(device, git = ioc_git)
+        ioc = IOC(devices, git = ioc_git)
         if ioc.repo():
             git.GIT.check_minimal_config()
 
@@ -2254,6 +2341,7 @@ def main(argv):
         global GENERATE_IOC
         global ioc_git
         GENERATE_IOC = True
+        IOC.check_requirements()
         ioc_git = args.ioc_git
 
     if args.e3 is not None:
