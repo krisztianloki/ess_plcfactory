@@ -2615,3 +2615,17 @@ if __name__ == "__main__":
         if e.status:
             print(e, file = sys.stderr)
         exit(e.status)
+    finally:
+        print("""
+====================================================================================
++                                                                                  +
++ If you have issues please try with the previous version of plcfactory by running +
++                                                                                  +
++  git checkout last_known_good_version                                            +
++                                                                                  +
++ and re-running plcfactory. You can ignore any warnings about the master branch.  +
++ If plcfactory exits saying that there is an update just run it again; it will    +
++ not check for updates again for a couple of minutes.                             +
++                                                                                  +
+====================================================================================
+""")
