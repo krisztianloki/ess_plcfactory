@@ -534,7 +534,6 @@ pip install --user pyyaml
         new_env_lines = OrderedDict()
         new_env_lines['IOCNAME'] = self.name()
         new_env_lines['IOCDIR'] = helpers.sanitizeFilename(self.name())
-        new_env_lines['EPICS_DB_INCLUDE_PATH'] = "$(dirname ${BASH_SOURCE})/db"
         if self._e3:
             new_env_lines['{}_VERSION'.format(self._e3.modulename())] = version if version else 'plcfactory@' + glob.timestamp
 
