@@ -62,8 +62,8 @@ class README(PRINTER):
     #
     # HEADER
     #
-    def header(self, output, **keyword_params):
-        super(README, self).header(output, **keyword_params).add_filename_header(output, extension = "md")
+    def header(self, header_if_def, output, **keyword_params):
+        super(README, self).header(header_if_def, output, **keyword_params).add_filename_header(output, extension = "md")
 
         self._device_types = []
 
@@ -132,10 +132,3 @@ Command line:
 
     def _any_body(self, output, **keyword_params):
         pass
-
-
-    #
-    # FOOTER
-    #
-    def footer(self, output, **keyword_params):
-        super(README, self).footer(output, **keyword_params)

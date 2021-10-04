@@ -134,7 +134,7 @@ def AddBOOL(variable, InArrayName, InArrayNum, StartingRegister):
 	ActVariableArrayIndex = int(variable.properties["ARRAY_INDEX"])
 	ActVariableBitNumber  = int(variable.properties["BIT_NUMBER"])
 
-	if variable.is_status():
+	if variable.is_output():
 		if InArrayName is not None:
 			DevTypeBODY_CODE_ARRAY.append("              "+ ActVariablePLCName +" := "+InArrayName+"["+str(InArrayNum)+"];")
 			InArrayNum = InArrayNum + 1
@@ -151,7 +151,7 @@ def AddBOOL(variable, InArrayName, InArrayNum, StartingRegister):
 			DevTypeBODY_CODE.append("       #MyBoolsinWord[" + str((int(ActVariableBitNumber)-8)) + "] := "+ ActVariablePLCName +";    //EPICSName: "+ActVariableEPICSName)
 			IsDouble = False
 			EndString = "\"PLCToEPICS\".\"Word\"[#PLCToEPICSDataBlockOffset + "+str(ActVariableArrayIndex) +"] := #MyWord;"
-	elif variable.is_parameter() or variable.is_command():
+	elif variable.is_input():
 		if StartingRegister != ActVariableArrayIndex:
 			CloseLastVariable()
 			StartingRegister = ActVariableArrayIndex
@@ -168,6 +168,8 @@ def AddBOOL(variable, InArrayName, InArrayNum, StartingRegister):
 			DevTypeBODY_CODE.append("       "+ ActVariablePLCName +" := #MyBoolsinWord[" + str((int(ActVariableBitNumber)-8)) + "];    //EPICSName: "+ActVariableEPICSName)
 			IsDouble = False
 			EndString = ""
+	else:
+		raise IFA.FatalException("Neither input nor output: {}".format(variable))
 
 	return (InArrayNum, StartingRegister)
 
@@ -186,7 +188,7 @@ def AddBYTE(variable, InArrayName, InArrayNum, StartingRegister):
 	ActVariableArrayIndex = int(variable.properties["ARRAY_INDEX"])
 	ActVariableBitNumber  = int(variable.properties["BIT_NUMBER"])
 
-	if variable.is_status():
+	if variable.is_output():
 		if InArrayName is not None:
 			DevTypeBODY_CODE_ARRAY.append("              "+ ActVariablePLCName +" := "+InArrayName+"["+str(InArrayNum)+"];")
 			InArrayNum = InArrayNum + 1
@@ -203,7 +205,7 @@ def AddBYTE(variable, InArrayName, InArrayNum, StartingRegister):
 			DevTypeBODY_CODE.append("       #MyBytesinWord[1] := "+ ActVariablePLCName +";    //EPICSName: "+ActVariableEPICSName)
 			IsDouble = False
 			EndString = "\"PLCToEPICS\".\"Word\"[#PLCToEPICSDataBlockOffset + "+str(ActVariableArrayIndex) +"] := #MyWord;"
-	elif variable.is_parameter() or variable.is_command():
+	elif variable.is_input():
 		if StartingRegister != ActVariableArrayIndex:
 			CloseLastVariable()
 			StartingRegister = ActVariableArrayIndex
@@ -220,6 +222,8 @@ def AddBYTE(variable, InArrayName, InArrayNum, StartingRegister):
 			DevTypeBODY_CODE.append("       "+ ActVariablePLCName +" := #MyBytesinWord[0];    //EPICSName: "+ActVariableEPICSName)
 			IsDouble = False
 			EndString = ""
+	else:
+		raise IFA.FatalException("Neither input nor output: {}".format(variable))
 
 	return (InArrayNum, StartingRegister)
 
@@ -238,7 +242,7 @@ def AddINT(variable, InArrayName, InArrayNum, StartingRegister):
 	ActVariableArrayIndex = int(variable.properties["ARRAY_INDEX"])
 	ActVariableBitNumber  = int(variable.properties["BIT_NUMBER"])
 
-	if variable.is_status():
+	if variable.is_output():
 		if InArrayName is not None:
 			DevTypeBODY_CODE_ARRAY.append("              "+ ActVariablePLCName +" := "+InArrayName+"["+str(InArrayNum)+"];")
 			InArrayNum = InArrayNum + 1
@@ -250,7 +254,7 @@ def AddINT(variable, InArrayName, InArrayNum, StartingRegister):
 		if ActVariableBitNumber == 0:
 			IsDouble = False
 			EndString = "\"PLCToEPICS\".\"Word\"[#PLCToEPICSDataBlockOffset + "+str(ActVariableArrayIndex) +"] := #MyWordinInt;"
-	elif variable.is_parameter() or variable.is_command():
+	elif variable.is_input():
 		if StartingRegister != ActVariableArrayIndex:
 			CloseLastVariable()
 			StartingRegister = ActVariableArrayIndex
@@ -262,6 +266,8 @@ def AddINT(variable, InArrayName, InArrayNum, StartingRegister):
 			DevTypeBODY_CODE.append("       "+ ActVariablePLCName +" := #MyInt;    //EPICSName: "+ActVariableEPICSName)
 			IsDouble = False
 			EndString = ""
+	else:
+		raise IFA.FatalException("Neither input nor output: {}".format(variable))
 
 	return (InArrayNum, StartingRegister)
 
@@ -280,7 +286,7 @@ def AddWORD(variable, InArrayName, InArrayNum, StartingRegister):
 	ActVariableArrayIndex = int(variable.properties["ARRAY_INDEX"])
 	ActVariableBitNumber  = int(variable.properties["BIT_NUMBER"])
 
-	if variable.is_status():
+	if variable.is_output():
 		if InArrayName is not None:
 			DevTypeBODY_CODE_ARRAY.append("              "+ ActVariablePLCName +" := "+InArrayName+"["+str(InArrayNum)+"];")
 			InArrayNum = InArrayNum + 1
@@ -292,7 +298,7 @@ def AddWORD(variable, InArrayName, InArrayNum, StartingRegister):
 		if ActVariableBitNumber == 0:
 			IsDouble = False
 			EndString = "\"PLCToEPICS\".\"Word\"[#PLCToEPICSDataBlockOffset + "+str(ActVariableArrayIndex) +"] := #MyWord;"
-	elif variable.is_parameter() or variable.is_command():
+	elif variable.is_input():
 		if StartingRegister != ActVariableArrayIndex:
 			CloseLastVariable()
 			StartingRegister = ActVariableArrayIndex
@@ -303,6 +309,8 @@ def AddWORD(variable, InArrayName, InArrayNum, StartingRegister):
 				ClearCmd(DevTypeBODY_CODE, clear_cmd)
 			IsDouble = False
 			EndString = ""
+	else:
+		raise IFA.FatalException("Neither input nor output: {}".format(variable))
 
 	return (InArrayNum, StartingRegister)
 
@@ -321,7 +329,7 @@ def AddDINT(variable, InArrayName, InArrayNum, StartingRegister):
 	ActVariableArrayIndex = int(variable.properties["ARRAY_INDEX"])
 	ActVariableBitNumber  = int(variable.properties["BIT_NUMBER"])
 
-	if variable.is_status():
+	if variable.is_output():
 		if InArrayName is not None:
 			DevTypeBODY_CODE_ARRAY.append("              "+ ActVariablePLCName +" := "+InArrayName+"["+str(InArrayNum)+"];")
 			InArrayNum = InArrayNum + 1
@@ -334,7 +342,7 @@ def AddDINT(variable, InArrayName, InArrayNum, StartingRegister):
 			IsDouble = True
 			EndString  = "\"PLCToEPICS\".\"Word\"[#PLCToEPICSDataBlockOffset + "+str(ActVariableArrayIndex) +"] := #MyWordsinDint[0];"
 			EndString2 = "\"PLCToEPICS\".\"Word\"[#PLCToEPICSDataBlockOffset + "+str(ActVariableArrayIndex+1) +"] := #MyWordsinDint[1];"
-	elif variable.is_parameter() or variable.is_command():
+	elif variable.is_input():
 		if StartingRegister != ActVariableArrayIndex:
 			CloseLastVariable()
 			StartingRegister = ActVariableArrayIndex
@@ -349,6 +357,8 @@ def AddDINT(variable, InArrayName, InArrayNum, StartingRegister):
 			DevTypeBODY_CODE.append("       "+ ActVariablePLCName +" := #MyDInt;    //EPICSName: "+ActVariableEPICSName)
 			IsDouble = True
 			EndString = ""
+	else:
+		raise IFA.FatalException("Neither input nor output: {}".format(variable))
 
 	return (InArrayNum, StartingRegister)
 
@@ -367,7 +377,7 @@ def AddDWORD(variable, InArrayName, InArrayNum, StartingRegister):
 	ActVariableArrayIndex = int(variable.properties["ARRAY_INDEX"])
 	ActVariableBitNumber  = int(variable.properties["BIT_NUMBER"])
 
-	if variable.is_status():
+	if variable.is_output():
 		if InArrayName is not None:
 			DevTypeBODY_CODE_ARRAY.append("              "+ ActVariablePLCName +" := "+InArrayName+"["+str(InArrayNum)+"];")
 			InArrayNum = InArrayNum + 1
@@ -380,8 +390,10 @@ def AddDWORD(variable, InArrayName, InArrayNum, StartingRegister):
 			IsDouble = True
 			EndString  = "\"PLCToEPICS\".\"Word\"[#PLCToEPICSDataBlockOffset + "+str(ActVariableArrayIndex) +"] := #MyWordsinDWord[0];"
 			EndString2 = "\"PLCToEPICS\".\"Word\"[#PLCToEPICSDataBlockOffset + "+str(ActVariableArrayIndex+1) +"] := #MyWordsinDWord[1];"
-	elif variable.is_parameter() or variable.is_command():
+	elif variable.is_input():
 		raise IFA.FatalException("DWORD is not supported for ModbusTCP")
+	else:
+		raise IFA.FatalException("Neither input nor output: {}".format(variable))
 
 	return (InArrayNum, StartingRegister)
 
@@ -400,7 +412,7 @@ def AddREAL(variable, InArrayName, InArrayNum, StartingRegister):
 	ActVariableArrayIndex = int(variable.properties["ARRAY_INDEX"])
 	ActVariableBitNumber  = int(variable.properties["BIT_NUMBER"])
 
-	if variable.is_status():
+	if variable.is_output():
 		if InArrayName is not None:
 			DevTypeBODY_CODE_ARRAY.append("              "+ ActVariablePLCName +" := "+InArrayName+"["+str(InArrayNum)+"];")
 			InArrayNum = InArrayNum + 1
@@ -413,7 +425,7 @@ def AddREAL(variable, InArrayName, InArrayNum, StartingRegister):
 			IsDouble = True
 			EndString  = "\"PLCToEPICS\".\"Word\"[#PLCToEPICSDataBlockOffset + "+str(ActVariableArrayIndex) +"] := #MyWordsinReal[0];"
 			EndString2 = "\"PLCToEPICS\".\"Word\"[#PLCToEPICSDataBlockOffset + "+str(ActVariableArrayIndex+1) +"] := #MyWordsinReal[1];"
-	elif variable.is_parameter() or variable.is_command():
+	elif variable.is_input():
 		if StartingRegister != ActVariableArrayIndex:
 			CloseLastVariable()
 			StartingRegister = ActVariableArrayIndex
@@ -428,6 +440,8 @@ def AddREAL(variable, InArrayName, InArrayNum, StartingRegister):
 			DevTypeBODY_CODE.append("       "+ ActVariablePLCName +" := #MyReal;    //EPICSName: "+ActVariableEPICSName)
 			IsDouble = True
 			EndString = ""
+	else:
+		raise IFA.FatalException("Neither input nor output: {}".format(variable))
 
 	return (InArrayNum, StartingRegister)
 
@@ -446,7 +460,7 @@ def AddTIME(variable, InArrayName, InArrayNum, StartingRegister):
 	ActVariableArrayIndex = int(variable.properties["ARRAY_INDEX"])
 	ActVariableBitNumber  = int(variable.properties["BIT_NUMBER"])
 
-	if variable.is_status():
+	if variable.is_output():
 		if InArrayName is not None:
 			DevTypeBODY_CODE_ARRAY.append("              "+ ActVariablePLCName +" := "+InArrayName+"["+str(InArrayNum)+"];")
 			InArrayNum = InArrayNum + 1
@@ -459,7 +473,7 @@ def AddTIME(variable, InArrayName, InArrayNum, StartingRegister):
 			IsDouble = True
 			EndString  = "\"PLCToEPICS\".\"Word\"[#PLCToEPICSDataBlockOffset + "+str(ActVariableArrayIndex) +"] := #MyWordsinTime[0];"
 			EndString2 = "\"PLCToEPICS\".\"Word\"[#PLCToEPICSDataBlockOffset + "+str(ActVariableArrayIndex+1) +"] := #MyWordsinTime[1];"
-	elif variable.is_parameter() or variable.is_command():
+	elif variable.is_input():
 		if StartingRegister != ActVariableArrayIndex:
 			CloseLastVariable()
 			StartingRegister = ActVariableArrayIndex
@@ -474,6 +488,8 @@ def AddTIME(variable, InArrayName, InArrayNum, StartingRegister):
 			DevTypeBODY_CODE.append("       "+ ActVariablePLCName +" := #MyTime;    //EPICSName: "+ActVariableEPICSName)
 			IsDouble = True
 			EndString = ""
+	else:
+		raise IFA.FatalException("Neither input nor output: {}".format(variable))
 
 	return (InArrayNum, StartingRegister)
 
@@ -493,7 +509,7 @@ def AddSTRING(variable, InArrayName, InArrayNum, StartingRegister):
 	ActVariableBitNumber  = int(variable.properties["BIT_NUMBER"])
 	ActStringLength       = variable.dimension() // 2 + (variable.dimension() % 2)
 
-	if variable.is_status():
+	if variable.is_output():
 		if InArrayName is not None:
 			raise IFA.FatalException("'Hybrid' PLC STRING arrays are not supported: " + InArrayName)
 			# The fact that ActVariablePLCName is IN_OUT (because of the TESTER) triggers an error because ActVariablePLCName is not specified in EPICS_device_calls
@@ -518,7 +534,7 @@ def AddSTRING(variable, InArrayName, InArrayNum, StartingRegister):
 				DevTypeBODY_CODE.append("       \"PLCToEPICS\".\"Word\"[#PLCToEPICSDataBlockOffset + " + str(ActVariableArrayIndex) + " + " + str(ActStringLength - 1) + "] := 0;")
 			else:
 				DevTypeBODY_CODE.append("       \"PLCToEPICS\".\"Word\"[#PLCToEPICSDataBlockOffset + " + str(ActVariableArrayIndex) + " + " + str(ActStringLength - 1) + "] := #MyWordsinString[" + str(ActStringLength) + "] & 16#FF00;")
-	elif variable.is_parameter() or variable.is_command():
+	elif variable.is_input():
 		if StartingRegister != ActVariableArrayIndex:
 			CloseLastVariable()
 			StartingRegister = ActVariableArrayIndex
@@ -547,6 +563,8 @@ def AddSTRING(variable, InArrayName, InArrayNum, StartingRegister):
 				clear_cmd = "       {}\"EPICSToPLC\".\"Word\"[#EPICSToPLCDataBlockOffset + " + str(ActVariableArrayIndex) + "] := 0;"
 				ClearCmd(DevTypeBODY_CODE, clear_cmd)
 			DevTypeBODY_CODE.append("       "+ ActVariablePLCName +" := #MyString;    //EPICSName: "+ActVariableEPICSName)
+	else:
+		raise IFA.FatalException("Neither input nor output: {}".format(variable))
 
 	return (InArrayNum, StartingRegister)
 
@@ -1604,6 +1622,15 @@ def ProcessIFADevTypes(OutputDir, TIAVersion, CommsTest):
 					DevTypeBODY_CODE.append("    //************PARAMETER VARIABLES*************")
 					DevTypeBODY_CODE.append("    //********************************************")
 					DevTypeBODY_CODE.append("")
+				elif item.is_general_input():
+					DevTypeBODY_CODE.append("")
+					DevTypeBODY_CODE.append("    //********************************************")
+					DevTypeBODY_CODE.append("    //**********GENERAL INPUT VARIABLES***********")
+					DevTypeBODY_CODE.append("    //********************************************")
+					DevTypeBODY_CODE.append("")
+				else:
+					raise IFA.FatalException("Unknown block type: {}".format(item.name()))
+
 
 			elif item.is_variable():
 				ActVariablePLCName    = item.properties["VARIABLE"]
@@ -1628,16 +1655,22 @@ def ProcessIFADevTypes(OutputDir, TIAVersion, CommsTest):
 							DevTypeVAR_INPUT.append("      \"" + ActVariablePLCName + "\" " + ExternalRead + " : "+ ActVariableType+";   //EPICS Status variable: "+ActVariableEPICSName)
 							EPICS_PLC_TesterDB.append("      \"" + ActualDeviceName+"_" + ActVariablePLCName + "\" " + NoExternal + " : "+ ActVariableType+";   //EPICS Status variable: "+ActVariableEPICSName)
 							EPICS_device_calls_test_body.append("                                 "+TIAVariablePLCName+" := \"EPICS_PLC_Tester\".#\""+ ActualDeviceName+"_" + ActVariablePLCName + "\",")
-
-					if item.is_command():
+					elif item.is_command():
 						DevTypeVAR_OUTPUT.append("      \"" + ActVariablePLCName + "\" " + ExternalRead + " : "+ ActVariableType+";   //EPICS Command variable: "+ActVariableEPICSName)
 						EPICS_PLC_TesterDB.append("      \"" + ActualDeviceName+"_" + ActVariablePLCName + "\" " + NoExternal + " : "+ ActVariableType+";   //EPICS Command variable: "+ActVariableEPICSName)
 						EPICS_device_calls_test_body.append("                                 "+TIAVariablePLCName+" => \"EPICS_PLC_Tester\".#\""+ ActualDeviceName+"_" + ActVariablePLCName + "\",")
-					if item.is_parameter():
+					elif item.is_parameter():
 						DevTypeVAR_OUTPUT.append("      \"" + ActVariablePLCName + "\" " + ExternalRead + " : "+ ActVariableType+";   //EPICS Parameter variable: "+ActVariableEPICSName)
 						EPICS_PLC_TesterDB.append("      \"" + ActualDeviceName+"_" + ActVariablePLCName + "\" " + NoExternal + " : "+ ActVariableType+";   //EPICS Parameter variable: "+ActVariableEPICSName)
 						EPICS_device_calls_test_body.append("                                 "+TIAVariablePLCName+" => \"EPICS_PLC_Tester\".#\""+ ActualDeviceName+"_" + ActVariablePLCName + "\",")
-				elif item.is_status() and InArrayName is not None:
+					elif item.is_general_input():
+						DevTypeVAR_OUTPUT.append("      \"" + ActVariablePLCName + "\" " + ExternalRead + " : "+ ActVariableType+";   //EPICS General input variable: "+ActVariableEPICSName)
+						EPICS_PLC_TesterDB.append("      \"" + ActualDeviceName+"_" + ActVariablePLCName + "\" " + NoExternal + " : "+ ActVariableType+";   //EPICS General input variable: "+ActVariableEPICSName)
+						EPICS_device_calls_test_body.append("                                 "+TIAVariablePLCName+" => \"EPICS_PLC_Tester\".#\""+ ActualDeviceName+"_" + ActVariablePLCName + "\",")
+					else:
+						raise IFA.FatalException("Unknown variable flavor: {}".format(item.name()))
+
+				elif item.is_output() and InArrayName is not None:
 					# (local) Arrays need to be declared even if using gateway mode
 					DevTypeVAR_INOUT.append("      \"" + ActVariablePLCName + "\" " + NoExternal + " : "+ ActVariableType+";   //EPICS Status variable in an array: "+ActVariableEPICSName)
 					EPICS_PLC_TesterDB.append("      \"" + ActualDeviceName+"_" + ActVariablePLCName + "\" " + NoExternal + " : "+ ActVariableType+";   //EPICS Status variable: "+ActVariableEPICSName)
@@ -1686,19 +1719,22 @@ def ProcessIFADevTypes(OutputDir, TIAVersion, CommsTest):
 				else:
 					raise IFA.FatalException("Unsupported variable type", ActVariableType)
 				#==========================
-				if item.is_status():
+				if item.is_output():
 					if ActVariableArrayIndex >= MaxStatusReg:
 						if IsDouble:
 							MaxStatusReg = ActVariableArrayIndex + 1
 						else:
 							MaxStatusReg = ActVariableArrayIndex
 
-				if item.is_parameter() or item.is_command():
+				elif item.is_input():
 					if ActVariableArrayIndex >= MaxCommandReg:
 						if IsDouble:
 							MaxCommandReg = ActVariableArrayIndex + 1
 						else:
 							MaxCommandReg = ActVariableArrayIndex
+
+				else:
+					raise IFA.FatalException("Neither input nor output", item)
 
 		# Processed all items in a device, let's close the last variable
 		CloseLastVariable()

@@ -33,8 +33,8 @@ class DUMMY(PRINTER):
     #
     # HEADER
     #
-    def header(self, output, **keyword_params):
-        super(DUMMY, self).header(output, **keyword_params)
+    def header(self, header_if_def, output, **keyword_params):
+        super(DUMMY, self).header(header_if_def, output, **keyword_params)
 
 
     #
@@ -51,5 +51,5 @@ class DUMMY(PRINTER):
     #
     # FOOTER
     #
-    def footer(self, output, **keyword_params):
-        super(DUMMY, self).footer(output, **keyword_params)
+    def footer(self, footer_if_def, output, **keyword_params):
+        super(DUMMY, self).footer(footer_if_def, output, **keyword_params)

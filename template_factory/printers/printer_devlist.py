@@ -30,8 +30,8 @@ class DEVLIST(PRINTER):
     #
     # HEADER
     #
-    def header(self, output, **keyword_params):
-        super(DEVLIST, self).header(output, **keyword_params)
+    def header(self, header_if_def, output, **keyword_params):
+        super(DEVLIST, self).header(header_if_def, output, **keyword_params)
         self.add_filename_header(output)
 
 

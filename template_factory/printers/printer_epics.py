@@ -12,7 +12,7 @@ __license__    = "GPLv3"
 import re
 
 from . import PRINTER, TemplatePrinterException
-from tf_ifdef import IfDefInternalError, SOURCE, VERBATIM, BLOCK, CMD_BLOCK, STATUS_BLOCK, BASE_TYPE, ANALOG_LIMIT
+from tf_ifdef import IfDefInternalError, SOURCE, VERBATIM, BLOCK, CMD_BLOCK, STATUS_BLOCK, PV, BASE_TYPE
 
 
 
@@ -88,12 +88,6 @@ class EPICS_BASE(PRINTER):
 	info("plc_variable", "{plc_variable}")"""
 
 
-    UPLOAD_PARAMS = "UploadParametersS"
-
-    LNKx    = [ '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F' ]
-    MAX_LNK = len(LNKx)
-
-
     def __init__(self, test = False):
         super(EPICS_BASE, self).__init__(comments = True, show_origin = True, preserve_empty_lines = True)
 
@@ -102,18 +96,14 @@ class EPICS_BASE(PRINTER):
         self._validity_calc_names = dict()
         self._gen_validity_pvs = set()
 
-        self._fo_name    = 'A_UpldParamS{foc}-FO'
-        self._params     = []
-        self._last_param = None
-        self._uploads    = []
         self._endianness = None
 
 
     #
     # HEADER
     #
-    def header(self, output, **keyword_params):
-        super(EPICS_BASE, self).header(output, **keyword_params)
+    def header(self, header_if_def, output, **keyword_params):
+        super(EPICS_BASE, self).header(header_if_def, output, **keyword_params)
 
         # Expand the disable PV
         self.DISABLE_PV = self.expand(self.DISABLE_PV)
@@ -191,7 +181,7 @@ record(bi, "{root_inst_slot}:PLCFStatusR")
 #
 # These are used in DOL links
 #
-record(bi, "{root_inst_slot}:C1")
+record(bi, "{root_inst_slot}:#plcfC1")
 {{
 	field(DESC,	"Constant 1")
 	field(DISP,	"1")
@@ -199,7 +189,7 @@ record(bi, "{root_inst_slot}:C1")
 	field(VAL,	"1")
 }}
 
-record(longin, "{root_inst_slot}:C2")
+record(longin, "{root_inst_slot}:#plcfC2")
 {{
 	field(DESC,	"Constant 2")
 	field(DISP,	"1")
@@ -258,10 +248,12 @@ record(longin, "{root_inst_slot}:C2")
     def _body_block(self, block, output):
         if block.is_status_block():
             comment = "PLC   -> EPICS status  "
-        elif block.is_cmd_block():
+        elif block.is_command_block():
             comment = "EPICS -> PLC commands  "
-        elif block.is_param_block():
+        elif block.is_parameter_block():
             comment = "EPICS -> PLC parameters"
+        elif block.is_general_input_block():
+            comment = "EPICS -> PLC general inputs"
         else:
             raise IfDefInternalError("Unsupported block type: " + block.type())
 
@@ -276,34 +268,16 @@ record(longin, "{root_inst_slot}:C2")
 
 
     def _body_var(self, var, output):
-        var.fqdn_pv_name = self.create_pv_name(var)
-
-        self._append(self._toEPICS(var))
-
-        if isinstance(var, ANALOG_LIMIT):
-            self._set_alarm_limit(var, output)
-
-        if not var.is_parameter():
-            del var.fqdn_pv_name
+        if not isinstance(var, BASE_TYPE):
+            # It must be a PV
+            self._append((var.source(), var.to_epics_record(sdis_fields = self.inpv_template(test = self._test, sdis = True, VALIDITY_PV = self._get_validity_pv(var)))), output)
             return
 
-        self._params.append(var)
-
-        # Have to resolve PLCF# expressions _now_ otherwise we'd end up with root_inst_slot in footer()
-        self._last_param = (var.fqdn_pv_name, self.expand(var.get_pv_field("FLNK")))
+        self._append(self._toEPICS(var))
 
 
     def _body_source(self, var, output):
         self._append(var)
-
-
-    def _body_end_param(self, if_def, output):
-        if not self._params:
-            return
-
-        self._uploads.append("{}:{}".format(self.inst_slot(if_def), self.UPLOAD_PARAMS))
-
-        self._gen_param_fanouts(self._params, self.inst_slot(if_def), output)
 
 
     def _body_end(self, if_def, output):
@@ -314,24 +288,6 @@ record(longin, "{root_inst_slot}:C2")
             self._gen_validity_calc(pv_cond, output)
 
 
-    def _set_alarm_limit(self, var, output):
-        limit = """
-record(ao, "{ilimiter}")
-{{
-	field(DESC, "Set alarm limit value")
-	field(DOL,  "{limiter} CP")
-	field(OUT,  "{limited}.{field}")
-	field(OMSL, "closed_loop"){disable_template}
-}}
-""".format(limiter   = var.fqdn_pv_name,
-           ilimiter  = self.create_pv_name("A_" + var.pv_name()),
-           limited   = self.create_pv_name(var.limit_pv()),
-           field     = var.limit_field(),
-           disable_template = self.DEFAULT_INDISABLE_TEMPLATE)
-
-        self._append(limit, output)
-
-
     def _get_validity_pv(self, var, output = None):
         """
         Return the name of the validity PV assigned to this PV or None if the default should be used
@@ -340,7 +296,7 @@ record(ao, "{ilimiter}")
         validity_pv = self.expand(var.get_parameter("VALIDITY_PV", None))
         validity_condition = var.get_parameter("VALIDITY_CONDITION", None)
 
-        exp_var_pv_name = var.fqdn_pv_name
+        exp_var_pv_name = var.fqpn()
 
         # If this is the PV that some other PVs validity is based on then generate a calcout PV
         # First check if the expanded PV name is already registered as a validity PV
@@ -384,7 +340,7 @@ record(ao, "{ilimiter}")
 
         if not isinstance(var, tuple):
             # This is a class; i.e. a PLC variable
-            vpv = self.create_pv_name(var)
+            vpv = var.fqpn()
             vcond = var.get_parameter("VALIDITY_CONDITION", None)
             if vcond is None:
                 raise TemplatePrinterException("VALIDITY_CONDITION is not specified", IFDEF_SOURCE = var)
@@ -495,130 +451,20 @@ record(calc, "{vbi}")
         return pvs
 
 
-    def _gen_param_fanouts(self, param_list, inst_slot, output, footer = False):
-        foc = 0
-        lnk = 0
-
-        for upload in param_list:
-            if lnk == self.MAX_LNK:
-                foc += 1
-                self._append("""	field(FLNK, "{inst_slot}:{upload}")
-}}
-""".format(inst_slot = inst_slot,
-           upload    = self._fo_name.format(foc = foc)), output)
-
-                lnk = 0
-
-            if lnk == 0:
-                self._append("""record(fanout, "{inst_slot}:{upload}")
-{{
-""".format(inst_slot = inst_slot,
-           upload    = self.UPLOAD_PARAMS if foc == 0 else self._fo_name.format(foc = foc)), output)
-
-            self._append("""	field(LNK{lnk}, "{upload}")
-""".format(lnk       = self.LNKx[lnk],
-           upload    = upload if footer else upload.fqdn_pv_name), output)
-
-            lnk += 1
-
-            if not footer:
-                del upload.fqdn_pv_name
-
-        if footer and foc == 0 and lnk == 0:
-            # Create an empty UploadParamsS if there are no parameters
-            epics_db_footer = """
-record(fanout, "{inst_slot}:{upload}")
-{{
-""".format(inst_slot = inst_slot,
-           upload    = self.UPLOAD_PARAMS)
-
-            self._append(epics_db_footer, output)
-
-        self._append("}", output)
-
-
-
     #
     # FOOTER
     #
-    def footer(self, output, **keyword_params):
-        super(EPICS_BASE, self).footer(output, **keyword_params)
+    def footer(self, footer_if_def, output, **keyword_params):
+        super(EPICS_BASE, self).footer(footer_if_def, output, **keyword_params)
 
         if not self._gen_validity_pvs == set(self._validity_pvs.keys()):
             raise TemplatePrinterException("The following validity PVs were not found or are missing VALIDITY_CONDITION:{}".format(set(self._validity_pvs.keys()) - self._gen_validity_pvs))
 
-        self._gen_param_fanouts(self._uploads, self.root_inst_slot(), output, True)
-
-        # Generate parameter uploading status monitoring
-        self._append("""
-record(bo, "{root_inst_slot}:A_InitUploadStat")
-{{
-	field(DESC, "Initialize parameter uploading status")
-	field(DOL,  "{root_inst_slot}:C1")
-	field(OMSL, "closed_loop")
-	field(OUT,  "{root_inst_slot}:A_UploadStatToPLCS PP")
-
-}}
-
-record(longout, "{root_inst_slot}:A_DoneUploadStat")
-{{
-	field(DESC, "Done parameter uploading status")
-	field(DOL,  "{root_inst_slot}:C2")
-	field(OMSL, "closed_loop")
-	field(OUT,  "{root_inst_slot}:A_UploadStatToPLCS PP")
-}}
-
-record(calcout, "{root_inst_slot}:A_AssertUploadStat")
-{{
-	field(DESC, "Assert validity of upload statistics")
-	field(INPA, "{root_inst_slot}:UploadStat-RB CP")
-	field(INPB, "{root_inst_slot}:A_InitUploadStat.UDF")
-# PLC says we are uploading but A_InitUploadStat was never processed ==> reset upload status in the PLC
-	field(CALC, "A == 1 && B == 1")
-	field(OOPT, "When Non-zero")
-	field(DOPT, "Use OCAL")
-	field(OCAL, "0")
-	field(OUT,  "{root_inst_slot}:A_UploadStatToPLCS PP")
-}}
-record(fanout, "{root_inst_slot}:{upload}")
-{{
-	field(LNK0, "{root_inst_slot}:A_InitUploadStat")
-	field(SHFT, "0")
-""".format(root_inst_slot = self.root_inst_slot(),
-           upload         = self.UPLOAD_PARAMS), output)
-
-        if self._last_param:
-            if self._last_param[1]:
-                # Very last parameter has custom FLNK
-                self._append("""}}
-record(fanout, "{root_inst_slot}:A_CustomFLNK")
-{{
-	field(LNK1, "{custom_flnk}")
-	field(FLNK, "{root_inst_slot}:A_DoneUploadStat")
-}}
-
-record("*", "{last_param}")
-{{
-	field(FLNK, "{root_inst_slot}:A_CustomFLNK")
-}}
-""".format(root_inst_slot = self.root_inst_slot(),
-           custom_flnk    = self._last_param[1],
-           last_param     = self._last_param[0]), output)
-            else:
-                # No custom FLNK for very last parameter
-                self._append("""}}
-
-record("*", "{last_param}")
-{{
-	field(FLNK, "{root_inst_slot}:A_DoneUploadStat")
-}}""".format(root_inst_slot = self.root_inst_slot(),
-             last_param     = self._last_param[0]), output)
-        else:
-            # No parameters, append LNK1 to root_inst_slot:UploadParametersS
-            self._append("""
-	field(LNK1, "{root_inst_slot}:A_DoneUploadStat")
-}}""".format(root_inst_slot = self.root_inst_slot()), output)
-
+        if footer_if_def:
+            for var in footer_if_def.interfaces():
+                if isinstance(var, PV):
+                    # It must be a PV
+                    self._append((var.source(), var.to_epics_record(sdis_fields = self.inpv_template(test = self._test, sdis = True, VALIDITY_PV = self._get_validity_pv(var)))), output)
 
 
 
@@ -665,8 +511,8 @@ class EPICS(EPICS_BASE):
 
         return (var.source(),
                 var.pv_template(test = self._test).format(recordtype = var.pv_type(),
-                                                          pv_name    = var.fqdn_pv_name,
-                                                          alias      = var._build_pv_alias(self.create_pv_name, self.inst_slot(self._if_def)),
+                                                          pv_name    = var.fqpn(),
+                                                          alias      = var.build_pv_alias(),
                                                           dtyp       = var.dtyp(),
                                                           inp_out    = var.inp_out(inst_io       = var.inst_io(),
                                                                                    offset        = var.link_offset(self._plc_to_epics_offset, self._epics_to_plc_offset),
@@ -710,7 +556,7 @@ record(stringin, "{root_inst_slot}:PLCAddr-RB")
 # We assume S7 and Modbus address are the same (as they should be)
 	field(DESC,	"Address of the PLC")
 }}
-record(scalcout, "{root_inst_slot}:A_CalcPLCAddr")
+record(scalcout, "{root_inst_slot}:#plcfCalcPLCAddr")
 {{
 	field(DESC,	"Strip port number of host:port")
 	field(INAA,	"{root_inst_slot}:S7Addr-RB CP")
@@ -720,21 +566,21 @@ record(scalcout, "{root_inst_slot}:A_CalcPLCAddr")
 record(stringout, "{root_inst_slot}:PLCAddrS")
 {{
 	field(DESC,	"Set the address of the PLC")
-	field(FLNK,	"{root_inst_slot}:A_SetPLCAddr-FO")
+	field(FLNK,	"{root_inst_slot}:#plcfSetPLCAddr-FO")
 }}
-record(fanout, "{root_inst_slot}:A_SetPLCAddr-FO")
+record(fanout, "{root_inst_slot}:#plcfSetPLCAddr-FO")
 {{
-	field(LNK1,	"{root_inst_slot}:A_CalcS7AddrS")
-	field(LNK2,	"{root_inst_slot}:A_CalcModbusAddrS")
+	field(LNK1,	"{root_inst_slot}:#plcfCalcS7AddrS")
+	field(LNK2,	"{root_inst_slot}:#plcfCalcModbusAddrS")
 }}
-record(scalcout, "{root_inst_slot}:A_CalcS7AddrS")
+record(scalcout, "{root_inst_slot}:#plcfCalcS7AddrS")
 {{
 	field(DESC,	"Construct the S7 address")
 	field(INAA,	"{root_inst_slot}:PLCAddrS")
 	field(CALC,	"AA + ':' + '$(S7_PORT)'")
-	field(OUT,	"{root_inst_slot}:A_S7AddrS PP")
+	field(OUT,	"{root_inst_slot}:#plcfS7AddrS PP")
 }}
-record(scalcout, "{root_inst_slot}:A_CalcModbusAddrS")
+record(scalcout, "{root_inst_slot}:#plcfCalcModbusAddrS")
 {{
 	field(DESC,	"Construct the Modbus address")
 	field(INAA,	"{root_inst_slot}:PLCAddrS")
@@ -749,16 +595,16 @@ record(stringin, "{root_inst_slot}:ModbusAddr-RB")
 record(stringin, "{root_inst_slot}:S7Addr-RB")
 {{
 	field(DESC,	"Address of the PLC")
-	field(INP,	"{root_inst_slot}:A_S7AddrS CP")
+	field(INP,	"{root_inst_slot}:#plcfS7AddrS CP")
 }}
-record(stringout, "{root_inst_slot}:A_S7AddrS")
+record(stringout, "{root_inst_slot}:#plcfS7AddrS")
 {{
 	field(DESC,	"Set address of the PLC")
 	field(DTYP,	"S7plc addr")
 	field(OUT,	"@$(PLCNAME)")
 	field(DISP,	"1")
 }}
-record(calcout, "{root_inst_slot}:A_CalcConn")
+record(calcout, "{root_inst_slot}:#plcfCalcConn")
 {{
 # Need to explicitly scan because using multiple CPs is not robust
 	field(SCAN,	"1 second")
@@ -796,10 +642,10 @@ record(bi, "{root_inst_slot}:PayloadSizeCorrectR")
 	field(ZNAM,	"Incorrect")
 	field(ZSV,      "MAJOR")
 }}
-record(calcout, "{root_inst_slot}:A_CheckHash")
+record(calcout, "{root_inst_slot}:#plcfCheckHash")
 {{
 	field(INPA,	"{root_inst_slot}:CommsHashToPLC")
-	field(INPB,	"{root_inst_slot}:A_HasMBHash")
+	field(INPB,	"{root_inst_slot}:#plcfHasMBHash")
 	field(INPC,	"{root_inst_slot}:S7CommsHash")
 	field(INPD,	"{root_inst_slot}:MBCommsHash")
 	field(INPE,	"{root_inst_slot}:S7CommsHash.STAT")
@@ -809,14 +655,14 @@ record(calcout, "{root_inst_slot}:A_CheckHash")
 	field(OOPT,	"On Change")
 	field(OUT,	"{root_inst_slot}:PLCHashCorrectR PP")
 }}
-record(bo, "{root_inst_slot}:A_GotHeartbeat")
+record(bo, "{root_inst_slot}:#plcfGotHeartbeat")
 {{
 	field(DESC,	"Update AliveR")
-	field(DOL,	"{root_inst_slot}:C1")
+	field(DOL,	"{root_inst_slot}:#plcfC1")
 	field(OMSL,	"closed_loop")
-	field(OUT,	"{root_inst_slot}:A_KickAlive PP")
+	field(OUT,	"{root_inst_slot}:#plcfKickAlive PP")
 }}
-record(bo, "{root_inst_slot}:A_KickAlive")
+record(bo, "{root_inst_slot}:#plcfKickAlive")
 {{
 	field(DESC,	"Set AliveR to true for 2 seconds")
 	field(HIGH,	"5")
@@ -853,7 +699,7 @@ record(longin, "{root_inst_slot}:PayloadSizeR")
 	field(PINI,	"YES")
 	field(VAL,	"${{PAYLOAD_SIZE=-1}}")
 }}
-record(calcout, "{root_inst_slot}:A_CheckPayloadSize")
+record(calcout, "{root_inst_slot}:#plcfCheckPayloadSize")
 {{
 	field(INPA,	"{root_inst_slot}:PayloadSizeR")
 	field(INPB,	"{root_inst_slot}:PayloadSizeFromPLCR")
@@ -886,10 +732,10 @@ record(ao, "{root_inst_slot}:CommsHashToPLCS")
 	field(DISV,	"0")
 	field(SDIS,	"{root_inst_slot}:ModbusConnectedR")
 }}
-record(calc, "{root_inst_slot}:A_CalcHeartbeatToPLC")
+record(calc, "{root_inst_slot}:#plcfCalcHeartbeatToPLC")
 {{
 	field(SCAN,	"1 second")
-	field(INPA,	"{root_inst_slot}:A_CalcHeartbeatToPLC.VAL")
+	field(INPA,	"{root_inst_slot}:#plcfCalcHeartbeatToPLC.VAL")
 	field(CALC,	"(A >= 32000)? 0 : A + 1")
 	field(FLNK,	"{root_inst_slot}:HeartbeatToPLCS")
 	field(DISV,	"0")
@@ -901,14 +747,14 @@ record(ao, "{root_inst_slot}:HeartbeatToPLCS")
 	field(DTYP,	"asynInt32")
 	field(OUT,	"@asyn($(PLCNAME)write, {epics_to_plc_heartbeat}, 100)")
 	field(OMSL,	"closed_loop")
-	field(DOL,	"{root_inst_slot}:A_CalcHeartbeatToPLC.VAL")
+	field(DOL,	"{root_inst_slot}:#plcfCalcHeartbeatToPLC.VAL")
 	field(OIF,	"Full")
 	field(DRVL,	"0")
 	field(DRVH,	"32000")
 	field(DISV,	"0")
 	field(SDIS,	"{root_inst_slot}:ModbusConnectedR")
 }}
-record(longout, "{root_inst_slot}:A_UploadStatToPLCS")
+record(longout, "{root_inst_slot}:#plcfUploadStatToPLCS")
 {{
 	field(DESC,	"Parameter upload status to the PLC")
 	field(DTYP,	"asynInt32")
@@ -938,9 +784,9 @@ record(ai, "{root_inst_slot}:MBCommsHash")
 	field(SCAN,	"I/O Intr")
 	field(DTYP,	"asynInt32")
 	field(INP,	"@asyn($(PLCNAME)read, {epics_to_plc_read_hash}, 100)INT32_{endianness}")
-	field(FLNK,	"{root_inst_slot}:A_HasMBHash")
+	field(FLNK,	"{root_inst_slot}:#plcfHasMBHash")
 }}
-record(calcout, "{root_inst_slot}:A_HasMBHash")
+record(calcout, "{root_inst_slot}:#plcfHasMBHash")
 {{
 	field(INPA,	"{root_inst_slot}:MBCommsHash")
 	field(CALC,	"A != 0")
@@ -950,10 +796,10 @@ record(calcout, "{root_inst_slot}:A_HasMBHash")
 record(sel, "{root_inst_slot}:CommsHashFromPLCR")
 {{
 	field(DESC,	"Comms hash from PLC")
-	field(NVL,	"{root_inst_slot}:A_HasMBHash")
+	field(NVL,	"{root_inst_slot}:#plcfHasMBHash")
 	field(INPA,	"{root_inst_slot}:S7CommsHash MSS")
 	field(INPB,	"{root_inst_slot}:MBCommsHash MSS")
-	field(FLNK,	"{root_inst_slot}:A_CheckHash")
+	field(FLNK,	"{root_inst_slot}:#plcfCheckHash")
 }}
 record(ai, "{root_inst_slot}:HeartbeatFromPLCR")
 {{
@@ -961,7 +807,7 @@ record(ai, "{root_inst_slot}:HeartbeatFromPLCR")
 	field(SCAN,	"I/O Intr")
 	field(DTYP,	"S7plc")
 	field(INP,	"@$(PLCNAME)/{plc_to_epics_heartbeat} T=INT16")
-	field(FLNK,	"{root_inst_slot}:A_GotHeartbeat")
+	field(FLNK,	"{root_inst_slot}:#plcfGotHeartbeat")
 	field(DISS,	"INVALID")
 	field(DISV,	"0")
 	field(SDIS,	"{root_inst_slot}:PLCHashCorrectR")
@@ -972,7 +818,7 @@ record(longin, "{root_inst_slot}:PayloadSizeFromPLCR")
 	field(SCAN,	"I/O Intr")
 	field(DTYP,	"asynInt32")
 	field(INP,	"@asyn($(PLCNAME)read, {epics_to_plc_read_payload_size}, 100)INT16")
-	field(FLNK,	"{root_inst_slot}:A_CheckPayloadSize")
+	field(FLNK,	"{root_inst_slot}:#plcfCheckPayloadSize")
 }}
 
 """.format(root_inst_slot  = self.root_inst_slot(),
@@ -990,8 +836,8 @@ record(longin, "{root_inst_slot}:PayloadSizeFromPLCR")
     #
     # HEADER
     #
-    def header(self, output, **keyword_params):
-        super(EPICS, self).header(output, **keyword_params).add_filename_header(output, extension = "db")
+    def header(self, header_if_def, output, **keyword_params):
+        super(EPICS, self).header(header_if_def, output, **keyword_params).add_filename_header(output, extension = "db")
 
         self.get_endianness()
 
@@ -1012,6 +858,7 @@ record(longin, "{root_inst_slot}:PayloadSizeFromPLCR")
 
         self._body_register_block_printer(if_def._cmd_block())
         self._body_register_block_printer(if_def._param_block())
+        self._body_register_block_printer(if_def._gen_input_block())
         self._body_register_block_printer(if_def._status_block())
 
         self._append("""
@@ -1021,17 +868,17 @@ record(longin, "{root_inst_slot}:PayloadSizeFromPLCR")
 """.format(inst_slot = self.raw_inst_slot()))
         self._body_verboseheader(if_def._cmd_block(), output)
         self._body_verboseheader(if_def._param_block(), output)
+        self._body_verboseheader(if_def._gen_input_block(), output)
         self._body_verboseheader(if_def._status_block(), output)
 
         self._append("""##########
 
 """)
 
-        self._params = []
         for src in if_def.interfaces():
             if isinstance(src, BLOCK):
                 self._body_block(src, output)
-            elif isinstance(src, BASE_TYPE):
+            elif isinstance(src, PV):
                 self._body_var(src, output)
             elif isinstance(src, VERBATIM):
                 self._append((src.source(), str(src)))
@@ -1040,7 +887,6 @@ record(longin, "{root_inst_slot}:PayloadSizeFromPLCR")
             else:
                 self._append(self._toEPICS(src))
 
-        self._body_end_param(if_def, output)
         self._append("\n\n")
         self._body_end_epics_to_plc(if_def, output)
         self._body_end_plc_to_epics(if_def, output)
@@ -1101,7 +947,7 @@ record(bi, "{root_inst_slot}:S7ConnectedR")
 	field(VAL,	"1")
 	field(PINI,	"YES")
 }}
-record(calcout, "{root_inst_slot}:A_CalcConn")
+record(calcout, "{root_inst_slot}:#plcfCalcConn")
 {{
 # Need to explicitly scan because using multiple CPs is not robust
 	field(SCAN,	"1 second")
@@ -1117,7 +963,7 @@ record(bi, "{root_inst_slot}:ConnectedR")
 	field(ZNAM,	"Disconnected")
 	field(ZSV,      "MAJOR")
 }}
-record(event, "{root_inst_slot}:A_Event")
+record(event, "{root_inst_slot}:#plcfEvent")
 {{
 	field(DESC,	"Generate S7plc event")
 	field(SCAN,	".2 second")
@@ -1140,7 +986,7 @@ record(bi, "{root_inst_slot}:AliveR")
 	field(ZNAM,	"Not responding")
 	field(ZSV,      "MAJOR")
 }}
-record(calcout, "{root_inst_slot}:A_CheckHash")
+record(calcout, "{root_inst_slot}:#plcfCheckHash")
 {{
 	field(INPA,	"{root_inst_slot}:CommsHashToPLC")
 	field(INPB,	"{root_inst_slot}:CommsHashFromPLCR")
@@ -1149,14 +995,14 @@ record(calcout, "{root_inst_slot}:A_CheckHash")
 	field(OOPT,	"On Change")
 	field(OUT,	"{root_inst_slot}:PLCHashCorrectR PP")
 }}
-record(bo, "{root_inst_slot}:A_GotHeartbeat")
+record(bo, "{root_inst_slot}:#plcfGotHeartbeat")
 {{
 	field(DESC,	"Update AliveR")
-	field(DOL,	"{root_inst_slot}:C1")
+	field(DOL,	"{root_inst_slot}:#plcfC1")
 	field(OMSL,	"closed_loop")
-	field(OUT,	"{root_inst_slot}:A_KickAlive PP")
+	field(OUT,	"{root_inst_slot}:#plcfKickAlive PP")
 }}
-record(bo, "{root_inst_slot}:A_KickAlive")
+record(bo, "{root_inst_slot}:#plcfKickAlive")
 {{
 	field(DESC,	"Set AliveR to true for 2 seconds")
 	field(HIGH,	"2")
@@ -1190,10 +1036,10 @@ record(ao, "{root_inst_slot}:CommsHashToPLCS")
 	field(DISV,	"0")
 	field(SDIS,	"{root_inst_slot}:ConnectedR")
 }}
-record(calc, "{root_inst_slot}:A_CalcHeartbeatToPLC")
+record(calc, "{root_inst_slot}:#plcfCalcHeartbeatToPLC")
 {{
 	field(SCAN,	"1 second")
-	field(INPA,	"{root_inst_slot}:A_CalcHeartbeatToPLC.VAL")
+	field(INPA,	"{root_inst_slot}:#plcfCalcHeartbeatToPLC.VAL")
 	field(CALC,	"(A >= 32000)? 0 : A + 1")
 	field(FLNK,	"{root_inst_slot}:HeartbeatToPLCS")
 	field(DISV,	"0")
@@ -1203,12 +1049,12 @@ record(ao, "{root_inst_slot}:HeartbeatToPLCS")
 {{
 	field(DESC,	"Sends heartbeat to PLC")
 	field(OMSL,	"closed_loop")
-	field(DOL,	"{root_inst_slot}:A_CalcHeartbeatToPLC.VAL")
+	field(DOL,	"{root_inst_slot}:#plcfCalcHeartbeatToPLC.VAL")
 	field(OIF,	"Full")
 	field(DRVL,	"0")
 	field(DRVH,	"32000")
 }}
-record(longout, "{root_inst_slot}:A_UploadStatToPLCS")
+record(longout, "{root_inst_slot}:#plcfUploadStatToPLCS")
 {{
 	field(DESC,	"Parameter upload status to the PLC")
 	field(OUT,	"{root_inst_slot}:UploadStat-RB PP")
@@ -1225,13 +1071,13 @@ record(ai, "{root_inst_slot}:CommsHashFromPLCR")
 	field(SCAN,	"1 second")
 	field(PINI,	"YES")
 	field(VAL,	"#HASH")
-	field(FLNK,	"{root_inst_slot}:A_CheckHash")
+	field(FLNK,	"{root_inst_slot}:#plcfCheckHash")
 }}
 record(ai, "{root_inst_slot}:HeartbeatFromPLCR")
 {{
 	field(DESC,	"Heartbeat from PLC")
-	field(INP,	"{root_inst_slot}:A_CalcHeartbeatToPLC.VAL CP")
-	field(FLNK,	"{root_inst_slot}:A_GotHeartbeat")
+	field(INP,	"{root_inst_slot}:#plcfCalcHeartbeatToPLC.VAL CP")
+	field(FLNK,	"{root_inst_slot}:#plcfGotHeartbeat")
 }}
 
 ########################################################
@@ -1248,9 +1094,9 @@ record(ao, "{root_inst_slot}:FixHashS")
 record(bo, "{root_inst_slot}:RuinHashS")
 {{
 	field(DESC,	"Make HASH incorrect")
-	field(FLNK,	"{root_inst_slot}:A_RuinHash")
+	field(FLNK,	"{root_inst_slot}:#plcfRuinHash")
 }}
-record(calcout, "{root_inst_slot}:A_RuinHash")
+record(calcout, "{root_inst_slot}:#plcfRuinHash")
 {{
 	field(DESC,	"Make HASH incorrect")
 	field(INPA,	"{root_inst_slot}:CommsHashToPLC")
@@ -1292,8 +1138,8 @@ class EPICS_OPC(EPICS_BASE):
                                                                                                     plc_variable  = var.name())
         return (var.source(),
                 var.pv_template().format(recordtype = var.pv_type(),
-                                         pv_name    = self.create_pv_name(self.inst_slot(self._if_def), var),
-                                         alias      = var._build_pv_alias(self.create_pv_name, self.inst_slot(self._if_def)),
+                                         pv_name    = var.fqpn(),
+                                         alias      = var.build_pv_alias(),
                                          dtyp       = "OPCUA",
                                          inp_out    = var.inp_out(inst_io   = '$(SUBSCRIPTION)',
                                                                   datablock = var.datablock_name(),
@@ -1304,9 +1150,9 @@ class EPICS_OPC(EPICS_BASE):
     #
     # HEADER
     #
-    def header(self, output, **keyword_params):
+    def header(self, header_if_def, output, **keyword_params):
         # This is intentional but check if it is possible to call super(EPICS_OPC, self).header
-        PRINTER.header(self, output, **keyword_params).add_filename_header(output, extension = "db")
+        PRINTER.header(self, header_if_def, output, **keyword_params).add_filename_header(output, extension = "db")
 
         # Expand the disable PV
         self.DISABLE_PV = self.expand(self.DISABLE_PV)
@@ -1374,6 +1220,7 @@ record(ao, "{root_inst_slot}:CommsHashToPLCS")
 
         self._body_register_block_printer(if_def._cmd_block())
         self._body_register_block_printer(if_def._param_block())
+        self._body_register_block_printer(if_def._gen_input_block())
         self._body_register_block_printer(if_def._status_block())
 
         self._append("""
@@ -1383,11 +1230,10 @@ record(ao, "{root_inst_slot}:CommsHashToPLCS")
 
 """.format(inst_slot = self.raw_inst_slot()))
 
-        self._params = []
         for src in if_def.interfaces():
             if isinstance(src, BLOCK):
                 self._body_block(src, output)
-            elif isinstance(src, BASE_TYPE):
+            elif isinstance(src, PV):
                 self._body_var(src, output)
             elif isinstance(src, VERBATIM):
                 self._append((src.source(), str(src)))
@@ -1396,5 +1242,4 @@ record(ao, "{root_inst_slot}:CommsHashToPLCS")
             else:
                 self._append(self._toEPICS(src))
 
-        self._body_end_param(if_def, output)
         self._append("\n\n")

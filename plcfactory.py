@@ -82,7 +82,7 @@ tf_dir     = os.path.join(parent_dir, 'template_factory')
 sys.path.append(tf_dir)
 del tf_dir
 
-from tf_ifdef import IF_DEF
+from tf_ifdef import IF_DEF, FOOTER_IF_DEF
 
 try:
     import tf
@@ -130,15 +130,16 @@ device_tag      = None
 epi_version     = None
 hashes          = dict()
 prev_hashes     = None
-generate_ioc    = False
+GENERATE_IOC    = False
 ioc_git         = True
 ioc             = None
 e3              = None
-plcf_branch     = git.get_current_branch()
-plcf_url        = helpers.url_strip_user(git.get_origin())
-commit_id       = git.get_local_ref(plcf_branch)
-if commit_id is not None:
-    ifdef_params["COMMIT_ID"] = commit_id
+PLCF_BRANCH     = git.get_current_branch()
+PLCF_URL        = helpers.url_strip_user(git.get_origin())
+COMMIT_ID       = git.get_local_ref(PLCF_BRANCH)
+VERIFY          = False
+if COMMIT_ID is not None:
+    ifdef_params["COMMIT_ID"] = COMMIT_ID
 
 
 class PLCFactoryException(Exception):
@@ -459,19 +460,42 @@ class E3(object):
 
 
 class IOC(object):
-    def __init__(self, device, git = True):
+    @staticmethod
+    def check_requirements():
+        try:
+            import yaml
+        except ImportError:
+            raise NotImplementedError("""
+++++++++++++++++++++++++++++++
+Could not find package `yaml`!
+Please install it by running:
+
+pip install --user pyyaml
+
+""")
+
+
+    def __init__(self, device_s, git = True):
         super(IOC, self).__init__()
 
-        ioc = self.__get_ioc(device)
-        if ioc != device:
+        if isinstance(device_s, list):
+            device = device_s[0]
+            self._controlled_devices = list(device_s)
+        else:
+            device = device_s
+            self._controlled_devices = None
+
+        self._ioc = self.__get_ioc(device)
+        if self._ioc != device:
             # Create our own E3 module
             self._e3 = E3(device.name())
         else:
             self._e3 = None
 
-        self._name = ioc.name()
-        self._dir = helpers.sanitizeFilename(self._name.lower()).replace('-', '_')
-        self._repo = get_repository(ioc, "IOC_REPOSITORY") if git else None
+        self._epics_version = self._ioc.properties()["EPICSVersion"]
+        self._require_version = self._ioc.properties()["E3RequireVersion"]
+        self._dir = helpers.sanitizeFilename(self._ioc.name().lower()).replace('-', '_')
+        self._repo = get_repository(self._ioc, "IOC_REPOSITORY") if git else None
         if self._repo:
             self._dir = helpers.url_to_path(self._repo).split('/')[-1]
             if self._dir.endswith('.git'):
@@ -510,7 +534,6 @@ class IOC(object):
         new_env_lines = OrderedDict()
         new_env_lines['IOCNAME'] = self.name()
         new_env_lines['IOCDIR'] = helpers.sanitizeFilename(self.name())
-        new_env_lines['EPICS_DB_INCLUDE_PATH'] = "$(dirname ${BASH_SOURCE})/db"
         if self._e3:
             new_env_lines['{}_VERSION'.format(self._e3.modulename())] = version if version else 'plcfactory@' + glob.timestamp
 
@@ -555,6 +578,9 @@ class IOC(object):
 
         common_config = [ '# Load standard IOC startup scripts\n', 'require essioc\n', 'iocshLoad("$(essioc_DIR)/common_config.iocsh")\n' ]
 
+        db_path = '"$(E3_CMD_TOP)/db:$(EPICS_DB_INCLUDE_PATH=.)"'
+        register_db_path = [ '# Register our db directory\n', 'epicsEnvSet(EPICS_DB_INCLUDE_PATH, {})\n'.format(db_path) ]
+
         load_plc = [ '# Load PLC specific startup script\n', 'iocshLoad("iocsh/{}")\n'.format(self._e3.iocsh()) ]
 
         st_cmd = os.path.join(out_idir, 'st.cmd')
@@ -563,6 +589,7 @@ class IOC(object):
         # Try to determine what is already in st.cmd
         iocsh_loads = list()
         requires = dict()
+        epics_db_include_path = list()
         for i in range(len(lines)):
             sp = lines[i].strip()
             if not sp or sp[0] == '#':
@@ -580,38 +607,93 @@ class IOC(object):
 
             elif sp.startswith("iocshLoad"):
                 # (Try to) Remove any comments
-                sp = sp[len("iocshLoad"):].split('#', 1)
+                sp = sp[len("iocshLoad"):].split('#', 1)[0]
 
                 # Store the iocshLoad parameters and its location
-                iocsh_loads.append((i, sp[0].strip()))
+                iocsh_loads.append((i, sp.strip()))
+
+            elif sp.startswith("epicsEnvSet"):
+                # (Try to) Remove any comments
+                sp = sp[len("epicsEnvSet"):].split('#', 1)[0]
+                if sp[0] == '(':
+                    sp = sp[1:-1]
+                elif sp[0] == ' ':
+                    sp = sp[1:]
+                else:
+                    raise PLCFactoryException("Cannot interpret epicsEnvSet line: '{}'".format(sp))
+                (env_var, value) = sp.split(',', 1)
+                if not env_var.strip() == 'EPICS_DB_INCLUDE_PATH':
+                    continue
+                epics_db_include_path.append((i, value.strip()))
 
         # If essioc is loaded we don't need to load it again
         if "essioc" in requires:
             common_config.pop(1)
 
+        load_plc_at = None
         # Check what is iocshLoad-ed
-        for i, l in iocsh_loads:
+        for i, line in iocsh_loads:
             # If common_config.iocsh is loaded we don't need to load it again
-            if "common_config.iocsh" in l:
+            if "common_config.iocsh" in line:
                 common_config = []
             # If plc.iocsh is loaded we don't need to load it again
-            elif self._e3.iocsh() in l:
+            elif self._e3.iocsh() in line:
                 load_plc = []
+                load_plc_at = i
+
+        # If our db directory is registered in EPICS_DB_INCLUDE_PATH then we don't need to do it again
+        for i, dbp in epics_db_include_path:
+            if db_path in dbp:
+                # Make sure to register DB path _before_ loading plc.iocsh
+                if load_plc_at is not None and load_plc_at < i:
+                    lines.pop(i)
+                    lines[load_plc_at:load_plc_at] = register_db_path
+                register_db_path = []
+                break
+
+        # Make sure to register DB path _before_ loading plc.iocsh
+        if register_db_path and load_plc_at is not None:
+            lines[load_plc_at:load_plc_at] = register_db_path
+            register_db_path = []
 
         with open(st_cmd, "wt") as f:
             if not lines or "startup for " not in lines[0].lower():
                 print(startup, file = f)
             f.writelines(lines)
-            if lines and common_config:
+            if lines and common_config and lines[-1].strip() != "":
                 # Add extra newline
                 print(file = f)
             f.writelines(common_config)
-            if common_config and load_plc:
+            if common_config and register_db_path:
+                # Add extra newline
+                print(file = f)
+            f.writelines(register_db_path)
+            if register_db_path and load_plc:
                 # Add extra newline
                 print(file = f)
             f.writelines(load_plc)
 
         return st_cmd
+
+
+    def __create_ioc_yaml(self, out_idir):
+        import yaml
+
+        ioc_yml = os.path.join(out_idir, "ioc.yml")
+        try:
+            with open(ioc_yml, "rt") as f:
+                meta_yml = yaml.safe_load(f)
+        except IOError:
+            meta_yml = dict()
+
+        meta_yml["ioc_type"] = "nfs"
+        meta_yml["epics_version"] = self._epics_version
+        meta_yml["require_version"] = self._require_version
+
+        with open(ioc_yml, "wt") as f:
+            yaml.dump(meta_yml, f)
+
+        return ioc_yml
 
 
     def __create_custom_iocsh(self, out_idir):
@@ -630,7 +712,7 @@ class IOC(object):
         """
         Returns the IOC name
         """
-        return self._name
+        return self._ioc.name()
 
 
     def directory(self):
@@ -699,6 +781,11 @@ class IOC(object):
         env_sh = self.__create_env_sh(out_idir, version)
         created_files.append(env_sh)
 
+        # Create ioc.yml
+        ioc_yml = self.__create_ioc_yaml(out_idir)
+        created_files.append(ioc_yml)
+
+        # Create custom.iocsh
         custom_iocsh = self.__create_custom_iocsh(out_idir)
         created_files.append(custom_iocsh)
 
@@ -726,9 +813,9 @@ Command line:
 =============
 {cmdline}
 """.format(tstamp  = '{:%Y-%m-%d %H:%M:%S}'.format(glob.raw_timestamp),
-           url     = plcf_url,
-           branch  = plcf_branch,
-           commit  = commit_id,
+           url     = PLCF_URL,
+           branch  = PLCF_BRANCH,
+           commit  = COMMIT_ID,
            cmdline = " ".join(sys.argv))
 
             repo.add(created_files)
@@ -764,6 +851,453 @@ Could not launch browser to create merge request, please visit:
 {}
 
 """.format(link))
+
+
+
+class PLC(object):
+    @staticmethod
+    def add_plc_parser_args(parser):
+        plc_group = parser.add_argument_group("PLC related options")
+
+        plc_args = plc_group.add_mutually_exclusive_group()
+
+        default_tia = "TIAv15.1"
+
+        plc_args.add_argument(
+                              '--plc-siemens',
+                              '--plc-interface',
+                              dest    = "siemens",
+                              help    = 'use the default templates for Siemens PLCs and generate interface PLC comms. The default TIA version is {}'.format(default_tia),
+                              metavar = 'TIA-Portal-version',
+                              nargs   = "?",
+                              const   = default_tia,
+                              type    = str
+                             )
+
+        plc_args.add_argument(
+                              '--plc-beckhoff',
+                              dest    = "beckhoff",
+                              help    = "use the default templates for Beckhoff PLCs and generate interface Beckhoff PLC comms. 'Beckhoff-version' is not used right now",
+                              metavar = 'Beckhoff-version',
+                              nargs   = "?",
+                              const   = 'not-used',
+                              type    = str
+                             )
+
+        plc_args.add_argument(
+                              '--plc-opc',
+                              dest    = "opc",
+                              help    = "use the default templates for OPC-UA. No PLC code is generated!",
+                              action  = "store_true",
+                             )
+
+        diag_args = plc_group.add_mutually_exclusive_group()
+        diag_args.add_argument(
+                               '--plc-no-diag',
+                               dest     = "plc_no_diag",
+                               help     = 'do not generate PLC diagnostics code (if used with --plc-x). This is the default',
+                               action   = 'store_true',
+                               default  = True,
+                               required = False)
+
+        diag_args.add_argument(
+                               '--plc-diag',
+                               dest     = "plc_no_diag",
+                               help     = 'generate PLC diagnostics code (if used with --plc-x)',
+                               action   = 'store_false',
+                               required = False)
+
+        diag_args.add_argument(
+                               '--plc-only-diag',
+                               dest     = "plc_only_diag",
+                               help     = 'generate PLC diagnostics code only (if used with --plc-x)',
+                               action   = 'store_true',
+                               required = False)
+
+        test_args = plc_group.add_mutually_exclusive_group()
+        test_args.add_argument(
+                               '--plc-no-test',
+                               dest     = "plc_test",
+                               help     = 'do not generate PLC comms testing code (if used with --plc-x). This is the default',
+                               action   = 'store_false',
+                               default  = False,
+                               required = False)
+
+        test_args.add_argument(
+                               '--plc-test',
+                               dest     = "plc_test",
+                               help     = 'generate PLC comms testing code (if used with --plc-x)',
+                               action   = 'store_true',
+                               required = False)
+
+        plc_group.add_argument(
+                               '--plc-readonly',
+                               dest     = "plc_readonly",
+                               help     = 'do not generate EPICS --> PLC communication code',
+                               action   = 'store_true',
+                               default  = False)
+
+        return parser
+
+
+    @staticmethod
+    def parse_args(args):
+        if args.siemens is not None:
+            return SIEMENS_PLC(args)
+
+        if args.beckhoff:
+            return BECKHOFF_PLC(args)
+
+        if args.opc:
+            return OPC_PLC(args)
+
+        return None
+
+
+    @staticmethod
+    def type():
+        raise NotImplementedError
+
+
+    def __init__(self, args):
+        super(PLC, self).__init__()
+
+        # FIXME: these arguments should not even be exposed without --plc-siemens
+        if (args.plc_only_diag or args.plc_no_diag is False) and not args.siemens:
+            raise PLCFArgumentError('--plc-only-diag requires --plc-siemens')
+
+        self._readonly = args.plc_readonly
+        self._only_diag = args.plc_only_diag
+        self._no_diag = args.plc_no_diag
+        self._test = args.plc_test
+        self._version = None
+        self._plc = None
+        self._plc_plcf = None
+        self._hashobj = None
+        self._ifdefs = []
+
+
+    def is_readonly(self):
+        return self._readonly
+
+
+    def _validate_plc_device(self):
+        pass
+
+
+    def set_plc(self, plc):
+        self._plc = plc
+        self._plc_plcf = getPLCF(self._plc)
+        self._validate_plc_device()
+
+
+        hash_base = """EPICSToPLCDataBlockStartOffset: [PLCF#EPICSToPLCDataBlockStartOffset]
+PLCToEPICSDataBlockStartOffset: [PLCF#PLCToEPICSDataBlockStartOffset]
+PLC-EPICS-COMMS:Endianness: [PLCF#PLC-EPICS-COMMS:Endianness]"""
+        # GatewayDatablock is a relatively new feature; do not break the hash for PLCs not using it
+        try:
+            gw_db = self._plc_plcf.getProperty("PLC-EPICS-COMMS: GatewayDatablock")
+            if gw_db:
+                hash_base = """{}
+PLC-EPICS-COMMS: GatewayDatablock: {}""".format(hash_base, gw_db)
+        except plcf.PLCFNoPropertyException:
+            pass
+        hash_base = "\n".join(self._plc_plcf.process(hash_base.splitlines()))
+
+        self._hashobj = initializeHash(hash_base)
+
+        return hash_base
+
+
+    def get_ifdefs(self, devices):
+        print("Downloading Interface Definition files...")
+        print("-----------------------------------------")
+        for device in devices:
+            cplcf = getPLCF(device)
+
+            print(device.name())
+#            print("Device type: " + device.deviceType())
+
+            self._hashobj.update(device.name())
+
+            ifdef = getIfDef(device, cplcf)
+            if ifdef is not None:
+                ifdef.calculate_hash(self._hashobj)
+                self._ifdefs.append(ifdef)
+
+            print("=" * 40)
+
+        cur_hash = (self._hashobj.getHash(), self._hashobj.getCRC32())
+
+        global hashes
+        hashes[self._plc.name()] = cur_hash
+
+        self._footer_ifdef = FOOTER_IF_DEF(self._plc, self._ifdefs, PLCF = self._plc_plcf, **ifdef_params)
+
+        try:
+            prev_hash = prev_hashes[self._plc.name()]
+            # Check if CRC32 is the same but the actual hash is different
+            if prev_hash[0] is not None and prev_hash[0] != cur_hash[0] and prev_hash[1] == cur_hash[1]:
+                raise PLCFactoryException("CRC32 collision detected. Please file a bug report")
+        except (KeyError, TypeError):
+            pass
+
+
+    def generate_files(self, devices, templates):
+        remaining_templates = []
+        for template in templates:
+            if not self._generate_file(devices, template):
+                remaining_templates.append(template)
+
+        return remaining_templates
+
+
+    def _get_printer(self, template):
+        try:
+            return printers[template]
+        except KeyError:
+            templatePrinter = tf.get_printer(template)
+
+        if templatePrinter is not None:
+            printers[template] = templatePrinter
+
+        return templatePrinter
+
+
+    def _generate_file(self, devices, template):
+        printer = self._get_printer(template)
+        if printer is None:
+            return False
+
+        start_time = time.time()
+
+        self._plc_plcf.register_template(template)
+
+        if device_tag:
+            tagged_templateID = "_".join([ device_tag, template ])
+        else:
+            tagged_templateID = template
+
+        print("#" * 60)
+        print("Template ID " + tagged_templateID)
+        print("Device at root: " + str(self._plc) + "\n")
+
+        header = []
+        printer.header(None, header, ROOT_DEVICE = self._plc, PLCF = self._plc_plcf, OUTPUT_DIR = OUTPUT_DIR, HELPERS = helpers, **ifdef_params)
+        # has to acquire filename _before_ processing the header
+        # there are some special tags that are only valid in the header
+        outputFile = os.path.join(OUTPUT_DIR, createFilename(self._plc_plcf, header))
+
+        if header:
+            header = self._plc_plcf.process(header)
+            header = processHash(header, self._hashobj)
+
+        print("Processing entire tree of controls-relationships:\n")
+
+        template_from_def_file = "Generating '{}' template from Definition File...".format(template)
+
+        # for each device, find corresponding template and process it
+        output     = []
+        for device in devices:
+            deviceType = device.deviceType()
+            cplcf      = getPLCF(device)
+            cplcf.register_template(template)
+
+            print(device.name())
+            print("Device type: " + deviceType)
+
+            ifdef = getIfDef(device, cplcf)
+            if ifdef is not None:
+                print(template_from_def_file)
+
+                try:
+                    printer.body(ifdef, output, DEVICE = device, PLCF = cplcf)
+                except (tf.TemplatePrinterException, plcf.PLCFException, PLCFExtException) as e:
+                    raise ProcessTemplateException(device.name(), template, e)
+
+            print("=" * 40)
+
+        print("\n")
+
+        footer = []
+        printer.footer(self._footer_ifdef, footer, PLCF = self._plc_plcf)
+        if footer:
+            footer = self._plc_plcf.process(footer)
+            footer = processHash(footer, self._hashobj)
+
+        output = header + output + footer
+
+        if not output:
+            print("There were no templates for ID = {}.\n".format(tagged_templateID))
+            return
+
+        # Process counters
+        (output, _) = plcf.PLCF.evalCounters(output)
+
+        eol = getEOL(header)
+        # write file
+        with open(outputFile, 'w') as f:
+            for line in output:
+                line = line.rstrip()
+                if not line.startswith("#COUNTER") \
+                   and not line.startswith("#FILENAME") \
+                   and not line.startswith("#EOL"):
+                    print(line, end = eol, file = f)
+
+        output_files[template] = outputFile
+
+        print("Output file written:", outputFile)
+        print("Hash sum:", self._hashobj.getCRC32())
+        print("--- %s %.1f seconds ---\n" % (tagged_templateID, time.time() - start_time))
+
+        return True
+
+
+    def generate_plc(self, out_dir, commit_id, verify):
+        from interface_factory import IFA
+
+        output_files.update(IFA.produce(out_dir, output_files["IFA"], TIAVersion = self._version, nodiag = self._no_diag, onlydiag = self._only_diag, commstest = self._test, verify = verify, readonly = self._readonly, commit_id = commit_id))
+
+
+
+class S7PLC_MODBUS_PLC(PLC):
+    def __init__(self, args):
+        super(S7PLC_MODBUS_PLC, self).__init__(args)
+
+
+    def _validate_plc_device(self):
+        toplc_offset = None
+        fromplc_offset = None
+        try:
+            toplc_offset = int(self._plc_plcf.getProperty("EPICSToPLCDataBlockStartOffset"))
+            if int(toplc_offset) < 0:
+                raise ValueError
+        except (TypeError, ValueError):
+            raise PLCFactoryException("Invalid EPICSToPLCDataBlockStartOffset property: {}".format(toplc_offset))
+
+        try:
+            fromplc_offset = int(self._plc_plcf.getProperty("PLCToEPICSDataBlockStartOffset"))
+            if int(fromplc_offset) < 0:
+                raise ValueError
+        except (TypeError, ValueError):
+            raise PLCFactoryException("Invalid PLCToEPICSDataBlockStartOffset property: {}".format(fromplc_offset))
+
+
+
+class SIEMENS_PLC(S7PLC_MODBUS_PLC):
+    @staticmethod
+    def PLC_is_siemens():
+        return False
+
+    PLC.is_siemens = PLC_is_siemens
+
+
+    @staticmethod
+    def update_default_printers(default_printers):
+        default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "IFA", "ARCHIVE", "BEAST", "BEAST-TEMPLATE" ] )
+
+
+    @staticmethod
+    def is_siemens():
+        return True
+
+
+    @staticmethod
+    def type():
+        return "SIEMENS"
+
+
+    def __init__(self, args):
+        super(SIEMENS_PLC, self).__init__(args)
+
+        from interface_factory import IFA
+        tia_version  = args.siemens.lower()
+        try:
+            tia_version  = IFA.consolidate_tia_version(tia_version)
+        except IFA.FatalException as e:
+            raise PLCFArgumentError(e.message)
+
+        self._version = tia_version
+
+
+    def _validate_plc_device(self):
+        super(SIEMENS_PLC, self)._validate_plc_device()
+
+        try:
+            interface_id = int(self._plc_plcf.getProperty("PLC-EPICS-COMMS: InterfaceID"))
+        except (TypeError, ValueError) as e:
+            raise PLCFactoryException("Missing/invalid 'PLC-EPICS-COMMS: InterfaceID'")
+
+
+
+class BECKHOFF_PLC(S7PLC_MODBUS_PLC):
+    @staticmethod
+    def PLC_is_beckhoff():
+        return False
+
+    PLC.is_beckhoff = PLC_is_beckhoff
+
+
+    @staticmethod
+    def update_default_printers(default_printers):
+        default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "IFA", "ARCHIVE", "BEAST", "BEAST-TEMPLATE" ] )
+
+
+    @staticmethod
+    def is_beckhoff():
+        return True
+
+
+    @staticmethod
+    def type():
+        return "BECKHOFF"
+
+
+    def __init__(self, args):
+        super(BECKHOFF_PLC, self).__init__(args)
+
+        if self._only_diag or self._no_diag is False:
+            raise PLCFArgumentError('PLCFactory cannot (yet?) generate diagnostics code for Beckhoff PLCs')
+
+
+    def _validate_plc_device(self):
+        super(BECKHOFF_PLC, self)._validate_plc_device()
+
+        if int(self._plc_plcf.getProperty("EPICSToPLCDataBlockStartOffset")) < 12288:
+            raise PLCFactoryException("PLCF#EPICSToPLCDataBlockStartOffset property must be at least 12288! Are you using PLC_BECKHOFF?")
+
+
+
+class OPC_PLC(PLC):
+    @staticmethod
+    def PLC_is_opc():
+        return False
+
+    PLC.is_opc = PLC_is_opc
+
+
+    @staticmethod
+    def update_default_printers(default_printers):
+        # EPICS-DB will be deleted later, but we add it here so that it is enough to check for EPICS-DB
+        default_printers.update( [ "EPICS-DB", "EPICS-OPC-DB", "BEAST", "BEAST-TEMPLATE" ] )
+
+
+    @staticmethod
+    def is_opc():
+        return True
+
+
+    @staticmethod
+    def type():
+        return "OPC"
+
+
+    def __init__(self, args):
+        super(OPC_PLC, self).__init__(args)
+
+
+    def generate_plc(self, *args, **kwargs):
+        return
 
 
 
@@ -865,7 +1399,7 @@ def findTag(lines, tag):
     return tagPos
 
 
-def processHash(header):
+def processHash(header, hashobj):
     assert isinstance(header, list)
 
     tag     = "#HASH"
@@ -938,7 +1472,7 @@ def getHeader(device, templateID, plcf):
         print("Using built-in '{}' template header".format(templateID))
         printers[templateID] = templatePrinter
         header = []
-        templatePrinter.header(header, ROOT_DEVICE = device, PLCF = plcf, OUTPUT_DIR = OUTPUT_DIR, HELPERS = helpers, **ifdef_params)
+        templatePrinter.header(None, header, ROOT_DEVICE = device, PLCF = plcf, OUTPUT_DIR = OUTPUT_DIR, HELPERS = helpers, **ifdef_params)
     else:
         header = openHeaderFooter(device, HEADER_TAG, templateID)
 
@@ -958,7 +1492,7 @@ def getFooter(device, templateID, plcf):
 
     print("Using built-in '{}' template footer".format(templateID))
     footer = []
-    templatePrinter.footer(footer, PLCF = plcf)
+    templatePrinter.footer(None, footer, PLCF = plcf)
 
     return footer
 
@@ -1095,8 +1629,8 @@ def processTemplateID(templateID, devices):
         footer = rcplcf.process(footer)
 
     # process #HASH keyword in header and footer
-    header      = processHash(header)
-    footer      = processHash(footer)
+    header      = processHash(header, hashobj)
+    footer      = processHash(footer, hashobj)
 
     output      = header + output + footer
 
@@ -1134,8 +1668,9 @@ def get_repository(device, link_name):
     return repo
 
 
-def processDevice(deviceName, templateIDs):
+def processDevice(deviceName, plc, templateIDs):
     assert isinstance(deviceName,  str)
+    assert plc is None or isinstance(plc, PLC)
     assert isinstance(templateIDs, list)
 
     try:
@@ -1169,6 +1704,8 @@ Exiting.
 """)
         exit(1)
 
+    # FIXME: EEE
+#####################################################
     # Get the EPICSModule and EPICSSnippet properties
     dev_props = device.properties()
     modulename = dev_props.get("EPICSModule", [])
@@ -1195,30 +1732,21 @@ Exiting.
     if not glob.eee_modulename:
         glob.eee_modulename = modulename
         glob.eee_snippet    = snippet
+#####################################################
+    # FIXME: EEE
 
     global e3
     if e3 is True:
         e3 = E3.from_device(device)
 
-    cplcf = getPLCF(device)
-
-    hash_base = """EPICSToPLCDataBlockStartOffset: [PLCF#EPICSToPLCDataBlockStartOffset]
-PLCToEPICSDataBlockStartOffset: [PLCF#PLCToEPICSDataBlockStartOffset]
-PLC-EPICS-COMMS:Endianness: [PLCF#PLC-EPICS-COMMS:Endianness]"""
-    # GatewayDatablock is a relatively new feature; do not break the hash for PLCs not using it
-    try:
-        gw_db = cplcf.getProperty("PLC-EPICS-COMMS: GatewayDatablock")
-        if gw_db:
-            hash_base = """{}
-PLC-EPICS-COMMS: GatewayDatablock: {}""".format(hash_base, gw_db)
-    except plcf.PLCFNoPropertyException:
-        pass
-    hash_base = "\n".join(cplcf.process(hash_base.splitlines()))
+    hash_base = ""
+    if plc:
+        hash_base = plc.set_plc(device)
 
     # create a stable list of controlled devices
     devices = device.buildControlsList(include_self = True, verbose = True)
 
-    if generate_ioc:
+    if GENERATE_IOC:
         try:
             hostname = device.properties()["Hostname"]
         except KeyError:
@@ -1228,38 +1756,27 @@ PLC-EPICS-COMMS: GatewayDatablock: {}""".format(hash_base, gw_db)
             raise PLCFactoryException("Hostname of '{}' is not specified, required for IOC generation".format(device.name()))
 
         global ioc
-        ioc = IOC(device, git = ioc_git)
+        ioc = IOC(devices, git = ioc_git)
         if ioc.repo():
             git.GIT.check_minimal_config()
 
-    hash_per_template = dict()
+    if plc:
+        plc.get_ifdefs(devices)
+        templateIDs = plc.generate_files(devices, templateIDs)
+
     for templateID in templateIDs:
         global hashobj
         hashobj = initializeHash(hash_base)
 
         processTemplateID(templateID, devices)
 
-        hash_per_template[templateID] = (hashobj.getHash(), hashobj.getCRC32())
-
-    # Check if IFA and EPICS-DB hashes are the same and obtain hash for PLC
-    try:
-        cur_hash = hash_per_template["IFA"]
-        if cur_hash[0] != hash_per_template["EPICS-DB"][0]:
-            raise PLCFactoryException("Hash mismatch detected between EPICS and PLC. Please file a bug report")
-    except KeyError:
-        # Fall back to the current hash
+    if plc is None:
         cur_hash = (hashobj.getHash(), hashobj.getCRC32())
+        global hashes
+        hashes[device.name()] = cur_hash
 
-    global hashes
-    hashes[device.name()] = cur_hash
-
-    try:
-        prev_hash = prev_hashes[device.name()]
-        # Check if CRC32 is the same but the actual hash is different
-        if prev_hash[0] is not None and prev_hash[0] != cur_hash[0] and prev_hash[1] == cur_hash[1]:
-            raise PLCFactoryException("CRC32 collision detected. Please file a bug report")
-    except (KeyError, TypeError):
-        pass
+    if plc:
+        plc.generate_plc(OUTPUT_DIR, COMMIT_ID, VERIFY)
 
     return device
 
@@ -1547,14 +2064,31 @@ def create_previous_files():
         output_files["PREVIOUS_FILES"] = fname
 
 
-def verify_output(strictness, ignore):
+class PLCFactoryVerifyException(PLCFactoryException):
+    def __init__(self, device, template_filename_tuple):
+        self.device = device
+        self.template_filename_tuple = template_filename_tuple
+
+        message = """
+THE FOLLOWING FILES WERE CHANGED:
+"""
+        for (template, output) in template_filename_tuple:
+            message += """\t{template}:\t{filename}
+""".format(template = template, filename = output)
+        super(PLCFactoryVerifyException, self).__init__(message)
+
+
+def verify_output(devicename, strictness, ignore):
     if strictness == 0 or (previous_files is None and strictness < 3):
         return
 
     ignored_templates = [ 'PREVIOUS_FILES', 'CREATOR', 'CCDB-DUMP' ]
     ignored_templates.extend(ignore.split(','))
+    files_to_delete = []
     for template in ignored_templates:
-        previous_files.pop(template, None)
+        fname = previous_files.pop(template, None)
+        if fname is not None:
+            files_to_delete.append(fname)
 
     def my_filecmp(f1, f2):
         if filecmp.cmp(f1, f2, shallow = 0):
@@ -1599,24 +2133,23 @@ def verify_output(strictness, ignore):
         # compare prev and output
         try:
             if my_filecmp(prev, output):
-                previous_files.pop(template)
+                files_to_delete.append(previous_files.pop(template))
         except OSError as e:
             if e.errno == 2:
                 not_checked[template] = output
-                previous_files.pop(template)
+                files_to_delete.append(previous_files.pop(template))
                 continue
             raise
 
     if previous_files:
-        print("\n" + "=*" * 40)
-        print("""
-THE FOLLOWING FILES WERE CHANGED:
-""")
-        for (template, output) in previous_files.items():
-            print("\t{template}:\t{filename}".format(template = template, filename = output))
-        print("\n" + "=*" * 40)
-
-        exit(1)
+        # Save the list of files so that it is easy to delete them after checking
+        fname = os.path.join(OUTPUT_DIR, ".current-files")
+        with open(fname, 'w') as lf:
+            for n in output_files.values():
+                # Make sure not to include a CCDB-dump or anything from outside
+                if n.startswith(OUTPUT_DIR):
+                    print(n, file = lf)
+        raise PLCFactoryVerifyException(devicename, previous_files.items())
 
     if not_checked:
         print("\n" + "=*" * 40)
@@ -1633,6 +2166,9 @@ THE FOLLOWING FILES WERE NOT CHECKED:
 
             exit(1)
 
+    for fname in files_to_delete:
+        os.remove(fname)
+
 
 def record_args(root_device):
     creator = os.path.join(OUTPUT_DIR, createFilename(getPLCF(root_device), ["#FILENAME [PLCF#RAW_INSTALLATION_SLOT]-creator-[PLCF#TIMESTAMP]"]))
@@ -1644,9 +2180,9 @@ def record_args(root_device):
 #PLCFactory branch: {branch}
 #PLCFactory commit: {commit}
 """.format(date   = '{:%Y-%m-%d %H:%M:%S}'.format(glob.raw_timestamp),
-           url    = plcf_url,
-           branch = plcf_branch,
-           commit = commit_id), file = f)
+           url    = PLCF_URL,
+           branch = PLCF_BRANCH,
+           commit = COMMIT_ID), file = f)
         print(" ".join(sys.argv), file = f)
     output_files["CREATOR"] = creator
 
@@ -1696,85 +2232,7 @@ def main(argv):
         #
         # -d/--device cannot be added to the common args, because it is not a required option in the first pass but a required one in the second pass
         #
-        plc_group = parser.add_argument_group("PLC related options")
-
-        plc_args = plc_group.add_mutually_exclusive_group()
-
-        default_tia = "TIAv15.1"
-
-        plc_args.add_argument(
-                              '--plc-siemens',
-                              '--plc-interface',
-                              dest    = "siemens",
-                              help    = 'use the default templates for Siemens PLCs and generate interface PLC comms. The default TIA version is {}'.format(default_tia),
-                              metavar = 'TIA-Portal-version',
-                              nargs   = "?",
-                              const   = default_tia,
-                              type    = str
-                             )
-
-        plc_args.add_argument(
-                              '--plc-beckhoff',
-                              dest    = "beckhoff",
-                              help    = "use the default templates for Beckhoff PLCs and generate interface Beckhoff PLC comms. 'Beckhoff-version' is not used right now",
-                              metavar = 'Beckhoff-version',
-                              nargs   = "?",
-                              const   = 'not-used',
-                              type    = str
-                             )
-
-        plc_args.add_argument(
-                              '--plc-opc',
-                              dest    = "opc",
-                              help    = "use the default templates for OPC-UA. No PLC code is generated!",
-                              action  = "store_true",
-                             )
-
-        diag_args = plc_group.add_mutually_exclusive_group()
-        diag_args.add_argument(
-                               '--plc-no-diag',
-                               dest     = "plc_no_diag",
-                               help     = 'do not generate PLC diagnostics code (if used with --plc-x). This is the default',
-                               action   = 'store_true',
-                               default  = True,
-                               required = False)
-
-        diag_args.add_argument(
-                               '--plc-diag',
-                               dest     = "plc_no_diag",
-                               help     = 'generate PLC diagnostics code (if used with --plc-x)',
-                               action   = 'store_false',
-                               required = False)
-
-        diag_args.add_argument(
-                               '--plc-only-diag',
-                               dest     = "plc_only_diag",
-                               help     = 'generate PLC diagnostics code only (if used with --plc-x)',
-                               action   = 'store_true',
-                               required = False)
-
-        test_args = plc_group.add_mutually_exclusive_group()
-        test_args.add_argument(
-                               '--plc-no-test',
-                               dest     = "plc_test",
-                               help     = 'do not generate PLC comms testing code (if used with --plc-x). This is the default',
-                               action   = 'store_false',
-                               default  = False,
-                               required = False)
-
-        test_args.add_argument(
-                               '--plc-test',
-                               dest     = "plc_test",
-                               help     = 'generate PLC comms testing code (if used with --plc-x)',
-                               action   = 'store_true',
-                               required = False)
-
-        plc_group.add_argument(
-                               '--plc-readonly',
-                               dest     = "plc_readonly",
-                               help     = 'do not generate EPICS --> PLC communication code',
-                               action   = 'store_true',
-                               default  = False)
+        PLC.add_plc_parser_args(parser)
 
         parser.add_argument(
                             '--list-templates',
@@ -1852,28 +2310,12 @@ def main(argv):
     #  get the device
     args   = parser.parse_known_args(argv)[0]
     device = args.device
-    plc    = False
 
     if args.list_templates:
         print(tf.available_printers())
         return
 
-    if args.siemens is not None:
-        from interface_factory import IFA
-        tia_version  = args.siemens.lower()
-        try:
-            tia_version  = IFA.consolidate_tia_version(tia_version)
-        except IFA.FatalException as e:
-            raise PLCFArgumentError(e.message)
-        siemens      = True
-    else:
-        tia_version = None
-        siemens     = False
-
-    beckhoff = args.beckhoff
-
-    opc = args.opc
-
+    plc = PLC.parse_args(args)
 
     # Second pass
     #  get EEE and E3
@@ -1895,9 +2337,10 @@ def main(argv):
         eee = False
 
     if args.ioc is not None:
-        global generate_ioc
+        global GENERATE_IOC
         global ioc_git
-        generate_ioc = True
+        GENERATE_IOC = True
+        IOC.check_requirements()
         ioc_git = args.ioc_git
 
     if args.e3 is not None:
@@ -1976,7 +2419,7 @@ def main(argv):
                         nargs    = '+',
                         type     = str,
                         default  = [],
-                        required = not (siemens or eee or e3 or beckhoff or opc))
+                        required = not (plc or eee or e3))
 
     global OUTPUT_DIR
     parser.add_argument(
@@ -2000,9 +2443,11 @@ def main(argv):
 
     ifdef_params["ROOT_INSTALLATION_SLOT"] = glob.root_installation_slot
 
-    glob.commit_id = commit_id if not args.verify else "N/A"
-    glob.branch    = plcf_branch if not args.verify else "N/A"
-    glob.cmdline   = " ".join(sys.argv) if not args.verify else "N/A"
+    global VERIFY
+    VERIFY = args.verify
+    glob.commit_id = COMMIT_ID if not VERIFY else "N/A"
+    glob.branch    = PLCF_BRANCH if not VERIFY else "N/A"
+    glob.cmdline   = " ".join(sys.argv) if not VERIFY else "N/A"
     glob.origin    = git.get_origin()
 
     global device_tag
@@ -2012,32 +2457,21 @@ def main(argv):
 
     default_printers = set(["DEVICE-LIST", "README"])
 
-    if siemens:
-        default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "IFA", "ARCHIVE", "BEAST", "BEAST-TEMPLATE" ] )
-        plc = True
-
-    ifdef_params["PLC_READONLY"] = args.plc_readonly
     ifdef_params["EXPERIMENTAL"] = args.experimental
 
-    if beckhoff:
-        default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "IFA", "ARCHIVE", "BEAST", "BEAST-TEMPLATE" ] )
-        ifdef_params["PLC_TYPE"] = "BECKHOFF"
-        plc = True
+    if plc:
+        plc.update_default_printers(default_printers)
+        ifdef_params["PLC_TYPE"] = plc.type()
+        ifdef_params["PLC_READONLY"] = plc.is_readonly()
 
-    if opc:
-        # EPICS-DB will be deleted later, but we add it here so that it is enough to check for EPICS-DB
-        default_printers.update( [ "EPICS-DB", "EPICS-OPC-DB", "BEAST", "BEAST-TEMPLATE" ] )
-        ifdef_params["PLC_TYPE"] = "OPC"
-        plc = True
-
-    if not plc and (eee or e3):
+    elif eee or e3:
         raise PLCFArgumentError("Generating EEE or E3 modules is only supported with PLC integration")
 
     # FIXME: EEE
     if eee:
         default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "AUTOSAVE-ST-CMD", "AUTOSAVE", "BEAST", "BEAST-TEMPLATE" ] )
 
-    if e3 or (generate_ioc and plc):
+    if e3 or (GENERATE_IOC and plc):
         default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "IOCSH", "AUTOSAVE-IOCSH", "BEAST", "BEAST-TEMPLATE", ] )
 
     if default_printers:
@@ -2048,21 +2482,15 @@ def main(argv):
     else:
         templateIDs = set(args.template)
 
-    if opc and "OPC-MAP.XLS" in tf.available_printers():
+    if plc and plc.is_opc() and "OPC-MAP.XLS" in tf.available_printers():
         templateIDs.update( [ "OPC-MAP.XLS" ] )
-
-    if (args.plc_only_diag or args.plc_no_diag is False) and not siemens:
-        raise PLCFArgumentError('--plc-only-diag requires --plc-interface/--plc-siemens')
-
-    if (args.plc_only_diag or args.plc_no_diag is False) and beckhoff:
-        raise PLCFArgumentError('PLCFactory cannot (yet?) generate diagnostics code for Beckhoff PLCs')
 
     # FIXME: these tests should be put somewhere in the template_factory/printers section
     if eee and "EPICS-TEST-DB" in templateIDs:
         templateIDs.add("AUTOSAVE-TEST")
         templateIDs.add("AUTOSAVE-ST-TEST-CMD")
 
-    if (e3 or generate_ioc) and "EPICS-TEST-DB" in templateIDs:
+    if (e3 or GENERATE_IOC) and "EPICS-TEST-DB" in templateIDs:
         templateIDs.add("AUTOSAVE-TEST-IOCSH")
 
     # FIXME: EEE
@@ -2076,15 +2504,9 @@ def main(argv):
     if "TEST-IOCSH" in templateIDs and "AUTOSAVE-TEST-IOCSH" in templateIDs:
         templateIDs.remove("TEST-IOCSH")
 
-    if "EPICS-DB" in templateIDs and opc:
+    if "EPICS-DB" in templateIDs and plc and plc.is_opc():
         templateIDs.add("EPICS-OPC-DB")
         templateIDs.remove("EPICS-DB")
-
-    os.system('clear')
-
-    banner()
-
-    glob.ccdb = CC.open_from_args(args)
 
     if args.output_dir[0] == '+':
         OUTPUT_DIR = os.path.join(OUTPUT_DIR, args.output_dir[1:])
@@ -2099,23 +2521,24 @@ def main(argv):
         OUTPUT_DIR = os.path.join(OUTPUT_DIR, helpers.sanitizeFilename(CC.TAG_SEPARATOR.join([ "", "tag", device_tag ])))
 
     OUTPUT_DIR = os.path.abspath(OUTPUT_DIR)
+
+    os.system('clear')
+
+    banner()
+
+    glob.ccdb = CC.open_from_args(args)
+
     helpers.makedirs(OUTPUT_DIR)
 
     read_data_files()
-    if args.verify:
+    if VERIFY:
         obtain_previous_files()
         # Remove commit-id when verifying
-        ifdef_params.pop("COMMIT_ID", commit_id)
+        ifdef_params.pop("COMMIT_ID", COMMIT_ID)
         # Remove plcfactory status when verifying
         ifdef_params.pop("PLCF_STATUS", 0)
 
-
-    root_device = processDevice(device, list(templateIDs))
-
-    if siemens or args.plc_only_diag or beckhoff:
-        from interface_factory import IFA
-
-        output_files.update(IFA.produce(OUTPUT_DIR, output_files["IFA"], TIAVersion = tia_version, nodiag = args.plc_no_diag, onlydiag = args.plc_only_diag, commstest = args.plc_test, verify = args.verify, readonly = args.plc_readonly, commit_id = commit_id))
+    root_device = processDevice(device, plc, list(templateIDs))
 
     # create a factory of CCDB
     try:
@@ -2123,18 +2546,18 @@ def main(argv):
     except CC.Exception:
         pass
 
-    # Verify created files: they should be the same as the ones from the last run
-    if args.verify:
-        verify_output(args.verify, args.verify_ignore)
-
-    create_previous_files()
-    write_data_files()
+    # record the arguments used to run this instance
+    record_args(root_device)
 
     # create a dump of CCDB
     output_files["CCDB-DUMP"] = glob.ccdb.save("-".join([ device, glob.timestamp ]), OUTPUT_DIR)
 
-    # record the arguments used to run this instance
-    record_args(root_device)
+    # Verify created files: they should be the same as the ones from the last run
+    if VERIFY:
+        verify_output(root_device.name(), VERIFY, args.verify_ignore)
+
+    create_previous_files()
+    write_data_files()
 
     if plc:
         # FIXME: EEE
@@ -2191,3 +2614,17 @@ if __name__ == "__main__":
         if e.status:
             print(e, file = sys.stderr)
         exit(e.status)
+    finally:
+        print("""
+====================================================================================
++                                                                                  +
++ If you have issues please try with the previous version of plcfactory by running +
++                                                                                  +
++  git checkout last_known_good_version                                            +
++                                                                                  +
++ and re-running plcfactory. You can ignore any warnings about the master branch.  +
++ If plcfactory exits saying that there is an update just run it again; it will    +
++ not check for updates again for a couple of minutes.                             +
++                                                                                  +
+====================================================================================
+""")

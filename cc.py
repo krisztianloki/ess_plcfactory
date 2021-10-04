@@ -1133,13 +1133,17 @@ factory.save("{filename}")""".format(factory_options = 'git_tag = "{}"'.format(g
         return self.save(filename, directory)
 
 
+    def _save_filename(self, directory, filename):
+        if not filename.endswith(CC.CCDB_ZIP_SUFFIX):
+            filename += CC.CCDB_ZIP_SUFFIX
+
+        return os_path.join(directory, helpers.sanitize_path(filename))
+
+
     def save(self, filename, directory = "."):
         import zipfile
         if isinstance(filename, str):
-            if not filename.endswith(CC.CCDB_ZIP_SUFFIX):
-                filename += CC.CCDB_ZIP_SUFFIX
-
-            filename = os_path.join(directory, helpers.sanitize_path(filename))
+            filename = self._save_filename(directory, filename)
             dumpfile = zipfile.ZipFile(filename, "w", zipfile.ZIP_DEFLATED)
         else:
             dumpfile = zipfile.ZipFile(filename, "w", zipfile.ZIP_DEFLATED)

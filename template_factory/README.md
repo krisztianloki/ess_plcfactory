@@ -6,36 +6,46 @@ The information flow has to directions:
 
 *   from the PLC to EPICS; sent periodically (regardless of any value-change) as a block of data  
 
-    *   **_status information_**
+    *   **_[status information](#status-information)_**
 
 *   from EPICS to the PLC; sent only when requested and sent as individual data elements  
 
-    *   **_commands_**
-    *   **_parameters_**
+    *   **_[commands](#commands)_**
+    *   **_[parameters](#parameters)_**
+    *   **_[general inputs](#general-inputs)_**
 
 ## Status information
 
-Typically these are sensor readings and various state information about the PLC program itself. A word array is constructed at the PLC side that is sent periodically and is disassembled by the IOC into individual PVs. Status information is enclosed in a **status block**.
+Typically these are sensor readings and various state information about the PLC program itself. A word array is constructed at the PLC side that is sent periodically and is disassembled by the IOC into individual PVs.
+Status information is enclosed in a **[status block](#status-block)**.
 
 ## Commands
 
-These are instructions to the PLC program. The PLC code resets every command to the default 0 value upon receiving. This prevents the repetition of the same command and ensures that only commands that are actually resent are interpreted as new instructions. Usually commands are one-bit values, but there is no restriction on their type. Commands are enclosed in a **command block**.
+These are instructions to the PLC program. The PLC code resets every command to the default 0 value upon receiving. This prevents the repetition of the same command and ensures that only commands that are actually resent are interpreted as new instructions. Usually commands are one-bit values, but there is no restriction on their type.
+Commands are enclosed in a **[command block](#command-block)**.
 
 ## Parameters
 
-These are control values sent to the PLC program. Their values are preserved between PLC cycles. Typical parameters are setpoints and alarm limits Parameters are enclosed in a **parameter block**.
+These are control values sent to the PLC program. Their values are preserved between PLC cycles and autosaved on the IOC side. Typical parameters are setpoints and alarm limits.
+Parameters are enclosed in a **[parameter block](#parameter-block)**.
+
+## General Inputs
+
+These are general input / control values sent to the PLC program. Their values are preserved between PLC cycles **BUT not autosaved** on the IOC side. Typical general inputs are measurement values.
+General inputs are enclosed in a **[general input block](#general-input-block)**
+
 
 ## Types
 
 The following types can be used to add a variable to an interface definition:
 
-*   **digital**; a simple 1-bit information. Maps to the **_binary input/output_** record in EPICS and to the **_BOOL_** type in the PLC
-*   **analog**; an integer or floating point value. Maps to the **_analog input/output_** record in EPICS and the **_user specified_** PLC type in the PLC
-*   **time**; an interval (NOT a timestamp) in milliseconds. Maps to the **_analog input/output_** record in EPICS and to the **_TIME_** type in the PLC
-*   **alarm**; a simple 1-bit information that can generate an EPICS alarm. By default a value of 1 results in an alarm. Maps to the **_binary input_** record in EPICS and to the **_BOOL_** type in the PLC.
-*   **enum**; an enumeration. Maps to the **_multi-bit binary input/output_** record in EPICS and the **_user specified_** PLC type in the PLC
-*   **bitmask**; bits of a 16 bit integer. Maps to the **_multi-bit binary input/output direct_** record in EPICS and to the **_INT_** type in the PLC
-*   **string**; a maximum 39 character long string. Maps to the **_stringin_** record in EPICS and to the **_STRING_** type in the PLC
+*   **[digital](#digital-variable)**; a simple 1-bit information. Maps to the **_binary input/output_** record in EPICS and to the **_BOOL_** type in the PLC
+*   **[analog](#analog-variable)**; an integer or floating point value. Maps to the **_analog input/output_** record in EPICS and the **_user specified_** PLC type in the PLC
+*   **[time](#time-variable)**; an interval (NOT a timestamp) in milliseconds. Maps to the **_analog input/output_** record in EPICS and to the **_TIME_** type in the PLC
+*   **[alarm](#alarm-variable)**; a simple 1-bit information that can generate an EPICS alarm. By default a value of 1 results in an alarm. Maps to the **_binary input_** record in EPICS and to the **_BOOL_** type in the PLC.
+*   **[enum](#enum-variable)**; an enumeration. Maps to the **_multi-bit binary input/output_** record in EPICS and the **_user specified_** PLC type in the PLC
+*   **[bitmask](#bitmask-variable)**; bits of a 16 bit integer. Maps to the **_multi-bit binary input/output direct_** record in EPICS and to the **_INT_** type in the PLC
+*   **[string](#string-variable)**; a maximum 39 character long string. Maps to the **_stringin_** record in EPICS and to the **_STRING_** type in the PLC
 
 ## PLC Types
 
@@ -57,7 +67,7 @@ The following PLC types can be used to "back" the variables defined in the inter
 
 ## Data Layout
 
-All the variables in each direction are assembled into a WORD (16-bit integer) array on the PLC side (the command and parameter blocks are concatenated to form one array). The array is filled from top to bottom, meaning that the earlier a variable shows up in the interface definition, the lower its array index will be.
+All the variables in each direction are assembled into a WORD (16-bit integer) array on the PLC side (the command, parameter, and general inputs blocks are concatenated to form one array). The array is filled from top to bottom, meaning that the earlier a variable shows up in the interface definition, the lower its array index will be.
 
 Digital types are packed into WORDs so no space is wasted. The earlier the digital variable shows up, the lower its significance will be in the resulting WORD (ie. the first digital is mapped to 2⁰, the second to 2¹, and so on). If for whatever reason you need to have more control over the mapping to individual bits, spare digitals can be introduced.
 
@@ -69,7 +79,7 @@ Digital types are packed into WORDs so no space is wasted. The earlier the digit
 
 Because in the current implementation every interface definition is a special subset of python the same set of rules apply as to a python script. Basically every "instruction" is a function call; thus parenthesis are mandatory. Optional arguments are represented as keyword arguments and take the form of **`KEYWORD="value"`**.
 
-## Defining the device name A.K.A. installation slot (CCDB-term)
+## Defining the device name A.K.A. installation slot (a CCDB-term)
 
 While it is neither necessary nor recommended to override the default device name (retreived from CCDB by PLCFactory) it is still possible to do so. One use case is the Vacuum Mobile Pumping Kart project; it consists of about a dozen karts with completely identical PLCs (hardware and software wise). Overriding the device name enables the reuse of a base MobilePumpingKart module; just use a macro like `$(VMPG_INSTANCE)`.
 This feature should be used with caution: if there are more than one devices with the same Interface Definition then the same device name will be used for all of them - that is why if the specified device name is not a macro (does not begin with a '$' sign) then it is automatically treated as a CCDB property.
@@ -91,6 +101,10 @@ A block can only be defined once, empty blocks need not be defined. The scope of
 ### Parameter block
 
 **`define_parameter_block()`**
+
+### General input block
+
+**`define_general_input_block()`**
 
 ## Adding variables to a block
 
@@ -119,21 +133,52 @@ Adding more than one spare bit:
 
 **`add_analog("<name>", "<plc_type>")`**
 
-#### PLC controlled analog variable alarm limits
+#### Analog variable alarm limits
 
 Only allowed in a **STATUS** block
 
-It is possible to specify limits for **analog status** variables and when the value of that variable is out of a limit EPICS will automatically put the PV into the relevant alarm state. There are 4 possible limits:
+It is possible to specify alarm limits for **analog status** variables and when the value of that variable is out of a limit EPICS will automatically put the PV into the relevant alarm state. There are 4 possible limits:
+1. Major low limit: **`set_major_low_limit_from("<name>"[, EXTERNAL_PV=True])`**
+2. Minor low limit: **`set_minor_low_limit_from("<name>"[, EXTERNAL_PV=True])`**
+3. Minor high limit: **`set_minor_high_limit_from("<name>"[, EXTERNAL_PV=True])`**
+4. Major high limit: **`set_major_high_limit_from("<name>"[, EXTERNAL_PV=True])`**
+
+The limits are enforced on the **previously specified** _analog_ variable (the _limited_ variable); in other words first you define an analog variable with `add_analog()` then **right after** this variable you define the alarm limits. Any number of limits can be defined (though you shouldn't specify more than 4 ;) ). _Major low_ should be less then _minor low_ and _major high_ should be greater than _minor high_.
+
+`"<name>"` is assumed to have the same ESS name as the limited variable unless it contains a `:` or `EXTERNAL_PV` is True
+
+This sets one of the _HIHI_,_HIGH_,_LOLO_,_LOW_ fields of the _limited_ variable whenever the value of the limit record changes. The same limit can be applied to at most 8 variables.
+
+
+There is a shortcut to create the limiting variable and register it as a limit in one line:
 1. Major low limit: **`add_major_low_limit("<name>", ["<plc_type>"])`**
 2. Minor low limit: **`add_minor_low_limit("<name>", ["<plc_type>"])`**
 3. Minor high limit: **`add_minor_high_limit("<name>", ["<plc_type>"])`**
 4. Major high limit: **`add_major_high_limit("<name>", ["<plc_type>"])`**
 
-The limits are enforced on the **previously specified** _analog_ variable (the _limited_ variable); in other words first you define an analog variable with `add_analog()` then **right after** this variable you define the alarm limits with `add_..._limit()`. If the `<plc_type>` is omitted it is taken from the _analog_ variable. Any number of limits can be defined. _Major low_ should be less then _minor low_ and _major high_ should be greater than _minor high_.
+This is the same as `add_analog("foo", "REAL")` followed by a `set_.._limit_from("foo")`
 
-**To be clear**: this creates a PLC variable and an EPICS record (one for every limit) and sets one of the HIHI,HIGH,LOLO,LOW fields of the _limited_ variable whenever the value of the limit record changes.
+If `<plc_type>` is omitted it is taken from the _limited analog_ variable.
 
-[Examples](#limit-examples)
+
+[Examples](#alarm-limit-examples)
+
+#### Analog variable drive limits
+
+Only allowed in **COMMAND**, **PARAMETER**, or **GENERAL INPUT** blocks
+
+It is possible to specify OPI drive limits (`LOPR` and `HOPR`) for **analog command / parameter / general input** variables meaning that the OPI control widget's input range will be set to these limits. Whenever the value of limit changes the limit will be updated in the _limited_ analog variable. There are 2 possible limits:
+1. Low drive limit: **`set_low_drive_limit_from("<name>"[, EXTERNAL_PV=True])`**
+2. High drive limit: **`set_high_drive_limit_from("<name>"[, EXTERNAL_PV=True])`**
+
+The limits are enforced on the **previously specified** _analog_ variable (the _limited_ variable); in other words first you define an analog variable with `add_analog()` then **right after** this variable you define the drive limits. Although it is not enforced by PLCFactory you should set both limits (either with `set_*_drive_limit_from` or `PV_HOPR`/`PV_LOPR` keywords); Phoebus might get confused if only one limit is set.
+
+`"<name>"` is assumed to have the same ESS name as the limited variable unless it contains a `:` or `EXTERNAL_PV` is True
+
+This sets one of the _LOPR_,_HOPR_ fields of the _limited_ variable whenever the value of the limit record changes. The same limit can be applied to at most 8 variables.
+
+
+[Examples](#drive-limit-examples)
 
 ### Time variable
 
@@ -266,20 +311,34 @@ Safety systems use a gateway PLC between the IOC and the safety PLC and this bri
 
 ## Examples
 
-### Limit examples
+### Alarm limit examples
 
-#### Low limit
+#### Low alarm limit
 
+*   `add_analog("Measurement_Minimum", "REAL")`
 *   `add_analog("Measurement",  "REAL")`
-*   `add_minor_low_limit("Measurement_Minimum")`
-    *   Creates two variables: `Measurement` and `Measurement_Minimum` and sets the `LSV` field of `Measurement` to "MINOR" and the `LOW` field to the value of `Measurement_Minimum`
+*   `set_minor_low_limit_from("Measurement_Minimum")`
+    *   Creates two variables: `Measurement_Minimum` and `Measurement` and sets the `LSV` field of `Measurement` to "MINOR" and the `LOW` field to the value of `Measurement_Minimum`
 
-#### Low and high limits
+#### 'External' alarm limit
+
+*   `add_analog("Measurement", "REAL")`
+*   `set_major_low_limit_from("Measurement_Minimum")`
+    *   Creates one variable: `Measurement` and sets the `LLSV` field of `Measurement` to "MAJOR" and the `LOLO` field to the value of `Measurement_Minimum`
+
+#### Low and high alarm limits
 
 *   `add_analog("Measurement",  "REAL")`
 *   `add_minor_low_limit("Measurement_Minimum")`
 *   `add_major_high_limit("Measurement_Maximum")`
     *   Creates three variables: `Measurement`, `Measurement_Minimum`, and `Measurement_Maximum` and sets the `LSV` field of `Measurement` to "MINOR", the `HHSV` field to "MAJOR", the `LOW` field to the value of `Measurement_Minimum`, and the `HIHI` field to the value of `Measurement_Maximum`
+
+### Drive limit examples
+
+*   `add_analog("Setpoint", "REAL")`
+*   `set_low_drive_limit_from("LowestAllowedSetpoint")`
+*   `set_high_drive_limit_from("HighestAllowedSetpoint")`
+    *   Creates one variable: `Setpoint` and sets the `DRVL` field of `Setpoint` to the value of `LowestAllowedSetpoint` and the `DRVH` field of `Setpoint` to the value of `HighestAllowedSetpoint`
 
 ### Archiving examples
 

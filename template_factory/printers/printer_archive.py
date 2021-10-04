@@ -11,7 +11,7 @@ __license__    = "GPLv3"
 
 
 from . import PRINTER
-from tf_ifdef import IfDefSyntaxError, BASE_TYPE
+from tf_ifdef import IfDefSyntaxError, PV
 
 
 def printer():
@@ -40,11 +40,11 @@ class ARCHIVE(PRINTER):
     #
     # HEADER
     #
-    def header(self, output, **keyword_params):
+    def header(self, header_if_def, output, **keyword_params):
         #
         # No need to initialize anything
         #
-        super(ARCHIVE, self).header(output, **keyword_params).add_filename_header(output, extension = "archive")
+        super(ARCHIVE, self).header(header_if_def, output, **keyword_params).add_filename_header(output, extension = "archive")
         if keyword_params.get("PLC_TYPE", False):
             self._append("#" * 60, output)
             self._append("## {root_inst_slot}".format(root_inst_slot = self.root_inst_slot()), output)
@@ -76,7 +76,7 @@ class ARCHIVE(PRINTER):
         inst_slot = self.inst_slot(if_def)
         separator = False
         for var in if_def.interfaces():
-            if isinstance(var, BASE_TYPE) and var.get_parameter("ARCHIVE", False):
+            if isinstance(var, PV) and var.get_parameter("ARCHIVE", False):
                 if not separator:
                     self._append("#" * 60, output)
                     self._append("## {inst_slot}".format(inst_slot = inst_slot), output)
@@ -84,7 +84,7 @@ class ARCHIVE(PRINTER):
                 desc = self._get_desc(var)
                 if desc:
                     self._append("# {}".format(desc), output)
-                self._append("{pv}{policy}".format(pv     = self.create_pv_name(inst_slot, var),
+                self._append("{pv}{policy}".format(pv     = var.fqpn(),
                                                    policy = self._archive(var)), output)
 
 

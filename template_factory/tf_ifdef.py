@@ -146,6 +146,11 @@ class IfDefExperimentalError(IfDefSyntaxError):
         super(IfDefExperimentalError, self).__init__("The function '{}' is experimental. Use '--enable-experimental' to enable.".format(interface))
 
 
+class PVNameLengthException(IfDefException):
+    def __init__(self, name, *args, **keyword_params):
+        super(PVNameLengthException, self).__init__("The PV name '{pv_name}' is longer than permitted ({act_len} / {max_len})".format(pv_name = name, act_len = len(name), max_len = PV.FQPN_LEN), *args, **keyword_params)
+
+
 
 #def ifdef_assert_instance(var, var_type, var_type_string = None):
 #    frame  = inspect.currentframe()
@@ -170,13 +175,21 @@ class DummyHash(object):
 
 
 class DummyPLCF(object):
+    def __init__(self, presets = {}):
+        self._presets = presets
+
+
+    def process(self, what):
+        return self._presets.get(what, what)
+
+
     def processLine(self, line):
         return line
 
 
 
 class SOURCE(object):
-    def __init__(self, source, comment = False):
+    def __init__(self, source, comment = False, keyword_params = None):
         super(SOURCE, self).__init__()
 
         if isinstance(source, tuple):
@@ -187,12 +200,14 @@ class SOURCE(object):
         assert isinstance(source,     str),  func_param_msg("source",     "string")
         assert isinstance(sourcenum,  int),  func_param_msg("sourcenum",  "integer")
         assert isinstance(comment,    bool), func_param_msg("comment",    "bool")
+        assert keyword_params is None or isinstance(keyword_params, dict),   func_param_msg("keyword_params", "dict")
 
         self._source    = source.lstrip()
         self._sourcenum = sourcenum
         self._comment   = comment
         self._hashed    = False
         self._warnings  = None
+        self._keyword_params = dict() if keyword_params is None else keyword_params
 
 
     def hash_message(self):
@@ -209,6 +224,13 @@ class SOURCE(object):
 
     def sourcenum(self):
         return self._sourcenum
+
+
+    def get_parameter(self, param_name, *val_if_not_found):
+        if len(val_if_not_found):
+            return self._keyword_params.get(param_name, val_if_not_found[0])
+
+        return self._keyword_params[param_name]
 
 
     @staticmethod
@@ -323,6 +345,7 @@ class BLOCK(SOURCE):
     STATUS = "STATUS"
     CMD    = "COMMAND"
     PARAM  = "PARAMETER"
+    GENERAL_INPUT  = "GENERAL_INPUT"
 
     def __init__(self, source, block_type, optimize):
         super(BLOCK, self).__init__(source)
@@ -334,7 +357,9 @@ class BLOCK(SOURCE):
 
         self._block_type    = block_type
         self._ifaces        = []
+# TODO: remove _block_offset and use _length instead
         self._block_offset  = 0
+        self._start_offset  = 0
         self._length        = 0
         self._optimize_s7db = optimize
         self._block_printer = None
@@ -345,7 +370,7 @@ class BLOCK(SOURCE):
             return (self._block_offset % 2) == 1
         else:
             # MODBUS cannot address the individual bytes in a WORD
-            return (self.is_cmd_block() or self.is_param_block() or width > 1) and (self._block_offset % 2) == 1
+            return (self.to_plc() or width > 1) and (self._block_offset % 2) == 1
 
 
     def endian_correct_epics_type(self, epics_type):
@@ -358,6 +383,10 @@ class BLOCK(SOURCE):
 
     def length(self):
         return self._length
+
+
+    def start_offset(self):
+        return self._start_offset
 
 
     def offset_for(self, width):
@@ -384,16 +413,28 @@ class BLOCK(SOURCE):
         return OVERLAP(self)
 
 
+    def from_plc(self):
+        return False
+
+
+    def to_plc(self):
+        return False
+
+
     def is_status_block(self):
         return isinstance(self, STATUS_BLOCK)
 
 
-    def is_cmd_block(self):
+    def is_command_block(self):
         return isinstance(self, CMD_BLOCK)
 
 
-    def is_param_block(self):
+    def is_parameter_block(self):
         return isinstance(self, PARAM_BLOCK)
+
+
+    def is_general_input_block(self):
+        return isinstance(self, GEN_INPUT_BLOCK)
 
 
     def type(self):
@@ -424,7 +465,7 @@ class BLOCK(SOURCE):
 
 
         for key, value in keyword_params.items():
-            if key.startswith(BASE_TYPE.PV_PREFIX) or not key in PLC_types:
+            if key.startswith(PV.PV_PREFIX) or not key in PLC_types:
                 continue
 
             if not value in _valid_var_types(self):
@@ -456,6 +497,13 @@ class BLOCK(SOURCE):
             raise IfDefSyntaxError("Cannot compute width, unknown type: " + str(num_bytes))
 
 
+    def set_start_offset(self, offs):
+        if offs % 2:
+            raise IfDefInternalError("Block start offset must start on a PLC word boundary")
+
+        self._start_offset = offs
+
+
     def set_endianness(self, endianness):
         self._endianness = endianness
 
@@ -466,6 +514,9 @@ class BLOCK(SOURCE):
 
 
 class STATUS_BLOCK(BLOCK):
+    TYPE = "S7PLC"
+
+
     @staticmethod
     def length_keyword():
         return "StatusWordsLength"
@@ -497,12 +548,21 @@ class STATUS_BLOCK(BLOCK):
         return "$(PLCNAME)"
 
 
-    def inp_out(self, **keyword_params):
-        return 'INP,  "{}"'.format(self._block_printer.field_inp(**keyword_params))
+    @staticmethod
+    def basetype():
+        return STATUS_BLOCK.TYPE
 
 
     def __init__(self, source, optimize):
         super(STATUS_BLOCK, self).__init__(source, BLOCK.STATUS, optimize)
+
+
+    def from_plc(self):
+        return True
+
+
+    def inp_out(self, **keyword_params):
+        return 'INP,  "{}"'.format(self._block_printer.field_inp(**keyword_params))
 
 
     def link_offset(self, var, plc_to_epics_offset, epics_to_plc_offset):
@@ -519,6 +579,8 @@ class STATUS_BLOCK(BLOCK):
 # Special class to handle the similarities between CMD_BLOCK and PARAM_BLOCK
 #
 class MODBUS(object):
+    TYPE = "MODBUS"
+
     _int32_types   = [ "INT32_BE",   "INT32_LE" ]
     _float32_types = [ "FLOAT32_BE", "FLOAT32_LE" ]
     _zstring_types = [ "ZSTRING_HIGH_LOW", "ZSTRING_LOW_HIGH" ]
@@ -566,6 +628,15 @@ class MODBUS(object):
         return "asyn"
 
 
+    @staticmethod
+    def basetype():
+        return MODBUS.TYPE
+
+
+    def to_plc(self):
+        return True
+
+
     def inp_out(self, **keyword_params):
         return 'OUT,  "{}"'.format(self._block_printer.field_out(**keyword_params))
 
@@ -606,7 +677,18 @@ class MODBUS(object):
 
 
 
-class CMD_BLOCK(MODBUS, BLOCK):
+class TOPLC_BLOCK(MODBUS, BLOCK):
+    def __init__(self, source, block_typ, optimize):
+        super(TOPLC_BLOCK, self).__init__(source, block_typ, optimize)
+
+
+    def set_endianness(self, endianness):
+        self.compile_endianness(endianness)
+        super(TOPLC_BLOCK, self).set_endianness(endianness)
+
+
+
+class CMD_BLOCK(TOPLC_BLOCK):
     @staticmethod
     def length_keyword():
         return "CommandWordsLength"
@@ -616,13 +698,8 @@ class CMD_BLOCK(MODBUS, BLOCK):
         super(CMD_BLOCK, self).__init__(source, BLOCK.CMD, optimize)
 
 
-    def set_endianness(self, endianness):
-        self.compile_endianness(endianness)
-        super(CMD_BLOCK, self).set_endianness(endianness)
 
-
-
-class PARAM_BLOCK(MODBUS, BLOCK):
+class PARAM_BLOCK(TOPLC_BLOCK):
     @staticmethod
     def length_keyword():
         return "ParameterWordsLength"
@@ -632,9 +709,15 @@ class PARAM_BLOCK(MODBUS, BLOCK):
         super(PARAM_BLOCK, self).__init__(source, BLOCK.PARAM, optimize)
 
 
-    def set_endianness(self, endianness):
-        self.compile_endianness(endianness)
-        super(PARAM_BLOCK, self).set_endianness(endianness)
+
+class GEN_INPUT_BLOCK(TOPLC_BLOCK):
+    @staticmethod
+    def length_keyword():
+        return "GeneralInputWordsLength"
+
+
+    def __init__(self, source, optimize):
+        super(GEN_INPUT_BLOCK, self).__init__(source, BLOCK.GENERAL_INPUT, optimize)
 
 
 
@@ -744,7 +827,7 @@ def ifdef_interface(func):
             # If function has **keyword_params
             if func.__code__.co_flags & 8:
                 # Expand templates
-                BASE_TYPE.expand_templates(kwargs)
+                args[0]._expand_templates(kwargs)
 
                 def update_params(kwargs, default_params):
                     for kw in default_params:
@@ -782,6 +865,11 @@ class IF_DEF(object):
 
 
     @staticmethod
+    def create_dummy_plcf():
+        return DummyPLCF({ "[PLCF#{}]".format(IF_DEF.DEFAULT_INSTALLATION_SLOT) : "INST:SLOT", "[PLCF#ROOT_INSTALLATION_SLOT]" : "ROOT-INST:SLOT" })
+
+
+    @staticmethod
     def parse(def_file, **keyword_params):
         # TODO: change to str once we moved to Python3
         if isinstance(def_file, basestring):
@@ -790,13 +878,12 @@ class IF_DEF(object):
             artifact = def_file
             def_file = artifact.saved_as()
 
-        cplcf = keyword_params.get("PLCF", DummyPLCF())
+        keyword_params["PLCF"] = keyword_params.get("PLCF", IF_DEF.create_dummy_plcf())
+        cplcf = keyword_params["PLCF"]
 
-        if_def = IF_DEF(**keyword_params)
-
-        if_def._artifact = artifact
-        if_def._read_def(def_file, cplcf)
-        if_def._end()
+        with IF_DEF(**keyword_params) as if_def:
+            if_def._artifact = artifact
+            if_def._read_def(def_file, cplcf)
 
         return if_def
 
@@ -805,13 +892,26 @@ class IF_DEF(object):
         assert isinstance(OPTIMIZE, bool)
         super(IF_DEF, self).__init__()
 
-        BASE_TYPE.init()
+        PV.init(self)
+
+        self._pv_names  = dict()
+        self._plc_names = set()
+        self._templates = dict()
+
+        cplcf = keyword_params.get("PLCF", self.create_dummy_plcf())
+
+        self._datablock_name           = cplcf.process(IF_DEF.DEFAULT_DATABLOCK_NAME)
+        self.DEFAULT_DATABLOCK_NAME    = self._datablock_name
+        self._inst_slot                = cplcf.process("[PLCF#{}]".format(IF_DEF.DEFAULT_INSTALLATION_SLOT))
+        self.DEFAULT_INSTALLATION_SLOT = self._inst_slot
+        self._root_inst_slot           = cplcf.process("[PLCF#ROOT_INSTALLATION_SLOT]")
 
         self._ifaces                = []
         self._preBLOCK              = fakeBLOCK()
         self._STATUS                = None
         self._CMD                   = None
         self._PARAM                 = None
+        self._GEN_INPUT             = None
         self._active_BLOCK          = None
         self._overlap               = None
         self._active                = True
@@ -822,8 +922,6 @@ class IF_DEF(object):
         self._plc_array             = None
         self._filename              = None
         self._artifact              = None
-        self._inst_slot             = IF_DEF.DEFAULT_INSTALLATION_SLOT
-        self._datablock_name        = IF_DEF.DEFAULT_DATABLOCK_NAME
         self._readonly              = keyword_params.get("PLC_READONLY", False)
         self._experimental          = keyword_params.get("EXPERIMENTAL", False)
         self._quiet                 = keyword_params.get("QUIET",        False)
@@ -852,6 +950,16 @@ class IF_DEF(object):
             if val.__name__ in ["ifdef_interface_func", "hashed_interface_func", "experimental_interface_func"]:
                 self._interface_funcs[val] = f
                 self._evalEnv[f] = val
+
+
+    def __enter__(self):
+        return self
+
+
+    def __exit__(self, type, value, traceback):
+        # Close ifdef if there was no exception
+        if type is None:
+            self._end()
 
 
     def _eval(self, line):
@@ -888,6 +996,10 @@ class IF_DEF(object):
 
     def _param_block(self):
         return self._PARAM
+
+
+    def _gen_input_block(self):
+        return self._GEN_INPUT
 
 
     def _active_block(self):
@@ -994,6 +1106,20 @@ class IF_DEF(object):
         return keyword_params
 
 
+    def _expand_templates(self, keyword_params):
+        if "TEMPLATE" not in keyword_params:
+            return
+
+        tname = keyword_params["TEMPLATE"]
+        if tname not in self._templates:
+            raise IfDefSyntaxError("No such template: " + tname)
+
+        template = self._templates[tname]
+        for tkey in template.keys():
+            if tkey not in keyword_params:
+                keyword_params[tkey] = template[tkey]
+
+
     def _parse(self, line, linenum):
         self._source  = (line, linenum)
         stripped_line = line.strip()
@@ -1044,12 +1170,6 @@ class IF_DEF(object):
         if self._filename is not None:
             raise IfDefInternalError("Cannot parse more than one Interface Definition file")
 
-        self._datablock_name = cplcf.process(IF_DEF.DEFAULT_DATABLOCK_NAME)
-        self.DEFAULT_DATABLOCK_NAME = self._datablock_name
-
-        self._inst_slot = cplcf.process("[PLCF#{}]".format(IF_DEF.DEFAULT_INSTALLATION_SLOT))
-        self.DEFAULT_INSTALLATION_SLOT = self._inst_slot
-
         self._filename = def_file
         with open(def_file, 'r') as defs:
             multiline    = None
@@ -1086,6 +1206,7 @@ class IF_DEF(object):
         self._calc_block_hash(hashobj, self._preBLOCK)
         self._calc_block_hash(hashobj, self._cmd_block())
         self._calc_block_hash(hashobj, self._param_block())
+        self._calc_block_hash(hashobj, self._gen_input_block())
         self._calc_block_hash(hashobj, self._status_block())
 
         if int(self._to_plc_words_length) or int(self._from_plc_words_length):
@@ -1099,6 +1220,23 @@ class IF_DEF(object):
             hashobj.update(str(properties))
 
         return hashobj
+
+
+    @staticmethod
+    def _check_pv_name(pv_names, var):
+        if var.pv_name() in pv_names:
+            raise IfDefSyntaxError("PV Names must be unique")
+
+
+    def register_pv_name(self, var):
+        self._check_pv_name(self._pv_names, var)
+        self._pv_names[var.pv_name()] = var
+
+
+    def register_plc_name(self, var):
+        if var.name() in self._plc_names:
+            raise IfDefSyntaxError("PLC variable names must be unique")
+        self._plc_names.add(var.name())
 
 
     def interfaces(self):
@@ -1121,6 +1259,15 @@ class IF_DEF(object):
         return []
 
 
+    def has_status_pvs(self):
+        block = self.status_block()
+
+        if block:
+            return block.length() > 0
+
+        return False
+
+
     def command_block(self):
         self._exception_if_active()
 
@@ -1135,6 +1282,15 @@ class IF_DEF(object):
         return []
 
 
+    def has_command_pvs(self):
+        block = self.command_block()
+
+        if block:
+            return block.length() > 0
+
+        return False
+
+
     def parameter_block(self):
         self._exception_if_active()
 
@@ -1147,6 +1303,38 @@ class IF_DEF(object):
         if block:
             return block.interfaces()
         return []
+
+
+    def has_parameter_pvs(self):
+        block = self.parameter_block()
+
+        if block:
+            return block.length() > 0
+
+        return False
+
+
+    def general_input_block(self):
+        self._exception_if_active()
+
+        return self._gen_input_block()
+
+
+    def general_input_interfaces(self):
+        block = self.general_input_block()
+
+        if block:
+            return block.interfaces()
+        return []
+
+
+    def has_general_input_pvs(self):
+        block = self.general_input_block()
+
+        if block:
+            return block.length() > 0
+
+        return False
 
 
     def warnings(self):
@@ -1181,6 +1369,20 @@ class IF_DEF(object):
         return self._from_plc_words_length
 
 
+    def ess_name(self):
+        """
+            Returns the ESS name of this 'device'
+        """
+        return self._inst_slot
+
+
+    def root_ess_name(self):
+        """
+            Returns the ESS name of the root device
+        """
+        return self._root_inst_slot
+
+
     def inst_slot(self, nonnull = True):
         # If nonnull is False and we are using the default installation slot, then return None
         if not nonnull and self._inst_slot == IF_DEF.DEFAULT_INSTALLATION_SLOT:
@@ -1203,18 +1405,16 @@ class IF_DEF(object):
 
 
     def has_pv(self, pv_name, prefix = None):
+        """
+            Returns the PV with `pv_name`. If `prefix` is specified and `pv_name` starts with `prefix` then it will be ignored when matching the name
+        """
         self._exception_if_active()
 
-        if prefix is None:
-            check = lambda x: x.pv_name() == pv_name
-        else:
-            check = lambda x: x.pv_name() == pv_name or prefix + x.pv_name() == pv_name
-        for interfaces in self.status_interfaces(), self.command_interfaces(), self.parameter_interfaces():
-            f = list(filter(lambda pv: isinstance(pv, BASE_TYPE) and check(pv), interfaces))
-            if f:
-                return f[0]
+        # `pv_name` might or might not start with `prefix`
+        if prefix and pv_name.startswith(prefix):
+            pv_name = pv_name[len(prefix):]
 
-        return None
+        return self._pv_names.get(pv_name)
 
 
     def macros(self):
@@ -1260,6 +1460,8 @@ class IF_DEF(object):
 
     @ifdef_interface
     def define_installation_slot(self, name):
+        if self._pv_names:
+            raise IfDefSyntaxError("Cannot define installation slot after adding PVs!")
         if self._inst_slot != IF_DEF.DEFAULT_INSTALLATION_SLOT:
             raise IfDefSyntaxError("Installation slot redefinition is not possible!")
 
@@ -1291,7 +1493,14 @@ class IF_DEF(object):
         if not isinstance(name, str):
             raise IfDefSyntaxError("Template name must be a string!")
 
-        BASE_TYPE.add_template(name, keyword_params)
+        if not isinstance(keyword_params, dict):
+            raise IfDefSyntaxError("Template must be dictionary")
+
+        if name in self._templates:
+            raise IfDefSyntaxError("Template is already defined: " + name)
+
+        self._templates[name] = keyword_params
+
         return self._add_source()
 
 
@@ -1324,6 +1533,17 @@ class IF_DEF(object):
 
         self._active_BLOCK = self._PARAM = PARAM_BLOCK(self._source, self._optimize)
         return self._add(self._PARAM)
+
+
+    @ifdef_interface
+    def define_general_input_block(self):
+        if self._readonly:
+            raise IfDefSyntaxError("Cannot declare input block when in read-only mode")
+        if self._GEN_INPUT is not None:
+            raise IfDefSyntaxError("Block redefinition is not possible!")
+
+        self._active_BLOCK = self._GEN_INPUT = GEN_INPUT_BLOCK(self._source, self._optimize)
+        return self._add(self._GEN_INPUT)
 
 
     @experimental_interface
@@ -1391,12 +1611,12 @@ class IF_DEF(object):
 
     @ifdef_interface
     def define_metadata(self, name, **keyword_params):
-        return SOURCE(self._source)
+        return SOURCE(self._source, keyword_params = keyword_params)
 
 
     @ifdef_interface
     def add_metadata(self, *params, **keyword_params):
-        return SOURCE(self._source)
+        return SOURCE(self._source, keyword_params = keyword_params)
 
 
     @ifdef_interface
@@ -1430,7 +1650,7 @@ class IF_DEF(object):
         if not isinstance(alarm_message, str):
             raise IfDefSyntaxError("Alarm message is missing: {func}(\"{name}\", \"Short alarm message\")".format(name = name, func = "add_minor_alarm" if sevr == "MINOR" else "add_major_alarm"))
 
-        if self._active_BLOCK is None or not self._active_BLOCK.is_status_block():
+        if self._active_BLOCK is None or not self._active_BLOCK.from_plc():
             raise IfDefSyntaxError("Alarms can only be defined as STATUS variables!")
 
         if keyword_params.get("INVERSE_LOGIC", False) or keyword_params.get("ALARM_IF", True) == False:
@@ -1456,17 +1676,12 @@ class IF_DEF(object):
         return self._add_alarm(name, "MAJOR", alarm_message, **keyword_params)
 
 
-    def _add_limit(self, name, plc_var_type, limit_severity, limit_type, **keyword_params):
-        if not isinstance(name, str):
-            raise IfDefSyntaxError("Name must be a string!")
-        if plc_var_type is not None and not isinstance(plc_var_type, str):
-            raise IfDefSyntaxError("PLC type must be a string!")
+    def _get_previous_analog_var(self):
+        """
+            Returns the most recent `BASE_TYPE` variable skipping `non-BASE_TYPE`-s. If it finds a `DFANOUT` then returns its affected PV
+        """
 
-        if self._active_BLOCK is None or not self._active_BLOCK.is_status_block():
-            raise IfDefSyntaxError("Limits can only be defined for analog STATUS variables!")
-
-        # Get the most recent variable; it must be an ANALOG. It is the one the alarm limits are meant for
-        # At most 4 limits can be defined (including this one) so the last 4 interface variable have to be checked
+        # Get the most recent variable; it must be an ANALOG.
         var = None
         try:
             sifaces = self._active_BLOCK.interfaces()
@@ -1474,7 +1689,10 @@ class IF_DEF(object):
             while True:
                 var = sifaces[i]
                 i -= 1
-                if isinstance(var, ANALOG_LIMIT) or not isinstance(var, BASE_TYPE):
+                if isinstance(var, DFANOUT):
+                    var = var.affected_pv()
+                    break
+                if not isinstance(var, BASE_TYPE):
                     continue
                 if isinstance(var, BASE_TYPE):
                     break
@@ -1484,41 +1702,125 @@ class IF_DEF(object):
         if not isinstance(var, ANALOG):
             raise IfDefSyntaxError("Limits can only be defined for analog variables!")
 
-        keyword_params = self._handle_extra_params(keyword_params)
+        return var
 
-        # Set limit severity of _limited_ PV
-        var.set_pv_field(ANALOG_LIMIT.LIMIT_ALARM_FIELD[(limit_severity, limit_type)], limit_severity)
 
-        # Record which PV's limit this is
-        keyword_params[ANALOG_LIMIT.KW_LIMIT_PV] = var
-        # Record which limit field to set
-        keyword_params[ANALOG_LIMIT.KW_LIMIT_FIELD] = ANALOG_LIMIT.LIMIT_FIELD[(limit_severity, limit_type)]
+    def _get_alarm_limited_var(self):
+        """
+            Returns the "limited" variable
+        """
 
+        if self._active_BLOCK is None or not self._active_BLOCK.from_plc():
+            raise IfDefSyntaxError("Alarm limits can only be defined for analog STATUS variables!")
+
+        var = self._get_previous_analog_var()
+
+        return var
+
+
+    def _add_alarm_limit(self, name, plc_var_type, limit_severity, limit_type, **keyword_params):
+        """
+            Adds alarm limit variable and helper PV to set the limit of the limited variable based on the value of the alarm limit variable
+        """
+
+        if plc_var_type is not None and not isinstance(plc_var_type, str):
+            raise IfDefSyntaxError("PLC type must be a string!")
+
+        limited_var = self._get_alarm_limited_var()
         if plc_var_type is None:
-            plc_var_type = var.plc_type()
+            plc_var_type = limited_var.plc_type()
 
-        var = ANALOG_LIMIT(self._source, self._active_BLOCK, name, plc_var_type, keyword_params)
-        return self._add(var)
+        # Add readback variable
+        self.add_analog(name, plc_var_type, **keyword_params)
+
+        # Add helper PV to set alarm limit
+        # Sanitize keyword_params: they were meant to the add_analog() part
+        s_keyword_params = dict()
+        try:
+            s_keyword_params[PV.PV_NAME] = keyword_params[PV.PV_NAME]
+        except KeyError:
+            pass
+        return self._set_alarm_limit(name, limit_severity, limit_type, limited_var, **s_keyword_params)
+
+
+    def _set_alarm_limit(self, name, limit_severity, limit_type, limited_var = None, **keyword_params):
+        if not isinstance(name, str):
+            raise IfDefSyntaxError("Name must be a string!")
+
+        if limited_var is None:
+            limited_var = self._get_alarm_limited_var()
+
+        var = ANALOG_ALARM_LIMIT.create(self, self._source, name, limit_severity, limit_type, limited_var, **keyword_params)
+        if var:
+            return self._add(var)
+
+        return self._add_source()
 
 
     @ifdef_interface
     def add_minor_low_limit(self, name, plc_var_type = None, **keyword_params):
-        return self._add_limit(name, plc_var_type, ANALOG_LIMIT.MINOR_SEVERITY, ANALOG_LIMIT.LOW_LIMIT, **keyword_params)
+        return self._add_alarm_limit(name, plc_var_type, ANALOG_ALARM_LIMIT.MINOR_SEVERITY, ANALOG_ALARM_LIMIT.LOW_LIMIT, **keyword_params)
 
 
     @ifdef_interface
     def add_major_low_limit(self, name, plc_var_type = None, **keyword_params):
-        return self._add_limit(name, plc_var_type, ANALOG_LIMIT.MAJOR_SEVERITY, ANALOG_LIMIT.LOW_LIMIT, **keyword_params)
+        return self._add_alarm_limit(name, plc_var_type, ANALOG_ALARM_LIMIT.MAJOR_SEVERITY, ANALOG_ALARM_LIMIT.LOW_LIMIT, **keyword_params)
 
 
     @ifdef_interface
     def add_minor_high_limit(self, name, plc_var_type = None, **keyword_params):
-        return self._add_limit(name, plc_var_type, ANALOG_LIMIT.MINOR_SEVERITY, ANALOG_LIMIT.HIGH_LIMIT, **keyword_params)
+        return self._add_alarm_limit(name, plc_var_type, ANALOG_ALARM_LIMIT.MINOR_SEVERITY, ANALOG_ALARM_LIMIT.HIGH_LIMIT, **keyword_params)
 
 
     @ifdef_interface
     def add_major_high_limit(self, name, plc_var_type = None, **keyword_params):
-        return self._add_limit(name, plc_var_type, ANALOG_LIMIT.MAJOR_SEVERITY, ANALOG_LIMIT.HIGH_LIMIT, **keyword_params)
+        return self._add_alarm_limit(name, plc_var_type, ANALOG_ALARM_LIMIT.MAJOR_SEVERITY, ANALOG_ALARM_LIMIT.HIGH_LIMIT, **keyword_params)
+
+
+    @ifdef_interface
+    def set_minor_low_limit_from(self, name, EXTERNAL_PV = False):
+        return self._set_alarm_limit(name, ANALOG_ALARM_LIMIT.MINOR_SEVERITY, ANALOG_ALARM_LIMIT.LOW_LIMIT, EXTERNAL_PV = EXTERNAL_PV)
+
+
+    @ifdef_interface
+    def set_major_low_limit_from(self, name, EXTERNAL_PV = False):
+        return self._set_alarm_limit(name, ANALOG_ALARM_LIMIT.MAJOR_SEVERITY, ANALOG_ALARM_LIMIT.LOW_LIMIT, EXTERNAL_PV = EXTERNAL_PV)
+
+
+    @ifdef_interface
+    def set_minor_high_limit_from(self, name, EXTERNAL_PV = False):
+        return self._set_alarm_limit(name, ANALOG_ALARM_LIMIT.MINOR_SEVERITY, ANALOG_ALARM_LIMIT.HIGH_LIMIT, EXTERNAL_PV = EXTERNAL_PV)
+
+
+    @ifdef_interface
+    def set_major_high_limit_from(self, name, EXTERNAL_PV = False):
+        return self._set_alarm_limit(name, ANALOG_ALARM_LIMIT.MAJOR_SEVERITY, ANALOG_ALARM_LIMIT.HIGH_LIMIT, EXTERNAL_PV = EXTERNAL_PV)
+
+
+    def _set_drive(self, name, drive_type, **keyword_params):
+        if not isinstance(name, str):
+            raise IfDefSyntaxError("Name must be a string!")
+
+        if self._active_BLOCK is None or not self._active_BLOCK.to_plc():
+            raise IfDefSyntaxError("Drive limits can only be defined for analog OUTPUT variables!")
+
+        driven_var = self._get_previous_analog_var()
+
+        var = ANALOG_DRIVE_LIMIT.create(self, self._source, name, drive_type, driven_var, **keyword_params)
+        if var:
+            return self._add(var)
+
+        return self._add_source()
+
+
+    @ifdef_interface
+    def set_low_drive_limit_from(self, name, EXTERNAL_PV = False):
+        return self._set_drive(name, ANALOG_DRIVE_LIMIT.LOW, EXTERNAL_PV = EXTERNAL_PV)
+
+
+    @ifdef_interface
+    def set_high_drive_limit_from(self, name, EXTERNAL_PV = False):
+        return self._set_drive(name, ANALOG_DRIVE_LIMIT.HIGH, EXTERNAL_PV = EXTERNAL_PV)
 
 
     @ifdef_interface
@@ -1574,8 +1876,8 @@ class IF_DEF(object):
         if not isinstance(name, str):
             raise IfDefSyntaxError("Name must be a string!")
 
-        if BASE_TYPE.PV_EGU not in keyword_params:
-            keyword_params[BASE_TYPE.PV_EGU] = "ms"
+        if PV.PV_EGU not in keyword_params:
+            keyword_params[PV.PV_EGU] = "ms"
 
         block = self._active_block()
         var = TIME(self._source, block, name, keyword_params)
@@ -1651,60 +1953,171 @@ class IF_DEF(object):
 
         self._end_block(self._cmd_block())
         self._end_block(self._param_block())
+        self._end_block(self._gen_input_block())
         self._end_block(self._status_block())
 
-        self._to_plc_words_length   = str(self._words_length_of(self._cmd_block()) + self._words_length_of(self._param_block()))
+        self._to_plc_words_length   = str(self._words_length_of(self._cmd_block()) + self._words_length_of(self._param_block()) + self._words_length_of(self._gen_input_block()))
         self._from_plc_words_length = str(self._words_length_of(self._status_block()))
 
         #
-        # Move parameters after commands
+        # Make sure that the order of data TO the PLC is
+        # 1. Commands
+        # 2. Parameters
+        # 3. General inputs
         #
         if self._CMD and self._PARAM:
             cmd_length = self._CMD.length()
-            for src in self._ifaces:
-                if isinstance(src, BASE_TYPE):
-                    src.adjust_parameter(cmd_length)
+            self._PARAM.set_start_offset(cmd_length)
+
+        if self._GEN_INPUT:
+            length = 0
+            if self._PARAM:
+                length = self._PARAM.start_offset() + self._PARAM.length()
+            elif self._CMD:
+                length = self._CMD.length()
+            self._GEN_INPUT.set_start_offset(length)
 
         self._active = False
 
+        param_uploads = PARAMETER_UPLOAD_FO.create_pvs_for_parameters(self.parameter_interfaces())
+        self._param_uploader = param_uploads[0] if param_uploads else None
+        self._ifaces.extend(param_uploads)
+
+        PV.init(None)
+
+
+
+class ROOT_IF_DEF(IF_DEF):
+    @staticmethod
+    def create_dummy_plcf():
+        return DummyPLCF({ "[PLCF#{}]".format(IF_DEF.DEFAULT_INSTALLATION_SLOT) : "ROOT-INST:SLOT", "[PLCF#ROOT_INSTALLATION_SLOT]" : "ROOT-INST:SLOT" })
+
+
+    def __init__(self, **keyword_params):
+        if "PLCF" not in keyword_params:
+            keyword_params["PLCF"] = ROOT_IF_DEF.create_dummy_plcf()
+        super(ROOT_IF_DEF, self).__init__(**keyword_params)
+
+
+
+class HEADER_IF_DEF(ROOT_IF_DEF):
+    def __init__(self, device, **keyword_params):
+        super(HEADER_IF_DEF, self).__init__(**keyword_params)
+
+        self.__device = device
+
+
+    def calculate_hash(self, hashobj):
+        self._hash = hashobj.getCRC32()
+
+
+
+class FOOTER_IF_DEF(ROOT_IF_DEF):
+    def __init__(self, device, ifdefs, **keyword_params):
+        super(FOOTER_IF_DEF, self).__init__(**keyword_params)
+
+        self.__device = device
+        self.__ifdefs = ifdefs
+
+        # Check if we have an IFDEF that belongs to the PLC
+        self.__plc_ifdef = None
+        for ifdef in self.__ifdefs:
+            if ifdef.ess_name() == self.ess_name():
+                self.__plc_ifdef = ifdef
+                break
+
+        if self.__plc_ifdef:
+            self.register_pv_name = self.__register_pv_name
+
+        self.__upload_parameters_cmd()
+        self._end()
+
+
+    def __register_pv_name(self, var):
+        self._check_pv_name(self.__plc_ifdef._pv_names, var)
+        super(FOOTER_IF_DEF, self).register_pv_name(var)
+
+
+    def __upload_parameters_cmd(self):
+        # Create the InitUploadStat, DoneUploadStat, AssertUploadStat helper PVs
+        helper_pvs = PARAMETER_UPLOAD_FO.create_stat_pvs()
+
+        # Create the main UploadParametersCmd PV(s)
+        self._ifaces.extend(PARAMETER_UPLOAD_FO.create_pvs(map(lambda x: x._param_uploader, filter(lambda ifdef: ifdef._param_uploader, self.__ifdefs)), True))
+
+        # Add the helper PVs; not added before because previous versions had the UploadParametersCmd first and maintaining that order makes verifying this version easier
+        self._ifaces.extend(helper_pvs)
+
+        # Augment the very last parameter so that it calls DoneUploadStat when its done
+        if not self.__ifdefs:
+            return
+
+        last_param = None
+        for i in reversed(self.__ifdefs):
+            for p in reversed(i.parameter_interfaces()):
+                if isinstance(p, BASE_TYPE):
+                    last_param = p
+                    break
+            if last_param:
+                break
+
+        if not last_param:
+            return
+
+        if last_param.get_pv_field(PV.PV_FLNK):
+            self._ifaces.append(PARAMETER_UPLOAD_FO.create_helper_to_doneupload(last_param))
+        else:
+            last_param.set_pv_field(PV.PV_FLNK, PV.create_fqpn(PARAMETER_UPLOAD_FO.DONE_UPLOAD_STAT_PV))
+
+
+    def calculate_hash(self, hashobj):
+        pass
+
+
+    def _end(self):
+        self._active = False
+        PV.init(None)
+
 
 
 #
-# Types
+# PV class
 #
-class BASE_TYPE(SOURCE):
-    PV_PREFIX      = "PV_"
-    PV_ALIAS       = PV_PREFIX + "ALIAS"
-    PV_NAME        = PV_PREFIX + "NAME"
-    PV_DESC        = PV_PREFIX + "DESC"
-    PV_EGU         = PV_PREFIX + "EGU"
-    PV_ONAM        = PV_PREFIX + "ONAM"
-    PV_ZNAM        = PV_PREFIX + "ZNAM"
-    PV_DRVL        = PV_PREFIX + "DRVL"
-    PV_DRVH        = PV_PREFIX + "DRVH"
-    PV_LOPR        = PV_PREFIX + "LOPR"
-    PV_HOPR        = PV_PREFIX + "HOPR"
+class PV(SOURCE):
+    DISABLE_WITH_PLC = True
+    DONT_DISABLE_WITH_PLC = False
 
-    PV_ZRST        = PV_PREFIX + "ZRST"
-    PV_ONST        = PV_PREFIX + "ONST"
-    PV_TWST        = PV_PREFIX + "TWST"
-    PV_THST        = PV_PREFIX + "THST"
-    PV_FRST        = PV_PREFIX + "FRST"
-    PV_FVST        = PV_PREFIX + "FVST"
-    PV_SXST        = PV_PREFIX + "SXST"
-    PV_SVST        = PV_PREFIX + "SVST"
-    PV_EIST        = PV_PREFIX + "EIST"
-    PV_NIST        = PV_PREFIX + "NIST"
-    PV_TEST        = PV_PREFIX + "TEST"
-    PV_ELST        = PV_PREFIX + "ELST"
-    PV_TVST        = PV_PREFIX + "TVST"
-    PV_TTST        = PV_PREFIX + "TTST"
-    PV_FTST        = PV_PREFIX + "FTST"
-    PV_FFST        = PV_PREFIX + "FFST"
+    FQPN_LEN  = 60
 
-    ASYN_TIMEOUT   = "100"
-    templates      = dict()
-    pv_names       = set()
+    PV_PREFIX = "PV_"
+    PV_ALIAS  = PV_PREFIX + "ALIAS"
+    PV_NAME   = PV_PREFIX + "NAME"
+    PV_DESC   = PV_PREFIX + "DESC"
+    PV_EGU    = PV_PREFIX + "EGU"
+    PV_ONAM   = PV_PREFIX + "ONAM"
+    PV_ZNAM   = PV_PREFIX + "ZNAM"
+    PV_DRVL   = PV_PREFIX + "DRVL"
+    PV_DRVH   = PV_PREFIX + "DRVH"
+    PV_LOPR   = PV_PREFIX + "LOPR"
+    PV_HOPR   = PV_PREFIX + "HOPR"
+    PV_FLNK   = PV_PREFIX + "FLNK"
+
+    PV_ZRST   = PV_PREFIX + "ZRST"
+    PV_ONST   = PV_PREFIX + "ONST"
+    PV_TWST   = PV_PREFIX + "TWST"
+    PV_THST   = PV_PREFIX + "THST"
+    PV_FRST   = PV_PREFIX + "FRST"
+    PV_FVST   = PV_PREFIX + "FVST"
+    PV_SXST   = PV_PREFIX + "SXST"
+    PV_SVST   = PV_PREFIX + "SVST"
+    PV_EIST   = PV_PREFIX + "EIST"
+    PV_NIST   = PV_PREFIX + "NIST"
+    PV_TEST   = PV_PREFIX + "TEST"
+    PV_ELST   = PV_PREFIX + "ELST"
+    PV_TVST   = PV_PREFIX + "TVST"
+    PV_TTST   = PV_PREFIX + "TTST"
+    PV_FTST   = PV_PREFIX + "FTST"
+    PV_FFST   = PV_PREFIX + "FFST"
 
     # (len, strict) if strict is True, the text will be truncated
     field_lengths  = { PV_NAME  : (20, False),
@@ -1732,48 +2145,388 @@ class BASE_TYPE(SOURCE):
                        PV_FFST  : (25, True)
                     }
 
+    ifdef = None
+
 
     @staticmethod
-    def init():
-        BASE_TYPE.templates = dict()
-        BASE_TYPE.pv_names  = set()
-        BASE_TYPE.plc_names = set()
+    def init(ifdef):
+        if PV.ifdef and ifdef:
+            raise IfDefInternalError("Previous IF_DEF is not closed yet!")
+
+        PV.ifdef = ifdef
 
 
     @staticmethod
     def to_pv_field(field):
-        return BASE_TYPE.PV_PREFIX + field
+        """
+            Returns the internal representation of field name `field`
+        """
+        if field.startswith(PV.PV_PREFIX):
+            return field
+
+        return PV.PV_PREFIX + field
 
 
-    def __init__(self, source, block, name, plc_var_type, keyword_params):
-        super(BASE_TYPE, self).__init__(source)
+    @staticmethod
+    def determine_pv_name(name, pv_fields):
+        """
+            Returns the PV name; `name` or "PV_NAME" from `pv_fields` if set
+        """
+        return pv_fields.get(PV.PV_NAME, name)
 
-        assert isinstance(block,        BLOCK),                              func_param_msg("block",          "BLOCK")
-        assert isinstance(name,         str),                                func_param_msg("name",           "string")
-        assert isinstance(plc_var_type, str),                                func_param_msg("plc_var_type",   "string")
-        assert keyword_params is None or isinstance(keyword_params, dict),   func_param_msg("keyword_params", "dict")
+
+    @staticmethod
+    def get_non_fpqn(name):
+        """
+            Returns the property part of `name`
+            Assumes that everything after the last ':' is the property
+        """
+        return name.rpartition(':')[2]
+
+
+    @staticmethod
+    def __fqpn(q, p):
+        name = "{slot}:{property}".format(slot = q, property = p)
+        try:
+            # If it has a macro then the length cannot be determined
+            # If it has a field then that should not be counted in the length
+            if '$' in name or len(name) <= PV.FQPN_LEN or name.index('.') < PV.FQPN_LEN:
+                return (True, name)
+        except ValueError:
+            # No `.` in name and longer than PV.FQPN_LEN
+            pass
+
+        return (False, name)
+
+
+    @staticmethod
+    def create_fqpn(q, p = None):
+        """
+            Creates an FQPN from `q` and `p`; `q` being the ESS-name or and IF_DEF and `p` the property name. If `p` is omitted then `q` is assumed to be the property and ESS-name is taken from PV.ifdef
+        """
+        if p is None:
+            if PV.ifdef is None:
+                raise IfDefInternalError("No PV.ifdef")
+
+            p = q
+            q = PV.ifdef.ess_name()
+
+        if not isinstance(q, str):
+            q = q.ess_name()
+
+        valid, name = PV.__fqpn(q, p)
+        if valid:
+            return name
+
+        raise PVNameLengthException(name)
+
+
+    @staticmethod
+    def create_root_fqpn(p):
+        """
+            Creates an FQPN where ESS-name is taken from the root device
+        """
+        if PV.ifdef is None:
+            raise IfDefInternalError("No PV.ifdef")
+        return PV.create_fqpn(PV.ifdef.root_ess_name(), p)
+
+
+    @staticmethod
+    def is_fqpn(name):
+        """
+            Returns True if name is a FQPN
+        """
+        return False if name.find(':') == -1 else True
+
+
+    def __init__(self, source, name, pv_type = None, disable_with_plc = False, **keyword_params):
+        super(PV, self).__init__(source, keyword_params = keyword_params)
+
+        assert isinstance(name, str), func_param_msg("name", "string")
+
+        # Save ifdef locally (class var will be overwritten when a new IF_DEF class is instantiated)
+        self.ifdef = PV.ifdef
 
         if name == "":
             raise IfDefSyntaxError("Empty name")
 
-        self._keyword_params = keyword_params
+        for pv_ in self._keyword_params.keys():
+            if not pv_.startswith(PV.PV_PREFIX):
+                continue
 
-        if block.is_status_block():
+            val = str(self._keyword_params[pv_])
+            if len(val.splitlines()) > 1:
+                raise IfDefSyntaxError("{} cannot span multiple lines".format(pv_))
+
+        self._name = name
+        self.__pv_type = pv_type
+        self._disable_with_plc = disable_with_plc
+
+        self._keyword_params[PV.PV_NAME] = self._check_pv_field(PV.PV_NAME, self.determine_pv_name(self._name, self._keyword_params))
+
+        if isinstance(self, BASE_TYPE):
+            self._pv_fields = {}
+        else:
+            self._pv_fields = OrderedDict()
+        self._pv_aliases = []
+
+        self._create_pv_fields()
+
+        self._pvname = self._keyword_params[PV.PV_NAME]
+        self._fqpvname = self.fqpn(self._pvname)
+
+        if self._pvname == "":
+            raise IfDefSyntaxError("Empty PV_NAME")
+
+        if ' ' in self._pvname:
+            raise IfDefSyntaxError("PV Names cannot contain spaces")
+
+        self._register_pv_name()
+
+        self.__comment = []
+        self.add_comment(keyword_params.get("COMMENT"))
+
+
+    def _register_pv_name(self):
+        self.ifdef.register_pv_name(self)
+
+
+    def _exception_params(self):
+        return dict(filename = self.ifdef._filename, line = self.source(), linenum = self.sourcenum())
+
+
+    def pv_name(self):
+        """
+            Returns the property part of PV name
+        """
+        return self._pvname
+
+
+    def ess_name(self):
+        """
+            Returns the ESS name of this PV
+        """
+        return self.ifdef.ess_name()
+
+
+    def fqpn(self, pv_name = None):
+        """
+            Returns the 'fully qualified' PV name
+        """
+        if pv_name is None:
+            return self._fqpvname
+
+        name = "{slot}:{property}".format(slot = self.ess_name(), property = pv_name)
+        valid, name = PV.__fqpn(self.ess_name(), pv_name)
+        if valid:
+            return name
+
+        raise PVNameLengthException(name, self._exception_params())
+
+
+    def pv_type(self):
+        """
+            Returns the PV type (ai, ao, bi, etc)
+        """
+        if self.__pv_type:
+            return self.__pv_type
+
+        raise NotImplementedError
+
+
+    def get_pv_field(self, field):
+        """
+            Returns the PV field `field` or None if no such field is set
+        """
+        return self._pv_fields.get(self.to_pv_field(field))
+
+
+    def set_pv_field(self, field, value):
+        """
+            Sets the PV field `field` to `value`
+        """
+        field = self.to_pv_field(field)
+        # Add the unmodfied (i.e. not truncated) field value to _keyword_params
+        self._keyword_params[field] = value
+        # Add the (possibly) truncated field value to _pv_fields
+        self._pv_fields[field] = self._check_pv_field(field, value)
+
+
+    def add_comment(self, comment):
+        if comment is None:
+            return
+
+        if not isinstance(comment, list):
+            comment = comment.splitlines()
+
+        # Remove last element; it must be an empty string
+        if self.__comment:
+            self.__comment.pop()
+
+        for c in comment:
+            if not c.startswith("#"):
+                c = "#".join(['', c])
+
+            self.__comment.append(c)
+
+        # This will cause "\n".join to append a newline in to_epics_record()
+        self.__comment.append("")
+
+
+    def add_alias(self, alias):
+        """
+            Adds an alias to the PV
+        """
+
+        if alias == "" or alias == []:
+            raise IfDefSyntaxError("Empty PV_ALIAS")
+
+        if isinstance(alias, str):
+            self._pv_aliases.append(self._check_pv_field(PV.PV_ALIAS, alias))
+        elif isinstance(alias, list):
+            self._pv_aliases.extend(map(lambda a: self._check_pv_field(PV.PV_ALIAS, a), alias))
+        elif not isinstance(alias, list):
+            raise IfDefSyntaxError("PV_ALIAS must be a string or a list")
+
+
+    def build_pv_extra(self, sort = False):
+        """
+            Returns the PV fields in EPICS format:
+             field(key, "value")
+        """
+
+        if not self._pv_fields:
+            return ""
+
+        pv_field3 = """\tfield({key},  "{value}")"""
+        pv_field4 = """\tfield({key}, "{value}")"""
+
+        if sort:
+            fields = sorted(self._pv_fields.keys())
+        elif PV.PV_DESC in self._pv_fields.keys():
+            fields = list(self._pv_fields.keys())
+        else:
+            fields = None
+
+        if fields:
+            # Make DESC the first field
+            try:
+                fields.remove(PV.PV_DESC)
+                fields.insert(0, PV.PV_DESC)
+            except ValueError:
+                pass
+
+            # Make FLNK the last field
+            try:
+                fields.remove(PV.PV_FLNK)
+                fields.append(PV.PV_FLNK)
+            except ValueError:
+                pass
+        else:
+            fields = self._pv_fields.keys()
+
+        formatter = lambda f: pv_field3 if len(f) == 6 else pv_field4
+        return """
+{}""".format('\n'.join(map(lambda f: formatter(f).format(key = f[3:], value = self._pv_fields[f]), fields)))
+
+
+    def build_pv_alias(self):
+        """
+            Returns the alias specifications for the PV in EPICS format
+            'create_pv_name' is a function to create the fully qualified PV name
+        """
+
+        if not self._pv_aliases:
+            return ""
+
+        fmt = """\talias("{}")"""
+        # empty line
+        # aliases
+        # empty line
+        return """
+{}
+""".format("\n".join(map(lambda alias : fmt.format(self.fqpn(alias)), self._pv_aliases)))
+
+
+    def to_epics_record(self, sdis_fields = ""):
+        return """{comment}record({recordtype}, "{pv_name}")
+{{{alias}{pv_extra}{sdis_fields}
+}}
+
+""".format(comment     = "\n".join(self.__comment) if self.__comment else "",
+           recordtype  = self.pv_type(),
+           pv_name     = self.fqpn(),
+           alias       = self.build_pv_alias(),
+           pv_extra    = self.build_pv_extra(),
+           sdis_fields = sdis_fields if self._disable_with_plc else "")
+
+
+    def _check_pv_field_length(self, field, field_val, length_strict):
+        msg_hdr_fmt = "The {field} field of the pv is too long: "
+
+        field_val = str(field_val)
+
+        (length, strict) = length_strict
+        if len(field_val) > length:
+            msg_hdr = msg_hdr_fmt.format(field = field)
+            if self.sourcenum() != -1:
+                print("At line number {lnum}:".format(lnum = self.sourcenum()))
+            print(self._add_warning((msg_hdr + "{value} (length: {len} / {max_len})").format(value   = field_val,
+                                                                                             len     = len(field_val),
+                                                                                             max_len = length)))
+            print(self._add_warning(" " * (len(msg_hdr) + length) + "^"))
+
+            if strict:
+                return field_val[:length]
+
+        return field_val
+
+
+    def _create_pv_fields(self):
+        for field, value in self._keyword_params.items():
+            if not field.startswith(PV.PV_PREFIX) or field == PV.PV_NAME:
+                continue
+
+            if field == PV.PV_ALIAS:
+                self.add_alias(value)
+            else:
+                self._pv_fields[field] = self._check_pv_field(field, value)
+
+
+    def _check_pv_field(self, field, value):
+        if not isinstance(value, str) and not isinstance(value, int):
+            raise IfDefSyntaxError("Field {} can only be a string".format(field))
+
+        try:
+            length_strict = PV.field_lengths[field]
+        except KeyError:
+            return value
+
+        return self._check_pv_field_length(field, value, length_strict)
+
+
+
+#
+# Types
+#
+class BASE_TYPE(PV):
+    ASYN_TIMEOUT   = "100"
+
+
+    def __init__(self, source, block, name, plc_var_type, keyword_params):
+        super(BASE_TYPE, self).__init__(source, name, disable_with_plc = True, **keyword_params)
+
+        assert isinstance(block,        BLOCK),  func_param_msg("block",         "BLOCK")
+        assert isinstance(plc_var_type, str),    func_param_msg("plc_var_type",  "string")
+
+        if block.from_plc():
             reserved_params = ["DTYP", "INP", "SCAN"]
         else:
             reserved_params = ["DTYP", "OUT"]
 
-        for param in map(lambda x: BASE_TYPE.PV_PREFIX + x, reserved_params):
-            if param in self._keyword_params:
+        for param in map(lambda x: PV.PV_PREFIX + x, reserved_params):
+            if param in self._pv_fields:
                 raise IfDefSyntaxError(param + " is reserved!")
-
-        for pv_ in keyword_params.keys():
-            if not pv_.startswith(BASE_TYPE.PV_PREFIX):
-                continue
-
-            val = str(keyword_params[pv_])
-            if len(val.splitlines()) > 1:
-                raise IfDefSyntaxError("{} cannot span multiple lines".format(pv_))
 
         """
            Check for PLC_TYPE="{S7PLCTYPE|MODBUSTYPE}"
@@ -1791,7 +2544,6 @@ class BASE_TYPE(SOURCE):
         self._dtyp_var_type  = e
 
         self._block          = block
-        self._name           = name
         self._datablock_name = self._keyword_params["DATABLOCK"]
         self._width          = self._calc_width_in_bytes()
 
@@ -1803,63 +2555,20 @@ class BASE_TYPE(SOURCE):
         else:
             self._overlapped = False
 
-        self._param_offset   = 0
-
         self.compute_offset()
-
-        if BASE_TYPE.PV_NAME not in self._keyword_params:
-            self._keyword_params[BASE_TYPE.PV_NAME] = self._name
-
-        self._check_pv_extra()
-        self._pvname = self._keyword_params[BASE_TYPE.PV_NAME]
-
-        if self._pvname == "":
-            raise IfDefSyntaxError("Empty PV_NAME")
-
-        if self._pvname in BASE_TYPE.pv_names:
-            raise IfDefSyntaxError("PV Names must be unique")
-
-        if ' ' in self._pvname:
-            raise IfDefSyntaxError("PV Names cannot contain spaces")
 
         if self._name == "":
             raise IfDefSyntaxError("Empty PLC variable name")
 
-        if self._name in BASE_TYPE.plc_names:
-            raise IfDefSyntaxError("PLC variable names must be unique")
-
-        BASE_TYPE.pv_names.add(self._pvname)
-        BASE_TYPE.plc_names.add(self._name)
+        self._register_plc_name()
 
 
-    @staticmethod
-    def add_template(name, template):
-        assert isinstance(name,     str),   func_param_msg("name",     "string")
-        assert isinstance(template, dict),  func_param_msg("template", "dict")
-
-        if name in BASE_TYPE.templates:
-            raise IfDefSyntaxError("Template is already defined: " + name)
-
-        BASE_TYPE.templates[name] = template
+    def _register_plc_name(self):
+        self.ifdef.register_plc_name(self)
 
 
     def _calc_width_in_bytes(self):
         return _bytes_in_type(self._plc_type)
-
-
-    @staticmethod
-    def expand_templates(keyword_params):
-        if "TEMPLATE" not in keyword_params:
-            return
-
-        tname = keyword_params["TEMPLATE"]
-        if tname not in BASE_TYPE.templates:
-            raise IfDefSyntaxError("No such template: " + tname)
-
-        template = BASE_TYPE.templates[tname]
-        for tkey in template.keys():
-            if tkey not in keyword_params:
-                keyword_params[tkey] = template[tkey]
 
 
     def _end_bits(self):
@@ -1879,10 +2588,6 @@ class BASE_TYPE(SOURCE):
            The name of the variable
         """
         return self._name
-
-
-    def pv_name(self):
-        return self._pvname
 
 
     def dtyp_var_type(self):
@@ -1913,10 +2618,6 @@ class BASE_TYPE(SOURCE):
         return self._plc_type
 
 
-    def pv_type(self):
-        raise NotImplementedError
-
-
     def dtyp(self):
         return self._block.dtyp()
 
@@ -1933,15 +2634,16 @@ class BASE_TYPE(SOURCE):
         return 1
 
 
-    def adjust_parameter(self, cmd_length):
-        assert isinstance(cmd_length, int), func_param_msg("cmd_length", "int")
-
-        if self.is_parameter():
-            self._param_offset = cmd_length
-
-
     def offset(self):
-        return self._offset + self._param_offset
+        return self._offset + self._block.start_offset()
+
+
+    def from_plc(self):
+        return self._block.from_plc()
+
+
+    def to_plc(self):
+        return self._block.to_plc()
 
 
     def is_status(self):
@@ -1949,97 +2651,19 @@ class BASE_TYPE(SOURCE):
 
 
     def is_command(self):
-        return self._block.is_cmd_block()
+        return self._block.is_command_block()
 
 
     def is_parameter(self):
-        return self._block.is_param_block()
+        return self._block.is_parameter_block()
+
+
+    def is_general_input(self):
+        return self._block.is_general_input_block()
 
 
     def is_overlapped(self):
         return self._overlapped
-
-
-    def get_pv_field(self, field):
-        return self._keyword_params.get(self.PV_PREFIX + field)
-
-
-    def set_pv_field(self, field, value):
-        self._keyword_params[self.PV_PREFIX + field] = value
-
-
-    def get_parameter(self, param_name, *val_if_not_found):
-        if len(val_if_not_found):
-            return self._keyword_params.get(param_name, val_if_not_found[0])
-
-        return self._keyword_params[param_name]
-
-
-    def _check_length(self, field, field_val, length_strict):
-        msg_hdr_fmt = "The {field} field of the pv is too long: "
-
-        (length, strict) = length_strict
-        if len(field_val) > length:
-            msg_hdr = msg_hdr_fmt.format(field = field)
-            if self.sourcenum() != -1:
-                print("At line number {lnum}:".format(lnum = self.sourcenum()))
-            print(self._add_warning((msg_hdr + "{value} (length: {len} / {max_len})").format(value   = field_val,
-                                                                                             len     = len(field_val),
-                                                                                             max_len = length)))
-            print(self._add_warning(" " * (len(msg_hdr) + length) + "^"))
-
-            if strict:
-                self._keyword_params[field] = field_val[:length]
-
-
-    def _check_pv_extra(self):
-        msg_hdr_fmt = "The {field} field of the pv is too long: "
-
-        try:
-            if self._keyword_params[BASE_TYPE.PV_ALIAS] == "" or self._keyword_params[BASE_TYPE.PV_ALIAS] == []:
-                raise IfDefSyntaxError("Empty PV_ALIAS")
-
-            if isinstance(self._keyword_params[BASE_TYPE.PV_ALIAS], str):
-                self._keyword_params[BASE_TYPE.PV_ALIAS] = [ self._keyword_params[BASE_TYPE.PV_ALIAS] ]
-            elif not isinstance(self._keyword_params[BASE_TYPE.PV_ALIAS], list):
-                raise IfDefSyntaxError("PV_ALIAS must be a string or a list")
-        except KeyError:
-            pass
-
-        for field, value in self._keyword_params.items():
-            if not field.startswith(BASE_TYPE.PV_PREFIX):
-                continue
-
-            if not isinstance(value, str) and not isinstance(value, int) and field != BASE_TYPE.PV_ALIAS:
-                raise IfDefSyntaxError("{field} can only be a string")
-
-            try:
-                length_strict = BASE_TYPE.field_lengths[field]
-                if not isinstance(value, list):
-                    self._check_length(field, value, length_strict)
-                else:
-                    # Make sure that we don't have to truncate the field value
-                    assert(length_strict[1] == False)
-                    for field_val in value:
-                        self._check_length(field, field_val, length_strict)
-            except KeyError:
-                pass
-
-
-    def build_pv_extra(self):
-        pv_field3 = "\tfield({key},  \"{value}\")\n"
-        pv_field4 = "\tfield({key}, \"{value}\")\n"
-
-        pv_extra_fields = "\n"
-        for key in sorted(self._keyword_params.keys()):
-            if key.startswith(BASE_TYPE.PV_PREFIX) and key != BASE_TYPE.PV_ALIAS and key != BASE_TYPE.PV_NAME:
-                if len(key) == 6:
-                    pv_field_formatter = pv_field3
-                else:
-                    pv_field_formatter = pv_field4
-                pv_extra_fields += pv_field_formatter.format(key = key[3:], value = self._keyword_params[key])
-
-        return pv_extra_fields.rstrip('\n')
 
 
     def _get_user_link_extra(self):
@@ -2049,19 +2673,12 @@ class BASE_TYPE(SOURCE):
             return ""
 
 
-    def _build_pv_alias(self, create_pv_name, inst_slot):
-        fmt = "\talias(\"{}\")"
-        if BASE_TYPE.PV_ALIAS in self._keyword_params:
-            # empty line
-            # aliases
-            # empty line
-            return "\n".join([''] + map(lambda alias : fmt.format(create_pv_name(inst_slot, alias)), self._keyword_params[BASE_TYPE.PV_ALIAS]) + [''])
-
-        return ""
-
-
     def bit_number(self):
         return 0
+
+
+    def block_basetype(self):
+        return self._block.basetype()
 
 
     def block_type(self):
@@ -2077,13 +2694,17 @@ class BASE_TYPE(SOURCE):
         return self._block.link_offset(self, plc_to_epics_offset, epics_to_plc_offset)
 
 
+    def build_pv_extra(self):
+        return super(BASE_TYPE, self).build_pv_extra(True)
+
+
     def pv_template(self, **keyword_params):
         return self._block.pv_template(**keyword_params)
 
 
     def link_extra(self):
-        link_extra_templates = { BLOCK.CMD : BASE_TYPE.ASYN_TIMEOUT,   BLOCK.PARAM : BASE_TYPE.ASYN_TIMEOUT,   BLOCK.STATUS : "" }
-        return link_extra_templates[self.block_type()]
+        link_extra_templates = { MODBUS.TYPE : BASE_TYPE.ASYN_TIMEOUT,   STATUS_BLOCK.TYPE : "" }
+        return link_extra_templates[self.block_basetype()]
 
 
 
@@ -2158,9 +2779,9 @@ class BITS(object):
 
 
     def link_extra(self, bit):
-        if self._block.is_status_block():
+        if self._block.from_plc():
             return " B={bit_num}".format(bit_num = bit.bit_number())
-        elif self._block.is_cmd_block() or self._block.is_param_block():
+        elif self._block.to_plc():
             template = "{mask}, " + BASE_TYPE.ASYN_TIMEOUT
             return template.format(mask = self.calc_mask(bit))
         else:
@@ -2190,7 +2811,7 @@ class BITS(object):
 
 
 class BIT(BASE_TYPE):
-    pv_types       = { BLOCK.CMD : "bo",   BLOCK.PARAM : "bo",   BLOCK.STATUS : "bi" }
+    pv_types       = { MODBUS.TYPE : "bo",   STATUS_BLOCK.TYPE : "bi" }
 
     @staticmethod
     def skip(bit_def, num):
@@ -2215,7 +2836,7 @@ class BIT(BASE_TYPE):
 
 
     def pv_type(self):
-        return BIT.pv_types[self.block_type()]
+        return BIT.pv_types[self.block_basetype()]
 
 
     def plc_type(self):
@@ -2223,21 +2844,21 @@ class BIT(BASE_TYPE):
 
 
     def dtyp(self):
-        if self.is_status():
+        if self.from_plc():
             return super(BIT, self).dtyp()
 
         return "asynUInt32Digital"
 
 
     def inst_io(self):
-        if self.is_status():
+        if self.from_plc():
             return super(BIT, self).inst_io()
 
         return "asynMask"
 
 
     def offset(self):
-        return self._bit_def._offset + self._param_offset
+        return self._bit_def._offset + self._block.start_offset()
 
 
     def bit_number(self):
@@ -2253,7 +2874,7 @@ class BIT(BASE_TYPE):
 
 
     def dtyp_var_type(self):
-        if self.is_command() or self.is_parameter():
+        if self.to_plc():
             return ""
 
         return self._bit_def.dtyp_var_type()
@@ -2281,31 +2902,31 @@ class ALARM(BIT):
 
 
 class ANALOG(BASE_TYPE):
-    pv_types = { BLOCK.CMD : "ao",   BLOCK.PARAM : "ao",   BLOCK.STATUS : "ai" }
+    pv_types = { MODBUS.TYPE : "ao",   STATUS_BLOCK.TYPE : "ai" }
 
     def __init__(self, source, block, name, plc_var_type, keyword_params):
         limit_warnings = []
-        if block.is_cmd_block() or block.is_param_block():
+        if block.to_plc():
             try:
                 limits = PLC_type_limits[plc_var_type]
                 # Set DRVL/DRVH limits
-                if keyword_params.get(BASE_TYPE.PV_DRVL, limits[0]) <= limits[0]:
-                    if keyword_params.get(BASE_TYPE.PV_DRVL, limits[0]) < limits[0]:
-                        limit_warnings.append("Specified DRVL ({}) is lower than limit ({}) of PLC data type '{}'".format(keyword_params[BASE_TYPE.PV_DRVL], limits[0], plc_var_type))
-                    keyword_params[BASE_TYPE.PV_DRVL] = limits[0]
-                if keyword_params.get(BASE_TYPE.PV_DRVH, limits[1]) >= limits[1]:
-                    if keyword_params.get(BASE_TYPE.PV_DRVH, limits[1]) > limits[1]:
-                        limit_warnings.append("Specified DRVH ({}) is higher than limit ({}) of PLC data type '{}'".format(keyword_params[BASE_TYPE.PV_DRVH], limits[1], plc_var_type))
-                    keyword_params[BASE_TYPE.PV_DRVH] = limits[1]
+                if keyword_params.get(PV.PV_DRVL, limits[0]) <= limits[0]:
+                    if keyword_params.get(PV.PV_DRVL, limits[0]) < limits[0]:
+                        limit_warnings.append("Specified DRVL ({}) is lower than limit ({}) of PLC data type '{}'".format(keyword_params[PV.PV_DRVL], limits[0], plc_var_type))
+                    keyword_params[PV.PV_DRVL] = limits[0]
+                if keyword_params.get(PV.PV_DRVH, limits[1]) >= limits[1]:
+                    if keyword_params.get(PV.PV_DRVH, limits[1]) > limits[1]:
+                        limit_warnings.append("Specified DRVH ({}) is higher than limit ({}) of PLC data type '{}'".format(keyword_params[PV.PV_DRVH], limits[1], plc_var_type))
+                    keyword_params[PV.PV_DRVH] = limits[1]
                 # Set LOPR/HOPR limits
-                if keyword_params.get(BASE_TYPE.PV_LOPR, limits[0]) <= limits[0]:
-                    if keyword_params.get(BASE_TYPE.PV_LOPR, limits[0]) < limits[0]:
-                        limit_warnings.append("Specified LOPR ({}) is lower than limit ({}) of PLC data type '{}'".format(keyword_params[BASE_TYPE.PV_LOPR], limits[0], plc_var_type))
-                    keyword_params[BASE_TYPE.PV_LOPR] = limits[0]
-                if keyword_params.get(BASE_TYPE.PV_HOPR, limits[1]) >= limits[1]:
-                    if keyword_params.get(BASE_TYPE.PV_HOPR, limits[1]) > limits[1]:
-                        limit_warnings.append("Specified HOPR ({}) is higher than limit ({}) of PLC data type '{}'".format(keyword_params[BASE_TYPE.PV_HOPR], limits[1], plc_var_type))
-                    keyword_params[BASE_TYPE.PV_HOPR] = limits[1]
+                if keyword_params.get(PV.PV_LOPR, limits[0]) <= limits[0]:
+                    if keyword_params.get(PV.PV_LOPR, limits[0]) < limits[0]:
+                        limit_warnings.append("Specified LOPR ({}) is lower than limit ({}) of PLC data type '{}'".format(keyword_params[PV.PV_LOPR], limits[0], plc_var_type))
+                    keyword_params[PV.PV_LOPR] = limits[0]
+                if keyword_params.get(PV.PV_HOPR, limits[1]) >= limits[1]:
+                    if keyword_params.get(PV.PV_HOPR, limits[1]) > limits[1]:
+                        limit_warnings.append("Specified HOPR ({}) is higher than limit ({}) of PLC data type '{}'".format(keyword_params[PV.PV_HOPR], limits[1], plc_var_type))
+                    keyword_params[PV.PV_HOPR] = limits[1]
             except KeyError:
                 pass
 
@@ -2315,14 +2936,14 @@ class ANALOG(BASE_TYPE):
 
 
     def dtyp(self):
-        if not self.is_status() and self._dtyp_var_type in self._block.valid_type_pairs()["REAL"]:
+        if not self.from_plc() and self._dtyp_var_type in self._block.valid_type_pairs()["REAL"]:
             return "asynFloat64"
 
         return super(ANALOG, self).dtyp()
 
 
     def pv_type(self):
-        return ANALOG.pv_types[self.block_type()]
+        return ANALOG.pv_types[self.block_basetype()]
 
 
 
@@ -2332,7 +2953,83 @@ class TIME(ANALOG):
 
 
 
-class ANALOG_LIMIT(ANALOG):
+class DFANOUT(PV):
+    OUTx    = [ 'OUTA', 'OUTB', 'OUTC', 'OUTD', 'OUTE', 'OUTF', 'OUTG', 'OUTH' ]
+
+
+    @staticmethod
+    def construct_name(input_name):
+        return "#{}".format(PV.get_non_fpqn(input_name))
+
+
+    def __init__(self, source, name, affected_pv, link, disable_with_plc, **keyword_params):
+        super(DFANOUT, self).__init__(source, self.construct_name(name), "dfanout", disable_with_plc, **keyword_params)
+        self.__outx = 0
+
+        if PV.is_fqpn(name) or keyword_params.get("EXTERNAL_PV", False):
+            source_pv = name
+        else:
+            source_pv = affected_pv.fqpn(name)
+
+        self.set_pv_field("DOL", "{} CP".format(source_pv))
+        self.set_pv_field("OMSL", "closed_loop")
+        self._set_outx(affected_pv, link)
+
+
+    def affected_pv(self):
+        """
+            Returns the PV that is the endpoint of the last OUTx link
+        """
+        return self.__affected_pv
+
+
+    def _set_outx(self, affected_pv, link):
+        self.__affected_pv = affected_pv
+
+        try:
+            outx = self.OUTx[self.__outx]
+        except IndexError:
+            raise IfDefSyntaxError("Sorry, cannot add more outputs :(")
+
+        self.__outx += 1
+        self.set_pv_field(outx, link)
+
+
+
+class FANOUT(PV):
+    # LNK0 is intentionally left out;
+    #  - it needs SHFT set to '0'
+    #  - allows late inserting of links
+    LNKx = [ 'LNK1', 'LNK2', 'LNK3', 'LNK4', 'LNK5', 'LNK6', 'LNK7', 'LNK8', 'LNK9', 'LNKA', 'LNKB', 'LNKC', 'LNKD', 'LNKE', 'LNKF' ]
+
+
+    class NoMoreLinksException(RuntimeError):
+        pass
+
+
+    @staticmethod
+    def construct_name(input_name):
+        return "#{}-FO".format(PV.get_non_fpqn(input_name))
+
+
+    def __init__(self, source, name, link, disable_with_plc, keyword_params):
+        super(FANOUT, self).__init__(source, self.construct_name(name), "fanout", disable_with_plc, **keyword_params)
+        self.__lnkx = 0
+        self._set_lnkx(link)
+
+
+    def _set_lnkx(self, link):
+        try:
+            lnkx = self.LNKx[self.__lnkx]
+        except IndexError:
+            raise FANOUT.NoMoreLinksException()
+
+        self.__lnkx += 1
+        self.set_pv_field(lnkx, link)
+
+
+
+class ANALOG_ALARM_LIMIT(DFANOUT):
     MAJOR_SEVERITY    = "MAJOR"
     MINOR_SEVERITY    = "MINOR"
     HIGH_LIMIT        = "HIGH"
@@ -2345,19 +3042,228 @@ class ANALOG_LIMIT(ANALOG):
                           (MINOR_SEVERITY, LOW_LIMIT)  : "LSV",
                           (MAJOR_SEVERITY, HIGH_LIMIT) : "HHSV",
                           (MINOR_SEVERITY, HIGH_LIMIT) : "HSV" }
-    KW_LIMIT_PV       = "_LIMIT_PV"
-    KW_LIMIT_FIELD    = "_LIMIT_FIELD"
-
-    def __init__(self, source, block, name, plc_var_type, keyword_params):
-        super(ANALOG_LIMIT, self).__init__(source, block, name, plc_var_type, keyword_params)
 
 
-    def limit_field(self):
-        return self.get_parameter(ANALOG_LIMIT.KW_LIMIT_FIELD)
+    def __init__(self, source, name, limit_severity, limit_type, limited_pv, **keyword_params):
+        super(ANALOG_ALARM_LIMIT, self).__init__(source, name, limited_pv, self.__construct_link(limited_pv, limit_severity, limit_type), PV.DISABLE_WITH_PLC, **keyword_params)
+        self.set_pv_field(PV.PV_DESC, "Set alarm limit value")
+
+        # Set limit severity of _limited_ PV
+        limited_pv.set_pv_field(ANALOG_ALARM_LIMIT.LIMIT_ALARM_FIELD[(limit_severity, limit_type)], limit_severity)
 
 
-    def limit_pv(self):
-        return self.get_parameter(ANALOG_LIMIT.KW_LIMIT_PV)
+    @staticmethod
+    def __construct_link(limited_pv, limit_severity, limit_type):
+        return "{}.{}".format(limited_pv.fqpn(), ANALOG_ALARM_LIMIT.LIMIT_FIELD[(limit_severity, limit_type)])
+
+
+    @staticmethod
+    def create(ifdef, source, name, limit_severity, limit_type, limited_pv, **keyword_params):
+        # Set limit severity of _limited_ PV
+        limited_pv.set_pv_field(ANALOG_ALARM_LIMIT.LIMIT_ALARM_FIELD[(limit_severity, limit_type)], limit_severity)
+
+        var = ifdef._pv_names.get(ANALOG_ALARM_LIMIT.construct_name(PV.determine_pv_name(name, keyword_params)))
+
+        if var:
+            if not isinstance(var, ANALOG_ALARM_LIMIT):
+                raise IfDefSyntaxError("Internal variable already exists: {}".format(var.pv_name()))
+
+            var.set_outx(limited_pv, limit_severity, limit_type)
+            return None
+
+        return ANALOG_ALARM_LIMIT(source, name, limit_severity, limit_type, limited_pv, **keyword_params)
+
+
+    def limited_pv(self):
+        """
+            Shortcut to DFANOUT.affected_pv()
+        """
+        return self.affected_pv()
+
+
+    def set_outx(self, limited_pv, limit_severity, limit_type):
+        self._set_outx(limited_pv, self.__construct_link(limited_pv, limit_severity, limit_type))
+
+
+
+class ANALOG_DRIVE_LIMIT(DFANOUT):
+    HIGH = "HOPR"
+    LOW  = "LOPR"
+
+
+    def __init__(self, source, name, drive_field, driven_pv, **keyword_params):
+        super(ANALOG_DRIVE_LIMIT, self).__init__(source, name, driven_pv, self.__construct_link(driven_pv, drive_field), PV.DISABLE_WITH_PLC, **keyword_params)
+        self.set_pv_field(PV.PV_DESC, "Set drive limit value")
+
+
+    @staticmethod
+    def __construct_link(driven_pv, drive_field):
+        return "{}.{}".format(driven_pv.fqpn(), drive_field)
+
+
+    @staticmethod
+    def create(ifdef, source, name, drive_type, driven_pv, **keyword_params):
+        var = ifdef._pv_names.get(ANALOG_DRIVE_LIMIT.construct_name(PV.determine_pv_name(name, keyword_params)))
+        if var:
+            if not isinstance(var, ANALOG_DRIVE_LIMIT):
+                raise IfDefSyntaxError("Internal variable already exists: {}".format(var.pv_name()))
+
+            var.set_outx(driven_pv, drive_type)
+            return None
+
+        return ANALOG_DRIVE_LIMIT(source, name, drive_type, driven_pv, **keyword_params)
+
+
+    def driven_pv(self):
+        """
+            Shortcut to DFANOUT.affected_pv()
+        """
+        return self.affected_pv()
+
+
+    def set_outx(self, driven_pv, drive_field):
+        self._set_outx(driven_pv, self.__construct_link(driven_pv, drive_field))
+
+
+
+class PARAMETER_UPLOAD_FO(FANOUT):
+    INITIAL_GLOBAL_PV = "UploadParametersCmd"
+    INITIAL_DEVICE_PV = "#plcfDUplParamsCmd"
+
+    GLOBAL_FO_PV = "#plcfGUplParam{:02X}-FO"
+    DEVICE_FO_PV = "#plcfDUplParam{:02X}-FO"
+
+    INIT_UPLOAD_STAT_PV = "#plcfInitUploadStat"
+    DONE_UPLOAD_STAT_PV = "#plcfDoneUploadStat"
+    ASSERT_UPLOAD_STAT_PV = "#plcfAssertUplStat"
+    INTERMEDIATE_FO_PV = "#plcfLastPrmHlper-FO"
+
+    __pvs = []
+    __inituploadstat = None
+    __doneuploadstat = None
+    __assertuploadst = None
+
+
+    @staticmethod
+    def create_pvs_for_parameters(parameters):
+        """
+            Create uploader fanouts for all the `BASE_TYPE` interfaces in `parameters`
+        """
+        return PARAMETER_UPLOAD_FO.create_pvs(filter(lambda param: isinstance(param, BASE_TYPE), parameters), device_uploader = True)
+
+
+    @staticmethod
+    def create_pvs(parameters, initialize = False, device_uploader = False):
+        """
+            Create uploader fanouts for all the PVs in `parameters`
+            If `initialize` is True then the very first fanout's first link will initialize upload statistics PV
+        """
+        PARAMETER_UPLOAD_FO.__pvs = []
+
+        upload = None
+        for param in parameters:
+            upload = PARAMETER_UPLOAD_FO.__add_parameter(upload, param, initialize = initialize, device_uploader = device_uploader)
+
+        # Create an empty UploadParametersCmd PV when there are no parameters and we are initializing
+        if upload is None and initialize:
+            PARAMETER_UPLOAD_FO.__add_parameter(None, PARAMETER_UPLOAD_FO.__doneuploadstat, initialize = True)
+
+        pvs = PARAMETER_UPLOAD_FO.__pvs
+        PARAMETER_UPLOAD_FO.__pvs = []
+
+        return pvs
+
+
+    @staticmethod
+    def create_stat_pvs():
+        PARAMETER_UPLOAD_FO.__inituploadstat = PV("", PARAMETER_UPLOAD_FO.INIT_UPLOAD_STAT_PV, "bo", PV.DONT_DISABLE_WITH_PLC)
+        PARAMETER_UPLOAD_FO.__inituploadstat.set_pv_field(PV.PV_DESC,"Initialize parameter uploading status")
+        PARAMETER_UPLOAD_FO.__inituploadstat.set_pv_field("DOL", PV.create_fqpn("#plcfC1"))
+        PARAMETER_UPLOAD_FO.__inituploadstat.set_pv_field("OMSL", "closed_loop")
+        PARAMETER_UPLOAD_FO.__inituploadstat.set_pv_field("OUT", PV.create_fqpn("#plcfUploadStatToPLCS PP"))
+
+        PARAMETER_UPLOAD_FO.__doneuploadstat = PV("", PARAMETER_UPLOAD_FO.DONE_UPLOAD_STAT_PV, "longout", PV.DONT_DISABLE_WITH_PLC)
+        PARAMETER_UPLOAD_FO.__doneuploadstat.set_pv_field(PV.PV_DESC, "Done parameter uploading status")
+        PARAMETER_UPLOAD_FO.__doneuploadstat.set_pv_field("DOL", PV.create_fqpn("#plcfC2"))
+        PARAMETER_UPLOAD_FO.__doneuploadstat.set_pv_field("OMSL", "closed_loop")
+        PARAMETER_UPLOAD_FO.__doneuploadstat.set_pv_field("OUT", PV.create_fqpn("#plcfUploadStatToPLCS PP"))
+        # Disable this PV if not uploading:
+        #  `uploading` is '1', `uploaded` is '2', so we disable on `never_uploaded` (0)
+        PARAMETER_UPLOAD_FO.__doneuploadstat.set_pv_field("SDIS", PV.create_fqpn("UploadStat-RB"))
+        PARAMETER_UPLOAD_FO.__doneuploadstat.set_pv_field("DISV", "0")
+
+        PARAMETER_UPLOAD_FO.__assertuploadst = PV("", PARAMETER_UPLOAD_FO.ASSERT_UPLOAD_STAT_PV, "calcout", PV.DONT_DISABLE_WITH_PLC, COMMENT = "If PLC says we are uploading but #plcfInitUploadStat was never processed ==> reset upload status in the PLC")
+        PARAMETER_UPLOAD_FO.__assertuploadst.set_pv_field(PV.PV_DESC, "Assert validity of upload statistics")
+        PARAMETER_UPLOAD_FO.__assertuploadst.set_pv_field("INPA", PV.create_fqpn("UploadStat-RB CP"))
+        PARAMETER_UPLOAD_FO.__assertuploadst.set_pv_field("INPB", "{}.UDF".format(PARAMETER_UPLOAD_FO.__inituploadstat.fqpn()))
+        PARAMETER_UPLOAD_FO.__assertuploadst.set_pv_field("CALC", "A == 1 && B == 1")
+        PARAMETER_UPLOAD_FO.__assertuploadst.set_pv_field("OOPT", "When Non-zero")
+        PARAMETER_UPLOAD_FO.__assertuploadst.set_pv_field("DOPT", "Use OCAL")
+        PARAMETER_UPLOAD_FO.__assertuploadst.set_pv_field("OCAL", "0")
+        PARAMETER_UPLOAD_FO.__assertuploadst.set_pv_field("OUT", PV.create_fqpn("#plcfUploadStatToPLCS PP"))
+
+        return [PARAMETER_UPLOAD_FO.__inituploadstat, PARAMETER_UPLOAD_FO.__doneuploadstat, PARAMETER_UPLOAD_FO.__assertuploadst]
+
+
+    @staticmethod
+    def create_helper_to_doneupload(last_param):
+        intermediate_fo = PV("", PARAMETER_UPLOAD_FO.INTERMEDIATE_FO_PV, "fanout", PV.DONT_DISABLE_WITH_PLC)
+        intermediate_fo.set_pv_field(PV.PV_DESC, "Helper PV to inject processing of #DoneUploadStat")
+        intermediate_fo.set_pv_field("LNK1", last_param.get_pv_field(PV.PV_FLNK))
+        intermediate_fo.set_pv_field(PV.PV_FLNK, PARAMETER_UPLOAD_FO.__doneuploadstat.fqpn())
+
+        # Inject the intermediate fanout as the last parameter's FLNK
+        last_param.set_pv_field(PV.PV_FLNK, intermediate_fo.fqpn())
+
+        return intermediate_fo
+
+
+    @staticmethod
+    def __add_parameter(upload_fo, parameter, initialize = False, device_uploader = False):
+        if upload_fo is None:
+            keyword_params = dict()
+            if initialize:
+                keyword_params["PV_SHFT"] = "0"
+                keyword_params["PV_LNK0"] = PV.create_root_fqpn(PARAMETER_UPLOAD_FO.INIT_UPLOAD_STAT_PV)
+            if device_uploader:
+                # Start with sending a heartbeat; uploading parameters can take a while and we don't want the PLC to think we are dead
+                keyword_params["PV_SHFT"] = "0"
+                keyword_params["PV_LNK0"] = PV.create_root_fqpn("HeartbeatToPLCS")
+            else:
+                keyword_params[PV.PV_ALIAS] = "UploadParametersS"
+            upload_fo = PARAMETER_UPLOAD_FO(PARAMETER_UPLOAD_FO.INITIAL_DEVICE_PV if device_uploader else PARAMETER_UPLOAD_FO.INITIAL_GLOBAL_PV, parameter, **keyword_params)
+        else:
+            try:
+                upload_fo.set_lnkx(parameter)
+            except FANOUT.NoMoreLinksException:
+                keyword_params = dict()
+                if device_uploader:
+                    # Start with sending a heartbeat; uploading parameters can take a while and we don't want the PLC to think we are dead
+                    keyword_params["PV_SHFT"] = "0"
+                    keyword_params["PV_LNK0"] = PV.create_root_fqpn("HeartbeatToPLCS")
+                new_upload_fo = PARAMETER_UPLOAD_FO(PARAMETER_UPLOAD_FO.DEVICE_FO_PV if device_uploader else PARAMETER_UPLOAD_FO.GLOBAL_FO_PV, parameter, **keyword_params)
+                upload_fo.set_pv_field("FLNK", new_upload_fo.fqpn())
+                upload_fo = new_upload_fo
+
+        return upload_fo
+
+
+    @staticmethod
+    def construct_name(input_name):
+        if input_name == PARAMETER_UPLOAD_FO.INITIAL_GLOBAL_PV or input_name == PARAMETER_UPLOAD_FO.INITIAL_DEVICE_PV:
+            return input_name
+
+        return input_name.format(len(PARAMETER_UPLOAD_FO.__pvs))
+
+
+    def __init__(self, name, parameter, **keyword_params):
+        super(PARAMETER_UPLOAD_FO, self).__init__("", name, parameter.fqpn(), PV.DISABLE_WITH_PLC, keyword_params)
+        self.set_pv_field(PV.PV_DESC, "Upload parameter values")
+        PARAMETER_UPLOAD_FO.__pvs.append(self)
+
+
+    def set_lnkx(self, param):
+        self._set_lnkx(param.fqpn())
 
 
 
@@ -2385,8 +3291,8 @@ class nobt_helper(object):
 
 class ENUM(BASE_TYPE, nobt_helper):
     class VLST(object):
-        _st = BASE_TYPE.PV_PREFIX + "{}ST"
-        _vl = BASE_TYPE.PV_PREFIX + "{}VL"
+        _st = PV.PV_PREFIX + "{}ST"
+        _vl = PV.PV_PREFIX + "{}VL"
 
         def __init__(self, idx, prefix):
             self._idx    = idx
@@ -2406,7 +3312,7 @@ class ENUM(BASE_TYPE, nobt_helper):
 
 
 
-    pv_types = { BLOCK.CMD : "mbbo",   BLOCK.PARAM : "mbbo",   BLOCK.STATUS : "mbbi" }
+    pv_types = { MODBUS.TYPE : "mbbo",   STATUS_BLOCK.TYPE : "mbbi" }
     vlst = [ VLST( 0, "ZR"),
              VLST( 1, "ON"),
              VLST( 2, "TW"),
@@ -2434,12 +3340,12 @@ class ENUM(BASE_TYPE, nobt_helper):
 
 
     def pv_type(self):
-        return ENUM.pv_types[self.block_type()]
+        return ENUM.pv_types[self.block_basetype()]
 
 
 
 class BITMASK(BASE_TYPE, nobt_helper):
-    pv_types = { BLOCK.CMD : "mbboDirect",   BLOCK.PARAM : "mbboDirect",   BLOCK.STATUS : "mbbiDirect" }
+    pv_types = { MODBUS.TYPE : "mbboDirect",   STATUS_BLOCK.TYPE : "mbbiDirect" }
 
     def __init__(self, source, block, name, plc_var_type, nobt, shift, keyword_params):
         self._set_nobt(nobt, shift, keyword_params)
@@ -2448,27 +3354,27 @@ class BITMASK(BASE_TYPE, nobt_helper):
 
 
     def pv_type(self):
-        return BITMASK.pv_types[self.block_type()]
+        return BITMASK.pv_types[self.block_basetype()]
 
 
     def dtyp(self):
-        if self.is_status():
+        if self.from_plc():
             return super(BITMASK, self).dtyp()
 
         return "asynUInt32Digital"
 
 
     def inst_io(self):
-        if self.is_status():
+        if self.from_plc():
             return super(BITMASK, self).inst_io()
 
         return "asynMask"
 
 
     def link_extra(self):
-        if self.is_status():
+        if self.from_plc():
             return ""
-        elif self.is_command() or self.is_parameter():
+        elif self.to_plc():
             return "0xFFFF, " + BASE_TYPE.ASYN_TIMEOUT
         else:
             raise IfDefInternalError("Unknown db type: " + self.block_type())
@@ -2476,7 +3382,7 @@ class BITMASK(BASE_TYPE, nobt_helper):
 
 
 class STRING(BASE_TYPE):
-    pv_types = { BLOCK.CMD : "stringout",   BLOCK.PARAM : "stringout",   BLOCK.STATUS : "stringin" }
+    pv_types = { MODBUS.TYPE : "stringout",   STATUS_BLOCK.TYPE : "stringin" }
 
     def __init__(self, source, block, name, max_len, keyword_params):
         if max_len is not None:
@@ -2511,19 +3417,19 @@ class STRING(BASE_TYPE):
 
 
     def pv_type(self):
-        return self.pv_types[self.block_type()]
+        return self.pv_types[self.block_basetype()]
 
 
     def endian_correct_dtyp_var_type(self):
         ec_dtyp_var_type = super(STRING, self).endian_correct_dtyp_var_type()
-        if self.is_status():
+        if self.from_plc():
             return ec_dtyp_var_type
 
         return "{}={}".format(ec_dtyp_var_type, self.dimension())
 
 
     def dtyp(self):
-        if self.is_status():
+        if self.from_plc():
             return super(STRING, self).dtyp()
 
         return "asynOctetWrite"
@@ -2534,7 +3440,7 @@ class STRING(BASE_TYPE):
 
 
     def link_extra(self):
-        if self.is_status():
+        if self.from_plc():
             return " L={}".format(self.dimension())
 
         return super(STRING, self).link_extra()
@@ -2559,7 +3465,7 @@ def _test_and_set(keyword_params, key, value):
 
 
 def _test_and_set_pv(keyword_params, key, value):
-    _test_and_set(keyword_params, BASE_TYPE.to_pv_field(key), value)
+    _test_and_set(keyword_params, PV.to_pv_field(key), value)
 
 
 def _bits_in_type(var_type):

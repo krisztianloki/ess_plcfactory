@@ -134,8 +134,8 @@ class BOB(PRINTER):
     #
     # HEADER
     #
-    def header(self, output, **keyword_params):
-        super(BOB, self).header(output, **keyword_params)
+    def header(self, header_if_def, output, **keyword_params):
+        super(BOB, self).header(header_if_def, output, **keyword_params)
         self.add_filename_header(output, extension = "bob")
         self._append("""<?xml version="1.0" encoding="UTF-8"?>
 <display version="2.0.0">
@@ -178,7 +178,7 @@ class BOB(PRINTER):
 
             if var.is_status():
                 self._append(BOB.TEXTUPDATE.format(name    = var.name(),
-                                                   pv_name = self.create_pv_name(inst_slot, var),
+                                                   pv_name = var.fqpn(),
                                                    x       = label_x + BOB.HSPACE_1 + BOB.LABEL_WIDTH,
                                                    y       = y,
                                                    width   = BOB.TEXTUPDATE_WIDTH), output)
@@ -186,21 +186,21 @@ class BOB(PRINTER):
             else:
                 if isinstance(var, BIT):
                     self._append(BOB.ACTIONBUTTON.format(name    = var.name(),
-                                                         pv_name = self.create_pv_name(inst_slot, var),
+                                                         pv_name = var.fqpn(),
                                                          x       = label_x + BOB.HSPACE_1 + BOB.LABEL_WIDTH,
                                                          y       = y,
                                                          width   = BOB.ACTIONBUTTON_WIDTH), output)
                     width = BOB.LABEL_WIDTH + BOB.HSPACE_1 + BOB.ACTIONBUTTON_WIDTH
                 elif isinstance(var, ENUM):
                     self._append(BOB.COMBOBOX.format(name    = var.name(),
-                                                     pv_name = self.create_pv_name(inst_slot, var),
+                                                     pv_name = var.fqpn(),
                                                      x       = label_x + BOB.HSPACE_1 + BOB.LABEL_WIDTH,
                                                      y       = y,
                                                      width   = BOB.COMBOBOX_WIDTH), output)
                     width = BOB.LABEL_WIDTH + BOB.HSPACE_1 + BOB.COMBOBOX_WIDTH
                 else:
                     self._append(BOB.TEXTENTRY.format(name    = var.name(),
-                                                      pv_name = self.create_pv_name(inst_slot, var),
+                                                      pv_name = var.fqpn(),
                                                       x       = label_x + BOB.HSPACE_1 + BOB.LABEL_WIDTH,
                                                       y       = y,
                                                       width   = BOB.TEXTENTRY_WIDTH), output)
@@ -230,8 +230,8 @@ class BOB(PRINTER):
     #
     # FOOTER
     #
-    def footer(self, output, **keyword_params):
-        super(BOB, self).footer(output, **keyword_params)
+    def footer(self, footer_if_def, output, **keyword_params):
+        super(BOB, self).footer(footer_if_def, output, **keyword_params)
         self._append("""<height>{height}</height>
 </display>
 """.format(height = self._y), output)

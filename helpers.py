@@ -217,6 +217,18 @@ def urljoin(part1, part2, *more):
     return posixpathjoin(part1, part2)
 
 
+def sanitize_url(url):
+    """
+    Sanitizes URLs (removes double //)
+    """
+    parts = list(urlsplit(url))
+
+    while "//" in parts[2]:
+        parts[2] = parts[2].replace("//", "/")
+
+    return urlunsplit(parts)
+
+
 def xdg_open(url):
     try:
         subprocess.check_call(shlex_split("xdg-open {}".format(url)))

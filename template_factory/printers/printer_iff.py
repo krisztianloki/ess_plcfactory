@@ -14,7 +14,7 @@ __license__    = "GPLv3"
 
 
 from . import PRINTER, TemplatePrinterException
-from tf_ifdef import IfDefSyntaxError, SOURCE, BLOCK, CMD_BLOCK, STATUS_BLOCK, BASE_TYPE, BIT, ALARM, TIME
+from tf_ifdef import IfDefSyntaxError, SOURCE, BLOCK, BASE_TYPE, BIT, TIME
 
 
 def printer():
@@ -64,11 +64,11 @@ class IFF(PRINTER):
     #
     # HEADER
     #
-    def header(self, output, **keyword_params):
+    def header(self, header_if_def, output, **keyword_params):
         #
         # No need to initialize counters to 10, IFA does not need it
         #
-        super(IFF, self).header(output, **keyword_params).add_filename_header(output, extension = "ifa")
+        super(IFF, self).header(header_if_def, output, **keyword_params).add_filename_header(output, extension = "ifa")
 
         self.get_offsets()
 
@@ -224,8 +224,8 @@ PLCTOEPICSDATABLOCKOFFSET
     #
     # FOOTER
     #
-    def footer(self, output, **keyword_params):
-        super(IFF, self).footer(output, **keyword_params)
+    def footer(self, footer_if_def, output, **keyword_params):
+        super(IFF, self).footer(footer_if_def, output, **keyword_params)
 
         self._append("""TOTALEPICSTOPLCLENGTH
 {totalepicstoplclength}

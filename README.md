@@ -168,6 +168,19 @@ PLCFactory can generate a PLC-IOC if the `--ioc` option is specified. The IOC is
 
 If no IOC repository is specified the IOC will still be created but without any git operations.
 
+#### Requirements of IOC generation
+
+There are a couple of configuration details that PLCFactory needs to know about to generate an IOC. These are:
+
+*   Hostname of the PLC
+    *   `Hostname` property of PLC device must be set to the hostname of the PLC
+*   EPICS version to use
+    *   `EPICSVersion` property of IOC device must be set to the EPICS base version to use
+*   Require version to use
+    *   `E3RequireVersion` property of IOC device must be set to the Require version to use
+*   IOC git repository (this is optional)
+    *   `IOC_REPOSITORY` external link of IOC device must point to the git repository of the IOC
+
 #### Directory structure of generated IOC
 
 *   `.gitignore`
@@ -186,6 +199,8 @@ If no IOC repository is specified the IOC will still be created but without any 
     *    `<plc>.archive`
     *    `.scl` files
     *    CCDB snapshot
+*   `ioc-meta`
+    *    `ioc.yml`
 
 The `*-test.*` files can be used to run the IOC without an actual PLC; all the (status and parameter) PVs are autosaved. I use it for example to test the OPI and create screenshots of the OPI in specific system configurations for documentation purposes.
 
