@@ -581,7 +581,7 @@ pip install --user pyyaml
         db_path = '"$(E3_CMD_TOP)/db:$(EPICS_DB_INCLUDE_PATH=.)"'
         register_db_path = [ '# Register our db directory\n', 'epicsEnvSet(EPICS_DB_INCLUDE_PATH, {})\n'.format(db_path) ]
 
-        load_plc = [ '# Load PLC specific startup script\n', 'iocshLoad("iocsh/{}")\n'.format(self._e3.iocsh()) ]
+        load_plc = [ '# Load PLC specific startup script\n', 'iocshLoad("$(E3_CMD_TOP)/iocsh/{}")\n'.format(self._e3.iocsh()) ]
 
         st_cmd = os.path.join(out_idir, 'st.cmd')
         lines = self.__get_contents(st_cmd)
@@ -638,8 +638,10 @@ pip install --user pyyaml
                 common_config = []
             # If plc.iocsh is loaded we don't need to load it again
             elif self._e3.iocsh() in line:
-                load_plc = []
                 load_plc_at = i
+                lines.pop(load_plc_at)
+                lines[load_plc_at:load_plc_at] = load_plc[1]
+                load_plc = []
 
         # If our db directory is registered in EPICS_DB_INCLUDE_PATH then we don't need to do it again
         for i, dbp in epics_db_include_path:

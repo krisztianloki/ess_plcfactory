@@ -101,7 +101,6 @@ class TestIOC(unittest.TestCase):
             env_sh.writelines(extra_before_lines)
             print('export IOCNAME="{}"'.format(iocname), file = env_sh)
             print('{es}export IOCDIR{es}={es}"{id}"{es}'.format(es = extra_spaces, id = iocdir), file = env_sh)
-            print('export EPICS_DB_INCLUDE_PATH="$(dirname ${BASH_SOURCE})/db"', file = env_sh)
             env_sh.writelines(extra_after_lines)
 
         return master_env_sh
@@ -144,7 +143,9 @@ class TestIOC(unittest.TestCase):
             st_cmd = os.path.join(ioc_dir, "st.cmd")
             master_st_cmd = os.path.join(ioc_dir, "master_st.cmd")
 
+            #
             # Check with no st.cmd
+            #
             with open(master_st_cmd, "wt") as mst:
                 print("""# Startup for {iocname}
 
@@ -156,16 +157,39 @@ iocshLoad("$(essioc_DIR)/common_config.iocsh")
 epicsEnvSet(EPICS_DB_INCLUDE_PATH, "$(E3_CMD_TOP)/db:$(EPICS_DB_INCLUDE_PATH=.)")
 
 # Load PLC specific startup script
-iocshLoad("iocsh/{iocsh}")""".format(iocname = ioc.name(), iocsh = ioc._e3.iocsh()), file = mst)
+iocshLoad("$(E3_CMD_TOP)/iocsh/{iocsh}")""".format(iocname = ioc.name(), iocsh = ioc._e3.iocsh()), file = mst)
 
             ioc._IOC__create_st_cmd(ioc_dir)
             self.assertTrue(self.filecmp(master_st_cmd, st_cmd))
 
+            #
             # Check with an unmodified st.cmd
+            #
             ioc._IOC__create_st_cmd(ioc_dir)
             self.assertTrue(self.filecmp(master_st_cmd, st_cmd))
 
-            # Check with a custom st.cmd
+            #
+            # Check with an st.cmd without $(E3_CMD_TOP)
+            #
+            with open(st_cmd, "wt") as st:
+                print("""# Startup for {iocname}
+
+# Load standard IOC startup scripts
+require essioc
+iocshLoad("$(essioc_DIR)/common_config.iocsh")
+
+# Register our db directory
+epicsEnvSet(EPICS_DB_INCLUDE_PATH, "$(E3_CMD_TOP)/db:$(EPICS_DB_INCLUDE_PATH=.)")
+
+# Load PLC specific startup script
+iocshLoad("iocsh/{iocsh}")""".format(iocname = ioc.name(), iocsh = ioc._e3.iocsh()), file = st)
+
+            ioc._IOC__create_st_cmd(ioc_dir)
+            self.assertTrue(self.filecmp(master_st_cmd, st_cmd))
+
+            #
+            # Check with a custom st.cmd (only requires in custom st.cmd)
+            #
             with open(master_st_cmd, "wt") as mst:
                 # This should be the result
                 print("""# Startup for {iocname}
@@ -180,7 +204,7 @@ iocshLoad("$(essioc_DIR)/common_config.iocsh")
 epicsEnvSet(EPICS_DB_INCLUDE_PATH, "$(E3_CMD_TOP)/db:$(EPICS_DB_INCLUDE_PATH=.)")
 
 # Load PLC specific startup script
-iocshLoad("iocsh/{iocsh}")""".format(iocname = ioc.name(), iocsh = ioc._e3.iocsh()), file = mst)
+iocshLoad("$(E3_CMD_TOP)/iocsh/{iocsh}")""".format(iocname = ioc.name(), iocsh = ioc._e3.iocsh()), file = mst)
 
             with open(st_cmd, "wt") as st:
                 # This is the initial st.cmd
@@ -192,7 +216,9 @@ require essioc
             ioc._IOC__create_st_cmd(ioc_dir)
             self.assertTrue(self.filecmp(master_st_cmd, st_cmd))
 
-            # Check with a custom st.cmd
+            #
+            # Check with a custom st.cmd (push the limits with this custom st.cmd)
+            #
             with open(master_st_cmd, "wt") as mst:
                 # This should be the result
                 print("""# Startup for {iocname}
@@ -202,7 +228,7 @@ epicsEnvSet(foo, "bar") # We should iocshLoad("$(essioc_DIR)/common_config.iocsh
 iocshLoad("my_iocsh.iocsh")
 # Register our db directory
 epicsEnvSet(EPICS_DB_INCLUDE_PATH, "$(E3_CMD_TOP)/db:$(EPICS_DB_INCLUDE_PATH=.)")
-iocshLoad("iocsh/{iocsh}")
+iocshLoad("$(E3_CMD_TOP)/iocsh/{iocsh}")
 
 # Load PLC specific startup script
 #iocshLoad("iocsh/{iocsh}")
