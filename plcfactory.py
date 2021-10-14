@@ -431,14 +431,20 @@ class E3(object):
         #
         # Create script to run module with 'safe' defaults
         #
-        with open(os.path.join(OUTPUT_DIR, "run_module.bash"), "w") as run:
+        run_module_bash =os.path.join(OUTPUT_DIR, "run_module.bash")
+        with open(run_module_bash, "w") as run:
             iocsh_bash = """iocsh.bash -l {moduledir}/cellMods -r {modulename},plcfactory -c 'iocshLoad($({modulename}_DIR)/{iocsh}, "IPADDR = 127.0.0.1, """.format(moduledir  = os.path.abspath(out_mdir),
                                                                                                                                                                      modulename = self.modulename(),
                                                                                                                                                                      iocsh      = self.iocsh())
+            print("""#!/bin/bash
+""", file = run)
+
             if 'OPC' in ifdef_params['PLC_TYPE']:
                 print(iocsh_bash + """PORT = 4840, PUBLISHING_INTERVAL = 200{macros}")'""".format(macros = live_macros), file = run)
             else:
                 print(iocsh_bash + """ RECVTIMEOUT = 3000{macros}")'""".format(macros = live_macros), file = run)
+
+            os.chmod(run_module_bash, 0o775)
 
         if self._test_cmd:
             #
@@ -494,7 +500,7 @@ pip install --user pyyaml
 
         self._epics_version = self._ioc.properties()["EPICSVersion"]
         self._require_version = self._ioc.properties()["E3RequireVersion"]
-        self._dir = helpers.sanitizeFilename(self._ioc.name().lower()).replace('-', '_')
+        self._dir = helpers.sanitizeFilename(self.name().lower()).replace('-', '_')
         self._repo = get_repository(self._ioc, "IOC_REPOSITORY") if git else None
         if self._repo:
             self._dir = helpers.url_to_path(self._repo).split('/')[-1]
@@ -710,6 +716,29 @@ pip install --user pyyaml
         return custom_iocsh
 
 
+    def __create_run_ioc(self, out_dir, iocdir):
+        run_ioc_sh = os.path.join(out_dir, "run_ioc.sh")
+        with open(run_ioc_sh, "w") as run:
+            print("""#!/bin/sh
+
+# Script to start {iocname}
+
+# This variable sets the base autosave directory; the actual autosave files will be in $(AS_TOP)/{iocslug}/save
+export AS_TOP=/tmp
+
+source /epics/base-{epics_version}/require/{require_version}/bin/setE3Env.bash
+
+iocsh.bash -e {iocdir}/env.sh {iocdir}/st.cmd
+""".format(out_dir = out_dir,
+           iocname = self.name(),
+           iocdir = iocdir,
+           iocslug = self.name().replace(':', '_'),
+           epics_version = self._epics_version,
+           require_version = self._require_version), file = run)
+
+            os.chmod(run_ioc_sh, 0o775)
+
+
     def name(self):
         """
         Returns the IOC name
@@ -790,6 +819,9 @@ pip install --user pyyaml
         # Create custom.iocsh
         custom_iocsh = self.__create_custom_iocsh(out_idir)
         created_files.append(custom_iocsh)
+
+        # Create run_ioc.sh
+        self.__create_run_ioc(OUTPUT_DIR, out_idir)
 
         # Update the repository
         if repo:
@@ -1993,7 +2025,11 @@ MISCS += $(wildcard misc/*.req)""", file = makefile)
     #
     # Create script to run module with 'safe' defaults
     #
-    with open(os.path.join(OUTPUT_DIR, "run_module"), "w") as run:
+    run_module_sh = os.path.join(OUTPUT_DIR, "run_module.sh")
+    with open(run_module_sh, "w") as run:
+        print("""#!/bin/bash
+""", file = run)
+
         if 'OPC' in ifdef_params['PLC_TYPE']:
             print("""iocsh -r {modulename},local -c 'requireSnippet({snippet}.cmd, "IPADDR=127.0.0.1, PORT=4840, PUBLISHING_INTERVAL=200{macros}")'""".format(modulename = modulename,
                                                                                                                                                               snippet    = snippet,
@@ -2002,6 +2038,8 @@ MISCS += $(wildcard misc/*.req)""", file = makefile)
             print("""iocsh -r {modulename},local -c 'requireSnippet({snippet}.cmd, "IPADDR=127.0.0.1, RECVTIMEOUT=3000{macros}")'""".format(modulename = modulename,
                                                                                                                                             snippet    = snippet,
                                                                                                                                             macros     = live_macros), file = run)
+
+        os.chmod(run_module_sh, 0o775)
 
     if test_cmd:
         #

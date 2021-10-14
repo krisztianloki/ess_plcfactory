@@ -168,6 +168,8 @@ PLCFactory can generate a PLC-IOC if the `--ioc` option is specified. The IOC is
 
 If no IOC repository is specified the IOC will still be created but without any git operations.
 
+A `run_ioc.sh` script is created in the output directory that you can use to run and test the IOC. By default, autosave files will be written to /tmp but you can change that by changing the `AS_TOP` variable in `run_ioc.sh`
+
 #### Requirements of IOC generation
 
 There are a couple of configuration details that PLCFactory needs to know about to generate an IOC. These are:
