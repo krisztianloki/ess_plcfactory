@@ -29,7 +29,7 @@ class GIT(object):
         super(GIT, self).__init__()
 
         self._master = "master"
-        self._path = path
+        self._path = os.path.abspath(path)
         self._branch = None
         self._url = None
 
@@ -118,6 +118,7 @@ git config --global user.name "My Name"
         # FIXME: I've deleted and recreated the repo but an old working copy was still in the output folder and git.fetch choked on it
         url = helpers.sanitize_url(url)
         git = GIT(path)
+        path = os.path.abspath(path)
         if not git.is_repo():
             # If 'path' is not a repository then clone url
             git.__clone(url, branch, initialize_if_empty = initialize_if_empty, verbose = verbose, gitignore_contents = gitignore_contents, initializer = initializer)
@@ -513,22 +514,6 @@ def get_status(cwd = None):
         return subprocess.check_output(shlex_split("git status -uno --porcelain"), cwd = __git_dir, **spkwargs).strip() == ""
     except subprocess.CalledProcessError:
         return False
-
-
-def clone(url, cwd, branch = None):
-    try:
-        return subprocess.check_call(shlex_split("git clone --quiet {} {} .".format(url, "" if branch is None else "--branch {} --depth 1".format(branch))), cwd = cwd, **spkwargs)
-    except subprocess.CalledProcessError as e:
-        print(e)
-        raise
-
-
-def checkout(cwd, version):
-    try:
-        return subprocess.check_call(shlex_split("git checkout --quiet {}".format(version)), cwd = cwd, **spkwargs)
-    except subprocess.CalledProcessError as e:
-        print(e)
-        raise
 
 
 def get_origin():

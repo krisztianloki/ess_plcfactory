@@ -841,9 +841,7 @@ class CC(object):
 
     @staticmethod
     def git_download(url, cwd, version = "master"):
-        print("Cloning {}...".format(url))
-        git.clone(url, cwd, branch = version)
-        git.checkout(cwd, version)
+        repo = git.GIT.clone(url, cwd, branch = version, update = True)
         CC.repos_cached[url] = version
 
 
