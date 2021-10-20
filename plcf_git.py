@@ -12,8 +12,8 @@ __git_dir = (os.path.abspath(os.path.dirname(__file__)))
 try:
     isinstance('h', unicode)
     spkwargs = dict()
-except:
-    spkwargs = {'encoding':'utf8'}
+except Exception:
+    spkwargs = {'encoding': 'utf8'}
 
 
 class GITException(Exception):
@@ -216,7 +216,7 @@ git config --global user.name "My Name"
                     helper = self.get_config("credential.helper", self._path)
                     if not helper:
                         self.set_config("credential.helper", "cache")
-                except:
+                except Exception:
                     # Not being able to set a credential helper is not fatal
                     pass
                 # Create a .gitignore file on 'master' so we can create a development branch
@@ -573,7 +573,7 @@ def check_for_updates(data_dir, product):
             if local_ref != updates[1]:
                 print("An update is available")
             return False
-    except:
+    except Exception:
         pass
 
     print("Checking for updates...")
@@ -593,7 +593,7 @@ def check_for_updates(data_dir, product):
     try:
         with open(os.path.join(data_dir, "updates"), "w") as u:
             print(updates, file = u)
-    except:
+    except Exception:
         pass
 
     if remote_ref != local_ref:
