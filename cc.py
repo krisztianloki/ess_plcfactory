@@ -337,6 +337,7 @@ class CC(object):
                     # The default git_tag / EPI VERSION is "master" for HTTP based downloads
                     if git_tag is None:
                         git_tag = "master"
+                        self.set_saveas_version(git_tag)
                     url = CC.urljoin(self.uri(), "raw", git_tag)
                     self._saveasurl = CC.urljoin(url, filename)
                     self._saveas    = CC.saveas(self.uniqueID(), filename, os_path.join(self._device.ccdb.TEMPLATE_DIR, CC.url_to_path(url)))
