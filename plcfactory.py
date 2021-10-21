@@ -1801,6 +1801,12 @@ Exiting.
     # create a stable list of controlled devices
     devices = device.buildControlsList(include_self = True, verbose = True)
 
+    # create a factory of CCDB
+    try:
+        output_files["CCDB-FACTORY"] = device.toFactory(deviceName, OUTPUT_DIR, git_tag = epi_version, script = "-".join([ deviceName, glob.timestamp ]))
+    except CC.Exception:
+        pass
+
     if IOC_ARGS:
         try:
             hostname = device.properties()["Hostname"]
@@ -2560,12 +2566,6 @@ def main(argv):
         ifdef_params.pop("PLCF_STATUS", 0)
 
     root_device = processDevice(device, plc, list(templateIDs))
-
-    # create a factory of CCDB
-    try:
-        output_files["CCDB-FACTORY"] = root_device.toFactory(device, OUTPUT_DIR, git_tag = epi_version, script = "-".join([ device, glob.timestamp ]))
-    except CC.Exception:
-        pass
 
     # record the arguments used to run this instance
     record_args(root_device)
