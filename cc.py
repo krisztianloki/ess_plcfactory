@@ -48,7 +48,6 @@ class CC(object):
     DEVICE_DICT     = "device.dict"
     paths_cached    = dict()
     sessions_cached = dict()
-    repos_cached    = dict()
 
 
     class Exception(Exception):
@@ -131,6 +130,9 @@ class CC(object):
 
 
     class Artifact(object):
+        __REPOS_CACHED    = dict()
+
+
         def __init__(self, device):
             super(CC.Artifact, self).__init__()
 
@@ -139,7 +141,47 @@ class CC(object):
             self._saveas         = None
             self._saveasurl      = None
             self._saveasversion  = None
+            self._saveasversion_is_default = None
             self._saveasfilename = None
+
+
+        @staticmethod
+        def register_git_repo(url, default, version):
+            """
+                Register that "url" was cloned and branch is "version". If the default branch is cloned "default" is True
+            """
+            CC.Artifact.__REPOS_CACHED[url] = (default, version)
+
+
+        @staticmethod
+        def is_repo_registered(url):
+            """
+                Returns True if "url" is registered as cloned
+            """
+            return CC.Artifact.__REPOS_CACHED.has_key(url)
+
+
+        @staticmethod
+        def is_repo_registered_with_branch(url, version):
+            """
+                Returns True if:
+                 - repo with "url" is cloned with branch "version" checked out
+                 OR
+                 - repo with "url" is not cloned
+            """
+            try:
+                (cached_repo_is_default_branch, cached_repo_branch) = CC.Artifact.__REPOS_CACHED[url]
+            except KeyError:
+                return True
+
+            if cached_repo_branch == version:
+                return True
+
+            # If checked out branch is default, then `version` could be None
+            if cached_repo_is_default_branch and version is None:
+                return True
+
+            return False
 
 
         def __repr__(self):
@@ -211,11 +253,19 @@ class CC(object):
             return self._saveasurl
 
 
+        def set_saveas_version(self, version):
+            if version is None:
+                self._saveasversion_is_default = True
+            else:
+                self._saveasversion_is_default = False
+                self._saveasversion = version
+
+
         def saveas_version(self):
             """
             Returns the version that needs to be downloaded (the branch/tag if git repo)
             """
-            if self._saveasversion is None:
+            if self._saveasversion is None and self._saveasversion_is_default is None:
                 raise NotImplementedError
 
             return self._saveasversion
@@ -256,48 +306,56 @@ class CC(object):
                 base = linkfile
 
             if git_tag is None:
-                git_tag = self._device.properties().get(base + " VERSION", "master")
+                git_tag = self._device.properties().get(base + " VERSION", None)
                 # if we have a non-default, device specific version then the artifact is clearly non per-devtype
-                if git_tag != "master":
+                # FIXME: this condition is too broad. Will catch if git_tag specifies the default
+                if git_tag != None:
                     self.is_perdevtype = self.__not_perdevtype
 
             print("Downloading {filetype} file {filename} (version {version}) from {url}".format(filetype = filetype,
                                                                                                  filename = filename,
                                                                                                  url      = self.uri(),
-                                                                                                 version  = git_tag))
+                                                                                                 version  = "<default>" if git_tag is None else git_tag))
 
-            self._saveasversion  = git_tag
+            self.set_saveas_version(git_tag)
             self._saveasfilename = filename
 
             return self.download()
 
 
         def prepare_to_download(self):
+            """
+                Prepare url based artifacts for download;
+                 - set the _saveas* variables
+            """
             if self.is_uri():
                 git_tag  = self.saveas_version()
                 filename = self.saveas_filename()
                 # NOTE: we _must not_ use CC.TEMPLATE_DIR here,
                 # CCDB_Dump relies on creating an instance variant of TEMPLATE_DIR to point it to its own templates directory
                 if not self.is_git():
+                    # The default git_tag / EPI VERSION is "master" for HTTP based downloads
+                    if git_tag is None:
+                        git_tag = "master"
                     url = CC.urljoin(self.uri(), "raw", git_tag)
-                    self._saveasurl      = CC.urljoin(url, filename)
-                    self._saveas         = CC.saveas(self.uniqueID(), filename, os_path.join(self._device.ccdb.TEMPLATE_DIR, CC.url_to_path(url)))
+                    self._saveasurl = CC.urljoin(url, filename)
+                    self._saveas    = CC.saveas(self.uniqueID(), filename, os_path.join(self._device.ccdb.TEMPLATE_DIR, CC.url_to_path(url)))
                 else:
                     # Make sure that only one version is requested of the same repo
                     # This is a limitation of the current implementation
                     # When this is fixed make sure that is_perdevtype is still correct!
-                    if CC.repos_cached.get(self.uri(), git_tag) != git_tag:
+                    if not self.is_repo_registered_with_branch(self.uri(), git_tag):
                         raise CC.ArtifactException("Cannot mix different versions/branches of the same repository: {}".format(self.uri()))
 
-                    self._saveasurl      = self.uri()
+                    self._saveasurl = self.uri()
                     # We could remove the '.git' extension from the url but I see no point in doing that
-                    self._saveas         = CC.saveas(self.uniqueID(), filename, os_path.join(self._device.ccdb.TEMPLATE_DIR, CC.url_to_path(self.uri())))
+                    self._saveas = CC.saveas(self.uniqueID(), filename, os_path.join(self._device.ccdb.TEMPLATE_DIR, CC.url_to_path(self.uri())))
 
 
         # Returns: "", the downloaded filename
         def download(self):
             self.prepare_to_download()
-            save_as  = self.saveas()
+            save_as = self.saveas()
 
             # check if filename has already been downloaded
             if os_path.exists(save_as):
@@ -840,9 +898,16 @@ class CC(object):
 
 
     @staticmethod
-    def git_download(url, cwd, version = "master"):
+    def git_download(url, cwd, version = None):
         repo = git.GIT.clone(url, cwd, branch = version, update = True)
-        CC.repos_cached[url] = version
+        if version is None:
+            default = True
+            version = repo.get_current_branch()
+        else:
+            default = False
+        CC.Artifact.register_git_repo(url, default, version)
+
+        return version
 
 
     def __clear(self):
