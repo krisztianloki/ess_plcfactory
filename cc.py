@@ -148,7 +148,7 @@ class CC(object):
         @staticmethod
         def register_git_repo(url, default, version):
             """
-                Register that "url" was cloned and branch is "version". If the default branch is cloned "default" is True
+                Register that `url` was cloned and branch is `version`. If the default branch is cloned `default` is True
             """
             CC.Artifact.__REPOS_CACHED[url] = (default, version)
 
@@ -156,7 +156,7 @@ class CC(object):
         @staticmethod
         def is_repo_registered(url):
             """
-                Returns True if "url" is registered as cloned
+                Returns True if `url` is registered as cloned
             """
             return CC.Artifact.__REPOS_CACHED.has_key(url)
 
@@ -165,9 +165,7 @@ class CC(object):
         def is_repo_registered_with_branch(url, version):
             """
                 Returns True if:
-                 - repo with "url" is cloned with branch "version" checked out
-                 OR
-                 - repo with "url" is not cloned
+                 - repo with `url` is cloned with branch `version` checked out
             """
             try:
                 (cached_repo_is_default_branch, cached_repo_branch) = CC.Artifact.__REPOS_CACHED[url]
@@ -182,6 +180,14 @@ class CC(object):
                 return True
 
             return False
+
+
+        @staticmethod
+        def get_registered_repo_branch(url):
+            """
+                Returns the branch that was cloned for `url`
+            """
+            return CC.Artifact.__REPOS_CACHED[url][1]
 
 
         def __repr__(self):
@@ -342,11 +348,16 @@ class CC(object):
                     self._saveasurl = CC.urljoin(url, filename)
                     self._saveas    = CC.saveas(self.uniqueID(), filename, os_path.join(self._device.ccdb.TEMPLATE_DIR, CC.url_to_path(url)))
                 else:
-                    # Make sure that only one version is requested of the same repo
-                    # This is a limitation of the current implementation
-                    # When this is fixed make sure that is_perdevtype is still correct!
-                    if not self.is_repo_registered_with_branch(self.uri(), git_tag):
-                        raise CC.ArtifactException("Cannot mix different versions/branches of the same repository: {}".format(self.uri()))
+                    # If the repo is already cloned, then we have to check the branch and make sure to store the branch used
+                    if self.is_repo_registered(self.uri()):
+                        # Make sure that only one version is requested of the same repo
+                        # This is a limitation of the current implementation
+                        # When this is fixed make sure that is_perdevtype is still correct!
+                        if not self.is_repo_registered_with_branch(self.uri(), git_tag):
+                            raise CC.ArtifactException("Cannot mix different versions/branches of the same repository: {}".format(self.uri()))
+
+                        if git_tag is None:
+                            self.set_saveas_version(self.get_registered_repo_branch(self.uri()))
 
                     self._saveasurl = self.uri()
                     # We could remove the '.git' extension from the url but I see no point in doing that
