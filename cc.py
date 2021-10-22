@@ -143,6 +143,8 @@ class CC(object):
             self._saveasversion  = None
             self._saveasversion_is_default = None
             self._saveasfilename = None
+            # EPI, ALARM TREE, etc
+            self._app_type = None
 
 
         @staticmethod
@@ -237,6 +239,13 @@ class CC(object):
             raise NotImplementedError
 
 
+        def app_type(self):
+            if self._app_type is None and not self.is_uri():
+                raise NotImplementedError
+
+            return self._app_type
+
+
         def saveas(self):
             """
             Returns the full path (relative to the current directory) of the downloaded artifact filename
@@ -311,12 +320,18 @@ class CC(object):
             else:
                 base = linkfile
 
+            self._app_type = base
+
             if git_tag is None:
-                git_tag = self._device.properties().get(base + " VERSION", None)
-                # if we have a non-default, device specific version then the artifact is clearly non per-devtype
-                # FIXME: this condition is too broad. Will catch if git_tag specifies the default
-                if git_tag != None:
+                version_prop = self._device.properties().get(self.app_type() + " VERSION", None)
+                devtype_version_prop = self._device.devtypeProperties().get(self.app_type() + " VERSION", None)
+
+                # if devtype_version_prop differs from version_prop it means that "app_type() VERSION" is a slot property ---> non per-devtype
+                #  (becase a you cannot have a slot and device type property with the same name in CCDB)
+                if version_prop != devtype_version_prop:
                     self.is_perdevtype = self.__not_perdevtype
+
+                git_tag = version_prop
 
             print("Downloading {filetype} file {filename} (version {version}) from {url}".format(filetype = filetype,
                                                                                                  filename = filename,
@@ -337,6 +352,7 @@ class CC(object):
             if self.is_uri():
                 git_tag  = self.saveas_version()
                 filename = self.saveas_filename()
+
                 # NOTE: we _must not_ use CC.TEMPLATE_DIR here,
                 # CCDB_Dump relies on creating an instance variant of TEMPLATE_DIR to point it to its own templates directory
                 if not self.is_git():
@@ -540,6 +556,11 @@ class CC(object):
         # Returns: {}
         def propertiesDict(self, prefixToIgnore = True):
             return self._ensure(self._propertiesDict(), dict)
+
+
+        # Returns: {}
+        def devtypeProperties(self, convert = True):
+            return self._ensure(self._devtypeProperties(), dict, convert)
 
 
         # Returns: ""

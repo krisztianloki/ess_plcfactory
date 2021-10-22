@@ -119,6 +119,7 @@ class CCDB(CC):
         def __init__(self, slot, ccdb = None):
             super(CCDB.Device, self).__init__(ccdb)
             self._slot  = slot
+            self._devtypeprops = None
             self._props = None
             self._arts  = None
 
@@ -161,6 +162,7 @@ class CCDB(CC):
 
             props = self._ensure(self._slot.get("properties", []), list, False)
             self._props = OrderedDict()
+            self._devtypeprops = OrderedDict()
             for prop in props:
                 name  = prop.get("name")
                 value = prop.get("value")
@@ -178,6 +180,9 @@ class CCDB(CC):
                 # issue with the entered data
                 assert name not in self._props
 
+                if prop.get("kind") == "TYPE":
+                    self._devtypeprops[name] = value
+
                 self._props[name] = value
 
             return self._props
@@ -185,6 +190,15 @@ class CCDB(CC):
 
         def _propertiesDict(self, prefixToIgnore = True):
             return self.ccdb._propertiesDict(self, prefixToIgnore)
+
+
+        def _devtypeProperties(self):
+            if self._devtypeprops is not None:
+                return self._devtypeprops
+
+            self._properties()
+
+            return self._devtypeprops
 
 
         def _deviceType(self):
