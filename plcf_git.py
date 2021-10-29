@@ -102,7 +102,7 @@ git config --global user.name "My Name"
         try:
             return subprocess.check_output(shlex_split("git rev-parse --is-inside-work-tree"), stderr = subprocess.STDOUT, cwd = path, **spkwargs).strip().lower() == "true"
         except subprocess.CalledProcessError as e:
-            if e.output.strip() == "fatal: Not a git repository (or any of the parent directories): .git":
+            if e.output.strip().startswith("fatal: Not a git repository"):
                 return False
 
             raise
@@ -126,7 +126,7 @@ git config --global user.name "My Name"
             git.__clone(url, branch, initialize_if_empty = initialize_if_empty, verbose = verbose, gitignore_contents = gitignore_contents, initializer = initializer)
             return git
 
-        if git.get_toplevel_dir() != path:
+        if not os.path.samefile(git.get_toplevel_dir(), path):
             # This is some other repository working tree, we can clone a new one here
             git.__clone(url, branch, initialize_if_empty = initialize_if_empty, verbose = verbose, gitignore_contents = gitignore_contents, initializer = initializer)
             return git
@@ -138,7 +138,6 @@ git config --global user.name "My Name"
         git.__set_url(url)
 
         git._default_branch = git.get_default_branch()
-        git._branch = git._default_branch
 
         if initialize_if_empty:
             git.__initialize_if_empty(branch, gitignore_contents, initializer, verbose = verbose)
@@ -147,6 +146,7 @@ git config --global user.name "My Name"
         if not git.get_branches():
             if branch is not None:
                 raise GITException("Empty repository does not have branch '{}'".format(branch))
+            git._branch = git._default_branch
             return git
 
         if update:
@@ -211,6 +211,10 @@ git config --global user.name "My Name"
         """
         Returns the name of the remote branch associated with remote HEAD
         """
+
+        if self._default_branch is not None:
+            return self._default_branch
+
         try:
             head = None
             """
@@ -301,13 +305,20 @@ de9dff53655734aa21357816897157161b238ad8	refs/merge-requests/3/merge
         return self.__is_repo(self._path)
 
 
-    def checkout(self, branch, exception = False):
+    def checkout(self, branch = None, exception = False):
         """
-        Checks out 'branch'
+        Checks out 'branch'. If `branch` is None checks out the default branch
         """
+        if branch is None:
+            branch = self._default_branch
+
+        if self._branch == branch:
+            return self._branch
+
         try:
             subprocess.check_call(shlex_split("git checkout --quiet {}".format(branch)), cwd = self._path, **spkwargs)
             self._branch = branch
+            return self._branch
         except subprocess.CalledProcessError as e:
             print(e)
             if exception:
