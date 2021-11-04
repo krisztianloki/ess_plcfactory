@@ -27,7 +27,11 @@ class mkdtemp(object):
 class TestGIT(unittest.TestCase):
     EMPTY_REPO = "https://gitlab.esss.lu.se/krisztianloki/empty.git"
     TO_BE_INITIALIZED_REPO = "https://gitlab.esss.lu.se/krisztianloki/to-be-initialized.git"
-    MULTIPLE_BRANCHES_REPO = "https://gitlab.esss.lu.se/krisztianloki/multiple-branches.git"
+    MULTIPLE_BRANCHES_REPO = "https://gitlab.esss.lu.se/krisztianloki/multiple-branches"
+
+
+    def setUp(self):
+        self.MULTIPLE_BRANCHES_REPO_GIT = self.MULTIPLE_BRANCHES_REPO + ".git"
 
 
     def test_clone_empty_repo(self):
@@ -75,7 +79,7 @@ class TestGIT(unittest.TestCase):
             masterfile = os.path.join(path, "master")
 
             multiple_branches_repo = plcf_git.GIT.clone(self.MULTIPLE_BRANCHES_REPO, path)
-            self.assertEqual(multiple_branches_repo._url, self.MULTIPLE_BRANCHES_REPO)
+            self.assertEqual(multiple_branches_repo._url, self.MULTIPLE_BRANCHES_REPO_GIT)
             self.assertEqual(multiple_branches_repo._default_branch, "main")
 
             def test_main():
@@ -100,7 +104,7 @@ class TestGIT(unittest.TestCase):
 
             # 'Clone' with explicit branch using existing working copy
             multiple_branches_repo = plcf_git.GIT.clone(self.MULTIPLE_BRANCHES_REPO, path, branch = "main")
-            self.assertEqual(multiple_branches_repo._url, self.MULTIPLE_BRANCHES_REPO)
+            self.assertEqual(multiple_branches_repo._url, self.MULTIPLE_BRANCHES_REPO_GIT)
             self.assertEqual(multiple_branches_repo._default_branch, "main")
 
             test_main()

@@ -120,6 +120,8 @@ git config --global user.name "My Name"
         # FIXME: I've deleted and recreated the repo but an old working copy was still in the output folder and git.fetch choked on it
         url = helpers.sanitize_url(url)
         git = GIT(path)
+        # Append '.git' if needed
+        url = git.__set_url(url)
         path = os.path.abspath(path)
         if not git.is_repo():
             # If 'path' is not a repository then clone url
@@ -134,8 +136,6 @@ git config --global user.name "My Name"
         # Have to check if this repository is the one we need
         if helpers.sanitize_url(helpers.url_strip_user(git.get_origin())) != helpers.url_strip_user(url):
             raise GITException("Found unrelated git repository in {} (belongs to {}), refusing to overwrite".format(path, git.get_origin()))
-
-        git.__set_url(url)
 
         git._default_branch = git.get_default_branch()
 
@@ -246,6 +246,8 @@ de9dff53655734aa21357816897157161b238ad8	refs/merge-requests/3/merge
             url += ".git"
         self._url = url
 
+        return url
+
 
     def __initialize_if_empty(self, branch = None, gitignore_contents = "", initializer = None, verbose = True):
         """
@@ -285,7 +287,6 @@ de9dff53655734aa21357816897157161b238ad8	refs/merge-requests/3/merge
             if verbose:
                 print("Cloning {}...".format(url))
             subprocess.check_output(shlex_split("git clone --quiet {} .".format(url)), cwd = self._path, stderr = subprocess.STDOUT, **spkwargs)
-            self.__set_url(url)
             self._default_branch = self.get_default_branch()
             self._branch = self._default_branch
             if initialize_if_empty:
