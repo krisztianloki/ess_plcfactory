@@ -1000,6 +1000,8 @@ def WriteUtilitiesCode(TIAVersion):
 	ExternalSourceFile.append("      TestInProgress " + NoExternal + " : Bool;   // Indicates which caller FC is used")
 	ExternalSourceFile.append("      EPICS_Device_calls_precessed " + NoExternal + " : Bool;   // Indicates which caller FC is used")
 	ExternalSourceFile.append("      EPICSParametersStatus " + NoExternal + " : Word;   // 0=Never Uploaded 1=Uploading... 2=Uploaded")
+	ExternalSourceFile.append("   END_VAR")
+	ExternalSourceFile.append("   VAR RETAIN")
 	ExternalSourceFile.append("      ParameterFreeze " + NoExternal + " : Bool;   // If True, the Handlers doesn't take new parameters from EPICS")
 	ExternalSourceFile.append("   END_VAR")
 	ExternalSourceFile.append("")
