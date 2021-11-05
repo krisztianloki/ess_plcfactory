@@ -21,8 +21,9 @@ from cc import CC
 class CCDB(CC):
     class Artifact(CC.Artifact):
         def __init__(self, device, artifact):
-            super(CCDB.Artifact, self).__init__(device)
+            # Needs to be _before_ superclass __init__; superclass calls is_file()
             self._artifact = artifact
+            super(CCDB.Artifact, self).__init__(device)
 
 
         def name(self):
@@ -60,25 +61,23 @@ class CCDB(CC):
             return self._artifact["kind"] == "TYPE"
 
 
-        def prepare_to_download(self):
+        def _set_saveas_url(self):
             if self.is_file():
                 if self.is_perdevtype():
-                    self._saveasurl = CCDB.urljoin("deviceTypes", self._device.deviceType(), "download", self.filename())
+                    url = CCDB.urljoin("deviceTypes", self._device.deviceType(), "download", self.filename())
                 else:
-                    self._saveasurl = CCDB.urljoin("slots", self._device.name(), "download", self.filename())
+                    url = CCDB.urljoin("slots", self._device.name(), "download", self.filename())
 
-                self._saveasurl = CCDB.urljoin(self._device.ccdb.rest_url(), self._saveasurl)
+                self._saveasurl = CCDB.urljoin(self._device.ccdb.rest_url(), url)
             else:
-                super(CCDB.Artifact, self).prepare_to_download()
+                super(CCDB.Artifact, self)._set_saveas_url()
 
 
-        def _download(self, save_as):
+        def _download(self):
             if self.is_file():
-                self._device.ccdb.download_from_ccdb(self, save_as)
-            elif self.is_git():
-                self.git_download()
+                self._device.ccdb.download_from_ccdb(self, self.saveas())
             else:
-                self._device.ccdb.download(self.saveas_url(), save_as)
+                super(CCDB.Artifact, self)._download()
 
 
         def _type(self):
@@ -204,6 +203,9 @@ class CCDB(CC):
 
 
         def _artifact(self, a):
+            """
+            Instantiates and returns an Artifact object from 'a'
+            """
             return CCDB.Artifact(self, a)
 
 
@@ -252,12 +254,8 @@ class CCDB(CC):
         if isinstance(artifact_or_url, CCDB.Artifact):
             url = artifact_or_url._saveasurl
         else:
-            url = self.urljoin(self._rest_url, url)
+            url = self.urljoin(self._rest_url, artifact_or_url)
         return CC.download(url, save_as, verify_ssl_cert = self._verify_ssl_cert)
-
-
-    def download(self, url, save_as):
-        return CC.download(url, save_as, verify_ssl_cert = True)
 
 
     def getAllDeviceNames(self):

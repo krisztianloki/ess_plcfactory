@@ -249,18 +249,18 @@ class TestCCDBDump(unittest.TestCase):
                 ccdb_dump.CCDB_Dump.load(tmpfilepath)
 
         # directory is empty
-        with mkdtemp() as tmpdirpath:
+        with mkdtemp(prefix = "testInvalidDump.emptydir-1") as tmpdirpath:
             with self.assertRaises(ccdb_dump.CC.Exception):
                 ccdb_dump.CCDB_Dump.load(tmpdirpath)
 
         # directory is empty
-        with mkdtemp() as tmpdirpath:
+        with mkdtemp(prefix = "testInvalidDump.emptydir-2") as tmpdirpath:
             os.mkdir(os.path.join(tmpdirpath, "ccdb"))
             with self.assertRaises(ccdb_dump.CC.Exception):
                 ccdb_dump.CCDB_Dump.load(tmpdirpath)
 
         # empty device.dict
-        with mkdtemp() as tmpdirpath:
+        with mkdtemp(prefix = "testInvalidDump.emptydevice.dict") as tmpdirpath:
             open(os.path.join(tmpdirpath, ccdb_dump.CC.DEVICE_DICT), "w").close()
             with self.assertRaises(ccdb_dump.CC.Exception):
                 ccdb_dump.CCDB_Dump.load(tmpdirpath)
@@ -488,35 +488,35 @@ class TestCCDBDump(unittest.TestCase):
 
 
     def testEmptyDir(self):
-        with mkdtemp() as tmpdirpath:
+        with mkdtemp(prefix = "testEmptyDir") as tmpdirpath:
             self._unzip(str(self.EMPTY_ZIP), tmpdirpath)
             cc_obj = ccdb_dump.CCDB_Dump.load(tmpdirpath)
             self._testEmpty(cc_obj)
 
 
     def testOneDeviceDir(self):
-        with mkdtemp() as tmpdirpath:
+        with mkdtemp(prefix = "testOneDeviceDir") as tmpdirpath:
             self._unzip(str(self.ONE_DEVICE_ZIP), tmpdirpath)
             cc_obj = ccdb_dump.CCDB_Dump.load(tmpdirpath)
             self._testOneDevice(cc_obj)
 
 
     def testMultiDeviceDir(self):
-        with mkdtemp() as tmpdirpath:
+        with mkdtemp(prefix = "testMultiDeviceDir") as tmpdirpath:
             self._unzip(str(self.MULTI_DEVICE_ZIP), tmpdirpath)
             cc_obj = ccdb_dump.CCDB_Dump.load(tmpdirpath)
             self._testMultiDevice(cc_obj)
 
 
     def testArtifactDir(self):
-        with mkdtemp() as tmpdirpath:
+        with mkdtemp(prefix = "testArtifactDir") as tmpdirpath:
             self._unzip(str(self.ARTIFACT_ZIP), tmpdirpath)
             cc_obj = ccdb_dump.CCDB_Dump.load(tmpdirpath)
             self._testArtifact(cc_obj, self.ARTIFACT_ZIP)
 
 
     def testUTFArtifactDir(self):
-        with mkdtemp() as tmpdirpath:
+        with mkdtemp(prefix = "testUTFArtifactDir") as tmpdirpath:
             self._unzip(str(self.UTF_ARTIFACT_ZIP), tmpdirpath)
             cc_obj = ccdb_dump.CCDB_Dump.load(tmpdirpath)
             self._testArtifact(cc_obj, self.UTF_ARTIFACT_ZIP)
