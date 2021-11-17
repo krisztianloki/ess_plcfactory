@@ -130,8 +130,7 @@ device_tag      = None
 epi_version     = None
 hashes          = dict()
 prev_hashes     = None
-GENERATE_IOC    = False
-ioc_git         = True
+IOC_ARGS        = None
 ioc             = None
 e3              = None
 PLCF_BRANCH     = git.get_current_branch()
@@ -481,7 +480,53 @@ pip install --user pyyaml
 """)
 
 
-    def __init__(self, device_s, git = True):
+    @staticmethod
+    def add_parser_args(parser):
+        group = parser.add_argument_group("IOC related options")
+
+        group.add_argument(
+                            '--ioc',
+                            dest     = "ioc",
+                            help     = "Generate IOC and if git repository is defined tag it with the given version",
+                            metavar  = 'version',
+                            type     = str,
+                            const    = "",
+                            nargs    = '?')
+
+        group.add_argument(
+                            '--no-ioc-git',
+                            dest     = "ioc_git",
+                            help     = "Ignore any git repository when generating IOC",
+                            default  = True,
+                            action   = "store_false")
+
+        group.add_argument(
+                            '--no-ioc-st-cmd',
+                            dest     = "ioc_st_cmd",
+                            help     = "Do not generate an `st.cmd` file when generating IOC",
+                            default  = True,
+                            action   = "store_false")
+
+        return parser
+
+
+    @staticmethod
+    def parse_args(args):
+        if args.ioc is None:
+            return None
+
+        IOC.check_requirements()
+
+        class ioc_args(object):
+            def __init__(self, args):
+                self.ioc = args.ioc
+                self.ioc_git = args.ioc_git
+                self.ioc_st_cmd = args.ioc_st_cmd
+
+        return ioc_args(args)
+
+
+    def __init__(self, device_s, args):
         super(IOC, self).__init__()
 
         if isinstance(device_s, list):
@@ -498,11 +543,22 @@ pip install --user pyyaml
         else:
             self._e3 = None
 
-        self._epics_version = self._ioc.properties()["EPICSVersion"]
-        self._require_version = self._ioc.properties()["E3RequireVersion"]
+        try:
+            self._epics_version = self._ioc.properties()["EPICSVersion"]
+        except KeyError:
+            raise PLCFactoryException("'EPICSVersion' property of IOC is not set")
+
+        try:
+            self._require_version = self._ioc.properties()["E3RequireVersion"]
+        except KeyError:
+            raise PLCFactoryException("'E3RequireVersion' property of IOC is not set")
+
         self._dir = helpers.sanitizeFilename(self.name().lower()).replace('-', '_')
-        self._repo = get_repository(self._ioc, "IOC_REPOSITORY") if git else None
+        self._generate_st_cmd = args.ioc_st_cmd
+        self._repo = get_repository(self._ioc, "IOC_REPOSITORY") if args.ioc_git else None
         if self._repo:
+            git.GIT.check_minimal_config()
+
             self._dir = helpers.url_to_path(self._repo).split('/')[-1]
             if self._dir.endswith('.git'):
                 self._dir = self._dir[:-4]
@@ -890,7 +946,7 @@ Could not launch browser to create merge request, please visit:
 
 class PLC(object):
     @staticmethod
-    def add_plc_parser_args(parser):
+    def add_parser_args(parser):
         plc_group = parser.add_argument_group("PLC related options")
 
         plc_args = plc_group.add_mutually_exclusive_group()
@@ -1780,7 +1836,7 @@ Exiting.
     # create a stable list of controlled devices
     devices = device.buildControlsList(include_self = True, verbose = True)
 
-    if GENERATE_IOC:
+    if IOC_ARGS:
         try:
             hostname = device.properties()["Hostname"]
         except KeyError:
@@ -1790,9 +1846,7 @@ Exiting.
             raise PLCFactoryException("Hostname of '{}' is not specified, required for IOC generation".format(device.name()))
 
         global ioc
-        ioc = IOC(devices, git = ioc_git)
-        if ioc.repo():
-            git.GIT.check_minimal_config()
+        ioc = IOC(devices, args = IOC_ARGS)
 
     if plc:
         plc.get_ifdefs(devices)
@@ -2272,7 +2326,7 @@ def main(argv):
         #
         # -d/--device cannot be added to the common args, because it is not a required option in the first pass but a required one in the second pass
         #
-        PLC.add_plc_parser_args(parser)
+        PLC.add_parser_args(parser)
 
         parser.add_argument(
                             '--list-templates',
@@ -2292,6 +2346,8 @@ def main(argv):
 
 
     def add_eee_arg(parser):
+        IOC.add_parser_args(parser)
+
         # FIXME: EEE
         parser.add_argument(
                             '--eee',
@@ -2312,22 +2368,6 @@ def main(argv):
                             type    = str,
                             const   = ""
                            )
-
-        parser.add_argument(
-                            '--ioc',
-                            dest     = "ioc",
-                            help     = "Generate IOC and if git repository is defined tag it with the given version",
-                            metavar  = 'version',
-                            type     = str,
-                            const    = "",
-                            nargs    = '?')
-
-        parser.add_argument(
-                            '--no-ioc-git',
-                            dest     = "ioc_git",
-                            help     = "Ignore any git repository when generating IOC",
-                            default  = True,
-                            action   = "store_false")
 
         return parser
 
@@ -2376,12 +2416,8 @@ def main(argv):
     else:
         eee = False
 
-    if args.ioc is not None:
-        global GENERATE_IOC
-        global ioc_git
-        GENERATE_IOC = True
-        IOC.check_requirements()
-        ioc_git = args.ioc_git
+    global IOC_ARGS
+    IOC_ARGS = IOC.parse_args(args)
 
     if args.e3 is not None:
         global e3
@@ -2511,7 +2547,7 @@ def main(argv):
     if eee:
         default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "AUTOSAVE-ST-CMD", "AUTOSAVE", "BEAST", "BEAST-TEMPLATE" ] )
 
-    if e3 or (GENERATE_IOC and plc):
+    if e3 or (IOC_ARGS and plc):
         default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "IOCSH", "AUTOSAVE-IOCSH", "BEAST", "BEAST-TEMPLATE", ] )
 
     if default_printers:
@@ -2530,7 +2566,7 @@ def main(argv):
         templateIDs.add("AUTOSAVE-TEST")
         templateIDs.add("AUTOSAVE-ST-TEST-CMD")
 
-    if (e3 or GENERATE_IOC) and "EPICS-TEST-DB" in templateIDs:
+    if (e3 or IOC_ARGS) and "EPICS-TEST-DB" in templateIDs:
         templateIDs.add("AUTOSAVE-TEST-IOCSH")
 
     # FIXME: EEE
