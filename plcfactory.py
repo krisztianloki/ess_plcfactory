@@ -213,6 +213,33 @@ class Hasher(object):
 
 
 class E3(object):
+    @staticmethod
+    def add_parser_args(parser):
+        parser.add_argument(
+                            '--e3',
+                            dest    = "e3",
+                            help    = "create a minimal E3 module with EPICS-DB and startup snippet",
+                            metavar = "modulename",
+                            nargs   = "?",
+                            type    = str,
+                            const   = ""
+                           )
+
+        return parser
+
+
+    @staticmethod
+    def parse_args(args):
+        if args.e3 is None:
+            return None
+
+        if args.e3 != "":
+            return E3(args.e3)
+        else:
+            # processDevice() will create the correct E3
+            return True
+
+
     def __init__(self, modname, snippet = None):
         super(E3, self).__init__()
 
@@ -2347,22 +2374,13 @@ def main(argv):
 
     def add_eee_arg(parser):
         IOC.add_parser_args(parser)
+        E3.add_parser_args(parser)
 
         # FIXME: EEE
         parser.add_argument(
                             '--eee',
                             dest    = "eee",
                             help    = "create a minimal EEE module with EPICS-DB and startup snippet",
-                            metavar = "modulename",
-                            nargs   = "?",
-                            type    = str,
-                            const   = ""
-                           )
-
-        parser.add_argument(
-                            '--e3',
-                            dest    = "e3",
-                            help    = "create a minimal E3 module with EPICS-DB and startup snippet",
                             metavar = "modulename",
                             nargs   = "?",
                             type    = str,
@@ -2398,7 +2416,7 @@ def main(argv):
     plc = PLC.parse_args(args)
 
     # Second pass
-    #  get EEE and E3
+    #  get EEE, E3, and IOC
     add_eee_arg(parser)
 
     args = parser.parse_known_args(argv)[0]
@@ -2419,13 +2437,8 @@ def main(argv):
     global IOC_ARGS
     IOC_ARGS = IOC.parse_args(args)
 
-    if args.e3 is not None:
-        global e3
-        if args.e3 != "":
-            e3 = E3(args.e3)
-        else:
-            # processDevice() will create the correct E3
-            e3 = True
+    global e3
+    e3 = E3.parse_args(args)
 
     # Third pass
     #  get all options
