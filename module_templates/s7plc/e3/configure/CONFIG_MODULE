@@ -7,8 +7,6 @@ E3_MODULE_VERSION:=plcfactory
 # Uncomment and change the versions if needed
 MODBUS_DEP_VERSION:=3.2.0
 S7PLC_DEP_VERSION:=1.4.1
-RECSYNC_DEP_VERSION:=1.3.0-eb33785
-AUTOSAVE_DEP_VERSION:=5.10.2
 CALC_DEP_VERSION:=3.7.4
 
 #

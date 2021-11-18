@@ -28,12 +28,6 @@ include $(E3_REQUIRE_CONFIG)/DECOUPLE_FLAGS
 
 # These are required for the communication and EPICS db
 REQUIRED += modbus s7plc calc
-# These are required for operation
-REQUIRED += autosave recsync
-
-ifneq ($(strip $(AUTOSAVE_DEP_VERSION)),)
-autosave_VERSION=$(AUTOSAVE_DEP_VERSION)
-endif
 
 ifneq ($(strip $(CALC_DEP_VERSION)),)
 calc_VERSION=$(CALC_DEP_VERSION)
@@ -45,10 +39,6 @@ endif
 
 ifneq ($(strip $(S7PLC_DEP_VERSION)),)
 s7plc_VERSION=$(S7PLC_DEP_VERSION)
-endif
-
-ifneq ($(strip $(RECSYNC_DEP_VERSION)),)
-recsync_VERSION=$(RECSYNC_DEP_VERSION)
 endif
 
 
