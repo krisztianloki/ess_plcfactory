@@ -449,21 +449,16 @@ class E3(object):
             live_macros = ""
 
         #
-        # Create env.sh
-        #
-        with open(os.path.join(OUTPUT_DIR, "env.sh"), "w") as run:
-            print("""IOCNAME='{modulename}'""".format(modulename = self.modulename()), file = run)
-
-        #
         # Create script to run module with 'safe' defaults
         #
-        run_module_bash =os.path.join(OUTPUT_DIR, "run_module.bash")
+        run_module_bash = os.path.join(OUTPUT_DIR, "run_module.bash")
         with open(run_module_bash, "w") as run:
             iocsh_bash = """iocsh.bash -l {moduledir}/cellMods -r {modulename},plcfactory -c 'iocshLoad($({modulename}_DIR)/{iocsh}, "IPADDR = 127.0.0.1, """.format(moduledir  = os.path.abspath(out_mdir),
                                                                                                                                                                      modulename = self.modulename(),
                                                                                                                                                                      iocsh      = self.iocsh())
             print("""#!/bin/bash
-""", file = run)
+export IOCNAME='{modulename}'
+""".format(modulename = self.modulename()), file = run)
 
             if 'OPC' in ifdef_params['PLC_TYPE']:
                 print(iocsh_bash + """PORT = 4840, PUBLISHING_INTERVAL = 200{macros}")'""".format(macros = live_macros), file = run)
@@ -476,7 +471,12 @@ class E3(object):
             #
             # Create script to run test version of module
             #
-            with open(os.path.join(OUTPUT_DIR, "run_test_module.bash"), "w") as run:
+            run_test_module_bash = os.path.join(OUTPUT_DIR, "run_test_module.bash")
+            with open(run_test_module_bash, "w") as run:
+                print("""#!/bin/bash
+export IOCNAME='{modulename}'
+""".format(modulename = self.modulename()), file = run)
+
                 if macros:
                     test_macros = ', "{}"'.format(macros)
                 else:
@@ -485,6 +485,8 @@ class E3(object):
                                                                                                                                                                         modulename = self.modulename(),
                                                                                                                                                                         snippet    = self.snippet(),
                                                                                                                                                                         macros     = test_macros), file = run)
+
+            os.chmod(run_test_module_bash, 0o775)
 
         print("E3 Module created:", out_mdir)
         return out_mdir
