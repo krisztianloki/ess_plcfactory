@@ -492,6 +492,8 @@ class E3(object):
 
 
 class IOC(object):
+    REQUIRED_MODULES = [ "essioc", "s7plc", "modbus", "calc" ]
+
     @staticmethod
     def check_requirements():
         try:
@@ -613,10 +615,10 @@ pip install --user pyyaml
             if stat.st_size > 1024 * 1024:
                 raise PLCFactoryException("'{}' is suspiciously large. Refusing to continue".format(os.path.basename(fname)))
         except OSError:
-            return []
+            return None
 
         with open(fname, "rt") as f:
-            return f.readlines()
+            return f.read()
 
 
     def __create_env_sh(self, out_idir, version):
@@ -629,6 +631,11 @@ pip install --user pyyaml
         # Get the currently defined env vars
         env_sh = os.path.join(out_idir, 'env.sh')
         lines = self.__get_contents(env_sh)
+        if lines is None:
+            lines = []
+        else:
+            lines = lines.splitlines(True)  # keepends
+
         env_vars = dict()
         for i in range(len(lines)):
             sp = lines[i].strip()
@@ -663,106 +670,37 @@ pip install --user pyyaml
 
 
     def __create_st_cmd(self, out_idir):
-        startup = '# Startup for {}\n'.format(self.name())
+        st_cmd = os.path.join(out_idir, "st.cmd")
 
-        common_config = [ '# Load standard IOC startup scripts\n', 'require essioc\n', 'iocshLoad("$(essioc_DIR)/common_config.iocsh")\n' ]
+        existing_st_cmd_contents = self.__get_contents(st_cmd)
 
-        db_path = '"$(E3_CMD_TOP)/db:$(EPICS_DB_INCLUDE_PATH=.)"'
-        register_db_path = [ '# Register our db directory\n', 'epicsEnvSet(EPICS_DB_INCLUDE_PATH, {})\n'.format(db_path) ]
+        # Check if we have to keep an existing st.cmd intact
+        if existing_st_cmd_contents is not None and not self._generate_st_cmd:
+            return st_cmd
 
-        load_plc = [ '# Load PLC specific startup script\n', 'iocshLoad("$(E3_CMD_TOP)/iocsh/{}")\n'.format(self._e3.iocsh()) ]
+        proposed_st_cmd_contents = """# Startup for {iocname}
 
-        st_cmd = os.path.join(out_idir, 'st.cmd')
-        lines = self.__get_contents(st_cmd)
+# Load required modules
+{modules}
 
-        # Try to determine what is already in st.cmd
-        iocsh_loads = list()
-        requires = dict()
-        epics_db_include_path = list()
-        for i in range(len(lines)):
-            sp = lines[i].strip()
-            if not sp or sp[0] == '#':
-                continue
+# Load standard IOC startup scripts
+iocshLoad("$(essioc_DIR)/common_config.iocsh")
 
-            if sp.startswith("require"):
-                # Get the name of the required module
-                sp = sp.split(' ', 1)
-                if sp[0] != "require":
-                    raise PLCFactoryException("Cannot interpret require line: '{}'".format("".join(sp)))
-                sp = sp[1].split(',')
+# Register our db directory
+epicsEnvSet(EPICS_DB_INCLUDE_PATH, "$(E3_CMD_TOP)/db:$(EPICS_DB_INCLUDE_PATH=.)")
 
-                # Store the module name and its location
-                requires[sp[0]] = i
+# Load PLC specific startup script
+iocshLoad("$(E3_CMD_TOP)/iocsh/{iocsh}")
+""".format(iocname = self.name(),
+           modules = "\n".join(["require {}".format(module) for module in self.REQUIRED_MODULES]),
+           iocsh = self._e3.iocsh())
 
-            elif sp.startswith("iocshLoad"):
-                # (Try to) Remove any comments
-                sp = sp[len("iocshLoad"):].split('#', 1)[0]
-
-                # Store the iocshLoad parameters and its location
-                iocsh_loads.append((i, sp.strip()))
-
-            elif sp.startswith("epicsEnvSet"):
-                # (Try to) Remove any comments
-                sp = sp[len("epicsEnvSet"):].split('#', 1)[0]
-                if sp[0] == '(':
-                    sp = sp[1:-1]
-                elif sp[0] == ' ':
-                    sp = sp[1:]
-                else:
-                    raise PLCFactoryException("Cannot interpret epicsEnvSet line: '{}'".format(sp))
-                (env_var, value) = sp.split(',', 1)
-                if not env_var.strip() == 'EPICS_DB_INCLUDE_PATH':
-                    continue
-                epics_db_include_path.append((i, value.strip()))
-
-        # If essioc is loaded we don't need to load it again
-        if "essioc" in requires:
-            common_config.pop(1)
-
-        load_plc_at = None
-        # Check what is iocshLoad-ed
-        for i, line in iocsh_loads:
-            # If common_config.iocsh is loaded we don't need to load it again
-            if "common_config.iocsh" in line:
-                common_config = []
-            # If plc.iocsh is loaded we don't need to load it again
-            elif self._e3.iocsh() in line:
-                load_plc_at = i
-                lines.pop(load_plc_at)
-                lines[load_plc_at:load_plc_at] = load_plc[1]
-                load_plc = []
-
-        # If our db directory is registered in EPICS_DB_INCLUDE_PATH then we don't need to do it again
-        for i, dbp in epics_db_include_path:
-            if db_path in dbp:
-                # Make sure to register DB path _before_ loading plc.iocsh
-                if load_plc_at is not None and load_plc_at < i:
-                    lines.pop(i)
-                    lines[load_plc_at:load_plc_at] = register_db_path
-                register_db_path = []
-                break
-
-        # Make sure to register DB path _before_ loading plc.iocsh
-        if register_db_path and load_plc_at is not None:
-            lines[load_plc_at:load_plc_at] = register_db_path
-            register_db_path = []
+        # Check if we have to backup existing st.cmd
+        if existing_st_cmd_contents is not None and existing_st_cmd_contents != proposed_st_cmd_contents:
+            os.rename(st_cmd, os.path.join(out_idir, "st.cmd.orig"))
 
         with open(st_cmd, "wt") as f:
-            if not lines or "startup for " not in lines[0].lower():
-                print(startup, file = f)
-            f.writelines(lines)
-            if lines and common_config and lines[-1].strip() != "":
-                # Add extra newline
-                print(file = f)
-            f.writelines(common_config)
-            if common_config and register_db_path:
-                # Add extra newline
-                print(file = f)
-            f.writelines(register_db_path)
-            if register_db_path and load_plc:
-                # Add extra newline
-                print(file = f)
-            f.writelines(load_plc)
+            print(proposed_st_cmd_contents, file = f)
 
         return st_cmd
 

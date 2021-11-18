@@ -91,6 +91,17 @@ class TestIOC(unittest.TestCase):
 
         return first_lines == second_lines
 
+
+    def _ioc_args(self, generate_st_cmd = True):
+        class ioc_args(object):
+            def __init__(self, keep_st_cmd):
+                self.ioc = True
+                self.ioc_git = False
+                self.ioc_st_cmd = generate_st_cmd
+
+        return ioc_args(generate_st_cmd)
+
+
     def _master_env_sh(self, directory, iocname = None, iocdir = None, extra_before_lines = [], extra_after_lines = [], extra_spaces = ""):
         master_env_sh = os.path.join(directory, "master_env.sh")
         if iocname is None:
@@ -106,8 +117,60 @@ class TestIOC(unittest.TestCase):
         return master_env_sh
 
 
+    def _master_st_cmd(self, directory, ioc):
+        master_st_cmd = os.path.join(directory, "master_st.cmd")
+
+        #
+        # Check with no st.cmd
+        #
+        with open(master_st_cmd, "wt") as mst:
+            print("""# Startup for {iocname}
+
+# Load required modules
+require essioc
+require s7plc
+require modbus
+require calc
+
+# Load standard IOC startup scripts
+iocshLoad("$(essioc_DIR)/common_config.iocsh")
+
+# Register our db directory
+epicsEnvSet(EPICS_DB_INCLUDE_PATH, "$(E3_CMD_TOP)/db:$(EPICS_DB_INCLUDE_PATH=.)")
+
+# Load PLC specific startup script
+iocshLoad("$(E3_CMD_TOP)/iocsh/{iocsh}")""".format(iocname = ioc.name(), iocsh = ioc._e3.iocsh()), file = mst)
+
+        return master_st_cmd
+
+
+    def _custom_st_cmd(self, directory):
+        st_cmd = os.path.join(directory, "st.cmd")
+
+        #
+        # Check with a modified st.cmd
+        #
+        with open(st_cmd, "wt") as st:
+            print("""# Startup for me
+
+# Load required modules
+require essioc
+require me
+
+# Load standard IOC startup scripts
+iocshLoad("$(essioc_DIR)/common_config.iocsh")
+
+iocshLoad("me")""", file = st)
+
+        return st_cmd
+
+
+    def _st_cmd_orig(self, directory):
+        return os.path.join(directory, "st.cmd.orig")
+
+
     def test_env_sh(self):
-        ioc = IOC(self.device)
+        ioc = IOC(self.device, self._ioc_args())
         with mkdtemp() as ioc_dir:
             # Check with no env.sh
             master_env_sh = self._master_env_sh(ioc_dir)
@@ -136,121 +199,102 @@ class TestIOC(unittest.TestCase):
             self.assertTrue(self.filecmp(master_env_sh, env_sh))
 
 
-    def test_st_cmd(self):
-        ioc = IOC(self.device)
+    def test_no_st_cmd(self):
+        #
+        # Check with no st.cmd
+        #
+        ioc = IOC(self.device, self._ioc_args())
         ioc._e3 = FakeE3("myplc.iocsh")
         with mkdtemp() as ioc_dir:
             st_cmd = os.path.join(ioc_dir, "st.cmd")
-            master_st_cmd = os.path.join(ioc_dir, "master_st.cmd")
-
-            #
-            # Check with no st.cmd
-            #
-            with open(master_st_cmd, "wt") as mst:
-                print("""# Startup for {iocname}
-
-# Load standard IOC startup scripts
-require essioc
-iocshLoad("$(essioc_DIR)/common_config.iocsh")
-
-# Register our db directory
-epicsEnvSet(EPICS_DB_INCLUDE_PATH, "$(E3_CMD_TOP)/db:$(EPICS_DB_INCLUDE_PATH=.)")
-
-# Load PLC specific startup script
-iocshLoad("$(E3_CMD_TOP)/iocsh/{iocsh}")""".format(iocname = ioc.name(), iocsh = ioc._e3.iocsh()), file = mst)
+            master_st_cmd = self._master_st_cmd(ioc_dir, ioc)
 
             ioc._IOC__create_st_cmd(ioc_dir)
             self.assertTrue(self.filecmp(master_st_cmd, st_cmd))
 
-            #
-            # Check with an unmodified st.cmd
-            #
-            ioc._IOC__create_st_cmd(ioc_dir)
-            self.assertTrue(self.filecmp(master_st_cmd, st_cmd))
 
-            #
-            # Check with an st.cmd without $(E3_CMD_TOP)
-            #
-            with open(st_cmd, "wt") as st:
-                print("""# Startup for {iocname}
-
-# Load standard IOC startup scripts
-require essioc
-iocshLoad("$(essioc_DIR)/common_config.iocsh")
-
-# Register our db directory
-epicsEnvSet(EPICS_DB_INCLUDE_PATH, "$(E3_CMD_TOP)/db:$(EPICS_DB_INCLUDE_PATH=.)")
-
-# Load PLC specific startup script
-iocshLoad("iocsh/{iocsh}")""".format(iocname = ioc.name(), iocsh = ioc._e3.iocsh()), file = st)
+    def test_no_st_cmd_dont_generate(self):
+        #
+        # Check with no st.cmd and --no-ioc-st-cmd
+        #
+        ioc = IOC(self.device, self._ioc_args(False))
+        ioc._e3 = FakeE3("myplc.iocsh")
+        with mkdtemp() as ioc_dir:
+            st_cmd = os.path.join(ioc_dir, "st.cmd")
+            master_st_cmd = self._master_st_cmd(ioc_dir, ioc)
 
             ioc._IOC__create_st_cmd(ioc_dir)
+            # st.cmd should be generated even with `--no-ioc-st-cmd`
             self.assertTrue(self.filecmp(master_st_cmd, st_cmd))
 
-            #
-            # Check with a custom st.cmd (only requires in custom st.cmd)
-            #
-            with open(master_st_cmd, "wt") as mst:
-                # This should be the result
-                print("""# Startup for {iocname}
 
-require my_shiny_module
-require essioc
+    def test_unmodified_st_cmd(self):
+        #
+        # Check with an unmodified st.cmd
+        #
+        ioc = IOC(self.device, self._ioc_args())
+        ioc._e3 = FakeE3("myplc.iocsh")
+        with mkdtemp() as ioc_dir:
+            st_cmd = os.path.join(ioc_dir, "st.cmd")
+            master_st_cmd = self._master_st_cmd(ioc_dir, ioc)
 
-# Load standard IOC startup scripts
-iocshLoad("$(essioc_DIR)/common_config.iocsh")
-
-# Register our db directory
-epicsEnvSet(EPICS_DB_INCLUDE_PATH, "$(E3_CMD_TOP)/db:$(EPICS_DB_INCLUDE_PATH=.)")
-
-# Load PLC specific startup script
-iocshLoad("$(E3_CMD_TOP)/iocsh/{iocsh}")""".format(iocname = ioc.name(), iocsh = ioc._e3.iocsh()), file = mst)
-
-            with open(st_cmd, "wt") as st:
-                # This is the initial st.cmd
-                print("""
-require my_shiny_module
-require essioc
-""", file = st)
-
+            shutil.copy(master_st_cmd, st_cmd)
             ioc._IOC__create_st_cmd(ioc_dir)
             self.assertTrue(self.filecmp(master_st_cmd, st_cmd))
+            self.assertFalse(os.path.exists(self._st_cmd_orig(ioc_dir)))
 
-            #
-            # Check with a custom st.cmd (push the limits with this custom st.cmd)
-            #
-            with open(master_st_cmd, "wt") as mst:
-                # This should be the result
-                print("""# Startup for {iocname}
 
-# We should iocshLoad("$(essioc_DIR)/common_config.iocsh")
-epicsEnvSet(foo, "bar") # We should iocshLoad("$(essioc_DIR)/common_config.iocsh")
-iocshLoad("my_iocsh.iocsh")
-# Register our db directory
-epicsEnvSet(EPICS_DB_INCLUDE_PATH, "$(E3_CMD_TOP)/db:$(EPICS_DB_INCLUDE_PATH=.)")
-iocshLoad("$(E3_CMD_TOP)/iocsh/{iocsh}")
+    def test_unmodified_st_cmd_dont_generate(self):
+        #
+        # Check with an unmodified st.cmd and --no-ioc-st-cmd
+        #
+        ioc = IOC(self.device, self._ioc_args(False))
+        ioc._e3 = FakeE3("myplc.iocsh")
+        with mkdtemp() as ioc_dir:
+            st_cmd = os.path.join(ioc_dir, "st.cmd")
+            master_st_cmd = self._master_st_cmd(ioc_dir, ioc)
 
-# Load PLC specific startup script
-#iocshLoad("iocsh/{iocsh}")
+            shutil.copy(master_st_cmd, st_cmd)
+            ioc._IOC__create_st_cmd(ioc_dir)
+            self.assertTrue(self.filecmp(master_st_cmd, st_cmd))
+            self.assertFalse(os.path.exists(self._st_cmd_orig(ioc_dir)))
 
-# Load standard IOC startup scripts
-require essioc
-iocshLoad("$(essioc_DIR)/common_config.iocsh")
-""".format(iocname = ioc.name(), iocsh = ioc._e3.iocsh()), file = mst)
 
-            with open(st_cmd, "wt") as st:
-                # This is the initial st.cmd
-                print("""# We should iocshLoad("$(essioc_DIR)/common_config.iocsh")
-epicsEnvSet(foo, "bar") # We should iocshLoad("$(essioc_DIR)/common_config.iocsh")
-iocshLoad("my_iocsh.iocsh")
-iocshLoad("iocsh/{iocsh}")
+    def test_modified_st_cmd(self):
+        #
+        # Check with a modified st.cmd
+        #
+        ioc = IOC(self.device, self._ioc_args())
+        ioc._e3 = FakeE3("myplc.iocsh")
+        with mkdtemp() as ioc_dir:
+            master_st_cmd = self._master_st_cmd(ioc_dir, ioc)
 
-# Load PLC specific startup script
-#iocshLoad("iocsh/{iocsh}")
-""".format(iocsh = ioc._e3.iocsh()), file = st)
+            st_cmd = self._custom_st_cmd(ioc_dir)
+            custom_st_cmd = os.path.join(ioc_dir, "custom-st.cmd")
+            shutil.copy(st_cmd, custom_st_cmd)
+
+            with open(self._st_cmd_orig(ioc_dir), "wt") as f:
+                print("Should be overwritten", file = f)
 
             ioc._IOC__create_st_cmd(ioc_dir)
             self.assertTrue(self.filecmp(master_st_cmd, st_cmd))
+            self.assertTrue(self.filecmp(custom_st_cmd, self._st_cmd_orig(ioc_dir)))
+
+
+    def test_modified_st_cmd_dont_generate(self):
+        #
+        # Check with a modified st.cmd and --no-ioc-st-cmd
+        #
+        ioc = IOC(self.device, self._ioc_args(False))
+        ioc._e3 = FakeE3("myplc.iocsh")
+        with mkdtemp() as ioc_dir:
+            st_cmd = self._custom_st_cmd(ioc_dir)
+            custom_st_cmd = os.path.join(ioc_dir, "custom-st.cmd")
+            shutil.copy(st_cmd, custom_st_cmd)
+
+            ioc._IOC__create_st_cmd(ioc_dir)
+            self.assertTrue(self.filecmp(custom_st_cmd, st_cmd))
+            self.assertFalse(os.path.exists(self._st_cmd_orig(ioc_dir)))
 
 
 
