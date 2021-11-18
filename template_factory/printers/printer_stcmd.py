@@ -19,8 +19,9 @@ def printer():
              (IOCSH.name(), IOCSH),
              (AUTOSAVE_ST_CMD.name(), AUTOSAVE_ST_CMD),
              (AUTOSAVE_IOCSH.name(), AUTOSAVE_IOCSH),
-             (ST_TEST_CMD.name(), ST_TEST_CMD),
-             (TEST_IOCSH.name(), TEST_IOCSH),
+# Disable these; should be completely removed if no one complains
+#             (ST_TEST_CMD.name(), ST_TEST_CMD),
+#             (TEST_IOCSH.name(), TEST_IOCSH),
              (AUTOSAVE_ST_TEST_CMD.name(), AUTOSAVE_ST_TEST_CMD),
              (AUTOSAVE_TEST_IOCSH.name(), AUTOSAVE_TEST_IOCSH) ]
 
@@ -59,10 +60,8 @@ class e3(object):
 
 
     def require(self):
-        return """require s7plc
-require modbus
-require calc
-"""
+        # require is handled by the .dep file in E3
+        return ""
 
 
     def modulename(self):
