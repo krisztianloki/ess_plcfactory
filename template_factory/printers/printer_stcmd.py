@@ -18,12 +18,10 @@ def printer():
     return [ (ST_CMD.name(), ST_CMD),
              (IOCSH.name(), IOCSH),
              (AUTOSAVE_ST_CMD.name(), AUTOSAVE_ST_CMD),
-             (AUTOSAVE_IOCSH.name(), AUTOSAVE_IOCSH),
-# Disable these; should be completely removed if no one complains
+# Disable this; should be completely removed if no one complains
 #             (ST_TEST_CMD.name(), ST_TEST_CMD),
-#             (TEST_IOCSH.name(), TEST_IOCSH),
-             (AUTOSAVE_ST_TEST_CMD.name(), AUTOSAVE_ST_TEST_CMD),
-             (AUTOSAVE_TEST_IOCSH.name(), AUTOSAVE_TEST_IOCSH) ]
+             (TEST_IOCSH.name(), TEST_IOCSH),
+             (AUTOSAVE_ST_TEST_CMD.name(), AUTOSAVE_ST_TEST_CMD) ]
 
 
 
@@ -428,12 +426,6 @@ def e3_autosave_header(printer):
     return """# @field SAVEFILE_DIR
 # @type STRING
 # The directory where autosave should save files
-
-# @field REQUIRE_IOC
-# @runtime YES
-
-# @field IOCNAME
-# @runtime YES
 """
 
 
@@ -507,62 +499,6 @@ class AUTOSAVE_ST_CMD(ST_CMD):
 
 
 
-class AUTOSAVE_IOCSH(IOCSH):
-    def __init__(self, **keyword_parameters):
-        super(AUTOSAVE_IOCSH, self).__init__(**keyword_parameters)
-        self._has_params = False
-        self._autosave = True
-
-
-    @staticmethod
-    def name():
-        return "AUTOSAVE-IOCSH"
-
-
-    def require(self):
-        # require autosave too
-        return super(AUTOSAVE_IOCSH, self).require() + """
-require autosave
-"""
-
-
-    #
-    # HEADER
-    #
-    def header(self, header_if_def, output, **keyword_parameters):
-        super(AUTOSAVE_IOCSH, self).header(header_if_def, output, **keyword_parameters)
-
-        self._append(e3_autosave_header(self), output)
-
-
-    #
-    # BODY
-    #
-    def _ifdef_body(self, if_def, output, **keyword_parameters):
-        super(AUTOSAVE_IOCSH, self)._ifdef_body(if_def, output, **keyword_parameters)
-
-        if not self._has_params:
-            for src in if_def.interfaces():
-                if isinstance(src, BASE_TYPE) and src.is_parameter():
-                    self._has_params = True
-                    break
-
-
-    #
-    # FOOTER
-    #
-    def footer(self, footer_if_def, output, **keyword_parameters):
-        super(AUTOSAVE_IOCSH, self).footer(footer_if_def, output, **keyword_parameters)
-
-        if self._has_params:
-            self._append("""
-#- Load autosave config
-iocshLoad("${autosave_DIR}/autosave.iocsh", "AS_TOP = ${SAVEFILE_DIR=.}, IOCNAME = ${IOCNAME=${REQUIRE_IOC}}, NUM_SEQ = 1")
-""", output)
-
-
-
-
 class AUTOSAVE_ST_TEST_CMD(ST_TEST_CMD):
     def __init__(self):
         super(AUTOSAVE_ST_TEST_CMD, self).__init__()
@@ -589,43 +525,3 @@ class AUTOSAVE_ST_TEST_CMD(ST_TEST_CMD):
         super(AUTOSAVE_ST_TEST_CMD, self).footer(footer_if_def, output, **keyword_parameters)
 
         self._append(autosave_footer(self), output)
-
-
-
-
-class AUTOSAVE_TEST_IOCSH(TEST_IOCSH):
-    def __init__(self):
-        super(AUTOSAVE_TEST_IOCSH, self).__init__()
-
-
-    @staticmethod
-    def name():
-        return "AUTOSAVE-TEST-IOCSH"
-
-
-    def require(self):
-        # require autosave too
-        return super(AUTOSAVE_TEST_IOCSH, self).require() + """
-require autosave
-"""
-
-
-    #
-    # HEADER
-    #
-    def header(self, header_if_def, output, **keyword_parameters):
-        super(AUTOSAVE_TEST_IOCSH, self).header(header_if_def, output, **keyword_parameters)
-
-        self._append(e3_autosave_header(self), output)
-
-
-    #
-    # FOOTER
-    #
-    def footer(self, footer_if_def, output, **keyword_parameters):
-        super(AUTOSAVE_TEST_IOCSH, self).footer(footer_if_def, output, **keyword_parameters)
-
-        self._append("""
-#- Load autosave config
-iocshLoad("${autosave_DIR}/autosave.iocsh", "AS_TOP = ${SAVEFILE_DIR=.}, IOCNAME = ${IOCNAME=${REQUIRE_IOC}-test}, NUM_SEQ = 1")
-""", output)

@@ -254,7 +254,6 @@ class E3(object):
 
         self._files = []
         self._test_cmd = False
-        self._startup = None
         self._iocsh = None
 
         glob.e3_modulename = self._modulename
@@ -293,7 +292,7 @@ class E3(object):
         """
         Returns the printer that generated the iocsh snippet
         """
-        return  printers[self._startup]
+        return  printers["IOCSH"]
 
 
     @staticmethod
@@ -330,7 +329,7 @@ class E3(object):
         return E3(modulename, snippet)
 
 
-    def copy_files(self, basedir, generate_iocsh = None):
+    def copy_files(self, basedir):
         """
         Create the directory structure and copy the generated files
         """
@@ -347,31 +346,15 @@ class E3(object):
             pass
 
         try:
-            if generate_iocsh is None or generate_iocsh == 'AUTOSAVE-IOCSH':
-                self._iocsh = ch.m_cp(output_files['AUTOSAVE-IOCSH'],      "iocsh",   self.snippet() + "-autosave.iocsh")
-                self._startup = 'AUTOSAVE-IOCSH'
+            self._iocsh = ch.m_cp(output_files['IOCSH'],     "iocsh",   self.snippet() + ".iocsh")
         except KeyError:
             pass
 
         try:
-            if generate_iocsh is None or generate_iocsh == 'IOCSH':
-                tmp = ch.m_cp(output_files['IOCSH'],               "iocsh",   self.snippet() + ".iocsh")
-                if self._startup is None:
-                    self._startup = 'IOCSH'
-                    self._iocsh = tmp
+            ch.m_cp(output_files['TEST-IOCSH'],              "iocsh",   self.snippet() + "-test.iocsh")
+            self._test_cmd = True
         except KeyError:
-            pass
-
-        self._test_cmd = True
-        try:
-            test_startup = 'AUTOSAVE-TEST-IOCSH'
-            ch.m_cp(output_files[test_startup],              "iocsh",   self.snippet() + "-test.iocsh")
-        except KeyError:
-            try:
-                test_startup = 'TEST-IOCSH'
-                ch.m_cp(output_files[test_startup],          "iocsh",   self.snippet() + "-test.iocsh")
-            except KeyError:
-                self._test_cmd = False
+            self._test_cmd = False
 
         ch.m_cp(output_files["CREATOR"],                     "misc",    "creator")
         ch.m_cp(output_files["DEVICE-LIST"],                 "misc",    "device-list.txt")
@@ -453,17 +436,25 @@ class E3(object):
         #
         run_module_bash = os.path.join(OUTPUT_DIR, "run_module.bash")
         with open(run_module_bash, "w") as run:
-            iocsh_bash = """iocsh.bash -l {moduledir}/cellMods -r {modulename},plcfactory -c 'iocshLoad($({modulename}_DIR)/{iocsh}, "IPADDR = 127.0.0.1, """.format(moduledir  = os.path.abspath(out_mdir),
-                                                                                                                                                                     modulename = self.modulename(),
-                                                                                                                                                                     iocsh      = self.iocsh())
-            print("""#!/bin/bash
-export IOCNAME='{modulename}'
-""".format(modulename = self.modulename()), file = run)
-
             if 'OPC' in ifdef_params['PLC_TYPE']:
-                print(iocsh_bash + """PORT = 4840, PUBLISHING_INTERVAL = 200{macros}")'""".format(macros = live_macros), file = run)
+                rmb_macros = """PORT = 4840, PUBLISHING_INTERVAL = 200{macros}""".format(macros = live_macros)
             else:
-                print(iocsh_bash + """ RECVTIMEOUT = 3000{macros}")'""".format(macros = live_macros), file = run)
+                rmb_macros = """RECVTIMEOUT = 3000{macros}""".format(macros = live_macros)
+
+            print("""#!/bin/bash
+
+export IOCNAME='{modulename}'
+export IOCDIR='autosave-{modulename}'
+
+iocsh.bash -l {moduledir}/cellMods \\
+    -r autosave \\
+    -r {modulename},plcfactory \\
+    -c 'iocshLoad("$({modulename}_DIR)/{iocsh}", "IPADDR = 127.0.0.1, {macros}")' \\
+    -c 'iocshLoad("$(autosave_DIR)/autosave.iocsh", "AS_TOP = ., NUM_SEQ = 1")'
+""".format(modulename = self.modulename(),
+           moduledir  = os.path.abspath(out_mdir),
+           iocsh      = self.iocsh(),
+           macros     = rmb_macros), file = run)
 
             os.chmod(run_module_bash, 0o775)
 
@@ -473,18 +464,25 @@ export IOCNAME='{modulename}'
             #
             run_test_module_bash = os.path.join(OUTPUT_DIR, "run_test_module.bash")
             with open(run_test_module_bash, "w") as run:
-                print("""#!/bin/bash
-export IOCNAME='{modulename}'
-""".format(modulename = self.modulename()), file = run)
-
                 if macros:
                     test_macros = ', "{}"'.format(macros)
                 else:
                     test_macros = ""
-                print("""iocsh.bash -l {moduledir}/cellMods -r {modulename},plcfactory -c 'iocshLoad($({modulename}_DIR)/{snippet}-test.iocsh, "_={macros}")'""".format(moduledir  = os.path.abspath(out_mdir),
-                                                                                                                                                                        modulename = self.modulename(),
-                                                                                                                                                                        snippet    = self.snippet(),
-                                                                                                                                                                        macros     = test_macros), file = run)
+
+                print("""#!/bin/bash
+
+export IOCNAME='{modulename}'
+export IOCDIR='autosave-{modulename}-test'
+
+iocsh.bash -l {moduledir}/cellMods \\
+    -r autosave \\
+    -r {modulename},plcfactory \\
+    -c 'iocshLoad($({modulename}_DIR)/{snippet}-test.iocsh, "_={macros}")' \\
+    -c 'iocshLoad("$(autosave_DIR)/autosave.iocsh", "AS_TOP = ., NUM_SEQ = 1")'
+""".format(modulename = self.modulename(),
+           moduledir  = os.path.abspath(out_mdir),
+           snippet    = self.snippet(),
+           macros     = test_macros), file = run)
 
             os.chmod(run_test_module_bash, 0o775)
 
@@ -826,7 +824,7 @@ iocsh.bash -e {iocdir}/env.sh {iocdir}/st.cmd
         created_files = []
         if self._e3:
             # Copy the generated e3 files
-            self._e3.copy_files(out_idir, generate_iocsh = "IOCSH")
+            self._e3.copy_files(out_idir)
             # Create st.cmd
             st_cmd = self.__create_st_cmd(out_idir)
             created_files.append(st_cmd)
@@ -2501,7 +2499,7 @@ def main(argv):
         default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "AUTOSAVE-ST-CMD", "AUTOSAVE", "BEAST", "BEAST-TEMPLATE" ] )
 
     if e3 or (IOC_ARGS and plc):
-        default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "IOCSH", "AUTOSAVE-IOCSH", "BEAST", "BEAST-TEMPLATE", ] )
+        default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "IOCSH", "TEST-IOCSH", "BEAST", "BEAST-TEMPLATE", ] )
 
     if default_printers:
         if not default_printers <= set(tf.available_printers()):
@@ -2519,9 +2517,6 @@ def main(argv):
         templateIDs.add("AUTOSAVE-TEST")
         templateIDs.add("AUTOSAVE-ST-TEST-CMD")
 
-    if (e3 or IOC_ARGS) and "EPICS-TEST-DB" in templateIDs:
-        templateIDs.add("AUTOSAVE-TEST-IOCSH")
-
     # FIXME: EEE
     if "ST-CMD" in templateIDs and "AUTOSAVE-ST-CMD" in templateIDs:
         templateIDs.remove("ST-CMD")
@@ -2529,9 +2524,6 @@ def main(argv):
     # FIXME: EEE
     if "ST-TEST-CMD" in templateIDs and "AUTOSAVE-ST-TEST-CMD" in templateIDs:
         templateIDs.remove("ST-TEST-CMD")
-
-    if "TEST-IOCSH" in templateIDs and "AUTOSAVE-TEST-IOCSH" in templateIDs:
-        templateIDs.remove("TEST-IOCSH")
 
     if "EPICS-DB" in templateIDs and plc and plc.is_opc():
         templateIDs.add("EPICS-OPC-DB")
