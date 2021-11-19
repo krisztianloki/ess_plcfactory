@@ -130,8 +130,7 @@ device_tag      = None
 epi_version     = None
 hashes          = dict()
 prev_hashes     = None
-GENERATE_IOC    = False
-ioc_git         = True
+IOC_ARGS        = None
 ioc             = None
 e3              = None
 PLCF_BRANCH     = git.get_current_branch()
@@ -214,6 +213,33 @@ class Hasher(object):
 
 
 class E3(object):
+    @staticmethod
+    def add_parser_args(parser):
+        parser.add_argument(
+                            '--e3',
+                            dest    = "e3",
+                            help    = "create a minimal E3 module with EPICS-DB and startup snippet",
+                            metavar = "modulename",
+                            nargs   = "?",
+                            type    = str,
+                            const   = ""
+                           )
+
+        return parser
+
+
+    @staticmethod
+    def parse_args(args):
+        if args.e3 is None:
+            return None
+
+        if args.e3 != "":
+            return E3(args.e3)
+        else:
+            # processDevice() will create the correct E3
+            return True
+
+
     def __init__(self, modname, snippet = None):
         super(E3, self).__init__()
 
@@ -228,7 +254,6 @@ class E3(object):
 
         self._files = []
         self._test_cmd = False
-        self._startup = None
         self._iocsh = None
 
         glob.e3_modulename = self._modulename
@@ -267,7 +292,7 @@ class E3(object):
         """
         Returns the printer that generated the iocsh snippet
         """
-        return  printers[self._startup]
+        return  printers["IOCSH"]
 
 
     @staticmethod
@@ -304,7 +329,7 @@ class E3(object):
         return E3(modulename, snippet)
 
 
-    def copy_files(self, basedir, generate_iocsh = None):
+    def copy_files(self, basedir):
         """
         Create the directory structure and copy the generated files
         """
@@ -321,31 +346,15 @@ class E3(object):
             pass
 
         try:
-            if generate_iocsh is None or generate_iocsh == 'AUTOSAVE-IOCSH':
-                self._iocsh = ch.m_cp(output_files['AUTOSAVE-IOCSH'],      "iocsh",   self.snippet() + "-autosave.iocsh")
-                self._startup = 'AUTOSAVE-IOCSH'
+            self._iocsh = ch.m_cp(output_files['IOCSH'],     "iocsh",   self.snippet() + ".iocsh")
         except KeyError:
             pass
 
         try:
-            if generate_iocsh is None or generate_iocsh == 'IOCSH':
-                tmp = ch.m_cp(output_files['IOCSH'],               "iocsh",   self.snippet() + ".iocsh")
-                if self._startup is None:
-                    self._startup = 'IOCSH'
-                    self._iocsh = tmp
+            ch.m_cp(output_files['TEST-IOCSH'],              "iocsh",   self.snippet() + "-test.iocsh")
+            self._test_cmd = True
         except KeyError:
-            pass
-
-        self._test_cmd = True
-        try:
-            test_startup = 'AUTOSAVE-TEST-IOCSH'
-            ch.m_cp(output_files[test_startup],              "iocsh",   self.snippet() + "-test.iocsh")
-        except KeyError:
-            try:
-                test_startup = 'TEST-IOCSH'
-                ch.m_cp(output_files[test_startup],          "iocsh",   self.snippet() + "-test.iocsh")
-            except KeyError:
-                self._test_cmd = False
+            self._test_cmd = False
 
         ch.m_cp(output_files["CREATOR"],                     "misc",    "creator")
         ch.m_cp(output_files["DEVICE-LIST"],                 "misc",    "device-list.txt")
@@ -423,26 +432,29 @@ class E3(object):
             live_macros = ""
 
         #
-        # Create env.sh
-        #
-        with open(os.path.join(OUTPUT_DIR, "env.sh"), "w") as run:
-            print("""IOCNAME='{modulename}'""".format(modulename = self.modulename()), file = run)
-
-        #
         # Create script to run module with 'safe' defaults
         #
-        run_module_bash =os.path.join(OUTPUT_DIR, "run_module.bash")
+        run_module_bash = os.path.join(OUTPUT_DIR, "run_module.bash")
         with open(run_module_bash, "w") as run:
-            iocsh_bash = """iocsh.bash -l {moduledir}/cellMods -r {modulename},plcfactory -c 'iocshLoad($({modulename}_DIR)/{iocsh}, "IPADDR = 127.0.0.1, """.format(moduledir  = os.path.abspath(out_mdir),
-                                                                                                                                                                     modulename = self.modulename(),
-                                                                                                                                                                     iocsh      = self.iocsh())
-            print("""#!/bin/bash
-""", file = run)
-
             if 'OPC' in ifdef_params['PLC_TYPE']:
-                print(iocsh_bash + """PORT = 4840, PUBLISHING_INTERVAL = 200{macros}")'""".format(macros = live_macros), file = run)
+                rmb_macros = """PORT = 4840, PUBLISHING_INTERVAL = 200{macros}""".format(macros = live_macros)
             else:
-                print(iocsh_bash + """ RECVTIMEOUT = 3000{macros}")'""".format(macros = live_macros), file = run)
+                rmb_macros = """RECVTIMEOUT = 3000{macros}""".format(macros = live_macros)
+
+            print("""#!/bin/bash
+
+export IOCNAME='{modulename}'
+export IOCDIR='autosave-{modulename}'
+
+iocsh.bash -l {moduledir}/cellMods \\
+    -r autosave \\
+    -r {modulename},plcfactory \\
+    -c 'iocshLoad("$({modulename}_DIR)/{iocsh}", "IPADDR = 127.0.0.1, {macros}")' \\
+    -c 'iocshLoad("$(autosave_DIR)/autosave.iocsh", "AS_TOP = ., NUM_SEQ = 1")'
+""".format(modulename = self.modulename(),
+           moduledir  = os.path.abspath(out_mdir),
+           iocsh      = self.iocsh(),
+           macros     = rmb_macros), file = run)
 
             os.chmod(run_module_bash, 0o775)
 
@@ -450,15 +462,29 @@ class E3(object):
             #
             # Create script to run test version of module
             #
-            with open(os.path.join(OUTPUT_DIR, "run_test_module.bash"), "w") as run:
+            run_test_module_bash = os.path.join(OUTPUT_DIR, "run_test_module.bash")
+            with open(run_test_module_bash, "w") as run:
                 if macros:
                     test_macros = ', "{}"'.format(macros)
                 else:
                     test_macros = ""
-                print("""iocsh.bash -l {moduledir}/cellMods -r {modulename},plcfactory -c 'iocshLoad($({modulename}_DIR)/{snippet}-test.iocsh, "_={macros}")'""".format(moduledir  = os.path.abspath(out_mdir),
-                                                                                                                                                                        modulename = self.modulename(),
-                                                                                                                                                                        snippet    = self.snippet(),
-                                                                                                                                                                        macros     = test_macros), file = run)
+
+                print("""#!/bin/bash
+
+export IOCNAME='{modulename}'
+export IOCDIR='autosave-{modulename}-test'
+
+iocsh.bash -l {moduledir}/cellMods \\
+    -r autosave \\
+    -r {modulename},plcfactory \\
+    -c 'iocshLoad($({modulename}_DIR)/{snippet}-test.iocsh, "_={macros}")' \\
+    -c 'iocshLoad("$(autosave_DIR)/autosave.iocsh", "AS_TOP = ., NUM_SEQ = 1")'
+""".format(modulename = self.modulename(),
+           moduledir  = os.path.abspath(out_mdir),
+           snippet    = self.snippet(),
+           macros     = test_macros), file = run)
+
+            os.chmod(run_test_module_bash, 0o775)
 
         print("E3 Module created:", out_mdir)
         return out_mdir
@@ -466,6 +492,8 @@ class E3(object):
 
 
 class IOC(object):
+    REQUIRED_MODULES = [ "essioc", "s7plc", "modbus", "calc" ]
+
     @staticmethod
     def check_requirements():
         try:
@@ -481,7 +509,53 @@ pip install --user pyyaml
 """)
 
 
-    def __init__(self, device_s, git = True):
+    @staticmethod
+    def add_parser_args(parser):
+        group = parser.add_argument_group("IOC related options")
+
+        group.add_argument(
+                            '--ioc',
+                            dest     = "ioc",
+                            help     = "Generate IOC and if git repository is defined tag it with the given version",
+                            metavar  = 'version',
+                            type     = str,
+                            const    = "",
+                            nargs    = '?')
+
+        group.add_argument(
+                            '--no-ioc-git',
+                            dest     = "ioc_git",
+                            help     = "Ignore any git repository when generating IOC",
+                            default  = True,
+                            action   = "store_false")
+
+        group.add_argument(
+                            '--no-ioc-st-cmd',
+                            dest     = "ioc_st_cmd",
+                            help     = "Do not generate an `st.cmd` file when generating IOC",
+                            default  = True,
+                            action   = "store_false")
+
+        return parser
+
+
+    @staticmethod
+    def parse_args(args):
+        if args.ioc is None:
+            return None
+
+        IOC.check_requirements()
+
+        class ioc_args(object):
+            def __init__(self, args):
+                self.ioc = args.ioc
+                self.ioc_git = args.ioc_git
+                self.ioc_st_cmd = args.ioc_st_cmd
+
+        return ioc_args(args)
+
+
+    def __init__(self, device_s, args):
         super(IOC, self).__init__()
 
         if isinstance(device_s, list):
@@ -498,11 +572,22 @@ pip install --user pyyaml
         else:
             self._e3 = None
 
-        self._epics_version = self._ioc.properties()["EPICSVersion"]
-        self._require_version = self._ioc.properties()["E3RequireVersion"]
+        try:
+            self._epics_version = self._ioc.properties()["EPICSVersion"]
+        except KeyError:
+            raise PLCFactoryException("'EPICSVersion' property of IOC is not set")
+
+        try:
+            self._require_version = self._ioc.properties()["E3RequireVersion"]
+        except KeyError:
+            raise PLCFactoryException("'E3RequireVersion' property of IOC is not set")
+
         self._dir = helpers.sanitizeFilename(self.name().lower()).replace('-', '_')
-        self._repo = get_repository(self._ioc, "IOC_REPOSITORY") if git else None
+        self._generate_st_cmd = args.ioc_st_cmd
+        self._repo = get_repository(self._ioc, "IOC_REPOSITORY") if args.ioc_git else None
         if self._repo:
+            git.GIT.check_minimal_config()
+
             self._dir = helpers.url_to_path(self._repo).split('/')[-1]
             if self._dir.endswith('.git'):
                 self._dir = self._dir[:-4]
@@ -530,10 +615,10 @@ pip install --user pyyaml
             if stat.st_size > 1024 * 1024:
                 raise PLCFactoryException("'{}' is suspiciously large. Refusing to continue".format(os.path.basename(fname)))
         except OSError:
-            return []
+            return None
 
         with open(fname, "rt") as f:
-            return f.readlines()
+            return f.read()
 
 
     def __create_env_sh(self, out_idir, version):
@@ -546,6 +631,11 @@ pip install --user pyyaml
         # Get the currently defined env vars
         env_sh = os.path.join(out_idir, 'env.sh')
         lines = self.__get_contents(env_sh)
+        if lines is None:
+            lines = []
+        else:
+            lines = lines.splitlines(True)  # keepends
+
         env_vars = dict()
         for i in range(len(lines)):
             sp = lines[i].strip()
@@ -580,106 +670,37 @@ pip install --user pyyaml
 
 
     def __create_st_cmd(self, out_idir):
-        startup = '# Startup for {}\n'.format(self.name())
+        st_cmd = os.path.join(out_idir, "st.cmd")
 
-        common_config = [ '# Load standard IOC startup scripts\n', 'require essioc\n', 'iocshLoad("$(essioc_DIR)/common_config.iocsh")\n' ]
+        existing_st_cmd_contents = self.__get_contents(st_cmd)
 
-        db_path = '"$(E3_CMD_TOP)/db:$(EPICS_DB_INCLUDE_PATH=.)"'
-        register_db_path = [ '# Register our db directory\n', 'epicsEnvSet(EPICS_DB_INCLUDE_PATH, {})\n'.format(db_path) ]
+        # Check if we have to keep an existing st.cmd intact
+        if existing_st_cmd_contents is not None and not self._generate_st_cmd:
+            return st_cmd
 
-        load_plc = [ '# Load PLC specific startup script\n', 'iocshLoad("$(E3_CMD_TOP)/iocsh/{}")\n'.format(self._e3.iocsh()) ]
+        proposed_st_cmd_contents = """# Startup for {iocname}
 
-        st_cmd = os.path.join(out_idir, 'st.cmd')
-        lines = self.__get_contents(st_cmd)
+# Load required modules
+{modules}
 
-        # Try to determine what is already in st.cmd
-        iocsh_loads = list()
-        requires = dict()
-        epics_db_include_path = list()
-        for i in range(len(lines)):
-            sp = lines[i].strip()
-            if not sp or sp[0] == '#':
-                continue
+# Load standard IOC startup scripts
+iocshLoad("$(essioc_DIR)/common_config.iocsh")
 
-            if sp.startswith("require"):
-                # Get the name of the required module
-                sp = sp.split(' ', 1)
-                if sp[0] != "require":
-                    raise PLCFactoryException("Cannot interpret require line: '{}'".format("".join(sp)))
-                sp = sp[1].split(',')
+# Register our db directory
+epicsEnvSet(EPICS_DB_INCLUDE_PATH, "$(E3_CMD_TOP)/db:$(EPICS_DB_INCLUDE_PATH=.)")
 
-                # Store the module name and its location
-                requires[sp[0]] = i
+# Load PLC specific startup script
+iocshLoad("$(E3_CMD_TOP)/iocsh/{iocsh}")
+""".format(iocname = self.name(),
+           modules = "\n".join(["require {}".format(module) for module in self.REQUIRED_MODULES]),
+           iocsh = self._e3.iocsh())
 
-            elif sp.startswith("iocshLoad"):
-                # (Try to) Remove any comments
-                sp = sp[len("iocshLoad"):].split('#', 1)[0]
-
-                # Store the iocshLoad parameters and its location
-                iocsh_loads.append((i, sp.strip()))
-
-            elif sp.startswith("epicsEnvSet"):
-                # (Try to) Remove any comments
-                sp = sp[len("epicsEnvSet"):].split('#', 1)[0]
-                if sp[0] == '(':
-                    sp = sp[1:-1]
-                elif sp[0] == ' ':
-                    sp = sp[1:]
-                else:
-                    raise PLCFactoryException("Cannot interpret epicsEnvSet line: '{}'".format(sp))
-                (env_var, value) = sp.split(',', 1)
-                if not env_var.strip() == 'EPICS_DB_INCLUDE_PATH':
-                    continue
-                epics_db_include_path.append((i, value.strip()))
-
-        # If essioc is loaded we don't need to load it again
-        if "essioc" in requires:
-            common_config.pop(1)
-
-        load_plc_at = None
-        # Check what is iocshLoad-ed
-        for i, line in iocsh_loads:
-            # If common_config.iocsh is loaded we don't need to load it again
-            if "common_config.iocsh" in line:
-                common_config = []
-            # If plc.iocsh is loaded we don't need to load it again
-            elif self._e3.iocsh() in line:
-                load_plc_at = i
-                lines.pop(load_plc_at)
-                lines[load_plc_at:load_plc_at] = load_plc[1]
-                load_plc = []
-
-        # If our db directory is registered in EPICS_DB_INCLUDE_PATH then we don't need to do it again
-        for i, dbp in epics_db_include_path:
-            if db_path in dbp:
-                # Make sure to register DB path _before_ loading plc.iocsh
-                if load_plc_at is not None and load_plc_at < i:
-                    lines.pop(i)
-                    lines[load_plc_at:load_plc_at] = register_db_path
-                register_db_path = []
-                break
-
-        # Make sure to register DB path _before_ loading plc.iocsh
-        if register_db_path and load_plc_at is not None:
-            lines[load_plc_at:load_plc_at] = register_db_path
-            register_db_path = []
+        # Check if we have to backup existing st.cmd
+        if existing_st_cmd_contents is not None and existing_st_cmd_contents != proposed_st_cmd_contents:
+            os.rename(st_cmd, os.path.join(out_idir, "st.cmd.orig"))
 
         with open(st_cmd, "wt") as f:
-            if not lines or "startup for " not in lines[0].lower():
-                print(startup, file = f)
-            f.writelines(lines)
-            if lines and common_config and lines[-1].strip() != "":
-                # Add extra newline
-                print(file = f)
-            f.writelines(common_config)
-            if common_config and register_db_path:
-                # Add extra newline
-                print(file = f)
-            f.writelines(register_db_path)
-            if register_db_path and load_plc:
-                # Add extra newline
-                print(file = f)
-            f.writelines(load_plc)
+            print(proposed_st_cmd_contents, file = f)
 
         return st_cmd
 
@@ -803,7 +824,7 @@ iocsh.bash -e {iocdir}/env.sh {iocdir}/st.cmd
         created_files = []
         if self._e3:
             # Copy the generated e3 files
-            self._e3.copy_files(out_idir, generate_iocsh = "IOCSH")
+            self._e3.copy_files(out_idir)
             # Create st.cmd
             st_cmd = self.__create_st_cmd(out_idir)
             created_files.append(st_cmd)
@@ -890,7 +911,7 @@ Could not launch browser to create merge request, please visit:
 
 class PLC(object):
     @staticmethod
-    def add_plc_parser_args(parser):
+    def add_parser_args(parser):
         plc_group = parser.add_argument_group("PLC related options")
 
         plc_args = plc_group.add_mutually_exclusive_group()
@@ -1780,7 +1801,7 @@ Exiting.
     # create a stable list of controlled devices
     devices = device.buildControlsList(include_self = True, verbose = True)
 
-    if GENERATE_IOC:
+    if IOC_ARGS:
         try:
             hostname = device.properties()["Hostname"]
         except KeyError:
@@ -1790,9 +1811,7 @@ Exiting.
             raise PLCFactoryException("Hostname of '{}' is not specified, required for IOC generation".format(device.name()))
 
         global ioc
-        ioc = IOC(devices, git = ioc_git)
-        if ioc.repo():
-            git.GIT.check_minimal_config()
+        ioc = IOC(devices, args = IOC_ARGS)
 
     if plc:
         plc.get_ifdefs(devices)
@@ -2272,7 +2291,7 @@ def main(argv):
         #
         # -d/--device cannot be added to the common args, because it is not a required option in the first pass but a required one in the second pass
         #
-        PLC.add_plc_parser_args(parser)
+        PLC.add_parser_args(parser)
 
         parser.add_argument(
                             '--list-templates',
@@ -2292,6 +2311,9 @@ def main(argv):
 
 
     def add_eee_arg(parser):
+        IOC.add_parser_args(parser)
+        E3.add_parser_args(parser)
+
         # FIXME: EEE
         parser.add_argument(
                             '--eee',
@@ -2302,32 +2324,6 @@ def main(argv):
                             type    = str,
                             const   = ""
                            )
-
-        parser.add_argument(
-                            '--e3',
-                            dest    = "e3",
-                            help    = "create a minimal E3 module with EPICS-DB and startup snippet",
-                            metavar = "modulename",
-                            nargs   = "?",
-                            type    = str,
-                            const   = ""
-                           )
-
-        parser.add_argument(
-                            '--ioc',
-                            dest     = "ioc",
-                            help     = "Generate IOC and if git repository is defined tag it with the given version",
-                            metavar  = 'version',
-                            type     = str,
-                            const    = "",
-                            nargs    = '?')
-
-        parser.add_argument(
-                            '--no-ioc-git',
-                            dest     = "ioc_git",
-                            help     = "Ignore any git repository when generating IOC",
-                            default  = True,
-                            action   = "store_false")
 
         return parser
 
@@ -2358,7 +2354,7 @@ def main(argv):
     plc = PLC.parse_args(args)
 
     # Second pass
-    #  get EEE and E3
+    #  get EEE, E3, and IOC
     add_eee_arg(parser)
 
     args = parser.parse_known_args(argv)[0]
@@ -2376,20 +2372,11 @@ def main(argv):
     else:
         eee = False
 
-    if args.ioc is not None:
-        global GENERATE_IOC
-        global ioc_git
-        GENERATE_IOC = True
-        IOC.check_requirements()
-        ioc_git = args.ioc_git
+    global IOC_ARGS
+    IOC_ARGS = IOC.parse_args(args)
 
-    if args.e3 is not None:
-        global e3
-        if args.e3 != "":
-            e3 = E3(args.e3)
-        else:
-            # processDevice() will create the correct E3
-            e3 = True
+    global e3
+    e3 = E3.parse_args(args)
 
     # Third pass
     #  get all options
@@ -2511,8 +2498,8 @@ def main(argv):
     if eee:
         default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "AUTOSAVE-ST-CMD", "AUTOSAVE", "BEAST", "BEAST-TEMPLATE" ] )
 
-    if e3 or (GENERATE_IOC and plc):
-        default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "IOCSH", "AUTOSAVE-IOCSH", "BEAST", "BEAST-TEMPLATE", ] )
+    if e3 or (IOC_ARGS and plc):
+        default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "IOCSH", "TEST-IOCSH", "BEAST", "BEAST-TEMPLATE", ] )
 
     if default_printers:
         if not default_printers <= set(tf.available_printers()):
@@ -2530,9 +2517,6 @@ def main(argv):
         templateIDs.add("AUTOSAVE-TEST")
         templateIDs.add("AUTOSAVE-ST-TEST-CMD")
 
-    if (e3 or GENERATE_IOC) and "EPICS-TEST-DB" in templateIDs:
-        templateIDs.add("AUTOSAVE-TEST-IOCSH")
-
     # FIXME: EEE
     if "ST-CMD" in templateIDs and "AUTOSAVE-ST-CMD" in templateIDs:
         templateIDs.remove("ST-CMD")
@@ -2540,9 +2524,6 @@ def main(argv):
     # FIXME: EEE
     if "ST-TEST-CMD" in templateIDs and "AUTOSAVE-ST-TEST-CMD" in templateIDs:
         templateIDs.remove("ST-TEST-CMD")
-
-    if "TEST-IOCSH" in templateIDs and "AUTOSAVE-TEST-IOCSH" in templateIDs:
-        templateIDs.remove("TEST-IOCSH")
 
     if "EPICS-DB" in templateIDs and plc and plc.is_opc():
         templateIDs.add("EPICS-OPC-DB")
