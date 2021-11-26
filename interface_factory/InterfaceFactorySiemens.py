@@ -1099,7 +1099,7 @@ def WriteUtilitiesCode(TIAVersion):
 	ExternalSourceFile.append("\"_UtilitiesFB\"")
 	ExternalSourceFile.append("")
 	ExternalSourceFile.append("BEGIN")
-	ExternalSourceFile.append("")
+	ExternalSourceFile.append("   ParameterFreeze := true;")
 	ExternalSourceFile.append("END_DATA_BLOCK")
 
 
