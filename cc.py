@@ -407,15 +407,11 @@ class CC(object):
             save_as = self.saveas()
 
             # check if filename has already been downloaded
-            if os_path.exists(save_as):
-                # Make sure that cached artifacts are also added to the list
-                self.registerDownloadedArtifact(save_as)
-                return CC.DownloadedArtifact(self)
-
-            try:
-                self._download()
-            except CC.DownloadException as e:
-                raise CC.ArtifactException(e, deviceName = self._device.name(), filename = self.saveas_filename())
+            if not os_path.exists(save_as):
+                try:
+                    self._download()
+                except CC.DownloadException as e:
+                    raise CC.ArtifactException(e, deviceName = self._device.name(), filename = self.saveas_filename())
 
             self.registerDownloadedArtifact(save_as)
 
