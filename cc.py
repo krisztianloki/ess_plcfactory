@@ -699,7 +699,7 @@ class CC(object):
 
                 defs[0].reset_saveas()
                 defs[0]._saveasfilename = self.defaultFilename(extension)
-                return defs[0].downloadExternalLink(extension, filetype = filetype, git_tag = git_tag)
+                return defs[0].downloadExternalLink(extension, git_tag = git_tag, filetype = filetype)
 
             # device external links have higher priority than device type external links
             art = __checkExternalLinkList(dev_defs)

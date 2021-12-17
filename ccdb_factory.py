@@ -114,20 +114,24 @@ class CCDB_Factory(CC):
                 name = self.name()
                 if name.startswith("EPI"):
                     extension = ".def"
+                    filetype = "Interface Definition"
                 elif name.startswith("BEAST TREE"):
                     extension = ".alarm-tree"
+                    filetype = "Alarm tree"
                 elif name.startswith("BEAST TEMPLATE"):
                     extension = ".alarms-template"
+                    filetype = "Alarm definition template"
                 elif name.startswith("BEAST"):
                     extension = ".alarms"
+                    filetype = "Alarm definition"
                 else:
                     raise CC.Exception("Unable to auto-detect extension for {}".format(name))
 
                 self._saveasfilename = self._device.defaultFilename(extension)
-                self.downloadExternalLink(extension, git_tag)
+                self.downloadExternalLink(extension, git_tag, filetype)
 
 
-        def downloadExternalLink(self, extension = None, git_tag = None, filetype = 'External Link'):
+        def downloadExternalLink(self, extension = None, git_tag = None, filetype = "External Link"):
             # Setting git_tag will prevent git operations
             if "full_path" in self._artifact:
                 git_tag = "locally-sourced"

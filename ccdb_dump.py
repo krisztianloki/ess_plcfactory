@@ -34,7 +34,7 @@ class CCDB_Dump(object):
                 self._device.ccdb.download(self, self.saveas())
 
 
-            def downloadExternalLink(self, extension = None, git_tag = None, filetype = 'External Link'):
+            def downloadExternalLink(self, extension = None, git_tag = None, filetype = "External Link"):
                 # Setting git_tag will prevent git operations
                 if "full_path" in self._artifact:
                     git_tag = "locally-sourced"

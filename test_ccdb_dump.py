@@ -430,24 +430,24 @@ class TestCCDBDump(unittest.TestCase):
 
         # Check multiple external links
         with self.assertRaises(ccdb_dump.CC.ArtifactException):
-            device.downloadExternalLink("BEAST TREE", "")
+            device.downloadExternalLink("BEAST TREE", "", filetype = "Alarm tree")
 
         # Check external link
-        dArtifact = device.downloadExternalLink(ArtifactDB.epi, "def")
+        dArtifact = device.downloadExternalLink(ArtifactDB.epi, "def", filetype = "Interface Definition")
         self.assertTrue(dArtifact)
         fname = dArtifact.saved_as()
         self.assertTrue(fname)
         self.assertTrue(filecmp.cmp(fname, test_obj.epi_file, shallow = 0), "Files are not identical: {} vs {}".format(fname, test_obj.epi_file))
 
         # Check external link with device tag
-        dArtifact = device.downloadExternalLink(ArtifactDB.epi, "def", device_tag = ArtifactDB.tag)
+        dArtifact = device.downloadExternalLink(ArtifactDB.epi, "def", device_tag = ArtifactDB.tag, filetype = "Interface Definition")
         self.assertTrue(dArtifact)
         fname = dArtifact.saved_as()
         self.assertTrue(fname)
         self.assertTrue(filecmp.cmp(fname, test_obj.test_epi_file, shallow = 0), "Files are not identical: {} vs {}".format(fname, test_obj.test_epi_file))
 
         # Check external link with specified filename
-        dArtifact = device.downloadExternalLink(ArtifactDB.beast, "alarms")
+        dArtifact = device.downloadExternalLink(ArtifactDB.beast, "alarms", filetype = "Alarm definition")
         self.assertTrue(dArtifact)
         fname = dArtifact.saved_as()
         self.assertTrue(fname)
@@ -578,10 +578,10 @@ class TestCCDB(unittest.TestCase):
         self.assertEqual(device.name(), devname)
 
         # TODO: should download the actual .def file and filecmp
-        self.assertIsInstance(device.downloadExternalLink("EPI", "def"), ccdb.CC.DownloadedArtifact)
-        self.assertIsInstance(device.downloadExternalLink("EPI", "def", git_tag = "v4.0.1"), ccdb.CC.DownloadedArtifact)
-        self.assertIsInstance(device.downloadExternalLink("EPI", "def", device_tag = "MPSVAC"), ccdb.CC.DownloadedArtifact)
-        self.assertIsNone(device.downloadExternalLink("EPI", "def", device_tag = "no-such-tag"))
+        self.assertIsInstance(device.downloadExternalLink("EPI", "def", filetype = "Interface Definition"), ccdb.CC.DownloadedArtifact)
+        self.assertIsInstance(device.downloadExternalLink("EPI", "def", git_tag = "v4.0.1", filetype = "Interface Definition"), ccdb.CC.DownloadedArtifact)
+        self.assertIsInstance(device.downloadExternalLink("EPI", "def", device_tag = "MPSVAC", filetype = "Interface Definition"), ccdb.CC.DownloadedArtifact)
+        self.assertIsNone(device.downloadExternalLink("EPI", "def", device_tag = "no-such-tag", filetype = "Interface Definition"))
 
 
 
