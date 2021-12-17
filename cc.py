@@ -188,10 +188,6 @@ class CC(object):
             raise NotImplementedError
 
 
-        def is_git(self):
-            return self.is_uri()
-
-
         def is_perdevtype(self):
             raise NotImplementedError
 
@@ -237,7 +233,7 @@ class CC(object):
 
 
         def get_git_working_copy(self):
-            if not self.is_git():
+            if not self.is_uri():
                 raise CC.ArtifactException("Artifact is not a git link")
 
             if self.is_git_repo_registered():
@@ -375,11 +371,7 @@ class CC(object):
                 git_tag = version_prop
                 self.set_saveas_version(git_tag)
                 if git_tag is None:
-                    if False and not self.is_git():
-                        # The default git_tag / EPI VERSION is "master" for HTTP based downloads
-                        git_tag = "master"
-                    else:
-                        git_tag = self.get_git_default_branch()
+                    git_tag = self.get_git_default_branch()
 
             print("Downloading {filetype} file {filename} (version {version}) from {url}".format(filetype = filetype,
                                                                                                  filename = filename,
@@ -392,7 +384,7 @@ class CC(object):
 
 
         def _download(self):
-            if self.is_git():
+            if self.is_uri():
                 self.git_download()
                 return
 
