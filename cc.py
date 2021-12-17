@@ -143,7 +143,10 @@ class CC(object):
             self.reset_saveas()
 
             # EPI, ALARM TREE, etc
-            self._app_type = None
+            if self.is_uri():
+                self._app_type = self.name().split('[')[0]
+            else:
+                self._app_type = None
 
 
         def __repr__(self):
@@ -334,8 +337,6 @@ class CC(object):
 
             open_bra = linkfile.find('[')
             if open_bra != -1:
-                base = linkfile[:open_bra]
-
                 if linkfile[-1] != ']':
                     raise CC.ArtifactException("Invalid name format in External Link for {device}: {name}".format(device = self._device.name(), name = linkfile), self._device.name(), linkfile)
 
@@ -351,10 +352,6 @@ class CC(object):
                     raise CC.ArtifactException("Invalid filename in External Link for {device}: {name}".format(device = self._device.name(), name = filename), self._device.name(), filename)
 
                 self._saveasfilename = filename
-            else:
-                base = linkfile
-
-            self._app_type = base
 
             self._set_saveas_url()
 
@@ -684,8 +681,7 @@ class CC(object):
                 # base__devicetag
                 base = CC.TAG_SEPARATOR.join([ base, device_tag ])
 
-            fqbase = base + "["
-            artifacts = filter(lambda u: u.is_uri() and (u.name() == base or u.name().startswith(fqbase)), self.artifacts())
+            artifacts = filter(lambda u: u.is_uri() and u.app_type() == base, self.artifacts())
 
             # Separate device and device type external links
             (dev_defs, devtype_defs) = self.__splitDefs(artifacts)
