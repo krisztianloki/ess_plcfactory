@@ -123,14 +123,15 @@ class CCDB_Factory(CC):
                 else:
                     raise CC.Exception("Unable to auto-detect extension for {}".format(name))
 
-                self.downloadExternalLink(self._device.defaultFilename(extension), extension, git_tag)
+                self._saveasfilename = self._device.defaultFilename(extension)
+                self.downloadExternalLink(extension, git_tag)
 
 
-        def downloadExternalLink(self, base, extension, device_tag = None, filetype = 'External Link', git_tag = None):
+        def downloadExternalLink(self, extension = None, git_tag = None, filetype = 'External Link'):
             # Setting git_tag will prevent git operations
             if "full_path" in self._artifact:
                 git_tag = "locally-sourced"
-            return super(CCDB_Factory.Artifact, self).downloadExternalLink(self._device.defaultFilename(extension), extension, git_tag)
+            return super(CCDB_Factory.Artifact, self).downloadExternalLink(extension, git_tag, filetype)
 
 
         def _download(self):

@@ -329,9 +329,7 @@ class CC(object):
             return self._saveasfilename
 
 
-        # Returns: ""
-        # filename is the default filename to use if not specified with '[]' notation
-        def downloadExternalLink(self, filename, extension = None, git_tag = None, filetype = "External Link"):
+        def downloadExternalLink(self, extension = None, git_tag = None, filetype = "External Link"):
             linkfile  = self.name()
 
             open_bra = linkfile.find('[')
@@ -351,12 +349,13 @@ class CC(object):
                 # Check if the specified filename is valid
                 if filename != helpers.sanitize_path(filename):
                     raise CC.ArtifactException("Invalid filename in External Link for {device}: {name}".format(device = self._device.name(), name = filename), self._device.name(), filename)
+
+                self._saveasfilename = filename
             else:
                 base = linkfile
 
             self._app_type = base
 
-            self._saveasfilename = filename
             self._set_saveas_url()
 
             if git_tag is None:
@@ -374,7 +373,7 @@ class CC(object):
                     git_tag = self.get_git_default_branch()
 
             print("Downloading {filetype} file {filename} (version {version}) from {url}".format(filetype = filetype,
-                                                                                                 filename = filename,
+                                                                                                 filename = self.saveas_filename(),
                                                                                                  url      = self.uri(),
                                                                                                  version  = "<default>" if git_tag is None else git_tag))
 
@@ -699,7 +698,8 @@ class CC(object):
                     raise CC.ArtifactException("More than one {filetype} External Links were found for {device}: {urls}".format(filetype = filetype, device = self.name(), urls = list(map(lambda u: u.uri(), defs))), self.name())
 
                 defs[0].reset_saveas()
-                return defs[0].downloadExternalLink(self.defaultFilename(extension), extension, filetype = filetype, git_tag = git_tag)
+                defs[0]._saveasfilename = self.defaultFilename(extension)
+                return defs[0].downloadExternalLink(extension, filetype = filetype, git_tag = git_tag)
 
             # device external links have higher priority than device type external links
             art = __checkExternalLinkList(dev_defs)
