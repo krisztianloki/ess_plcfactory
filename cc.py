@@ -332,7 +332,10 @@ class CC(object):
             return self._saveasfilename
 
 
-        def downloadExternalLink(self, extension = None, git_tag = None, filetype = "External Link"):
+        def __downloadExternalLink(self, extension = None, git_tag = None, filetype = None):
+            if filetype is None:
+                filetype = "External Link"
+
             linkfile  = self.name()
 
             open_bra = linkfile.find('[')
@@ -376,8 +379,6 @@ class CC(object):
 
             self.set_saveas_version(git_tag)
 
-            return self.download()
-
 
         def _download(self):
             if self.is_uri():
@@ -387,10 +388,13 @@ class CC(object):
             raise NotImplementedError
 
 
-        def download(self):
+        def download(self, extension = None, git_tag = None, filetype = None):
             """
             Returns a DownloadedArtifact or None
             """
+            if self.is_uri():
+                self.__downloadExternalLink(extension, git_tag, filetype)
+
             self._set_saveas_url()
             save_as = self.saveas()
 
@@ -695,7 +699,7 @@ class CC(object):
 
                 defs[0].reset_saveas()
                 defs[0]._saveasfilename = self.defaultFilename(extension)
-                return defs[0].downloadExternalLink(extension, git_tag = git_tag, filetype = filetype)
+                return defs[0].download(extension, git_tag = git_tag, filetype = filetype)
 
             # device external links have higher priority than device type external links
             art = __checkExternalLinkList(dev_defs)
