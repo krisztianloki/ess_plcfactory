@@ -817,7 +817,8 @@ iocsh.bash -e {iocdir}/env.sh {iocdir}/st.cmd
             # Cannot specify 'branch = "master"'; git segfaults when trying to clone an empty repository and checking out its "master" branch
             # Update the master branch if available, and initialize an empty repository
             repo = git.GIT.clone(self.repo(), out_idir, update = True, initialize_if_empty = True, gitignore_contents = "/cell/", initializer = self._create_plcfactory_ignore)
-            repo.create_branch(branch, "master")
+            # Create branch 'branch' based on the default branch
+            repo.create_branch(branch, repo.get_default_branch())
         else:
             repo = None
 
