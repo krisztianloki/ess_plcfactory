@@ -214,53 +214,53 @@ class CC(object):
             return self._app_type
 
 
-        def register_git_repo(self, wc):
+        def __register_git_repo(self, wc):
             """
                 Register that this artifact's url was cloned and `wc` is the GIT object.
             """
             CC.Artifact.__REPOS_CACHED[self.saveas_url()] = wc
 
 
-        def is_git_repo_registered(self):
+        def __is_git_repo_registered(self):
             """
                 Returns True if this artifact's url is registered as cloned
             """
             return CC.Artifact.__REPOS_CACHED.has_key(self.saveas_url())
 
 
-        def get_registered_git_repo(self):
+        def __get_registered_git_repo(self):
             """
                 Returns the GIT object that was cloned for this artifact
             """
             return CC.Artifact.__REPOS_CACHED[self.saveas_url()]
 
 
-        def get_git_working_copy(self):
+        def __get_git_working_copy(self):
             if not self.is_uri():
                 raise CC.ArtifactException("Artifact is not a git link")
 
-            if self.is_git_repo_registered():
-                wc = self.get_registered_git_repo()
+            if self.__is_git_repo_registered():
+                wc = self.__get_registered_git_repo()
             else:
                 wcdir = os_path.join(self._device.ccdb.GIT_CACHE, CC.url_to_path(self.saveas_url()))
                 helpers.makedirs(wcdir)
                 wc = git.GIT.clone(self.saveas_url(), wcdir, branch = self.saveas_version(), update = True)
 
-                self.register_git_repo(wc)
+                self.__register_git_repo(wc)
 
             return wc
 
 
-        def get_git_default_branch(self):
+        def __get_git_default_branch(self):
             if self.saveas_version() is not None:
                 raise CC.ArtifactException("Artifact needs non-default branch!")
 
-            return self.get_git_working_copy().get_default_branch()
+            return self.__get_git_working_copy().get_default_branch()
 
 
-        def git_download(self):
+        def __git_download(self):
             try:
-                copy2(os_path.join(self.get_git_working_copy().path(), self.saveas_filename()), self.saveas())
+                copy2(os_path.join(self.__get_git_working_copy().path(), self.saveas_filename()), self.saveas())
             except IOError as e:
                 if e.errno == 2:
                     raise CC.DownloadException(self.uri(), "*404")
@@ -370,7 +370,7 @@ class CC(object):
                 git_tag = version_prop
                 self.set_saveas_version(git_tag)
                 if git_tag is None:
-                    git_tag = self.get_git_default_branch()
+                    git_tag = self.__get_git_default_branch()
 
             print("Downloading {filetype} file {filename} (version {version}) from {url}".format(filetype = filetype,
                                                                                                  filename = self.saveas_filename(),
@@ -382,7 +382,7 @@ class CC(object):
 
         def _download(self):
             if self.is_uri():
-                return self.git_download()
+                return self.__git_download()
 
             raise NotImplementedError
 
