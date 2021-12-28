@@ -104,11 +104,18 @@ class CCDB_Factory(CC):
 
 
     class Artifact(CCDB.Artifact):
-        _determine_saveas_url = CC.Artifact._determine_saveas_url
+        __cc_artifact_determine_saveas_url = CC.Artifact._determine_saveas_url
+
+
+        def _determine_saveas_url(self):
+            if self.is_file():
+                return self._artifact["full_path"]
+
+            return self.__cc_artifact_determine_saveas_url()
+
 
         def save(self, git_tag = None):
             if self.is_file():
-                self._saveasurl = self._artifact["full_path"]
                 self.download()
             elif self._artifact["download"]:
                 name = self.name()

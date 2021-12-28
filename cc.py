@@ -283,6 +283,10 @@ class CC(object):
             return self._saveas
 
 
+        def _set_saveas_url(self, url):
+            self._saveasurl = url
+
+
         def _determine_saveas_url(self):
             """
             Should set self._saveasurl to the URL from where the artifact can be/was downloaded
@@ -292,7 +296,7 @@ class CC(object):
                 if not url.endswith(CC.GIT_SUFFIX) and helpers.url_to_host(url) != "bitbucket.org":
                     url += CC.GIT_SUFFIX
 
-                self._saveasurl = url
+                return url
 
 
         def saveas_url(self):
@@ -300,7 +304,7 @@ class CC(object):
             Returns the full url from where the artifact has to be downloaded
             """
             if self._saveasurl is None:
-                self._determine_saveas_url()
+                self._set_saveas_url(self._determine_saveas_url())
                 if self._saveasurl is None:
                     raise NotImplementedError
 
@@ -363,7 +367,7 @@ class CC(object):
 
             self._saveasfilename = filename
 
-            self._determine_saveas_url()
+            self._set_saveas_url(self._determine_saveas_url())
 
             if git_tag is None:
                 version_prop = self._device.properties().get(self.app_type() + " VERSION", None)
@@ -401,7 +405,7 @@ class CC(object):
             if self.is_uri():
                 self.__downloadExternalLink(extension, git_tag, filetype)
 
-            self._determine_saveas_url()
+            self._set_saveas_url(self._determine_saveas_url())
             save_as = self.saveas()
 
             # check if filename has already been downloaded

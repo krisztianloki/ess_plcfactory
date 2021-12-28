@@ -68,9 +68,9 @@ class CCDB(CC):
                 else:
                     url = CCDB.urljoin("slots", self._device.name(), "download", self.filename())
 
-                self._saveasurl = CCDB.urljoin(self._device.ccdb.rest_url(), url)
-            else:
-                super(CCDB.Artifact, self)._determine_saveas_url()
+                return CCDB.urljoin(self._device.ccdb.rest_url(), url)
+
+            return super(CCDB.Artifact, self)._determine_saveas_url()
 
 
         def _download(self):
@@ -252,7 +252,7 @@ class CCDB(CC):
 
     def download_from_ccdb(self, artifact_or_url, save_as):
         if isinstance(artifact_or_url, CCDB.Artifact):
-            url = artifact_or_url._saveasurl
+            url = artifact_or_url.saveas_url()
         else:
             url = self.urljoin(self._rest_url, artifact_or_url)
         return CC.download(url, save_as, verify_ssl_cert = self._verify_ssl_cert)
