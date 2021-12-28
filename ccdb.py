@@ -61,7 +61,7 @@ class CCDB(CC):
             return self._artifact["kind"] == "TYPE"
 
 
-        def _set_saveas_url(self):
+        def _determine_saveas_url(self):
             if self.is_file():
                 if self.is_perdevtype():
                     url = CCDB.urljoin("deviceTypes", self._device.deviceType(), "download", self.filename())
@@ -70,7 +70,7 @@ class CCDB(CC):
 
                 self._saveasurl = CCDB.urljoin(self._device.ccdb.rest_url(), url)
             else:
-                super(CCDB.Artifact, self)._set_saveas_url()
+                super(CCDB.Artifact, self)._determine_saveas_url()
 
 
         def _download(self):

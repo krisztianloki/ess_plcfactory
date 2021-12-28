@@ -104,7 +104,7 @@ class CCDB_Factory(CC):
 
 
     class Artifact(CCDB.Artifact):
-        _set_saveas_url = CC.Artifact._set_saveas_url
+        _determine_saveas_url = CC.Artifact._determine_saveas_url
 
         def save(self, git_tag = None):
             if self.is_file():
