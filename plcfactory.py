@@ -572,14 +572,12 @@ pip install --user pyyaml
         else:
             self._e3 = None
 
-        try:
-            self._epics_version = self._ioc.properties()["EPICSVersion"]
-        except KeyError:
+        self._epics_version = self._ioc.properties().get("EPICSVersion", None)
+        if self._epics_version is None:
             raise PLCFactoryException("'EPICSVersion' property of IOC is not set")
 
-        try:
-            self._require_version = self._ioc.properties()["E3RequireVersion"]
-        except KeyError:
+        self._require_version = self._ioc.properties().get("E3RequireVersion", None)
+        if self._require_version is None:
             raise PLCFactoryException("'E3RequireVersion' property of IOC is not set")
 
         self._dir = helpers.sanitizeFilename(self.name().lower()).replace('-', '_')
@@ -1809,10 +1807,7 @@ Exiting.
         pass
 
     if IOC_ARGS:
-        try:
-            hostname = device.properties()["Hostname"]
-        except KeyError:
-            hostname = None
+        hostname = device.properties().get("Hostname", None)
 
         if not hostname:
             raise PLCFactoryException("Hostname of '{}' is not specified, required for IOC generation".format(device.name()))
