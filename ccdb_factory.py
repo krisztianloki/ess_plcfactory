@@ -127,7 +127,6 @@ class CCDB_Factory(CC):
                 else:
                     raise CC.Exception("Unable to auto-detect extension for {}".format(name))
 
-                self._saveasfilename = self._device.defaultFilename(extension)
                 self.download(extension, git_tag, filetype)
 
 

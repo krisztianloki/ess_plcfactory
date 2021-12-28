@@ -332,12 +332,17 @@ class CC(object):
             return self._saveasfilename
 
 
+        def defaultFilename(self, extension):
+            return self._device.defaultFilename(extension)
+
+
         def __downloadExternalLink(self, extension = None, git_tag = None, filetype = None):
             if filetype is None:
                 filetype = "External Link"
 
             linkfile  = self.name()
 
+            # Check for explicit filename specification: SOMETHING[filename]
             open_bra = linkfile.find('[')
             if open_bra != -1:
                 if linkfile[-1] != ']':
@@ -353,8 +358,10 @@ class CC(object):
                 # Check if the specified filename is valid
                 if filename != helpers.sanitize_path(filename):
                     raise CC.ArtifactException("Invalid filename in External Link for {device}: {name}".format(device = self._device.name(), name = filename), self._device.name(), filename)
+            else:
+                filename = self.defaultFilename(extension)
 
-                self._saveasfilename = filename
+            self._saveasfilename = filename
 
             self._determine_saveas_url()
 
@@ -697,7 +704,6 @@ class CC(object):
                     raise CC.ArtifactException("More than one {filetype} External Links were found for {device}: {urls}".format(filetype = filetype, device = self.name(), urls = list(map(lambda u: u.uri(), defs))), self.name())
 
                 defs[0].reset_saveas()
-                defs[0]._saveasfilename = self.defaultFilename(extension)
                 return defs[0].download(extension, git_tag = git_tag, filetype = filetype)
 
             # device external links have higher priority than device type external links
