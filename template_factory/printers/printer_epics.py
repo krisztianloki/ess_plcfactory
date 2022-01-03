@@ -135,7 +135,7 @@ record(stringin, "{root_inst_slot}:ModVersionR")
 {{
 	field(DESC,	"Module version")
 	field(DISP,	"1")
-	field(VAL,	"$(MODVERSION=N/A)")
+	field(VAL,	"$(MODVERSION={modversion})")
 	field(PINI,	"YES")
 }}
 
@@ -203,7 +203,8 @@ record(longin, "{root_inst_slot}:#plcfC2")
            plcf_status_string = "Clean" if keyword_params.get("PLCF_STATUS", False) else "Dirty",
            plcf_branch     = self.plcf("ext.plcfactory_branch()"),
            plcf_branch_39  = self.plcf("ext.plcfactory_branch()")[:39],
-           cmdline         = self.plcf("ext.plcfactory_cmdline()"))
+           cmdline         = self.plcf("ext.plcfactory_cmdline()"),
+           modversion      = self.plcf("ext.modversion()"))
 
         self._append(epics_db_header, output)
 

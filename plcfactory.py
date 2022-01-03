@@ -626,7 +626,7 @@ pip install --user pyyaml
         new_env_lines['IOCNAME'] = self.name()
         new_env_lines['IOCDIR'] = helpers.sanitizeFilename(self.name())
         if self._e3:
-            new_env_lines['{}_VERSION'.format(self._e3.modulename())] = version if version else 'plcfactory@' + glob.timestamp
+            new_env_lines['{}_VERSION'.format(self._e3.modulename())] = version if version else glob.modversion
 
         # Get the currently defined env vars
         env_sh = os.path.join(out_idir, 'env.sh')
@@ -2476,6 +2476,7 @@ def main(argv):
     glob.branch    = PLCF_BRANCH if not VERIFY else "N/A"
     glob.cmdline   = " ".join(sys.argv) if not VERIFY else "N/A"
     glob.origin    = git.get_origin()
+    glob.modversion = glob.timestamp if not VERIFY else "N/A"
 
     global device_tag
     device_tag = args.tag

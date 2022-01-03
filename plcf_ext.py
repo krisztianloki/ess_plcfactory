@@ -43,6 +43,13 @@ def plcfactory_origin():
     return plcf_glob.origin
 
 
+def modversion():
+    """
+    Returns the default modversion
+    """
+    return plcf_glob.modversion
+
+
 def to_filename(x):
     assert isinstance(x, str)
 

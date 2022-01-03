@@ -39,3 +39,6 @@ eee_snippet = None
 
 # the name of the E3 snippet
 e3_snippet = None
+
+# the default modversion of the PLC module/IOC
+modversion = None

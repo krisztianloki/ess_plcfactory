@@ -45,8 +45,12 @@ class eee(object):
         return self.plcf("ext.eee_snippet()")
 
 
-    def _modversion(self):
+    def _modversion_macro(self):
         return "REQUIRE_{modulename}_VERSION".format(modulename = self.modulename())
+
+
+    def _modversion(self):
+        return "{modversion}={default}".format(modversion = self._modversion_macro(), default = self.plcf("ext.modversion()"))
 
 
 
@@ -70,8 +74,12 @@ class e3(object):
         return self.plcf("ext.e3_snippet()")
 
 
-    def _modversion(self):
+    def _modversion_macro(self):
         return "{modulename}_VERSION".format(modulename = self.modulename())
+
+
+    def _modversion(self):
+        return "{modversion}={default}".format(modversion = self._modversion_macro(), default = self.plcf("ext.modversion()"))
 
 
 
@@ -188,7 +196,7 @@ class ST_CMD(eee, MACROS, PRINTER):
 
 """.format(require    = self.require(),
            ipaddr     = "type STRING" if self._ipaddr is None else "runtime YES",
-           modversion = self._modversion(),
+           modversion = self._modversion_macro(),
            s7_vs_opc  = """
 # @field RECVTIMEOUT
 # @type INTEGER
@@ -285,8 +293,6 @@ drvModbusAsynConfigure("{plcname}read", "{plcname}", 0, 3, {start_offset}, 10, 0
            insize        = insize,
            endianness    = "BigEndian" if self._endianness == "BE" else "LittleEndian",
            bigendian     = 1 if self._endianness == "BE" else 0,
-           modulename    = self.modulename(),
-           modversion    = self._modversion(),
            plcname       = self.raw_root_inst_slot(),
            dbloadrecords = self._dbLoadRecords("PLCNAME", insize),
            start_offset  = self.EPICSToPLCDataBlockStartOffset,
@@ -310,9 +316,7 @@ opcuaCreateSession("{plcname}-session", "opc.tcp://$(IPADDR):$(PORT)")
 opcuaCreateSubscription("{plcname}", "{plcname}-session", $(PUBLISHING_INTERVAL))
 
 {dbloadrecords}
-""".format(modulename    = self.modulename(),
-           modversion    = self._modversion(),
-           plcname       = self.raw_root_inst_slot(),
+""".format(plcname       = self.raw_root_inst_slot(),
            dbloadrecords = self._dbLoadRecords("SUBSCRIPTION", 0)
           )
 
@@ -363,7 +367,7 @@ class ST_TEST_CMD(eee, MACROS, PRINTER):
 # @field {modversion}
 # @runtime YES
 
-""".format(require = self.require(), modversion = self._modversion())
+""".format(require = self.require(), modversion = self._modversion_macro())
 
         self._append(st_cmd_header, output)
 
