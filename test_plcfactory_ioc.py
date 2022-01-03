@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 from __future__ import print_function
 
+import argparse
 import filecmp
 import os
 import shutil
@@ -93,13 +94,14 @@ class TestIOC(unittest.TestCase):
 
 
     def _ioc_args(self, generate_st_cmd = True):
-        class ioc_args(object):
-            def __init__(self, keep_st_cmd):
-                self.ioc = True
-                self.ioc_git = False
-                self.ioc_st_cmd = generate_st_cmd
+        parser = argparse.ArgumentParser(add_help = False)
+        IOC.add_parser_args(parser)
 
-        return ioc_args(generate_st_cmd)
+        argv = ["--ioc", "--no-ioc-git"]
+        if not generate_st_cmd:
+            argv.append("--no-ioc-st-cmd")
+
+        return IOC.parse_args(parser.parse_known_args(argv)[0])
 
 
     def _master_env_sh(self, directory, iocname = None, iocdir = None, extra_before_lines = [], extra_after_lines = [], extra_spaces = ""):
@@ -171,7 +173,7 @@ iocshLoad("me")""", file = st)
 
     def test_env_sh(self):
         ioc = IOC(self.device, self._ioc_args())
-        with mkdtemp() as ioc_dir:
+        with mkdtemp(prefix = "test-plcfactory-ioc-env_sh") as ioc_dir:
             # Check with no env.sh
             master_env_sh = self._master_env_sh(ioc_dir)
             ioc._IOC__create_env_sh(ioc_dir, "1.0.0")
@@ -205,7 +207,7 @@ iocshLoad("me")""", file = st)
         #
         ioc = IOC(self.device, self._ioc_args())
         ioc._e3 = FakeE3("myplc.iocsh")
-        with mkdtemp() as ioc_dir:
+        with mkdtemp(prefix = "test-plcfactory-ioc-no-st_cmd") as ioc_dir:
             st_cmd = os.path.join(ioc_dir, "st.cmd")
             master_st_cmd = self._master_st_cmd(ioc_dir, ioc)
 
@@ -219,7 +221,7 @@ iocshLoad("me")""", file = st)
         #
         ioc = IOC(self.device, self._ioc_args(False))
         ioc._e3 = FakeE3("myplc.iocsh")
-        with mkdtemp() as ioc_dir:
+        with mkdtemp(prefix = "test-plcfactory-ioc-no-st_cmd-dont-generate") as ioc_dir:
             st_cmd = os.path.join(ioc_dir, "st.cmd")
             master_st_cmd = self._master_st_cmd(ioc_dir, ioc)
 
@@ -234,7 +236,7 @@ iocshLoad("me")""", file = st)
         #
         ioc = IOC(self.device, self._ioc_args())
         ioc._e3 = FakeE3("myplc.iocsh")
-        with mkdtemp() as ioc_dir:
+        with mkdtemp(prefix = "test-plcfactory-ioc-unmodified-st_cmd") as ioc_dir:
             st_cmd = os.path.join(ioc_dir, "st.cmd")
             master_st_cmd = self._master_st_cmd(ioc_dir, ioc)
 
@@ -250,7 +252,7 @@ iocshLoad("me")""", file = st)
         #
         ioc = IOC(self.device, self._ioc_args(False))
         ioc._e3 = FakeE3("myplc.iocsh")
-        with mkdtemp() as ioc_dir:
+        with mkdtemp(prefix = "test-plcfactory-ioc-unmodified-st_cmd-dont-generate") as ioc_dir:
             st_cmd = os.path.join(ioc_dir, "st.cmd")
             master_st_cmd = self._master_st_cmd(ioc_dir, ioc)
 
@@ -266,7 +268,7 @@ iocshLoad("me")""", file = st)
         #
         ioc = IOC(self.device, self._ioc_args())
         ioc._e3 = FakeE3("myplc.iocsh")
-        with mkdtemp() as ioc_dir:
+        with mkdtemp(prefix = "test-plcfactory-ioc-modified-st_cmd") as ioc_dir:
             master_st_cmd = self._master_st_cmd(ioc_dir, ioc)
 
             st_cmd = self._custom_st_cmd(ioc_dir)
@@ -287,7 +289,7 @@ iocshLoad("me")""", file = st)
         #
         ioc = IOC(self.device, self._ioc_args(False))
         ioc._e3 = FakeE3("myplc.iocsh")
-        with mkdtemp() as ioc_dir:
+        with mkdtemp(prefix = "test-plcfactory-ioc-modified-st_cmd-dont-generate") as ioc_dir:
             st_cmd = self._custom_st_cmd(ioc_dir)
             custom_st_cmd = os.path.join(ioc_dir, "custom-st.cmd")
             shutil.copy(st_cmd, custom_st_cmd)
