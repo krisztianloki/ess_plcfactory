@@ -183,6 +183,10 @@ class ST_CMD(eee, MACROS, PRINTER):
 # @{ipaddr}
 # PLC IP address
 {s7_vs_opc}
+# @field MODVERSION
+# @runtime YES
+# The version of the PLC-IOC integration
+
 # @field {modversion}
 # @runtime YES
 
@@ -230,7 +234,7 @@ class ST_CMD(eee, MACROS, PRINTER):
 
     def _dbLoadRecords(self, plc_macro, insize):
         return """#- Load plc interface database
-dbLoadRecords("{modulename}.db", "{PLC_MACRO}={plcname}, MODVERSION=$({modversion}), S7_PORT=$(S7_PORT={s7_port}), MODBUS_PORT=$(MB_PORT={modbus_port}), PAYLOAD_SIZE={insize}{macros}")""".format(
+dbLoadRecords("{modulename}.db", "{PLC_MACRO}={plcname}, MODVERSION=$(MODVERSION=$({modversion})), S7_PORT=$(S7_PORT={s7_port}), MODBUS_PORT=$(MB_PORT={modbus_port}), PAYLOAD_SIZE={insize}{macros}")""".format(
             PLC_MACRO   = plc_macro,
             plcname     = self.raw_root_inst_slot(),
             modulename  = self.modulename(),
@@ -364,6 +368,10 @@ class ST_TEST_CMD(eee, MACROS, PRINTER):
         super(ST_TEST_CMD, self).header(header_if_def, output, **keyword_parameters).add_filename_header(output, inst_slot = self.snippet(), template = "test", extension = self._extension())
 
         st_cmd_header = """{require}
+# @field MODVERSION
+# @runtime YES
+# The version of the PLC-IOC integration
+
 # @field {modversion}
 # @runtime YES
 
@@ -388,7 +396,7 @@ class ST_TEST_CMD(eee, MACROS, PRINTER):
 
         st_cmd_footer = """
 #- Load plc interface database
-dbLoadRecords("{modulename}-test.db", "MODVERSION=$({modversion}){macros}")
+dbLoadRecords("{modulename}-test.db", "MODVERSION=$(MODVERSION=$({modversion})){macros}")
 """.format(modulename = self.modulename(),
            modversion = self._modversion(),
            macros     = self._define_macros())

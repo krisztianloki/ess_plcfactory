@@ -141,7 +141,7 @@ iocshLoad("$(essioc_DIR)/common_config.iocsh")
 epicsEnvSet(EPICS_DB_INCLUDE_PATH, "$(E3_CMD_TOP)/db:$(EPICS_DB_INCLUDE_PATH=.)")
 
 # Load PLC specific startup script
-iocshLoad("$(E3_CMD_TOP)/iocsh/{iocsh}")""".format(iocname = ioc.name(), iocsh = ioc._e3.iocsh()), file = mst)
+iocshLoad("$(E3_CMD_TOP)/iocsh/{iocsh}", "MODVERSION=$(IOCVERSION=$(DEFAULT_PLCIOCVERSION))")""".format(iocname = ioc.name(), iocsh = ioc._e3.iocsh()), file = mst)
 
         return master_st_cmd
 

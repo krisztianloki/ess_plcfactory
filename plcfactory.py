@@ -599,11 +599,11 @@ pip install --user pyyaml
         """
         Get the IOC that _directly_ controls 'device'
         """
-        if device.deviceType() == 'IOC':
+        if device.deviceType() == "IOC":
             return device
 
         for c in device.controlledBy(convert = False):
-            if c.deviceType() == 'IOC':
+            if c.deviceType() == "IOC":
                 return c
 
         raise PLCFactoryException("Could not find IOC for {}".format(device.name()))
@@ -623,13 +623,13 @@ pip install --user pyyaml
 
     def __create_env_sh(self, out_idir, version):
         new_env_lines = OrderedDict()
-        new_env_lines['IOCNAME'] = self.name()
-        new_env_lines['IOCDIR'] = helpers.sanitizeFilename(self.name())
+        new_env_lines["IOCNAME"] = self.name()
+        new_env_lines["IOCDIR"] = helpers.sanitizeFilename(self.name())
         if self._e3:
-            new_env_lines['{}_VERSION'.format(self._e3.modulename())] = version if version else glob.modversion
+            new_env_lines["DEFAULT_PLCIOCVERSION"] = glob.modversion
 
         # Get the currently defined env vars
-        env_sh = os.path.join(out_idir, 'env.sh')
+        env_sh = os.path.join(out_idir, "env.sh")
         lines = self.__get_contents(env_sh)
         if lines is None:
             lines = []
@@ -639,15 +639,15 @@ pip install --user pyyaml
         env_vars = dict()
         for i in range(len(lines)):
             sp = lines[i].strip()
-            if sp[0] == '#':
+            if sp[0] == "#":
                 continue
 
             # Split into only two; the value might contain spaces
-            sp = sp.split(' ', 1)
+            sp = sp.split(" ", 1)
             # Ignore export
-            if sp[0].strip() == 'export':
+            if sp[0].strip() == "export":
                 sp = sp[1]
-            sp = sp.split('=', 1)
+            sp = sp.split("=", 1)
             if len(sp) == 1:
                 continue
 
@@ -690,7 +690,7 @@ iocshLoad("$(essioc_DIR)/common_config.iocsh")
 epicsEnvSet(EPICS_DB_INCLUDE_PATH, "$(E3_CMD_TOP)/db:$(EPICS_DB_INCLUDE_PATH=.)")
 
 # Load PLC specific startup script
-iocshLoad("$(E3_CMD_TOP)/iocsh/{iocsh}")
+iocshLoad("$(E3_CMD_TOP)/iocsh/{iocsh}", "MODVERSION=$(IOCVERSION=$(DEFAULT_PLCIOCVERSION))")
 """.format(iocname = self.name(),
            modules = "\n".join(["require {}".format(module) for module in self.REQUIRED_MODULES]),
            iocsh = self._e3.iocsh())
