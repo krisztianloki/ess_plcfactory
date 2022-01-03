@@ -629,6 +629,8 @@ pip install --user pyyaml
         new_env_lines["IOCNAME"] = self.name()
         new_env_lines["IOCDIR"] = helpers.sanitizeFilename(self.name())
         if self._e3:
+            # This variable is no longer used by PLCFactory
+            remove_env.append("{}_VERSION".format(self._e3.modulename()))
             new_env_lines["DEFAULT_PLCIOCVERSION"] = glob.modversion
             if version:
                 new_env_lines["PLCIOCVERSION"] = version
