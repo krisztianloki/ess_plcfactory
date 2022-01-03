@@ -183,6 +183,10 @@ class ST_CMD(eee, MACROS, PRINTER):
 # @{ipaddr}
 # PLC IP address
 {s7_vs_opc}
+# @field DBDIR
+# @runtime YES
+# The directory where the db files are located
+
 # @field MODVERSION
 # @runtime YES
 # The version of the PLC-IOC integration
@@ -234,7 +238,7 @@ class ST_CMD(eee, MACROS, PRINTER):
 
     def _dbLoadRecords(self, plc_macro, insize):
         return """#- Load plc interface database
-dbLoadRecords("{modulename}.db", "{PLC_MACRO}={plcname}, MODVERSION=$(MODVERSION=$({modversion})), S7_PORT=$(S7_PORT={s7_port}), MODBUS_PORT=$(MB_PORT={modbus_port}), PAYLOAD_SIZE={insize}{macros}")""".format(
+dbLoadRecords("$(DBDIR=){modulename}.db", "{PLC_MACRO}={plcname}, MODVERSION=$(MODVERSION=$({modversion})), S7_PORT=$(S7_PORT={s7_port}), MODBUS_PORT=$(MB_PORT={modbus_port}), PAYLOAD_SIZE={insize}{macros}")""".format(
             PLC_MACRO   = plc_macro,
             plcname     = self.raw_root_inst_slot(),
             modulename  = self.modulename(),
@@ -396,7 +400,7 @@ class ST_TEST_CMD(eee, MACROS, PRINTER):
 
         st_cmd_footer = """
 #- Load plc interface database
-dbLoadRecords("{modulename}-test.db", "MODVERSION=$(MODVERSION=$({modversion})){macros}")
+dbLoadRecords("$(DBDIR=){modulename}-test.db", "MODVERSION=$(MODVERSION=$({modversion})){macros}")
 """.format(modulename = self.modulename(),
            modversion = self._modversion(),
            macros     = self._define_macros())

@@ -707,11 +707,8 @@ pip install --user pyyaml
 # Load standard IOC startup scripts
 iocshLoad("$(essioc_DIR)/common_config.iocsh")
 
-# Register our db directory
-epicsEnvSet(EPICS_DB_INCLUDE_PATH, "$(E3_CMD_TOP)/db:$(EPICS_DB_INCLUDE_PATH=.)")
-
 # Load PLC specific startup script
-iocshLoad("$(E3_CMD_TOP)/iocsh/{iocsh}", "MODVERSION=$(PLCIOCVERSION=$(IOCVERSION=$(DEFAULT_PLCIOCVERSION)))")
+iocshLoad("$(E3_CMD_TOP)/iocsh/{iocsh}", "DBDIR=$(E3_CMD_TOP)/db/, MODVERSION=$(PLCIOCVERSION=$(IOCVERSION=$(DEFAULT_PLCIOCVERSION)))")
 """.format(iocname = self.name(),
            modules = "\n".join(["require {}".format(module) for module in self.REQUIRED_MODULES]),
            iocsh = self._e3.iocsh())
