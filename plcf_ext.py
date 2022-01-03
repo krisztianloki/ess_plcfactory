@@ -43,6 +43,20 @@ def plcfactory_origin():
     return plcf_glob.origin
 
 
+def plcfactory_timestamp_as(formatting):
+    """
+    Returns the raw timestamp when PLCFactory was started
+    """
+    return formatting.format(plcf_glob.raw_timestamp)
+
+
+def plcfactory_timestamp():
+    """
+    Returns the timestamp when PLCFactory was started
+    """
+    return plcf_glob.timestamp
+
+
 def modversion():
     """
     Returns the default modversion

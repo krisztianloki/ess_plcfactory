@@ -338,10 +338,10 @@ The following PVs are automatically generated using the ESS name of the PLC as t
 
 *   `ModVersionR`
     *  The version of the
-        * loaded E3 module if a module is used
-        * the version of the deployed IOC if `--ioc` was used (and `IOCVERSION` is set by the deployment system)
-        * the version specified with `--ioc=<version>`
-        * the timestamp of generating the EPICS database/SCL code if none of the above is true
+       * loaded E3 module if a module is used
+       * the version of the deployed IOC if `--ioc` was used (and `IOCVERSION` is set by the deployment system)
+       * the version specified with `--ioc=<version>`
+       * the timestamp of generating the EPICS database/SCL code if none of the above is true
     *  `stringin`
 *   `PLCFBranchR`
     *  The branch of PLCFactory that was used for the integration
@@ -352,6 +352,9 @@ The following PVs are automatically generated using the ESS name of the PLC as t
 *   `PLCFStatusR`
     *  The status of the PLCFactory working copy at the time of integration
     *  `bi`
+*   `PLCFTimestampR`
+    *  The timestamp of generating the EPICS database in the format YYYYDDMMHHMMSS
+    *  `stringin`
 *   `ModbusConnectedR`
     *  Shows if the MODBUS channel connected
     *  `bi`

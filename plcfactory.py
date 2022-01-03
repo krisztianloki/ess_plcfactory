@@ -137,6 +137,7 @@ PLCF_BRANCH     = git.get_current_branch()
 PLCF_URL        = helpers.url_strip_user(git.get_origin())
 COMMIT_ID       = git.get_local_ref(PLCF_BRANCH)
 VERIFY          = False
+RAW_TIMESTAMP   = None
 if COMMIT_ID is not None:
     ifdef_params["COMMIT_ID"] = COMMIT_ID
 
@@ -885,7 +886,7 @@ PLCFactory commit:
 Command line:
 =============
 {cmdline}
-""".format(tstamp  = '{:%Y-%m-%d %H:%M:%S}'.format(glob.raw_timestamp),
+""".format(tstamp  = '{:%Y-%m-%d %H:%M:%S}'.format(RAW_TIMESTAMP),
            url     = PLCF_URL,
            branch  = PLCF_BRANCH,
            commit  = COMMIT_ID,
@@ -2256,7 +2257,7 @@ def record_args(root_device):
 #PLCFactory URL:    {url}
 #PLCFactory branch: {branch}
 #PLCFactory commit: {commit}
-""".format(date   = '{:%Y-%m-%d %H:%M:%S}'.format(glob.raw_timestamp),
+""".format(date   = '{:%Y-%m-%d %H:%M:%S}'.format(RAW_TIMESTAMP),
            url    = PLCF_URL,
            branch = PLCF_BRANCH,
            commit = COMMIT_ID), file = f)
@@ -2477,10 +2478,10 @@ def main(argv):
     # retrieve parameters
     args       = parser.parse_args(argv)
 
-    start_time     = time.time()
+    start_time = time.time()
 
-    glob.raw_timestamp = datetime.datetime.now()
-    glob.timestamp = '{:%Y%m%d%H%M%S}'.format(glob.raw_timestamp)
+    global RAW_TIMESTAMP
+    RAW_TIMESTAMP = datetime.datetime.now()
     if args.root is not None:
         glob.root_installation_slot = args.root
     else:
@@ -2490,10 +2491,12 @@ def main(argv):
 
     global VERIFY
     VERIFY = args.verify
+    glob.raw_timestamp = RAW_TIMESTAMP if not VERIFY else datetime.datetime(2022, 01, 01)
+    glob.timestamp = '{:%Y%m%d%H%M%S}'.format(RAW_TIMESTAMP)
     glob.commit_id = COMMIT_ID if not VERIFY else "N/A"
-    glob.branch    = PLCF_BRANCH if not VERIFY else "N/A"
-    glob.cmdline   = " ".join(sys.argv) if not VERIFY else "N/A"
-    glob.origin    = git.get_origin()
+    glob.branch = PLCF_BRANCH if not VERIFY else "N/A"
+    glob.cmdline = " ".join(sys.argv) if not VERIFY else "N/A"
+    glob.origin = git.get_origin()
     glob.modversion = glob.timestamp if not VERIFY else "N/A"
 
     global device_tag

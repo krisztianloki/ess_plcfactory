@@ -119,6 +119,8 @@ class EPICS_BASE(PRINTER):
 # Please, DO NOT EDIT by hand!
 #
 #
+# PLC-IOC Hash: #HASH
+# Timestamp: {timestamp}
 # Branch of PLCFactory: {plcf_branch}
 # Commit id of PLCFactory: {plcf_commit}
 # Status of PLCFactory working copy: {plcf_status_string}
@@ -179,6 +181,18 @@ record(bi, "{root_inst_slot}:PLCFStatusR")
 }}
 
 #
+# This shows when PLCFactory was run to generate this file
+#
+record(stringin, "{root_inst_slot}:PLCFTimestampR")
+{{
+	field(DESC,	"Timestamp when PLCFactory was run")
+	field(DISP,	"1")
+	field(VAL,	"{timestamp}")
+	field(PINI,	"YES")
+	info("plcf_timestamp", "{timestamp}")
+}}
+
+#
 # These are used in DOL links
 #
 record(bi, "{root_inst_slot}:#plcfC1")
@@ -203,6 +217,7 @@ record(longin, "{root_inst_slot}:#plcfC2")
            plcf_status_string = "Clean" if keyword_params.get("PLCF_STATUS", False) else "Dirty",
            plcf_branch     = self.plcf("ext.plcfactory_branch()"),
            plcf_branch_39  = self.plcf("ext.plcfactory_branch()")[:39],
+           timestamp       = self.plcf("ext.plcfactory_timestamp_as('{:%Y%m%d%H%M%S}')"),
            cmdline         = self.plcf("ext.plcfactory_cmdline()"),
            modversion      = self.plcf("ext.modversion()"))
 
