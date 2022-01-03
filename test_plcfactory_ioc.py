@@ -8,6 +8,7 @@ import shutil
 import tempfile
 import unittest
 
+import plcf_glob as glob
 import helpers
 from plcfactory import IOC
 
@@ -74,6 +75,7 @@ class mkdtemp(object):
 class TestIOC(unittest.TestCase):
     def setUp(self):
         self.device = FakeDevice("Fake", "IOC", properties = {'EPICSVersion': "7.0.5", 'E3RequireVersion': "3.4.1"})
+        glob.modversion = "TestIOC"
 
 
     def tearDown(self):
@@ -93,11 +95,11 @@ class TestIOC(unittest.TestCase):
         return first_lines == second_lines
 
 
-    def _ioc_args(self, generate_st_cmd = True):
+    def _ioc_args(self, generate_st_cmd = True, version = None):
         parser = argparse.ArgumentParser(add_help = False)
         IOC.add_parser_args(parser)
 
-        argv = ["--ioc", "--no-ioc-git"]
+        argv = ["--ioc{}".format("" if version is None else "={}".format(version)), "--no-ioc-git"]
         if not generate_st_cmd:
             argv.append("--no-ioc-st-cmd")
 
@@ -141,7 +143,7 @@ iocshLoad("$(essioc_DIR)/common_config.iocsh")
 epicsEnvSet(EPICS_DB_INCLUDE_PATH, "$(E3_CMD_TOP)/db:$(EPICS_DB_INCLUDE_PATH=.)")
 
 # Load PLC specific startup script
-iocshLoad("$(E3_CMD_TOP)/iocsh/{iocsh}", "MODVERSION=$(IOCVERSION=$(DEFAULT_PLCIOCVERSION))")""".format(iocname = ioc.name(), iocsh = ioc._e3.iocsh()), file = mst)
+iocshLoad("$(E3_CMD_TOP)/iocsh/{iocsh}", "MODVERSION=$(PLCIOCVERSION=$(IOCVERSION=$(DEFAULT_PLCIOCVERSION)))")""".format(iocname = ioc.name(), iocsh = ioc._e3.iocsh()), file = mst)
 
         return master_st_cmd
 
@@ -171,16 +173,25 @@ iocshLoad("me")""", file = st)
         return os.path.join(directory, "st.cmd.orig")
 
 
-    def test_env_sh(self):
+    def test_no_env_sh(self):
+        #
+        # Check with no env.sh
+        #
         ioc = IOC(self.device, self._ioc_args())
-        with mkdtemp(prefix = "test-plcfactory-ioc-env_sh") as ioc_dir:
-            # Check with no env.sh
+        with mkdtemp(prefix = "test-plcfactory-ioc-no-env_sh") as ioc_dir:
+            env_sh = os.path.join(ioc_dir, "env.sh")
             master_env_sh = self._master_env_sh(ioc_dir)
             ioc._IOC__create_env_sh(ioc_dir, "1.0.0")
-            env_sh = os.path.join(ioc_dir, "env.sh")
             self.assertTrue(self.filecmp(master_env_sh, env_sh))
 
-            # Check with env.sh having extra spaces in funny places
+
+    def test_env_sh_with_spaces(self):
+        #
+        # Check with env.sh having extra spaces in funny places
+        #
+        ioc = IOC(self.device, self._ioc_args())
+        with mkdtemp(prefix = "test-plcfactory-ioc-env_sh-with-spaces") as ioc_dir:
+            env_sh = os.path.join(ioc_dir, "env.sh")
             master_env_sh = self._master_env_sh(ioc_dir, extra_spaces = "   ")
             shutil.copyfile(master_env_sh, env_sh)
             master_env_sh = self._master_env_sh(ioc_dir)
@@ -188,7 +199,14 @@ iocshLoad("me")""", file = st)
             env_sh = os.path.join(ioc_dir, "env.sh")
             self.assertTrue(self.filecmp(master_env_sh, env_sh))
 
-            # Check with env.sh containing extra variables, and lines
+
+    def test_env_sh_with_extra_vars(self):
+        #
+        # Check with env.sh containing extra variables, and lines
+        #
+        ioc = IOC(self.device, self._ioc_args())
+        with mkdtemp(prefix = "test-plcfactory-ioc-env_sh-with-extra-vars") as ioc_dir:
+            env_sh = os.path.join(ioc_dir, "env.sh")
             extra_before_lines = []
             extra_before_lines.append("# This is a comment that should be preserved\n")
             extra_before_lines.append('export IOCDIR="will_be_overriden"\n')
@@ -199,6 +217,49 @@ iocshLoad("me")""", file = st)
             self._master_env_sh(ioc_dir, extra_before_lines = extra_before_lines, extra_after_lines = extra_after_lines)
             ioc._IOC__create_env_sh(ioc_dir, "1.0.0")
             self.assertTrue(self.filecmp(master_env_sh, env_sh))
+
+
+    def test_env_sh_no_version(self):
+        #
+        # Check with no PLC version set
+        #
+        ioc = IOC(self.device, self._ioc_args())
+        with mkdtemp(prefix = "test-plcfactory-ioc-env_sh-no-version") as ioc_dir:
+            env_sh = os.path.join(ioc_dir, "env.sh")
+            master_env_sh = self._master_env_sh(ioc_dir, extra_after_lines = ['export DEFAULT_PLCIOCVERSION="{}"\n'.format(glob.modversion)])
+            ioc._e3 = True
+            ioc._IOC__create_env_sh(ioc_dir, None)
+            self.assertTrue(self.filecmp(master_env_sh, env_sh))
+
+
+    def test_env_sh_with_version(self):
+        #
+        # Check with a PLC version set
+        #
+        version = "foo"
+        ioc = IOC(self.device, self._ioc_args(version=version))
+        with mkdtemp(prefix = "test-plcfactory-ioc-env_sh-with-version") as ioc_dir:
+            env_sh = os.path.join(ioc_dir, "env.sh")
+            master_env_sh = self._master_env_sh(ioc_dir, extra_after_lines = ['export DEFAULT_PLCIOCVERSION="{}"\n'.format(glob.modversion), 'export PLCIOCVERSION="{}"\n'.format(version)])
+            ioc._e3 = True
+            ioc._IOC__create_env_sh(ioc_dir, version)
+            self.assertTrue(self.filecmp(master_env_sh, env_sh))
+
+
+    def test_changed_env_sh_without_version(self):
+        #
+        # Check with a PLC version set
+        #
+        version = "foo"
+        ioc = IOC(self.device, self._ioc_args())
+        with mkdtemp(prefix = "test-plcfactory-ioc-changed-env_sh-without-version") as ioc_dir:
+            env_sh = os.path.join(ioc_dir, "env.sh")
+            master_env_sh = self._master_env_sh(ioc_dir, extra_after_lines = ['export DEFAULT_PLCIOCVERSION="{}"\n'.format(glob.modversion), 'export PLCIOCVERSION="{}"\n'.format(version)])
+            shutil.copyfile(master_env_sh, env_sh)
+            master_env_sh = self._master_env_sh(ioc_dir, extra_after_lines = ['export DEFAULT_PLCIOCVERSION="{}"\n'.format(glob.modversion)])
+            ioc._IOC__create_env_sh(ioc_dir, None)
+            self.assertTrue(self.filecmp(master_env_sh, env_sh))
+
 
 
     def test_no_st_cmd(self):

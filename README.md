@@ -91,7 +91,7 @@ For further information, see the files in [doc](doc/).
 
 *   **--ioc**`[=<version>]`
     *   \[OPTIONAL\]
-    *   Used to generate an IOC. If `version` is specified it will be used to create a tag if the IOC has an associated git repository
+    *   Used to generate an IOC. If `version` is specified it will be used to create a tag `plcfactory_<version>` (if the IOC has an associated git repository) and will be used as the value of `ModVersionR` (instead of `$(IOCVERSION)`)
 *   **--no-ioc-git**
     *   \[OPTIONAL\]
     *   Ignore any git repository when generating IOC i.e. generate IOC locally only
@@ -160,14 +160,16 @@ For further information, see the files in [doc](doc/).
 
 ## IOC generation
 
-PLCFactory can generate a PLC-IOC if the `--ioc` option is specified. The IOC is generated in the `ioc` folder (of the output folder). The name of the IOC is taken from the ESS name of the device (of type `IOC`) that **directly** controls the PLC. If the IOC device has an External Link with the name **`IOC_REPOSITORY`** that points to a git repository then that repository will be used as an IOC repository. If a `version` is specified (with `--ioc <version>`) then a tag will also be created and a merge request will be opened (if you have a browser installed and it can be run). The workflow is the following:
+PLCFactory can generate a PLC-IOC if the `--ioc` option is specified. The IOC is generated in the `ioc` folder (of the output folder). The name of the IOC is taken from the ESS name of the device (of type `IOC`) that **directly** controls the PLC. If the IOC device has an External Link with the name **`IOC_REPOSITORY`** that points to a git repository then that repository will be used as an IOC repository. If a `version` is specified (with `--ioc <version>`) then a tag will also be created (`plcfactory_<version>`) and a merge request will be opened (if you have a browser installed and it can be run). The workflow is the following:
 
 *   The git repository is cloned / if it is already cloned then the master branch will be updated and checked out
 *   If the repository is empty then it will be initialized
 *   A new branch will be created based on master: `PLCFactory_on_<timestamp>` or `<version>_by_PLCFactory_on_<timestamp>` if `version` is specified
 *   The generated files will be copied to the correct directories
 *   Changes are committed; you will be presented with a commit message that you can customize
-*   If `version` is specified the branch will be tagged
+*   If `version` is specified
+    *   it will be used as the value of `ModVersionR` instead of `$(IOCVERSION)`
+    *   the branch will be tagged as `plcfactory_<version>`
 *   Changes will be pushed
 *   If `version` is specified a merge request will be opened by running a browser and opening the URL provided by the git server
 *   **You should manually accept the merge request or merge the created branch before you deploy this IOC into production. Not doing so will result in incorrect git history (because PLCFactory creates branches based on master)**
@@ -335,7 +337,11 @@ The following CCDB properties are used to control the integration parameters:
 The following PVs are automatically generated using the ESS name of the PLC as the `Sys-Subsys:Dis-Dev-Idx` prefix:
 
 *   `ModVersionR`
-    *  The version of the loaded E3 module
+    *  The version of the
+        * loaded E3 module if a module is used
+        * the version of the deployed IOC if `--ioc` was used (and `IOCVERSION` is set by the deployment system)
+        * the version specified with `--ioc=<version>`
+        * the timestamp of generating the EPICS database/SCL code if none of the above is true
     *  `stringin`
 *   `PLCFBranchR`
     *  The branch of PLCFactory that was used for the integration

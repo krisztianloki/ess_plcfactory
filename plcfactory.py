@@ -514,23 +514,23 @@ pip install --user pyyaml
         group = parser.add_argument_group("IOC related options")
 
         group.add_argument(
-                            '--ioc',
+                            "--ioc",
                             dest     = "ioc",
-                            help     = "Generate IOC and if git repository is defined tag it with the given version",
-                            metavar  = 'version',
+                            help     = "Generate IOC and if git repository is defined tag it with the given version as `plcfactory_<version>`",
+                            metavar  = "version",
                             type     = str,
                             const    = "",
                             nargs    = '?')
 
         group.add_argument(
-                            '--no-ioc-git',
+                            "--no-ioc-git",
                             dest     = "ioc_git",
                             help     = "Ignore any git repository when generating IOC",
                             default  = True,
                             action   = "store_false")
 
         group.add_argument(
-                            '--no-ioc-st-cmd',
+                            "--no-ioc-st-cmd",
                             dest     = "ioc_st_cmd",
                             help     = "Do not generate an `st.cmd` file when generating IOC",
                             default  = True,
@@ -622,11 +622,16 @@ pip install --user pyyaml
 
 
     def __create_env_sh(self, out_idir, version):
+        remove_env = ["PLCIOCVERSION"]
+        remove_lines = []
         new_env_lines = OrderedDict()
         new_env_lines["IOCNAME"] = self.name()
         new_env_lines["IOCDIR"] = helpers.sanitizeFilename(self.name())
         if self._e3:
             new_env_lines["DEFAULT_PLCIOCVERSION"] = glob.modversion
+            if version:
+                new_env_lines["PLCIOCVERSION"] = version
+                remove_env.remove("PLCIOCVERSION")
 
         # Get the currently defined env vars
         env_sh = os.path.join(out_idir, "env.sh")
@@ -651,8 +656,14 @@ pip install --user pyyaml
             if len(sp) == 1:
                 continue
 
+            (name, value) = sp
+            # Remove if not needed
+            if name in remove_env:
+                remove_lines.append(i)
+                continue
+
             # Store the variable name and its location
-            env_vars[sp[0].strip()] = i
+            env_vars[name.strip()] = i
 
         # Update the env vars we manage
         for k,v in new_env_lines.items():
@@ -663,8 +674,18 @@ pip install --user pyyaml
             except KeyError:
                 lines.append(line)
 
+        # Remove env vars that are not needed
+        if remove_lines:
+            newlines = []
+            for i, l in enumerate(lines):
+                if i in remove_lines:
+                    continue
+                newlines.append(l)
+        else:
+            newlines = lines
+
         with open(env_sh, "wt") as f:
-            f.writelines(lines)
+            f.writelines(newlines)
 
         return env_sh
 
@@ -690,7 +711,7 @@ iocshLoad("$(essioc_DIR)/common_config.iocsh")
 epicsEnvSet(EPICS_DB_INCLUDE_PATH, "$(E3_CMD_TOP)/db:$(EPICS_DB_INCLUDE_PATH=.)")
 
 # Load PLC specific startup script
-iocshLoad("$(E3_CMD_TOP)/iocsh/{iocsh}", "MODVERSION=$(IOCVERSION=$(DEFAULT_PLCIOCVERSION))")
+iocshLoad("$(E3_CMD_TOP)/iocsh/{iocsh}", "MODVERSION=$(PLCIOCVERSION=$(IOCVERSION=$(DEFAULT_PLCIOCVERSION)))")
 """.format(iocname = self.name(),
            modules = "\n".join(["require {}".format(module) for module in self.REQUIRED_MODULES]),
            iocsh = self._e3.iocsh())
@@ -889,7 +910,7 @@ Command line:
 
             # Tag if requested
             if version:
-                repo.tag(version, override_local = True)
+                repo.tag("plcfactory_{}".format(version), override_local = True)
 
             # Push the branch
             link = repo.push()
