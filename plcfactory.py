@@ -531,6 +531,13 @@ pip install --user pyyaml
                             action   = "store_false")
 
         group.add_argument(
+                            "--no-ioc-git-tag",
+                            dest     = "ioc_git_tag",
+                            help     = "Do not tag the generated IOC when a version is specified",
+                            default  = True,
+                            action   = "store_false")
+
+        group.add_argument(
                             "--no-ioc-st-cmd",
                             dest     = "ioc_st_cmd",
                             help     = "Do not generate an `st.cmd` file when generating IOC",
@@ -551,6 +558,7 @@ pip install --user pyyaml
             def __init__(self, args):
                 self.ioc = args.ioc
                 self.ioc_git = args.ioc_git
+                self.ioc_git_tag = args.ioc_git_tag
                 self.ioc_st_cmd = args.ioc_st_cmd
 
         return ioc_args(args)
@@ -584,6 +592,7 @@ pip install --user pyyaml
         self._dir = helpers.sanitizeFilename(self.name().lower()).replace('-', '_')
         self._generate_st_cmd = args.ioc_st_cmd
         self._repo = get_repository(self._ioc, "IOC_REPOSITORY") if args.ioc_git else None
+        self._tag_repo = args.ioc_git_tag
         if self._repo:
             git.GIT.check_minimal_config()
 
@@ -908,14 +917,15 @@ Command line:
             repo.commit(msg = commit_msg, edit = True)
 
             # Tag if requested
-            if version:
+            tag_repo = self._tag_repo and version
+            if tag_repo:
                 repo.tag("plcfactory_{}".format(version), override_local = True)
 
             # Push the branch
             link = repo.push()
 
-            # Open a create merge request page if we have a version number (and the URL)
-            if link and version:
+            # Open a create merge request page if we created a tag (and the URL)
+            if link and tag_repo:
                 try:
                     print("Launching browser to create merge request...")
                     helpers.xdg_open(link)

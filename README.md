@@ -95,6 +95,9 @@ For further information, see the files in [doc](doc/).
 *   **--no-ioc-git**
     *   \[OPTIONAL\]
     *   Ignore any git repository when generating IOC i.e. generate IOC locally only
+*   **--no-ioc-git-tag**
+    *   \[OPTIONAL\]
+    *   Do not tag the generated IOC when a version is specified
 *   **--no-ioc-st-cmd**
     *   \[OPTIONAL\]
     *   Do not generate an `st.cmd` file when generating IOC
@@ -160,7 +163,7 @@ For further information, see the files in [doc](doc/).
 
 ## IOC generation
 
-PLCFactory can generate a PLC-IOC if the `--ioc` option is specified. The IOC is generated in the `ioc` folder (of the output folder). The name of the IOC is taken from the ESS name of the device (of type `IOC`) that **directly** controls the PLC. If the IOC device has an External Link with the name **`IOC_REPOSITORY`** that points to a git repository then that repository will be used as an IOC repository. If a `version` is specified (with `--ioc <version>`) then a tag will also be created (`plcfactory_<version>`) and a merge request will be opened (if you have a browser installed and it can be run). The workflow is the following:
+PLCFactory can generate a PLC-IOC if the `--ioc` option is specified. The IOC is generated in the `ioc` folder (of the output folder). The name of the IOC is taken from the ESS name of the device (of type `IOC`) that **directly** controls the PLC. If the IOC device has an External Link with the name **`IOC_REPOSITORY`** that points to a git repository then that repository will be used as an IOC repository. If a `version` is specified (with `--ioc <version>`) and `--no-ioc-git-tag` is not specified then a tag will also be created (`plcfactory_<version>`) and a merge request will be opened (if you have a browser installed and it can be run). The workflow is the following:
 
 *   The git repository is cloned / if it is already cloned then the master branch will be updated and checked out
 *   If the repository is empty then it will be initialized
@@ -169,9 +172,9 @@ PLCFactory can generate a PLC-IOC if the `--ioc` option is specified. The IOC is
 *   Changes are committed; you will be presented with a commit message that you can customize
 *   If `version` is specified
     *   it will be used as the value of `ModVersionR` instead of `$(IOCVERSION)`
-    *   the branch will be tagged as `plcfactory_<version>`
+    *   the branch will be tagged as `plcfactory_<version>` unless `--no-ioc-git-tag` was specified on the command line
 *   Changes will be pushed
-*   If `version` is specified a merge request will be opened by running a browser and opening the URL provided by the git server
+*   If `version` is specified (and `--no-ioc-git-tag` is not) then a merge request will be opened by running a browser and opening the URL provided by the git server
 *   **You should manually accept the merge request or merge the created branch before you deploy this IOC into production. Not doing so will result in incorrect git history (because PLCFactory creates branches based on master)**
 
 If no IOC repository is specified the IOC will still be created but without any git operations.
