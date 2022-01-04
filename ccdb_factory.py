@@ -104,40 +104,57 @@ class CCDB_Factory(CC):
 
 
     class Artifact(CCDB.Artifact):
-        prepare_to_download = CC.Artifact.prepare_to_download
+        __cc_artifact_determine_saveas_url = CC.Artifact._determine_saveas_url
+
+
+        def _determine_saveas_url(self):
+            if self.is_file():
+                return self._artifact["full_path"]
+
+            return self.__cc_artifact_determine_saveas_url()
+
 
         def save(self, git_tag = None):
             if self.is_file():
-                self._saveasurl = self._artifact["full_path"]
                 self.download()
             elif self._artifact["download"]:
                 name = self.name()
                 if name.startswith("EPI"):
                     extension = ".def"
+                    filetype = "Interface Definition"
                 elif name.startswith("BEAST TREE"):
                     extension = ".alarm-tree"
+                    filetype = "Alarm tree"
                 elif name.startswith("BEAST TEMPLATE"):
                     extension = ".alarms-template"
+                    filetype = "Alarm definition template"
                 elif name.startswith("BEAST"):
                     extension = ".alarms"
+                    filetype = "Alarm definition"
                 else:
                     raise CC.Exception("Unable to auto-detect extension for {}".format(name))
 
-                # git-tag
-                self.downloadExternalLink(self._device.defaultFilename(extension), extension, git_tag)
+                self.download(extension, git_tag, filetype)
 
 
-        def _download(self, save_as):
+        def download(self, extension = None, git_tag = None, filetype = None):
+            # Setting git_tag will prevent git operations
+            if "full_path" in self._artifact:
+                git_tag = "locally-sourced"
+            return super(CCDB_Factory.Artifact, self).download(extension, git_tag, filetype)
+
+
+        def _download(self):
             if self.is_file():
-                copy2(self._artifact["full_path"], save_as)
+                copy2(self._artifact["full_path"], self.saveas())
             else:
                 try:
                     full_path = self._artifact["full_path"]
                     if os.path.isdir(full_path):
-                        full_path = os.path.join(full_path, os.path.basename(save_as))
-                    copy2(full_path, save_as)
+                        full_path = os.path.join(full_path, os.path.basename(self.saveas()))
+                    copy2(full_path, self.saveas())
                 except KeyError:
-                    super(CCDB_Factory.Artifact, self)._download(save_as)
+                    super(CCDB_Factory.Artifact, self)._download()
 
 
 

@@ -140,11 +140,25 @@ def sanitizeFilename(filename):
     return "".join(map(lambda x: '_' if x in invalid_chars else x, filename))
 
 
-def create_data_dir(product):
+def create_cache_dir(product, dirs = None):
+    """
+    Creates 'cache directory' under ~/.cache
+    """
+    dname = os.path.join(os.path.expanduser("~"), ".cache", product)
+    if dirs is not None:
+        dname = os.path.join(dname, dirs)
+    makedirs(dname)
+
+    return dname
+
+
+def create_data_dir(product, dirs = None):
     """
     Creates 'data directory' under ~/.local/share
     """
     dname = os.path.join(os.path.expanduser("~"), ".local", "share", product)
+    if dirs is not None:
+        dname = os.path.join(dname, dirs)
     makedirs(dname)
 
     return dname

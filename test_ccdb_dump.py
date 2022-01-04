@@ -249,18 +249,18 @@ class TestCCDBDump(unittest.TestCase):
                 ccdb_dump.CCDB_Dump.load(tmpfilepath)
 
         # directory is empty
-        with mkdtemp() as tmpdirpath:
+        with mkdtemp(prefix = "testInvalidDump.emptydir-1") as tmpdirpath:
             with self.assertRaises(ccdb_dump.CC.Exception):
                 ccdb_dump.CCDB_Dump.load(tmpdirpath)
 
         # directory is empty
-        with mkdtemp() as tmpdirpath:
+        with mkdtemp(prefix = "testInvalidDump.emptydir-2") as tmpdirpath:
             os.mkdir(os.path.join(tmpdirpath, "ccdb"))
             with self.assertRaises(ccdb_dump.CC.Exception):
                 ccdb_dump.CCDB_Dump.load(tmpdirpath)
 
         # empty device.dict
-        with mkdtemp() as tmpdirpath:
+        with mkdtemp(prefix = "testInvalidDump.emptydevice.dict") as tmpdirpath:
             open(os.path.join(tmpdirpath, ccdb_dump.CC.DEVICE_DICT), "w").close()
             with self.assertRaises(ccdb_dump.CC.Exception):
                 ccdb_dump.CCDB_Dump.load(tmpdirpath)
@@ -430,24 +430,24 @@ class TestCCDBDump(unittest.TestCase):
 
         # Check multiple external links
         with self.assertRaises(ccdb_dump.CC.ArtifactException):
-            device.downloadExternalLink("BEAST TREE", "")
+            device.downloadExternalLink("BEAST TREE", "", filetype = "Alarm tree")
 
         # Check external link
-        dArtifact = device.downloadExternalLink(ArtifactDB.epi, "def")
+        dArtifact = device.downloadExternalLink(ArtifactDB.epi, "def", filetype = "Interface Definition")
         self.assertTrue(dArtifact)
         fname = dArtifact.saved_as()
         self.assertTrue(fname)
         self.assertTrue(filecmp.cmp(fname, test_obj.epi_file, shallow = 0), "Files are not identical: {} vs {}".format(fname, test_obj.epi_file))
 
         # Check external link with device tag
-        dArtifact = device.downloadExternalLink(ArtifactDB.epi, "def", device_tag = ArtifactDB.tag)
+        dArtifact = device.downloadExternalLink(ArtifactDB.epi, "def", device_tag = ArtifactDB.tag, filetype = "Interface Definition")
         self.assertTrue(dArtifact)
         fname = dArtifact.saved_as()
         self.assertTrue(fname)
         self.assertTrue(filecmp.cmp(fname, test_obj.test_epi_file, shallow = 0), "Files are not identical: {} vs {}".format(fname, test_obj.test_epi_file))
 
         # Check external link with specified filename
-        dArtifact = device.downloadExternalLink(ArtifactDB.beast, "alarms")
+        dArtifact = device.downloadExternalLink(ArtifactDB.beast, "alarms", filetype = "Alarm definition")
         self.assertTrue(dArtifact)
         fname = dArtifact.saved_as()
         self.assertTrue(fname)
@@ -488,35 +488,35 @@ class TestCCDBDump(unittest.TestCase):
 
 
     def testEmptyDir(self):
-        with mkdtemp() as tmpdirpath:
+        with mkdtemp(prefix = "testEmptyDir") as tmpdirpath:
             self._unzip(str(self.EMPTY_ZIP), tmpdirpath)
             cc_obj = ccdb_dump.CCDB_Dump.load(tmpdirpath)
             self._testEmpty(cc_obj)
 
 
     def testOneDeviceDir(self):
-        with mkdtemp() as tmpdirpath:
+        with mkdtemp(prefix = "testOneDeviceDir") as tmpdirpath:
             self._unzip(str(self.ONE_DEVICE_ZIP), tmpdirpath)
             cc_obj = ccdb_dump.CCDB_Dump.load(tmpdirpath)
             self._testOneDevice(cc_obj)
 
 
     def testMultiDeviceDir(self):
-        with mkdtemp() as tmpdirpath:
+        with mkdtemp(prefix = "testMultiDeviceDir") as tmpdirpath:
             self._unzip(str(self.MULTI_DEVICE_ZIP), tmpdirpath)
             cc_obj = ccdb_dump.CCDB_Dump.load(tmpdirpath)
             self._testMultiDevice(cc_obj)
 
 
     def testArtifactDir(self):
-        with mkdtemp() as tmpdirpath:
+        with mkdtemp(prefix = "testArtifactDir") as tmpdirpath:
             self._unzip(str(self.ARTIFACT_ZIP), tmpdirpath)
             cc_obj = ccdb_dump.CCDB_Dump.load(tmpdirpath)
             self._testArtifact(cc_obj, self.ARTIFACT_ZIP)
 
 
     def testUTFArtifactDir(self):
-        with mkdtemp() as tmpdirpath:
+        with mkdtemp(prefix = "testUTFArtifactDir") as tmpdirpath:
             self._unzip(str(self.UTF_ARTIFACT_ZIP), tmpdirpath)
             cc_obj = ccdb_dump.CCDB_Dump.load(tmpdirpath)
             self._testArtifact(cc_obj, self.UTF_ARTIFACT_ZIP)
@@ -578,10 +578,10 @@ class TestCCDB(unittest.TestCase):
         self.assertEqual(device.name(), devname)
 
         # TODO: should download the actual .def file and filecmp
-        self.assertIsInstance(device.downloadExternalLink("EPI", "def"), ccdb.CC.DownloadedArtifact)
-        self.assertIsInstance(device.downloadExternalLink("EPI", "def", git_tag = "v4.0.1"), ccdb.CC.DownloadedArtifact)
-        self.assertIsInstance(device.downloadExternalLink("EPI", "def", device_tag = "MPSVAC"), ccdb.CC.DownloadedArtifact)
-        self.assertIsNone(device.downloadExternalLink("EPI", "def", device_tag = "no-such-tag"))
+        self.assertIsInstance(device.downloadExternalLink("EPI", "def", filetype = "Interface Definition"), ccdb.CC.DownloadedArtifact)
+        self.assertIsInstance(device.downloadExternalLink("EPI", "def", git_tag = "v4.0.1", filetype = "Interface Definition"), ccdb.CC.DownloadedArtifact)
+        self.assertIsInstance(device.downloadExternalLink("EPI", "def", device_tag = "MPSVAC", filetype = "Interface Definition"), ccdb.CC.DownloadedArtifact)
+        self.assertIsNone(device.downloadExternalLink("EPI", "def", device_tag = "no-such-tag", filetype = "Interface Definition"))
 
 
 

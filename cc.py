@@ -9,8 +9,9 @@ __license__    = "GPLv3"
 
 
 # Python libraries
-from os import path as os_path
 import getpass
+from os import path as os_path
+from shutil import copy2
 
 try:
     import requests
@@ -46,9 +47,9 @@ class CC(object):
     GIT_SUFFIX      = ".git"
     CCDB_ZIP_SUFFIX = ".ccdb.zip"
     DEVICE_DICT     = "device.dict"
+    GIT_CACHE       = "data-model"
     paths_cached    = dict()
     sessions_cached = dict()
-    repos_cached    = dict()
 
 
     class Exception(Exception):
@@ -131,15 +132,21 @@ class CC(object):
 
 
     class Artifact(object):
+        __REPOS_CACHED    = dict()
+
+
         def __init__(self, device):
             super(CC.Artifact, self).__init__()
 
             self._device = device
 
-            self._saveas         = None
-            self._saveasurl      = None
-            self._saveasversion  = None
-            self._saveasfilename = None
+            self.reset_saveas()
+
+            # EPI, ALARM TREE, etc
+            if self.is_uri():
+                self._app_type = self.name().split('[')[0]
+            else:
+                self._app_type = None
 
 
         def __repr__(self):
@@ -151,6 +158,21 @@ class CC(object):
             This one is used in place of is_perdevtype if _saveasversion is device specific
             """
             return False
+
+
+        def reset_saveas(self):
+            """
+            Before downloadExternalLink the _saveas* variables need to be reset to None
+            """
+            self._saveas         = None
+            self._saveasurl      = None
+            self._saveasversion  = None
+            if self.is_file():
+                self._saveasversion_is_default = True
+                self._saveasfilename = self.filename()
+            else:
+                self._saveasversion_is_default = None
+                self._saveasfilename = None
 
 
         def registerDownloadedArtifact(self, filename):
@@ -169,10 +191,6 @@ class CC(object):
             raise NotImplementedError
 
 
-        def is_git(self):
-            return self.is_uri() and self.uri().endswith(CC.GIT_SUFFIX)
-
-
         def is_perdevtype(self):
             raise NotImplementedError
 
@@ -189,16 +207,96 @@ class CC(object):
             raise NotImplementedError
 
 
+        def app_type(self):
+            if self._app_type is None and not self.is_uri():
+                raise NotImplementedError
+
+            return self._app_type
+
+
+        def __register_git_repo(self, wc):
+            """
+                Register that this artifact's url was cloned and `wc` is the GIT object.
+            """
+            CC.Artifact.__REPOS_CACHED[self.saveas_url()] = wc
+
+
+        def __is_git_repo_registered(self):
+            """
+                Returns True if this artifact's url is registered as cloned
+            """
+            return CC.Artifact.__REPOS_CACHED.has_key(self.saveas_url())
+
+
+        def __get_registered_git_repo(self):
+            """
+                Returns the GIT object that was cloned for this artifact
+            """
+            return CC.Artifact.__REPOS_CACHED[self.saveas_url()]
+
+
+        def __get_git_working_copy(self):
+            if not self.is_uri():
+                raise CC.ArtifactException("Artifact is not a git link")
+
+            if self.__is_git_repo_registered():
+                wc = self.__get_registered_git_repo()
+            else:
+                wcdir = os_path.join(self._device.ccdb.GIT_CACHE, CC.url_to_path(self.saveas_url()))
+                helpers.makedirs(wcdir)
+                wc = git.GIT.clone(self.saveas_url(), wcdir, branch = self.saveas_version(), update = True)
+
+                self.__register_git_repo(wc)
+
+            return wc
+
+
+        def __get_git_default_branch(self):
+            if self.saveas_version() is not None:
+                raise CC.ArtifactException("Artifact needs non-default branch!")
+
+            return self.__get_git_working_copy().get_default_branch()
+
+
+        def __git_download(self):
+            try:
+                copy2(os_path.join(self.__get_git_working_copy().path(), self.saveas_filename()), self.saveas())
+            except IOError as e:
+                if e.errno == 2:
+                    raise CC.DownloadException(self.uri(), "*404")
+
+                raise
+
+
         def saveas(self):
             """
             Returns the full path (relative to the current directory) of the downloaded artifact filename
             """
             if self._saveas is None:
-                if not self.is_file():
-                    raise NotImplementedError
-                self._saveas = CC.saveas(self.uniqueID(), self.saveas_filename(), self._device.ccdb.TEMPLATE_DIR)
+                # NOTE: we _must not_ use CC.TEMPLATE_DIR here,
+                # CCDB_Dump relies on creating an instance variant of TEMPLATE_DIR to point it to its own templates directory
+                if self.is_file():
+                    self._saveas = CC.saveas(self.uniqueID(), self.saveas_filename(), self._device.ccdb.TEMPLATE_DIR)
+                else:
+                    self._saveas = CC.saveas(self.uniqueID(), self.saveas_filename(), os_path.join(self._device.ccdb.TEMPLATE_DIR, CC.url_to_path(self.saveas_url()), self.saveas_version()))
 
             return self._saveas
+
+
+        def _set_saveas_url(self, url):
+            self._saveasurl = url
+
+
+        def _determine_saveas_url(self):
+            """
+            Should set self._saveasurl to the URL from where the artifact can be/was downloaded
+            """
+            if self.is_uri():
+                url = self.uri()
+                if not url.endswith(CC.GIT_SUFFIX) and helpers.url_to_host(url) != "bitbucket.org":
+                    url += CC.GIT_SUFFIX
+
+                return url
 
 
         def saveas_url(self):
@@ -206,16 +304,26 @@ class CC(object):
             Returns the full url from where the artifact has to be downloaded
             """
             if self._saveasurl is None:
-                raise NotImplementedError
+                self._set_saveas_url(self._determine_saveas_url())
+                if self._saveasurl is None:
+                    raise NotImplementedError
 
             return self._saveasurl
+
+
+        def set_saveas_version(self, version):
+            if version is None:
+                self._saveasversion_is_default = True
+            else:
+                self._saveasversion_is_default = False
+                self._saveasversion = version
 
 
         def saveas_version(self):
             """
             Returns the version that needs to be downloaded (the branch/tag if git repo)
             """
-            if self._saveasversion is None:
+            if self._saveasversion is None and self._saveasversion_is_default is None:
                 raise NotImplementedError
 
             return self._saveasversion
@@ -223,22 +331,24 @@ class CC(object):
 
         def saveas_filename(self):
             if self._saveasfilename is None:
-                if not self.is_file():
-                    raise NotImplementedError
-                self._saveasfilename = self.filename()
+                raise NotImplementedError
 
             return self._saveasfilename
 
 
-        # Returns: ""
-        # filename is the default filename to use if not specified with '[]' notation
-        def downloadExternalLink(self, filename, extension = None, git_tag = None, filetype = "External Link"):
+        def defaultFilename(self, extension):
+            return self._device.defaultFilename(extension)
+
+
+        def __downloadExternalLink(self, extension = None, git_tag = None, filetype = None):
+            if filetype is None:
+                filetype = "External Link"
+
             linkfile  = self.name()
 
+            # Check for explicit filename specification: SOMETHING[filename]
             open_bra = linkfile.find('[')
             if open_bra != -1:
-                base = linkfile[:open_bra]
-
                 if linkfile[-1] != ']':
                     raise CC.ArtifactException("Invalid name format in External Link for {device}: {name}".format(device = self._device.name(), name = linkfile), self._device.name(), linkfile)
 
@@ -253,62 +363,57 @@ class CC(object):
                 if filename != helpers.sanitize_path(filename):
                     raise CC.ArtifactException("Invalid filename in External Link for {device}: {name}".format(device = self._device.name(), name = filename), self._device.name(), filename)
             else:
-                base = linkfile
+                filename = self.defaultFilename(extension)
 
-            if git_tag is None:
-                git_tag = self._device.properties().get(base + " VERSION", "master")
-                # if we have a non-default, device specific version then the artifact is clearly non per-devtype
-                if git_tag != "master":
-                    self.is_perdevtype = self.__not_perdevtype
-
-            print("Downloading {filetype} file {filename} (version {version}) from {url}".format(filetype = filetype,
-                                                                                                 filename = filename,
-                                                                                                 url      = self.uri(),
-                                                                                                 version  = git_tag))
-
-            self._saveasversion  = git_tag
             self._saveasfilename = filename
 
-            return self.download()
+            self._set_saveas_url(self._determine_saveas_url())
+
+            if git_tag is None:
+                version_prop = self._device.properties().get(self.app_type() + " VERSION", None)
+                devtype_version_prop = self._device.devtypeProperties().get(self.app_type() + " VERSION", None)
+
+                # if devtype_version_prop differs from version_prop it means that "app_type() VERSION" is a slot property ---> non per-devtype
+                #  (becase a you cannot have a slot and device type property with the same name in CCDB)
+                if version_prop != devtype_version_prop:
+                    self.is_perdevtype = self.__not_perdevtype
+
+                git_tag = version_prop
+                self.set_saveas_version(git_tag)
+                if git_tag is None:
+                    git_tag = self.__get_git_default_branch()
+
+            print("Downloading {filetype} file {filename} (version {version}) from {url}".format(filetype = filetype,
+                                                                                                 filename = self.saveas_filename(),
+                                                                                                 url      = self.uri(),
+                                                                                                 version  = "<default>" if git_tag is None else git_tag))
+
+            self.set_saveas_version(git_tag)
 
 
-        def prepare_to_download(self):
+        def _download(self):
             if self.is_uri():
-                git_tag  = self.saveas_version()
-                filename = self.saveas_filename()
-                # NOTE: we _must not_ use CC.TEMPLATE_DIR here,
-                # CCDB_Dump relies on creating an instance variant of TEMPLATE_DIR to point it to its own templates directory
-                if not self.is_git():
-                    url = CC.urljoin(self.uri(), "raw", git_tag)
-                    self._saveasurl      = CC.urljoin(url, filename)
-                    self._saveas         = CC.saveas(self.uniqueID(), filename, os_path.join(self._device.ccdb.TEMPLATE_DIR, CC.url_to_path(url)))
-                else:
-                    # Make sure that only one version is requested of the same repo
-                    # This is a limitation of the current implementation
-                    # When this is fixed make sure that is_perdevtype is still correct!
-                    if CC.repos_cached.get(self.uri(), git_tag) != git_tag:
-                        raise CC.ArtifactException("Cannot mix different versions/branches of the same repository: {}".format(self.uri()))
+                return self.__git_download()
 
-                    self._saveasurl      = self.uri()
-                    # We could remove the '.git' extension from the url but I see no point in doing that
-                    self._saveas         = CC.saveas(self.uniqueID(), filename, os_path.join(self._device.ccdb.TEMPLATE_DIR, CC.url_to_path(self.uri())))
+            raise NotImplementedError
 
 
-        # Returns: "", the downloaded filename
-        def download(self):
-            self.prepare_to_download()
-            save_as  = self.saveas()
+        def download(self, extension = None, git_tag = None, filetype = None):
+            """
+            Returns a DownloadedArtifact or None
+            """
+            if self.is_uri():
+                self.__downloadExternalLink(extension, git_tag, filetype)
+
+            self._set_saveas_url(self._determine_saveas_url())
+            save_as = self.saveas()
 
             # check if filename has already been downloaded
-            if os_path.exists(save_as):
-                # Make sure that cached artifacts are also added to the list
-                self.registerDownloadedArtifact(save_as)
-                return CC.DownloadedArtifact(self)
-
-            try:
-                self._download(save_as)
-            except CC.DownloadException as e:
-                raise CC.ArtifactException(e, deviceName = self._device.name(), filename = self.saveas_filename())
+            if not os_path.exists(save_as):
+                try:
+                    self._download()
+                except CC.DownloadException as e:
+                    raise CC.ArtifactException(e, deviceName = self._device.name(), filename = self.saveas_filename())
 
             self.registerDownloadedArtifact(save_as)
 
@@ -472,6 +577,11 @@ class CC(object):
             return self._ensure(self._propertiesDict(), dict)
 
 
+        # Returns: {}
+        def devtypeProperties(self, convert = True):
+            return self._ensure(self._devtypeProperties(), dict, convert)
+
+
         # Returns: ""
         def deviceType(self):
             return self._ensure(self._deviceType(), str)
@@ -524,8 +634,10 @@ class CC(object):
             return (dev_defs, devtype_defs)
 
 
-        # Returns the filename or None
         def downloadArtifact(self, extension, device_tag = None, filetype = '', custom_filter = None, filter_args = ()):
+            """
+            Returns a DownloadedArtifact or None
+            """
             if custom_filter is None:
                 def filter_device_tags(artifact):
                     return CC.TAG_SEPARATOR not in artifact.filename()
@@ -561,6 +673,7 @@ class CC(object):
                 print("Downloading {filetype} file {filename} from CCDB".format(filetype = filetype,
                                                                                 filename = defs[0].filename()))
 
+                defs[0].reset_saveas()
                 return defs[0].download()
 
             # device artifacts have higher priority than device type artifacts
@@ -571,8 +684,10 @@ class CC(object):
             return __checkArtifactList(devtype_defs)
 
 
-        # Returns the filename or None
         def downloadExternalLink(self, base, extension, device_tag = None, filetype = 'External Link', git_tag = None):
+            """
+            Returns a DownloadedArtifact or None
+            """
             if not extension.startswith('.'):
                 extension = '.{}'.format(extension)
 
@@ -580,8 +695,7 @@ class CC(object):
                 # base__devicetag
                 base = CC.TAG_SEPARATOR.join([ base, device_tag ])
 
-            fqbase = base + "["
-            artifacts = filter(lambda u: u.is_uri() and (u.name() == base or u.name().startswith(fqbase)), self.artifacts())
+            artifacts = filter(lambda u: u.is_uri() and u.app_type() == base, self.artifacts())
 
             # Separate device and device type external links
             (dev_defs, devtype_defs) = self.__splitDefs(artifacts)
@@ -593,7 +707,8 @@ class CC(object):
                 if len(defs) > 1:
                     raise CC.ArtifactException("More than one {filetype} External Links were found for {device}: {urls}".format(filetype = filetype, device = self.name(), urls = list(map(lambda u: u.uri(), defs))), self.name())
 
-                return defs[0].downloadExternalLink(self.defaultFilename(extension), extension, filetype = filetype, git_tag = git_tag)
+                defs[0].reset_saveas()
+                return defs[0].download(extension, git_tag = git_tag, filetype = filetype)
 
             # device external links have higher priority than device type external links
             art = __checkExternalLinkList(dev_defs)
@@ -764,10 +879,13 @@ class CC(object):
             return CC.paths_cached[uniqueID, filename, directory]
         except KeyError:
             dtdir = os_path.join(directory, helpers.sanitize_path(uniqueID))
+            path = os_path.join(dtdir, helpers.sanitize_path(filename))
             if CreateDir:
-                helpers.makedirs(dtdir)
-            path = os_path.normpath(os_path.join(dtdir, helpers.sanitize_path(filename)))
+                helpers.makedirs(os_path.dirname(path))
+
+            path = os_path.normpath(path)
             CC.paths_cached[uniqueID, filename, directory] = path
+
             return path
 
 
@@ -839,14 +957,6 @@ class CC(object):
         return save_as
 
 
-    @staticmethod
-    def git_download(url, cwd, version = "master"):
-        print("Cloning {}...".format(url))
-        git.clone(url, cwd, branch = version)
-        git.checkout(cwd, version)
-        CC.repos_cached[url] = version
-
-
     def __clear(self):
         # all devices; key, Device pairs
         self._devices              = dict()
@@ -871,6 +981,7 @@ class CC(object):
             print("Reusing templates of any previous run")
 
         helpers.makedirs(CC.TEMPLATE_DIR)
+        self.GIT_CACHE = helpers.create_cache_dir("ccdb", CC.GIT_CACHE)
 
 
     # clear whatever we have. let other implementations override

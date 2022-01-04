@@ -573,14 +573,12 @@ pip install --user pyyaml
         else:
             self._e3 = None
 
-        try:
-            self._epics_version = self._ioc.properties()["EPICSVersion"]
-        except KeyError:
+        self._epics_version = self._ioc.properties().get("EPICSVersion", None)
+        if self._epics_version is None:
             raise PLCFactoryException("'EPICSVersion' property of IOC is not set")
 
-        try:
-            self._require_version = self._ioc.properties()["E3RequireVersion"]
-        except KeyError:
+        self._require_version = self._ioc.properties().get("E3RequireVersion", None)
+        if self._require_version is None:
             raise PLCFactoryException("'E3RequireVersion' property of IOC is not set")
 
         self._dir = helpers.sanitizeFilename(self.name().lower()).replace('-', '_')
@@ -838,7 +836,8 @@ iocsh.bash -e {iocdir}/env.sh {iocdir}/st.cmd
             # Cannot specify 'branch = "master"'; git segfaults when trying to clone an empty repository and checking out its "master" branch
             # Update the master branch if available, and initialize an empty repository
             repo = git.GIT.clone(self.repo(), out_idir, update = True, initialize_if_empty = True, gitignore_contents = "/cell/", initializer = self._create_plcfactory_ignore)
-            repo.create_branch(branch, "master")
+            # Create branch 'branch' based on the default branch
+            repo.create_branch(branch, repo.get_default_branch())
         else:
             repo = None
 
@@ -1822,11 +1821,14 @@ Exiting.
     # create a stable list of controlled devices
     devices = device.buildControlsList(include_self = True, verbose = True)
 
+    # create a factory of CCDB
+    try:
+        output_files["CCDB-FACTORY"] = device.toFactory(deviceName, OUTPUT_DIR, git_tag = epi_version, script = "-".join([ deviceName, glob.timestamp ]))
+    except CC.Exception:
+        pass
+
     if IOC_ARGS:
-        try:
-            hostname = device.properties()["Hostname"]
-        except KeyError:
-            hostname = None
+        hostname = device.properties().get("Hostname", None)
 
         if not hostname:
             raise PLCFactoryException("Hostname of '{}' is not specified, required for IOC generation".format(device.name()))
@@ -2584,12 +2586,6 @@ def main(argv):
         ifdef_params.pop("PLCF_STATUS", 0)
 
     root_device = processDevice(device, plc, list(templateIDs))
-
-    # create a factory of CCDB
-    try:
-        output_files["CCDB-FACTORY"] = root_device.toFactory(device, OUTPUT_DIR, git_tag = epi_version, script = "-".join([ device, glob.timestamp ]))
-    except CC.Exception:
-        pass
 
     # record the arguments used to run this instance
     record_args(root_device)

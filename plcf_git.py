@@ -1,19 +1,19 @@
 from __future__ import print_function
 
-import helpers
-
 import os
 from shlex import split as shlex_split
 import subprocess
 import time
+
+import helpers
 
 
 __git_dir = (os.path.abspath(os.path.dirname(__file__)))
 try:
     isinstance('h', unicode)
     spkwargs = dict()
-except:
-    spkwargs = {'encoding':'utf8'}
+except Exception:
+    spkwargs = {'encoding': 'utf8'}
 
 
 class GITException(Exception):
@@ -24,12 +24,14 @@ class GITException(Exception):
 class GIT(object):
     REMOTE_PREFIX = "remote:"
     REMOTE_PREFIX_LEN = len(REMOTE_PREFIX)
+    MASTER = "master"
+
 
     def __init__(self, path):
         super(GIT, self).__init__()
 
-        self._master = "master"
-        self._path = path
+        self._default_branch = None
+        self._path = os.path.abspath(path)
         self._branch = None
         self._url = None
 
@@ -100,7 +102,7 @@ git config --global user.name "My Name"
         try:
             return subprocess.check_output(shlex_split("git rev-parse --is-inside-work-tree"), stderr = subprocess.STDOUT, cwd = path, **spkwargs).strip().lower() == "true"
         except subprocess.CalledProcessError as e:
-            if e.output.strip() == "fatal: Not a git repository (or any of the parent directories): .git":
+            if e.output.strip().startswith("fatal: Not a git repository"):
                 return False
 
             raise
@@ -118,12 +120,15 @@ git config --global user.name "My Name"
         # FIXME: I've deleted and recreated the repo but an old working copy was still in the output folder and git.fetch choked on it
         url = helpers.sanitize_url(url)
         git = GIT(path)
+        # Append '.git' if needed
+        url = git.__set_url(url)
+        path = os.path.abspath(path)
         if not git.is_repo():
             # If 'path' is not a repository then clone url
             git.__clone(url, branch, initialize_if_empty = initialize_if_empty, verbose = verbose, gitignore_contents = gitignore_contents, initializer = initializer)
             return git
 
-        if git.get_toplevel_dir() != path:
+        if not os.path.samefile(git.get_toplevel_dir(), path):
             # This is some other repository working tree, we can clone a new one here
             git.__clone(url, branch, initialize_if_empty = initialize_if_empty, verbose = verbose, gitignore_contents = gitignore_contents, initializer = initializer)
             return git
@@ -132,21 +137,30 @@ git config --global user.name "My Name"
         if helpers.sanitize_url(helpers.url_strip_user(git.get_origin())) != helpers.url_strip_user(url):
             raise GITException("Found unrelated git repository in {} (belongs to {}), refusing to overwrite".format(path, git.get_origin()))
 
-        git.__set_url(url)
+        git._default_branch = git.get_default_branch()
 
-        # Check if there are branches (meaning the repository is not empty) and do a git pull
-        if update and git.get_branches():
+        if initialize_if_empty:
+            git.__initialize_if_empty(branch, gitignore_contents, initializer, verbose = verbose)
+
+        # Return if empty
+        if not git.get_branches():
+            if branch is not None:
+                raise GITException("Empty repository does not have branch '{}'".format(branch))
+            git._branch = git._default_branch
+            return git
+
+        if update:
             # FIXME: If push of initialization failed, then there is no remote master
 
-            if git.get_current_branch() == git._master:
-                git.pull(git._master)
+            if git.get_current_branch() == git._default_branch:
+                git.pull(git._default_branch)
             else:
                 # Not on master, so fetch master and also fetch remote tags
-                git.fetch(git._master, git._master)
+                git.fetch(git._default_branch, git._default_branch)
                 git.fetch_tags()
 
-        # Check if we need to (and actually can) checkout 'branch'
-        if branch and git.get_branches():
+        # Check if we need to checkout 'branch'
+        if branch:
             git.checkout(branch)
         else:
             # Update the current branch
@@ -193,10 +207,76 @@ git config --global user.name "My Name"
             raise
 
 
+    def get_default_branch(self):
+        """
+        Returns the name of the remote branch associated with remote HEAD
+        """
+
+        if self._default_branch is not None:
+            return self._default_branch
+
+        try:
+            head = None
+            """
+            Example output:
+8d621629e49230a973bd1fdaed1491d185d8bf32	HEAD
+b5621dc553ee661480842cc284810b9c08af0911	refs/heads/git-clone-fix
+8d621629e49230a973bd1fdaed1491d185d8bf32	refs/heads/master
+de9dff53655734aa21357816897157161b238ad8	refs/merge-requests/3/merge
+1a213d3af4dfa9cd068ff08dcd31ac08c4cf3e9c	refs/tags/last_known_good_version
+            """
+            for ref in subprocess.check_output(shlex_split("git ls-remote origin"), cwd = self._path, **spkwargs).splitlines():
+                (sha, name) = ref.split()
+                if name == "HEAD":
+                    head = sha
+                    continue
+                if sha == head:
+                    return name.rsplit("/", 1)[1]
+
+            # An empty repository does not have a default branch
+            return self.MASTER
+        except subprocess.CalledProcessError as e:
+            print(e.output)
+            print(e)
+            raise
+
+
     def __set_url(self, url):
         if not url.endswith(".git"):
             url += ".git"
         self._url = url
+
+        return url
+
+
+    def __initialize_if_empty(self, branch = None, gitignore_contents = "", initializer = None, verbose = True):
+        """
+        Initialize an empty repository
+        """
+        if not self.get_branches():
+            # Try to set credential helper to cache (if not set) so users don't have to specify username/password twice
+            try:
+                helper = self.get_config("credential.helper", self._path)
+                if not helper:
+                    self.set_config("credential.helper", "cache")
+            except Exception:
+                # Not being able to set a credential helper is not fatal
+                pass
+            # Create a .gitignore file on 'master' so we can create a development branch
+            if verbose:
+                print("Initializing empty repository...")
+            gitignore = os.path.join(self._path, ".gitignore")
+            with open(gitignore, "wt") as gf:
+                if gitignore_contents:
+                    print(gitignore_contents, file = gf)
+            self.add(gitignore)
+            if initializer and callable(initializer):
+                initializer(self)
+            self.commit("Initialized repository")
+            if branch is None:
+                branch = self._default_branch
+            self._branch = branch
+            self.push()
 
 
     def __clone(self, url, branch = None, initialize_if_empty = False, verbose = True, gitignore_contents = "", initializer = None):
@@ -206,29 +286,16 @@ git config --global user.name "My Name"
         try:
             if verbose:
                 print("Cloning {}...".format(url))
-            subprocess.check_output(shlex_split("git clone --quiet {} {} .".format(url, "" if branch is None else "--branch {} --depth 1".format(branch))), cwd = self._path, stderr = subprocess.STDOUT, **spkwargs)
-            self.__set_url(url)
-            self._branch = self._master
-            if initialize_if_empty and not self.get_branches():
-                # Try to set credential helper to cache (if not set) so users don't have to specify username/password twice
-                try:
-                    helper = self.get_config("credential.helper", self._path)
-                    if not helper:
-                        self.set_config("credential.helper", "cache")
-                except:
-                    # Not being able to set a credential helper is not fatal
-                    pass
-                # Create a .gitignore file on 'master' so we can create a development branch
-                if verbose:
-                    print("Initializing empty repository...")
-                gitignore = os.path.join(self._path, ".gitignore")
-                with open(gitignore, "wt") as gf:
-                    print(gitignore_contents, file = gf)
-                self.add(gitignore)
-                if initializer and callable(initializer):
-                    initializer(self)
-                self.commit("Initialized repository")
-                self.push()
+            subprocess.check_output(shlex_split("git clone --quiet {} .".format(url)), cwd = self._path, stderr = subprocess.STDOUT, **spkwargs)
+            self._default_branch = self.get_default_branch()
+            self._branch = self._default_branch
+            if initialize_if_empty:
+                self.__initialize_if_empty(branch, gitignore_contents, initializer, verbose = verbose)
+
+            if branch:
+                if not self.get_branches():
+                    raise GITException("Empty repository does not have branch '{}'".format(branch))
+                self.checkout(branch)
         except subprocess.CalledProcessError as e:
             print(e.output)
             print(e)
@@ -239,15 +306,22 @@ git config --global user.name "My Name"
         return self.__is_repo(self._path)
 
 
-    def checkout(self, branch, exception = False):
+    def checkout(self, branch = None, exception = False):
         """
-        Checks out 'branch'
+        Checks out 'branch'. If `branch` is None checks out the default branch
         """
+        if branch is None:
+            branch = self._default_branch
+
+        if self._branch == branch:
+            return self._branch
+
         try:
             subprocess.check_call(shlex_split("git checkout --quiet {}".format(branch)), cwd = self._path, **spkwargs)
+            self._branch = branch
+            return self._branch
         except subprocess.CalledProcessError as e:
             print(e)
-            self._branch = branch
             if exception:
                 raise
 
@@ -515,22 +589,6 @@ def get_status(cwd = None):
         return False
 
 
-def clone(url, cwd, branch = None):
-    try:
-        return subprocess.check_call(shlex_split("git clone --quiet {} {} .".format(url, "" if branch is None else "--branch {} --depth 1".format(branch))), cwd = cwd, **spkwargs)
-    except subprocess.CalledProcessError as e:
-        print(e)
-        raise
-
-
-def checkout(cwd, version):
-    try:
-        return subprocess.check_call(shlex_split("git checkout --quiet {}".format(version)), cwd = cwd, **spkwargs)
-    except subprocess.CalledProcessError as e:
-        print(e)
-        raise
-
-
 def get_origin():
     try:
         output = subprocess.check_output(shlex_split("git ls-remote --get-url origin"), cwd = __git_dir, **spkwargs)
@@ -588,7 +646,7 @@ def check_for_updates(data_dir, product):
             if local_ref != updates[1]:
                 print("An update is available")
             return False
-    except:
+    except Exception:
         pass
 
     print("Checking for updates...")
@@ -608,7 +666,7 @@ def check_for_updates(data_dir, product):
     try:
         with open(os.path.join(data_dir, "updates"), "w") as u:
             print(updates, file = u)
-    except:
+    except Exception:
         pass
 
     if remote_ref != local_ref:

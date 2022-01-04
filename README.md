@@ -269,9 +269,8 @@ Assigning Interface Definitions happens on the _device type_-level in CCDB. Ever
     *    appends **.def**
 
     It is possible to explicitly specify the filename (and path relative to the repository top) in square brackets after _EPI_; **EPI[file-to-download]**. The file must still have a **.def** extension (although it is automatically appended if not already specified). This technique can be used to share the same Interface Definition across device types.
-    If the link specified with **EPI** has a _.git_ extension then the repository will be cloned. Otherwise the definition files will be individually downloaded (by appending /raw/<branch> to the URL).
+    The git repository will be cloned (or updated if was already cloned by a previous run) so authentication is supported.
     It is possible to specify a version of the .def file to use other than _master_ with the **EPI VERSION** property (either on _slot_ or _device type_ level).
-    Authentication for GitLab is only supported if using the git clone method.
 
 #### CCDB properties of the PLC
 

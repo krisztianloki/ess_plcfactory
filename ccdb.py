@@ -21,8 +21,9 @@ from cc import CC
 class CCDB(CC):
     class Artifact(CC.Artifact):
         def __init__(self, device, artifact):
-            super(CCDB.Artifact, self).__init__(device)
+            # Needs to be _before_ superclass __init__; superclass calls is_file()
             self._artifact = artifact
+            super(CCDB.Artifact, self).__init__(device)
 
 
         def name(self):
@@ -60,27 +61,23 @@ class CCDB(CC):
             return self._artifact["kind"] == "TYPE"
 
 
-        def prepare_to_download(self):
+        def _determine_saveas_url(self):
             if self.is_file():
                 if self.is_perdevtype():
-                    self._saveasurl = CCDB.urljoin("deviceTypes", self._device.deviceType(), "download", self.filename())
+                    url = CCDB.urljoin("deviceTypes", self._device.deviceType(), "download", self.filename())
                 else:
-                    self._saveasurl = CCDB.urljoin("slots", self._device.name(), "download", self.filename())
+                    url = CCDB.urljoin("slots", self._device.name(), "download", self.filename())
 
-                self._saveasurl = CCDB.urljoin(self._device.ccdb.rest_url(), self._saveasurl)
-            else:
-                super(CCDB.Artifact, self).prepare_to_download()
+                return CCDB.urljoin(self._device.ccdb.rest_url(), url)
+
+            return super(CCDB.Artifact, self)._determine_saveas_url()
 
 
-        def _download(self, save_as):
+        def _download(self):
             if self.is_file():
-                return self._device.ccdb.download_from_ccdb(self, save_as)
-            elif self.is_git():
-                # Remove the "filename" part from saveas to get the directory where the repo needs to be cloned into
-                cwd = self.saveas()[:-len(self.saveas_filename()) - 1]
-                return self._device.ccdb.git_download(self.saveas_url(), cwd, self.saveas_version())
+                self._device.ccdb.download_from_ccdb(self, self.saveas())
             else:
-                return self._device.ccdb.download(self.saveas_url(), save_as)
+                super(CCDB.Artifact, self)._download()
 
 
         def _type(self):
@@ -115,6 +112,7 @@ class CCDB(CC):
         def __init__(self, slot, ccdb = None):
             super(CCDB.Device, self).__init__(ccdb)
             self._slot  = slot
+            self._devtypeprops = None
             self._props = None
             self._arts  = None
 
@@ -157,6 +155,7 @@ class CCDB(CC):
 
             props = self._ensure(self._slot.get("properties", []), list, False)
             self._props = OrderedDict()
+            self._devtypeprops = OrderedDict()
             for prop in props:
                 name  = prop.get("name")
                 value = prop.get("value")
@@ -174,6 +173,9 @@ class CCDB(CC):
                 # issue with the entered data
                 assert name not in self._props
 
+                if prop.get("kind") == "TYPE":
+                    self._devtypeprops[name] = value
+
                 self._props[name] = value
 
             return self._props
@@ -181,6 +183,15 @@ class CCDB(CC):
 
         def _propertiesDict(self, prefixToIgnore = True):
             return self.ccdb._propertiesDict(self, prefixToIgnore)
+
+
+        def _devtypeProperties(self):
+            if self._devtypeprops is not None:
+                return self._devtypeprops
+
+            self._properties()
+
+            return self._devtypeprops
 
 
         def _deviceType(self):
@@ -192,6 +203,9 @@ class CCDB(CC):
 
 
         def _artifact(self, a):
+            """
+            Instantiates and returns an Artifact object from 'a'
+            """
             return CCDB.Artifact(self, a)
 
 
@@ -238,14 +252,10 @@ class CCDB(CC):
 
     def download_from_ccdb(self, artifact_or_url, save_as):
         if isinstance(artifact_or_url, CCDB.Artifact):
-            url = artifact_or_url._saveasurl
+            url = artifact_or_url.saveas_url()
         else:
-            url = self.urljoin(self._rest_url, url)
+            url = self.urljoin(self._rest_url, artifact_or_url)
         return CC.download(url, save_as, verify_ssl_cert = self._verify_ssl_cert)
-
-
-    def download(self, url, save_as):
-        return CC.download(url, save_as, verify_ssl_cert = True)
 
 
     def getAllDeviceNames(self):
