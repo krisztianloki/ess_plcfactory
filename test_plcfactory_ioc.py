@@ -46,10 +46,15 @@ class FakeDevice(object):
 
 
 class FakeE3(object):
-    def __init__(self, iocsh):
+    def __init__(self, modulename):
         super(FakeE3, self).__init__()
 
-        self._iocsh = iocsh
+        self._iocsh = "{}.iocsh".format(modulename)
+        self._modulename = modulename
+
+
+    def modulename(self):
+        return self._modulename
 
 
     def iocsh(self):
@@ -221,10 +226,10 @@ iocshLoad("me")""", file = st)
         # Check with no PLC version set
         #
         ioc = IOC(self.device, self._ioc_args())
+        ioc._e3 = FakeE3("myplc")
         with mkdtemp(prefix = "test-plcfactory-ioc-env_sh-no-version") as ioc_dir:
             env_sh = os.path.join(ioc_dir, "env.sh")
             master_env_sh = self._master_env_sh(ioc_dir, extra_after_lines = ['export DEFAULT_PLCIOCVERSION="{}"\n'.format(glob.modversion)])
-            ioc._e3 = True
             ioc._IOC__create_env_sh(ioc_dir, None)
             self.assertTrue(self.filecmp(master_env_sh, env_sh))
 
@@ -235,10 +240,10 @@ iocshLoad("me")""", file = st)
         #
         version = "foo"
         ioc = IOC(self.device, self._ioc_args(version=version))
+        ioc._e3 = FakeE3("myplc")
         with mkdtemp(prefix = "test-plcfactory-ioc-env_sh-with-version") as ioc_dir:
             env_sh = os.path.join(ioc_dir, "env.sh")
             master_env_sh = self._master_env_sh(ioc_dir, extra_after_lines = ['export DEFAULT_PLCIOCVERSION="{}"\n'.format(glob.modversion), 'export PLCIOCVERSION="{}"\n'.format(version)])
-            ioc._e3 = True
             ioc._IOC__create_env_sh(ioc_dir, version)
             self.assertTrue(self.filecmp(master_env_sh, env_sh))
 
@@ -249,6 +254,7 @@ iocshLoad("me")""", file = st)
         #
         version = "foo"
         ioc = IOC(self.device, self._ioc_args())
+        ioc._e3 = FakeE3("myplc")
         with mkdtemp(prefix = "test-plcfactory-ioc-changed-env_sh-without-version") as ioc_dir:
             env_sh = os.path.join(ioc_dir, "env.sh")
             master_env_sh = self._master_env_sh(ioc_dir, extra_after_lines = ['export DEFAULT_PLCIOCVERSION="{}"\n'.format(glob.modversion), 'export PLCIOCVERSION="{}"\n'.format(version)])
@@ -264,7 +270,7 @@ iocshLoad("me")""", file = st)
         # Check with no st.cmd
         #
         ioc = IOC(self.device, self._ioc_args())
-        ioc._e3 = FakeE3("myplc.iocsh")
+        ioc._e3 = FakeE3("myplc")
         with mkdtemp(prefix = "test-plcfactory-ioc-no-st_cmd") as ioc_dir:
             st_cmd = os.path.join(ioc_dir, "st.cmd")
             master_st_cmd = self._master_st_cmd(ioc_dir, ioc)
@@ -278,7 +284,7 @@ iocshLoad("me")""", file = st)
         # Check with no st.cmd and --no-ioc-st-cmd
         #
         ioc = IOC(self.device, self._ioc_args(False))
-        ioc._e3 = FakeE3("myplc.iocsh")
+        ioc._e3 = FakeE3("myplc")
         with mkdtemp(prefix = "test-plcfactory-ioc-no-st_cmd-dont-generate") as ioc_dir:
             st_cmd = os.path.join(ioc_dir, "st.cmd")
             master_st_cmd = self._master_st_cmd(ioc_dir, ioc)
@@ -293,7 +299,7 @@ iocshLoad("me")""", file = st)
         # Check with an unmodified st.cmd
         #
         ioc = IOC(self.device, self._ioc_args())
-        ioc._e3 = FakeE3("myplc.iocsh")
+        ioc._e3 = FakeE3("myplc")
         with mkdtemp(prefix = "test-plcfactory-ioc-unmodified-st_cmd") as ioc_dir:
             st_cmd = os.path.join(ioc_dir, "st.cmd")
             master_st_cmd = self._master_st_cmd(ioc_dir, ioc)
@@ -309,7 +315,7 @@ iocshLoad("me")""", file = st)
         # Check with an unmodified st.cmd and --no-ioc-st-cmd
         #
         ioc = IOC(self.device, self._ioc_args(False))
-        ioc._e3 = FakeE3("myplc.iocsh")
+        ioc._e3 = FakeE3("myplc")
         with mkdtemp(prefix = "test-plcfactory-ioc-unmodified-st_cmd-dont-generate") as ioc_dir:
             st_cmd = os.path.join(ioc_dir, "st.cmd")
             master_st_cmd = self._master_st_cmd(ioc_dir, ioc)
@@ -325,7 +331,7 @@ iocshLoad("me")""", file = st)
         # Check with a modified st.cmd
         #
         ioc = IOC(self.device, self._ioc_args())
-        ioc._e3 = FakeE3("myplc.iocsh")
+        ioc._e3 = FakeE3("myplc")
         with mkdtemp(prefix = "test-plcfactory-ioc-modified-st_cmd") as ioc_dir:
             master_st_cmd = self._master_st_cmd(ioc_dir, ioc)
 
@@ -346,7 +352,7 @@ iocshLoad("me")""", file = st)
         # Check with a modified st.cmd and --no-ioc-st-cmd
         #
         ioc = IOC(self.device, self._ioc_args(False))
-        ioc._e3 = FakeE3("myplc.iocsh")
+        ioc._e3 = FakeE3("myplc")
         with mkdtemp(prefix = "test-plcfactory-ioc-modified-st_cmd-dont-generate") as ioc_dir:
             st_cmd = self._custom_st_cmd(ioc_dir)
             custom_st_cmd = os.path.join(ioc_dir, "custom-st.cmd")
