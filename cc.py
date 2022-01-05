@@ -225,7 +225,7 @@ class CC(object):
             """
                 Returns True if this artifact's url is registered as cloned
             """
-            return CC.Artifact.__REPOS_CACHED.has_key(self.saveas_url())
+            return self.saveas_url() in CC.Artifact.__REPOS_CACHED
 
 
         def __get_registered_git_repo(self):
@@ -798,7 +798,6 @@ class CC(object):
 
     @staticmethod
     def addArgs(parser):
-        import argparse
         from ccdb import CCDB, CCDB_TEST, CCDB_CSLAB, CCDB_DEVEL
 
         ccdb_args = parser.add_argument_group("CCDB related options")
