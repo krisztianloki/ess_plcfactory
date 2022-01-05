@@ -125,6 +125,13 @@ class CCDB(CC):
             return self._slot[item]
 
 
+        def to_yaml(self):
+            """
+            Returns the Python object that should be serialized into YAML
+            """
+            return self._slot
+
+
         def url(self):
             return CCDB.urljoin(self.ccdb.url(), "?name={}".format(CCDB.urlquote(self.name())))
 
@@ -366,3 +373,29 @@ class CCDB_DEVEL(CCDB):
     def __init__(self, **kwargs):
         kwargs["verify_ssl_cert"] = True
         CCDB.__init__(self, CCDB_DEVEL.default_url(), **kwargs)
+
+
+
+
+def main(argv):
+    import argparse
+
+    parser = argparse.ArgumentParser(description = "Prints information from CCDB about device")
+    CCDB.addArgs(parser)
+    parser.add_argument(
+                        "--device",
+                        help     = "device / installation slot",
+                        required = True
+                       )
+
+    args = parser.parse_args(argv)
+    ccdb = CCDB.open_from_args(args)
+
+    device = ccdb.device(args.device)
+    device.buildControlsList(include_self = True, verbose = False)
+    print(ccdb.to_yaml())
+
+
+if __name__ == "__main__":
+    import sys
+    main(sys.argv[1:])

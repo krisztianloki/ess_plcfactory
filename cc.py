@@ -10,6 +10,7 @@ __license__    = "GPLv3"
 
 # Python libraries
 import getpass
+from collections import OrderedDict
 from os import path as os_path
 from shutil import copy2
 
@@ -47,6 +48,7 @@ class CC(object):
     GIT_SUFFIX      = ".git"
     CCDB_ZIP_SUFFIX = ".ccdb.zip"
     DEVICE_DICT     = "device.dict"
+    DEVICE_YAML     = "device.yaml"
     GIT_CACHE       = "data-model"
     paths_cached    = dict()
     sessions_cached = dict()
@@ -508,6 +510,13 @@ class CC(object):
 
         def __str__(self):
             return self.name()
+
+
+        def to_yaml(self):
+            """
+            Returns the Python object that should be serialized into YAML
+            """
+            return str(self)
 
 
         def url(self):
@@ -1249,6 +1258,32 @@ factory.save("{filename}")""".format(factory_options = 'git_tag = "{}"'.format(g
         return os_path.join(directory, helpers.sanitize_path(filename))
 
 
+    def yaml_version(self):
+        return "1.0"
+
+
+    def to_yaml(self):
+        """
+        Returns the string representation of the serialization of the devices into YAML.
+        """
+        import yaml
+        import datetime
+
+        ymodel = OrderedDict()
+        if self.url():
+            ymodel["url"] = self.url()
+        ymodel["utc-timestamp"] = "{:%Y%m%d%H%M%S}".format(datetime.datetime.utcnow())
+        ymodel["version"] = self.yaml_version()
+
+        ydevs = OrderedDict()
+        for (k, v) in self._devices.items():
+            ydevs[k] = v.to_yaml()
+        ymodel["devices"] = ydevs
+
+        yaml.add_representer(OrderedDict, lambda dumper, data: dumper.represent_mapping("tag:yaml.org,2002:map", data.items()))
+        return yaml.dump(ymodel)
+
+
     def save(self, filename, directory = "."):
         import zipfile
         if isinstance(filename, str):
@@ -1258,7 +1293,15 @@ factory.save("{filename}")""".format(factory_options = 'git_tag = "{}"'.format(g
             dumpfile = zipfile.ZipFile(filename, "w", zipfile.ZIP_DEFLATED)
             filename = filename.name
 
-        dumpfile.writestr(os_path.join("ccdb", CC.DEVICE_DICT), str(self._devices))
+        # ast.literal_eval cannot parse OrderedDict so convert self._devices to simple dict()
+        dumpfile.writestr(os_path.join("ccdb", CC.DEVICE_DICT), str(dict(self._devices)))
+        try:
+            dumpfile.writestr(os_path.join("ccdb", CC.DEVICE_YAML), self.to_yaml())
+        except Exception:
+            # Not a showstopper yet:
+            #  - 'yaml' might not be installed
+            #  - to_yaml() might not be correct
+            pass
         for template in self._downloadedArtifacts:
             dumpfile.write(template, os_path.join("ccdb", template))
 
