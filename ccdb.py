@@ -315,7 +315,13 @@ class CCDB(CC):
             except KeyError:
                 device = self.tostring(tmpDict)
 
-            if not single_device_only and not self._devices:
+            # compute here so that we can add device to _devices to maintain order of devices
+            need_controls = not single_device_only and not self._devices
+
+            # save downloaded data
+            self._devices[deviceName] = self.Device(device, ccdb = self)
+
+            if need_controls:
                 # If this is the first device, assume this is the root device, so
                 # Greedily request transitive controls information
                 url = self.urljoin(self._rest_url, "slots", deviceName, "controls/?transitive=True")
@@ -325,9 +331,6 @@ class CCDB(CC):
                     slots = self.tostring(json.loads(result.text)["installationSlots"])
                     for slot in slots:
                         self._devices[slot["name"]] = self.Device(slot, ccdb = self)
-
-            # save downloaded data
-            self._devices[deviceName] = self.Device(device, ccdb = self)
 
         return self._devices[deviceName]
 

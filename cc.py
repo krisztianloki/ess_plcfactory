@@ -967,19 +967,17 @@ class CC(object):
 
     def __clear(self):
         # all devices; key, Device pairs
-        self._devices              = dict()
-
-        self._hashSum              = None
+        self._devices = OrderedDict()
 
         # cache for device, property dictionary
-        self._propDict             = dict()
+        self._propDict = dict()
 
         # cache for ^() expressions
         # key: (device, expression), value: property
-        self._backtrackCache       = dict()
+        self._backtrackCache = dict()
 
         # cache of downloaded artifacts
-        self._downloadedArtifacts  = set()
+        self._downloadedArtifacts = set()
 
         if self._clear_templates:
             # clear templates downloaded in a previous run
@@ -1288,7 +1286,7 @@ factory.save("{filename}")""".format(factory_options = 'git_tag = "{}"'.format(g
         ymodel["devices"] = ydevs
 
         yaml.add_representer(OrderedDict, lambda dumper, data: dumper.represent_mapping("tag:yaml.org,2002:map", data.items()))
-        return yaml.dump(ymodel)
+        return yaml.dump(ymodel, sort_keys = False)
 
 
     def save(self, filename, directory = "."):

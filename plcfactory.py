@@ -1135,7 +1135,6 @@ class PLC(object):
         self._plc_plcf = getPLCF(self._plc)
         self._validate_plc_device()
 
-
         hash_base = """EPICSToPLCDataBlockStartOffset: [PLCF#EPICSToPLCDataBlockStartOffset]
 PLCToEPICSDataBlockStartOffset: [PLCF#PLCToEPICSDataBlockStartOffset]
 PLC-EPICS-COMMS:Endianness: [PLCF#PLC-EPICS-COMMS:Endianness]"""
@@ -2358,7 +2357,7 @@ def main(argv):
                         default  = OUTPUT_DIR)
 
     # retrieve parameters
-    args       = parser.parse_args(argv)
+    args = parser.parse_args(argv)
 
     start_time = time.time()
 
