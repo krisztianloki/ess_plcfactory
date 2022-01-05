@@ -1001,15 +1001,22 @@ class CC(object):
         return None
 
 
+    def _get_device(self, devicename, single_device_only):
+        """
+        Should return a CC.Device
+        """
+        raise NotImplementedError
+
+
     # Returns: CC.Device
-    def device(self, deviceName, cachedOnly = False):
+    def device(self, deviceName, cachedOnly = False, single_device_only = False):
         try:
             return self._devices[self.deviceName(deviceName)]
         except KeyError:
             if cachedOnly:
                 return None
 
-            device      = self._device(deviceName)
+            device = self._get_device(deviceName, single_device_only = single_device_only)
             device.ccdb = self
 
             return device

@@ -388,7 +388,7 @@ class CCDB_Factory(CC):
         return device
 
 
-    def _device(self, deviceName):
+    def _get_device(self, deviceName, single_device_only):
         device = CCDB_Factory.Device(deviceName)
         self._devices[deviceName] = device
         return device

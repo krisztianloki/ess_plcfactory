@@ -290,11 +290,11 @@ class CCDB(CC):
             return deviceName
 
 
-    def _device(self, deviceName):
+    def _get_device(self, deviceName, single_device_only):
         deviceName = self.deviceName(deviceName)
 
         if deviceName not in self._devices:
-            url     = self.urljoin(self._rest_url, "slots", deviceName)
+            url = self.urljoin(self._rest_url, "slots", deviceName)
 
             result = self._get(url)
 
@@ -315,10 +315,10 @@ class CCDB(CC):
             except KeyError:
                 device = self.tostring(tmpDict)
 
-            if not self._devices:
+            if not single_device_only and not self._devices:
                 # If this is the first device, assume this is the root device, so
                 # Greedily request transitive controls information
-                url    = self.urljoin(self._rest_url, "slots", deviceName, "controls/?transitive=True")
+                url = self.urljoin(self._rest_url, "slots", deviceName, "controls/?transitive=True")
 
                 result = self._get(url)
                 if result.status_code == 200:
@@ -384,15 +384,21 @@ def main(argv):
     CCDB.addArgs(parser)
     parser.add_argument(
                         "--device",
-                        help     = "device / installation slot",
-                        required = True
+                        help = "device to get information about",
+                        required = True,
+                       )
+    parser.add_argument(
+                        "--no-controls-tree",
+                        help = "do not include list of controlled devices",
+                        dest = "no_controls_tree",
+                        default = False,
+                        action = "store_true",
                        )
 
     args = parser.parse_args(argv)
-    ccdb = CCDB.open_from_args(args)
 
-    device = ccdb.device(args.device)
-    device.buildControlsList(include_self = True, verbose = False)
+    ccdb = CCDB.open_from_args(args)
+    ccdb.device(args.device, single_device_only = args.no_controls_tree)
     print(ccdb.to_yaml())
 
 

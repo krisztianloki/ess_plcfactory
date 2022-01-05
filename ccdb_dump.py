@@ -102,7 +102,7 @@ class CCDB_Dump(object):
                 self._devices[key] = self.Device(value, ccdb = self)
 
 
-        def _device(self, deviceName):
+        def _get_device(self, deviceName, single_device_only):
             raise CC.Exception("Inconsistent CCDB dump: No such device: {}".format(deviceName))
 
 
