@@ -62,7 +62,7 @@ class CC(object):
 {banner}
 {msg}
 {banner}
-""".format(banner = "*" * max(map(lambda x: len(x), self.message.splitlines())), msg = self.message)
+""".format(banner = "*" * max(map(lambda x: len(x), str(self.message).splitlines())), msg = self.message)
             else:
                 return super(CC.Exception, self).__str__()
 
