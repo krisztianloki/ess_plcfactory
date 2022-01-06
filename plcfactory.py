@@ -2505,7 +2505,7 @@ def main(argv):
 
     global VERIFY
     VERIFY = args.verify
-    glob.raw_timestamp = RAW_TIMESTAMP if not VERIFY else datetime.datetime(2022, 01, 01)
+    glob.raw_timestamp = RAW_TIMESTAMP if not VERIFY else datetime.datetime(2022, 1, 1)
     glob.timestamp = '{:%Y%m%d%H%M%S}'.format(RAW_TIMESTAMP)
     glob.commit_id = COMMIT_ID if not VERIFY else "N/A"
     glob.branch = PLCF_BRANCH if not VERIFY else "N/A"
