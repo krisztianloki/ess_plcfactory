@@ -1285,8 +1285,13 @@ factory.save("{filename}")""".format(factory_options = 'git_tag = "{}"'.format(g
             ydevs[k] = v.to_yaml()
         ymodel["devices"] = ydevs
 
+        # Dump identical values verbatim and do not use anchor-alias notation
+        class NoAliasDumper(yaml.Dumper):
+            def ignore_aliases(self, data):
+                return True
+
         yaml.add_representer(OrderedDict, lambda dumper, data: dumper.represent_mapping("tag:yaml.org,2002:map", data.items()))
-        return yaml.dump(ymodel, sort_keys = False)
+        return yaml.dump(ymodel, sort_keys = False, Dumper = NoAliasDumper)
 
 
     def save(self, filename, directory = "."):
