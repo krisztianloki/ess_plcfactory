@@ -217,7 +217,7 @@ class BOB(PRINTER):
         group_height = group_height + y
         self._y      = self._y + group_height + BOB.VSPACE_2
 
-        self._append(BOB.SEPARATOR.format(x      = max_width + BOB.HSPACE_2 / 2,
+        self._append(BOB.SEPARATOR.format(x      = max_width + BOB.HSPACE_2 // 2,
                                           y      = 5,
                                           height = y - 10), output)
 
