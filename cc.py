@@ -1051,7 +1051,7 @@ class CC(object):
             Returns the topX most similar device names in the database
 
             Returns a tuple (filtered, topX):
-             - filtered; boolean if the list is filtred to the same System-Subsystem as deviceName
+             - filtered; boolean if the list is filtered to the same System-Subsystem as deviceName
              - topX; a list of device names
         """
         allDevices = self.getAllDeviceNames()
@@ -1060,17 +1060,16 @@ class CC(object):
         slot = deviceName.split(":")
         candidates = None
         if len(slot) > 1:
-            slot       = slot[0].lower()
-            candidates = filter(lambda x: x.lower().startswith(slot), allDevices)
-            filtered   = True
+            slot = slot[0].lower()
+            candidates = list(filter(lambda x: x.lower().startswith(slot), allDevices))
+            filtered = True
 
         if not candidates:
             candidates = allDevices
-            filtered   = False
+            filtered = False
 
         # compute Levenshtein distances
-        if candidates:
-            candidates = list(map(lambda f: f[1], sorted(map(lambda x: (levenshtein.distance(deviceName, x), x), candidates))[:X]))
+        candidates = list(map(lambda f: f[1], sorted(map(lambda x: (levenshtein.distance(deviceName, x), x), candidates))[:X]))
 
         return (filtered, candidates)
 

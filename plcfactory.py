@@ -825,7 +825,7 @@ iocsh.bash -e {iocdir}/env.sh {iocdir}/st.cmd
         try:
             with open(plcfactory_ignore, "rt") as pf:
                 # Remove newlines, empty lines, and comments
-                return map(lambda p: os.path.join(out_idir, p), filter(lambda y: True if y and y[0] != '#' else False, map(lambda x: x.strip(), pf.readlines())))
+                return list(map(lambda p: os.path.join(out_idir, p), filter(lambda y: True if y and y[0] != '#' else False, map(lambda x: x.strip(), pf.readlines()))))
         except IOError as e:
             if e.errno == 2:
                 self._create_plcfactory_ignore(repo)
