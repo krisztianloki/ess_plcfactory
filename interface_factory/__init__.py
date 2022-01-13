@@ -133,7 +133,7 @@ class IFA(object):
             if not set(IFA.mandatory_device_properties.keys()) <= set(self.properties.keys()):
                 raise IFA.FatalException("Missing DEVICE properties", set(IFA.mandatory_device_properties.keys()) - set(self.properties.keys()))
 
-            for (keyword, value) in self.properties.iteritems():
+            for (keyword, value) in self.properties.items():
                 try:
                     IFA.mandatory_device_properties[keyword](value)
                 except (ValueError, TypeError):
@@ -260,7 +260,7 @@ class IFA(object):
                 if self.__dimension <= 1:
                     raise IFA.FatalException("Array dimension must be greater than 1")
 
-            for (keyword, value) in self.properties.iteritems():
+            for (keyword, value) in self.properties.items():
                 try:
                     IFA.mandatory_variable_properties[keyword](value)
                 except (ValueError, TypeError):
