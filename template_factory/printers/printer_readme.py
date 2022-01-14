@@ -15,18 +15,18 @@ from os.path import basename
 
 
 def printer():
-    return (README.name(), README)
+    return (PLC_README.name(), PLC_README)
 
 
 
-class README(PRINTER):
+class PLC_README(PRINTER):
     def __init__(self):
-        super(README, self).__init__()
+        super(PLC_README, self).__init__()
 
 
     @staticmethod
     def name():
-        return "README"
+        return "PLC-README"
 
 
     @staticmethod
@@ -63,7 +63,7 @@ class README(PRINTER):
     # HEADER
     #
     def header(self, header_if_def, output, **keyword_params):
-        super(README, self).header(header_if_def, output, **keyword_params).add_filename_header(output, extension = "md")
+        super(PLC_README, self).header(header_if_def, output, **keyword_params).add_filename_header(output, extension = "md")
 
         self._device_types = []
 

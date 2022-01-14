@@ -422,9 +422,9 @@ The following output types can be automatically generated from **Interface Defin
 *   DEVICE-LIST
     *    The list of devices that were processed. Always generated.
     *    `<device>-template-DEVICE-LIST-<timestamp>.txt`
-*   README
-    *    A README.md about the devices that were processed. Always generated.
-    *    `<device>-template-README-<timestamp>.md`
+*   PLC-README
+    *    A README.md about the devices that were processed. Always generated with `--plc-siemens` and `--plc-beckhoff`.
+    *    `<device>-template-PLC-README-<timestamp>.md`
 *   ARCHIVE
     *    The list of PVs that has to be archived. Can be added to the archiver repository: `https://gitlab.esss.lu.se/ics-infrastructure/epicsarchiver-config.git`
     *    `<device>-template-ARCHIVE-<timestamp>.archive`

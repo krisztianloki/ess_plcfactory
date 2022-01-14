@@ -399,7 +399,7 @@ class E3(object):
         # Copy the README file to the modname directory
         #
         readme = os.path.join(basedir, "README.md")
-        copy2(output_files["README"], readme)
+        copy2(output_files["PLC-README"], readme)
         self._files.append(readme)
 
         self._files.extend(ch.copied())
@@ -1279,7 +1279,7 @@ class SIEMENS_PLC(S7PLC_MODBUS_PLC):
 
     @staticmethod
     def update_default_printers(default_printers):
-        default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "IFA", "ARCHIVE", "BEAST", "BEAST-TEMPLATE" ] )
+        default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "IFA", "ARCHIVE", "BEAST", "BEAST-TEMPLATE", "PLC-README" ] )
 
 
     @staticmethod
@@ -1325,7 +1325,7 @@ class BECKHOFF_PLC(S7PLC_MODBUS_PLC):
 
     @staticmethod
     def update_default_printers(default_printers):
-        default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "IFA", "ARCHIVE", "BEAST", "BEAST-TEMPLATE" ] )
+        default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "IFA", "ARCHIVE", "BEAST", "BEAST-TEMPLATE", "PLC-README" ] )
 
 
     @staticmethod
@@ -2043,7 +2043,7 @@ def create_eee(modulename, snippet):
     # Copy the README file to the modname directory
     #
     readme = os.path.join(out_mdir, "PLCFactory.md")
-    copy2(output_files["README"], readme)
+    copy2(output_files["PLC-README"], readme)
     eee_files.append(readme)
 
     #
@@ -2528,7 +2528,7 @@ def main(argv):
     global epi_version
     epi_version = args.epi_version
 
-    default_printers = set(["DEVICE-LIST", "README"])
+    default_printers = set(["DEVICE-LIST"])
 
     ifdef_params["EXPERIMENTAL"] = args.experimental
 
