@@ -2174,8 +2174,8 @@ def verify_output(devicename, strictness, ignore):
     if strictness == 0 or (previous_files is None and strictness < 3):
         return
 
-    ignored_templates = [ 'PREVIOUS_FILES', 'CREATOR', 'CCDB-DUMP' ]
-    ignored_templates.extend(ignore.split(','))
+    ignored_templates = [ "PREVIOUS_FILES", "CREATOR", "CCDB-DUMP", "EEE", "E3" ]
+    ignored_templates.extend(ignore.split(","))
     files_to_delete = []
     for template in ignored_templates:
         fname = previous_files.pop(template, None)
@@ -2187,9 +2187,9 @@ def verify_output(devicename, strictness, ignore):
             return True
 
         # The files are different, let's try again skipping comment lines
-        comment = '#'
+        comment = "#"
         if f1.endswith(".scl"):
-            comment = '//'
+            comment = "//"
 
         with open(f1, "r") as fp1, open(f2, "r") as fp2:
             while True:
@@ -2236,8 +2236,18 @@ def verify_output(devicename, strictness, ignore):
     if previous_files:
         # Save the list of files so that it is easy to delete them after checking
         fname = os.path.join(OUTPUT_DIR, ".current-files")
-        with open(fname, 'w') as lf:
-            for n in output_files.values():
+        # Do not delete EEE and E3 until we can verify them
+        temp_output_files = dict(output_files)
+        try:
+            temp_output_files.pop("EEE")
+        except KeyError:
+            pass
+        try:
+            temp_output_files.pop("E3")
+        except KeyError:
+            pass
+        with open(fname, "w") as lf:
+            for n in temp_output_files.values():
                 # Make sure not to include a CCDB-dump or anything from outside
                 if n.startswith(OUTPUT_DIR):
                     print(n, file = lf)
@@ -2603,13 +2613,6 @@ def main(argv):
     # create a dump of CCDB
     output_files["CCDB-DUMP"] = glob.ccdb.save("-".join([ device, glob.timestamp ]), OUTPUT_DIR)
 
-    # Verify created files: they should be the same as the ones from the last run
-    if VERIFY:
-        verify_output(root_device.name(), VERIFY, args.verify_ignore)
-
-    create_previous_files()
-    write_data_files()
-
     if plc:
         # FIXME: EEE
         if eee:
@@ -2618,6 +2621,13 @@ def main(argv):
             e3.create()
     if ioc is not None:
         ioc.create(args.ioc)
+
+    # Verify created files: they should be the same as the ones from the last run
+    if VERIFY:
+        verify_output(root_device.name(), VERIFY, args.verify_ignore)
+
+    create_previous_files()
+    write_data_files()
 
     if args.zipit is not None:
         create_zipfile(args.zipit)
