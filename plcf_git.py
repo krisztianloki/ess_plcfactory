@@ -113,7 +113,7 @@ git config --global user.name "My Name"
         try:
             return subprocess.check_output(shlex_split("git rev-parse --is-inside-work-tree"), stderr = subprocess.STDOUT, cwd = path, **spkwargs).strip().lower() == "true"
         except subprocess.CalledProcessError as e:
-            if e.output.strip().startswith("fatal: Not a git repository"):
+            if e.output.strip().lower().startswith("fatal: not a git repository"):
                 return False
 
             raise GITSubprocessException(e, path)
@@ -337,7 +337,7 @@ de9dff53655734aa21357816897157161b238ad8	refs/merge-requests/3/merge
             subprocess.check_output(shlex_split("git checkout --quiet -b {}{}".format(branch, start_point)), stderr = subprocess.STDOUT, cwd = self._path, **spkwargs)
             self._branch = branch
         except subprocess.CalledProcessError as e:
-            if e.output.startswith("fatal: Cannot update paths and switch to branch '{}' at the same time.".format(branch)):
+            if e.output.strip().lower().startswith("fatal: cannot update paths and switch to branch '{}' at the same time.".format(branch.lower())):
                 raise GITException("Branch {} does not exist".format(start_point))
             raise GITSubprocessException(e, self._path)
 
@@ -444,7 +444,7 @@ de9dff53655734aa21357816897157161b238ad8	refs/merge-requests/3/merge
 
             return subprocess.check_output(shlex_split("git tag -a {} {} {}".format(tag, force, msg)), stderr = subprocess.STDOUT, cwd = self._path, **spkwargs)
         except subprocess.CalledProcessError as e:
-            if e.output.strip() == "fatal: tag '{}' already exists".format(tag):
+            if e.output.strip().lower() == "fatal: tag '{}' already exists".format(tag.lower()):
                 raise GITException("Tag '{}' already exists".format(tag))
             raise GITSubprocessException(e, self._path)
 
@@ -502,7 +502,7 @@ de9dff53655734aa21357816897157161b238ad8	refs/merge-requests/3/merge
 #                    return l
             return None
         except subprocess.CalledProcessError as e:
-            if e.output.startswith("fatal: Authentication failed for "):
+            if e.output.strip().lower().startswith("fatal: authentication failed for "):
                 raise GITException("AUTHENTICATION PROBLEM")
             raise GITSubprocessException(e, self._path)
 
