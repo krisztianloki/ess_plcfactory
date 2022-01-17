@@ -21,6 +21,19 @@ class GITException(Exception):
 
 
 
+class GITSubprocessException(subprocess.CalledProcessError):
+    def __init__(self, exc, cwd):
+        super(GITSubprocessException, self).__init__(exc.returncode, exc.cmd, exc.output)
+
+        self.cwd = cwd
+
+
+    def __str__(self):
+        return """{} when ran from directory '{}'
+Command output: {}""".format(super(GITSubprocessException, self).__str__(), self.cwd, self.output)
+
+
+
 class GIT(object):
     REMOTE_PREFIX = "remote:"
     REMOTE_PREFIX_LEN = len(REMOTE_PREFIX)
@@ -54,9 +67,7 @@ class GIT(object):
         except subprocess.CalledProcessError as e:
             if not e.output:
                 return ""
-            print(e.output)
-            print(e)
-            raise
+            raise GITSubprocessException(e, path)
 
 
     @staticmethod
@@ -105,7 +116,7 @@ git config --global user.name "My Name"
             if e.output.strip().startswith("fatal: Not a git repository"):
                 return False
 
-            raise
+            raise GITSubprocessException(e, path)
 
 
     @staticmethod
@@ -178,9 +189,8 @@ git config --global user.name "My Name"
         except subprocess.CalledProcessError as e:
             if not e.output:
                 return ""
-            print(e.output)
-            print(e)
-            raise
+
+            raise GITSubprocessException(e, self._path)
 
 
     def get_toplevel_dir(self):
@@ -190,9 +200,7 @@ git config --global user.name "My Name"
         try:
             return subprocess.check_output(shlex_split("git rev-parse --show-toplevel"), cwd = self._path, **spkwargs).strip()
         except subprocess.CalledProcessError as e:
-            print(e.output)
-            print(e)
-            raise
+            raise GITSubprocessException(e, self._path)
 
 
     def get_origin(self):
@@ -202,9 +210,7 @@ git config --global user.name "My Name"
         try:
             return subprocess.check_output(shlex_split("git ls-remote --get-url origin"), cwd = self._path, **spkwargs).strip()
         except subprocess.CalledProcessError as e:
-            print(e.output)
-            print(e)
-            raise
+            raise GITSubprocessException(e, self._path)
 
 
     def get_default_branch(self):
@@ -236,9 +242,7 @@ de9dff53655734aa21357816897157161b238ad8	refs/merge-requests/3/merge
             # An empty repository does not have a default branch
             return self.MASTER
         except subprocess.CalledProcessError as e:
-            print(e.output)
-            print(e)
-            raise
+            raise GITSubprocessException(e, self._path)
 
 
     def __set_url(self, url):
@@ -297,9 +301,7 @@ de9dff53655734aa21357816897157161b238ad8	refs/merge-requests/3/merge
                     raise GITException("Empty repository does not have branch '{}'".format(branch))
                 self.checkout(branch)
         except subprocess.CalledProcessError as e:
-            print(e.output)
-            print(e)
-            raise
+            raise GITSubprocessException(e, self._path)
 
 
     def is_repo(self):
@@ -321,9 +323,8 @@ de9dff53655734aa21357816897157161b238ad8	refs/merge-requests/3/merge
             self._branch = branch
             return self._branch
         except subprocess.CalledProcessError as e:
-            print(e)
             if exception:
-                raise
+                raise GITSubprocessException(e, self._path)
 
 
     def create_branch(self, branch, start_point = None):
@@ -338,9 +339,7 @@ de9dff53655734aa21357816897157161b238ad8	refs/merge-requests/3/merge
         except subprocess.CalledProcessError as e:
             if e.output.startswith("fatal: Cannot update paths and switch to branch '{}' at the same time.".format(branch)):
                 raise GITException("Branch {} does not exist".format(start_point))
-            print(e.output)
-            print(e)
-            raise
+            raise GITSubprocessException(e, self._path)
 
 
     def get_branches(self):
@@ -350,9 +349,7 @@ de9dff53655734aa21357816897157161b238ad8	refs/merge-requests/3/merge
         try:
             return subprocess.check_output(shlex_split("git rev-parse --branches"), cwd = self._path, **spkwargs).splitlines()
         except subprocess.CalledProcessError as e:
-            print(e.output)
-            print(e)
-            raise
+            raise GITSubprocessException(e, self._path)
 
 
     def get_current_branch(self):
@@ -362,9 +359,7 @@ de9dff53655734aa21357816897157161b238ad8	refs/merge-requests/3/merge
         try:
             return subprocess.check_output(shlex_split("git rev-parse --abbrev-ref HEAD"), cwd = self._path, **spkwargs).strip()
         except subprocess.CalledProcessError as e:
-            print(e.output)
-            print(e)
-            raise
+            raise GITSubprocessException(e, self._path)
 
 
     def add(self, files):
@@ -376,8 +371,7 @@ de9dff53655734aa21357816897157161b238ad8	refs/merge-requests/3/merge
                 files = [ files ]
             return subprocess.check_call(shlex_split("git add {}".format(" ".join(map(lambda x: os.path.relpath(x, self._path), files)))), cwd = self._path, **spkwargs)
         except subprocess.CalledProcessError as e:
-            print(e)
-            raise
+            raise GITSubprocessException(e, self._path)
 
 
     def remove(self, files, ignore_unmatch = False):
@@ -393,8 +387,7 @@ de9dff53655734aa21357816897157161b238ad8	refs/merge-requests/3/merge
                 ignore_unmatch = ""
             return subprocess.check_call(shlex_split("git rm --quiet {}{}".format(ignore_unmatch, " ".join(map(lambda x: os.path.relpath(x, self._path), files)))), cwd = self._path, **spkwargs)
         except subprocess.CalledProcessError as e:
-            print(e)
-            raise
+            raise GITSubprocessException(e, self._path)
 
 
     def commit(self, msg = None, edit = False):
@@ -408,8 +401,7 @@ de9dff53655734aa21357816897157161b238ad8	refs/merge-requests/3/merge
                 msg = ""
             return subprocess.check_call(shlex_split("git commit --quiet {}".format(msg)), cwd = self._path, **spkwargs)
         except subprocess.CalledProcessError as e:
-            print(e)
-            raise
+            raise GITSubprocessException(e, self._path)
 
 
     def remote_tags(self):
@@ -421,9 +413,7 @@ de9dff53655734aa21357816897157161b238ad8	refs/merge-requests/3/merge
         try:
             return subprocess.check_output(shlex_split("git ls-remote --tags origin"), cwd = self._path, **spkwargs).splitlines()
         except subprocess.CalledProcessError as e:
-            print(e.output)
-            print(e)
-            raise
+            raise GITSubprocessException(e, self._path)
 
 
     def __filter_tag_names(self, ls_remote_output):
@@ -456,9 +446,7 @@ de9dff53655734aa21357816897157161b238ad8	refs/merge-requests/3/merge
         except subprocess.CalledProcessError as e:
             if e.output.strip() == "fatal: tag '{}' already exists".format(tag):
                 raise GITException("Tag '{}' already exists".format(tag))
-            print(e.output)
-            print(e)
-            raise
+            raise GITSubprocessException(e, self._path)
 
 
     def push(self, verbose = True):
@@ -489,6 +477,7 @@ de9dff53655734aa21357816897157161b238ad8	refs/merge-requests/3/merge
 #            print("Calling poll()...")
 #            retcode = out.poll()
 #            if retcode:
+#                raise GITSubprocessException(subprocess.CalledProcessError(retcode, "git push", output = stderr), self._path)
 #                raise subprocess.CalledProcessError(retcode, "git push", output = stderr)
 #            print("STDOUT", output)
 #            print("STDERR", stderr)
@@ -515,8 +504,7 @@ de9dff53655734aa21357816897157161b238ad8	refs/merge-requests/3/merge
         except subprocess.CalledProcessError as e:
             if e.output.startswith("fatal: Authentication failed for "):
                 raise GITException("AUTHENTICATION PROBLEM")
-            print(e)
-            raise
+            raise GITSubprocessException(e, self._path)
 
 
     def fetch(self, src, dst = None):
@@ -528,8 +516,7 @@ de9dff53655734aa21357816897157161b238ad8	refs/merge-requests/3/merge
                 dst = ":" + dst
             subprocess.check_call(shlex_split("git fetch --quiet origin {}{}".format(src, dst)), cwd = self._path, **spkwargs)
         except subprocess.CalledProcessError as e:
-            print(e)
-            raise
+            raise GITSubprocessException(e, self._path)
 
 
     def fetch_tags(self):
@@ -539,8 +526,7 @@ de9dff53655734aa21357816897157161b238ad8	refs/merge-requests/3/merge
         try:
             subprocess.check_call(shlex_split("git fetch --quiet --tags origin"), cwd = self._path, **spkwargs)
         except subprocess.CalledProcessError as e:
-            print(e)
-            raise
+            raise GITSubprocessException(e, self._path)
 
 
     def pull(self, src):
@@ -550,8 +536,7 @@ de9dff53655734aa21357816897157161b238ad8	refs/merge-requests/3/merge
         try:
             subprocess.check_call(shlex_split("git pull --ff-only --quiet origin {}".format(src)), cwd = self._path, **spkwargs)
         except subprocess.CalledProcessError as e:
-            print(e)
-            raise
+            raise GITSubprocessException(e, self._path)
 
 
     def remove_stale_items(self, current_items):
