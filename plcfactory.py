@@ -2189,13 +2189,19 @@ def verify_output(devicename, strictness, ignore):
     if strictness == 0 or (previous_files is None and strictness < 3):
         return
 
+    # Ignore "EEE" and "E3" files for now; will deal with E3 later
     ignored_templates = [ "PREVIOUS_FILES", "CREATOR", "CCDB-DUMP", "EEE", "E3" ]
     ignored_templates.extend(ignore.split(","))
     files_to_delete = []
     for template in ignored_templates:
         fname = previous_files.pop(template, None)
-        if fname is not None:
-            files_to_delete.append(fname)
+        if fname is not None and not isinstance(fname, list):
+            if isinstance(fname, list):
+# EEE and E3 produce lists BUT we don't want to delete those files yet until we can actually verify them
+#                files_to_delete.extend(fname)
+                pass
+            else:
+                files_to_delete.append(fname)
 
     def my_filecmp(f1, f2):
         if filecmp.cmp(f1, f2, shallow = 0):
