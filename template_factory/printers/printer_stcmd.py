@@ -160,13 +160,15 @@ class ST_CMD(eee, MACROS, PRINTER):
     #
     def header(self, header_if_def, output, **keyword_parameters):
         super(ST_CMD, self).header(header_if_def, output, **keyword_parameters).add_filename_header(output, inst_slot = self.snippet(), template = False if not self._autosave else "autosave", extension = self._extension())
-        self._opc = True if 'OPC' in keyword_parameters.get('PLC_TYPE', '') else False
+        self._opc = True if "OPC" in keyword_parameters.get("PLC_TYPE", "") else False
 
         if not self._opc:
             self.get_endianness()
             self.get_offsets()
 
-        self._ipaddr = self.get_property("Hostname", None)
+        self._ipaddr = keyword_parameters.get("PLC_HOSTNAME", None)
+        if self._ipaddr is None:
+            self._ipaddr = self.get_property("Hostname", None)
         if self._ipaddr == "":
             self._ipaddr = None
 

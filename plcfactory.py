@@ -949,28 +949,28 @@ class PLC(object):
         default_tia = "TIAv15.1"
 
         plc_args.add_argument(
-                              '--plc-siemens',
-                              '--plc-interface',
+                              "--plc-siemens",
+                              "--plc-interface",
                               dest    = "siemens",
-                              help    = 'use the default templates for Siemens PLCs and generate interface PLC comms. The default TIA version is {}'.format(default_tia),
-                              metavar = 'TIA-Portal-version',
+                              help    = "use the default templates for Siemens PLCs and generate interface PLC comms. The default TIA version is {}".format(default_tia),
+                              metavar = "TIA-Portal-version",
                               nargs   = "?",
                               const   = default_tia,
                               type    = str
                              )
 
         plc_args.add_argument(
-                              '--plc-beckhoff',
+                              "--plc-beckhoff",
                               dest    = "beckhoff",
                               help    = "use the default templates for Beckhoff PLCs and generate interface Beckhoff PLC comms. 'Beckhoff-version' is not used right now",
-                              metavar = 'Beckhoff-version',
+                              metavar = "Beckhoff-version",
                               nargs   = "?",
-                              const   = 'not-used',
+                              const   = "not-used",
                               type    = str
                              )
 
         plc_args.add_argument(
-                              '--plc-opc',
+                              "--plc-opc",
                               dest    = "opc",
                               help    = "use the default templates for OPC-UA. No PLC code is generated!",
                               action  = "store_true",
@@ -978,49 +978,55 @@ class PLC(object):
 
         diag_args = plc_group.add_mutually_exclusive_group()
         diag_args.add_argument(
-                               '--plc-no-diag',
+                               "--plc-no-diag",
                                dest     = "plc_no_diag",
-                               help     = 'do not generate PLC diagnostics code (if used with --plc-x). This is the default',
-                               action   = 'store_true',
+                               help     = "do not generate PLC diagnostics code (if used with --plc-x). This is the default",
+                               action   = "store_true",
                                default  = True,
                                required = False)
 
         diag_args.add_argument(
-                               '--plc-diag',
+                               "--plc-diag",
                                dest     = "plc_no_diag",
-                               help     = 'generate PLC diagnostics code (if used with --plc-x)',
-                               action   = 'store_false',
+                               help     = "generate PLC diagnostics code (if used with --plc-x)",
+                               action   = "store_false",
                                required = False)
 
         diag_args.add_argument(
-                               '--plc-only-diag',
+                               "--plc-only-diag",
                                dest     = "plc_only_diag",
-                               help     = 'generate PLC diagnostics code only (if used with --plc-x)',
-                               action   = 'store_true',
+                               help     = "generate PLC diagnostics code only (if used with --plc-x)",
+                               action   = "store_true",
                                required = False)
 
         test_args = plc_group.add_mutually_exclusive_group()
         test_args.add_argument(
-                               '--plc-no-test',
+                               "--plc-no-test",
                                dest     = "plc_test",
-                               help     = 'do not generate PLC comms testing code (if used with --plc-x). This is the default',
-                               action   = 'store_false',
+                               help     = "do not generate PLC comms testing code (if used with --plc-x). This is the default",
+                               action   = "store_false",
                                default  = False,
                                required = False)
 
         test_args.add_argument(
-                               '--plc-test',
+                               "--plc-test",
                                dest     = "plc_test",
-                               help     = 'generate PLC comms testing code (if used with --plc-x)',
-                               action   = 'store_true',
+                               help     = "generate PLC comms testing code (if used with --plc-x)",
+                               action   = "store_true",
                                required = False)
 
         plc_group.add_argument(
-                               '--plc-readonly',
+                               "--plc-readonly",
                                dest     = "plc_readonly",
-                               help     = 'do not generate EPICS --> PLC communication code',
-                               action   = 'store_true',
+                               help     = "do not generate EPICS --> PLC communication code",
+                               action   = "store_true",
                                default  = False)
+
+        # This is just a workaround until CCDB is fixed an accepts CSEntry interfaces too
+        plc_group.add_argument(
+                               "--plc-hostname",
+                               dest = "plc_hostname",
+                               help = argparse.SUPPRESS)
 
         return parser
 
@@ -1055,6 +1061,7 @@ class PLC(object):
         self._only_diag = args.plc_only_diag
         self._no_diag = args.plc_no_diag
         self._test = args.plc_test
+        self._hostname = args.plc_hostname
         self._version = None
         self._plc = None
         self._plc_plcf = None
@@ -1064,6 +1071,14 @@ class PLC(object):
 
     def is_readonly(self):
         return self._readonly
+
+
+    def hostname(self):
+        """
+        Returns the hostname set in the arguments. If not set it will return None
+        WILL NOT RETURN THE VALUE OF THE 'Hostname' CCDB property
+        """
+        return self._hostname
 
 
     def _validate_plc_device(self):
@@ -2536,6 +2551,7 @@ def main(argv):
         plc.update_default_printers(default_printers)
         ifdef_params["PLC_TYPE"] = plc.type()
         ifdef_params["PLC_READONLY"] = plc.is_readonly()
+        ifdef_params["PLC_HOSTNAME"] = plc.hostname()
 
     elif eee or e3:
         raise PLCFArgumentError("Generating EEE or E3 modules is only supported with PLC integration")
