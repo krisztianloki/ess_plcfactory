@@ -163,12 +163,17 @@ git config --global user.name "My Name"
         if update:
             # FIXME: If push of initialization failed, then there is no remote master
 
-            if git.get_current_branch() == git._default_branch:
-                git.pull(git._default_branch)
+            if update is True:
+                # Do a 'full' update; all branches and tags
+                git.pull()
             else:
-                # Not on master, so fetch master and also fetch remote tags
-                git.fetch(git._default_branch, git._default_branch)
-                git.fetch_tags()
+                # 'Lazy' update; only update the default branch
+                if git.get_current_branch() == git._default_branch:
+                    git.pull(git._default_branch)
+                else:
+                    # Not on master, so fetch master and also fetch remote tags to fail early if trying to use an already existing tag
+                    git.fetch(git._default_branch, git._default_branch)
+                    git.fetch_tags()
 
         # Check if we need to checkout 'branch'
         if branch:
@@ -528,7 +533,7 @@ de9dff53655734aa21357816897157161b238ad8	refs/merge-requests/3/merge
             raise GITSubprocessException(e, self._path)
 
 
-    def pull(self, src):
+    def pull(self, src = ""):
         """
         Pulls 'src'
         """
