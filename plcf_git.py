@@ -308,7 +308,7 @@ de9dff53655734aa21357816897157161b238ad8	refs/merge-requests/3/merge
         return self.__is_repo(self._path)
 
 
-    def checkout(self, branch = None, exception = False):
+    def checkout(self, branch = None):
         """
         Checks out 'branch'. If `branch` is None checks out the default branch
         """
@@ -323,8 +323,7 @@ de9dff53655734aa21357816897157161b238ad8	refs/merge-requests/3/merge
             self._branch = branch
             return self._branch
         except subprocess.CalledProcessError as e:
-            if exception:
-                raise GITSubprocessException(e, self._path)
+            raise GITSubprocessException(e, self._path)
 
 
     def create_branch(self, branch, start_point = None):
