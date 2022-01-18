@@ -662,7 +662,7 @@ def WriteDeviceInstances():
 
 	DeviceInstance = []
 
-def WriteEPICS_Debugger():
+def WriteEPICS_Debugger(for_standard = False):
 
 	global ExternalSourceFile
 
@@ -761,8 +761,8 @@ def WriteEPICS_Debugger():
 	ExternalSourceFile.append("	            PT := T#5s);")
 	ExternalSourceFile.append("")
 	ExternalSourceFile.append("")
-	ExternalSourceFile.append("     \"EPICS_DebuggerResult\".#EPICS_PayloadSize_InBytes := {};".format(ifa.TOTALPLCTOEPICSLENGTH * 2))
-	ExternalSourceFile.append("     \"EPICS_DebuggerResult\".#EPICS_PLC_Hash := {};".format(ifa.HASH))
+	ExternalSourceFile.append("     \"EPICS_DebuggerResult\".#EPICS_PayloadSize_InBytes := {};".format(10 if for_standard else ifa.TOTALPLCTOEPICSLENGTH * 2))
+	ExternalSourceFile.append("     \"EPICS_DebuggerResult\".#EPICS_PLC_Hash := {};".format(0 if for_standard else ifa.HASH))
 	ExternalSourceFile.append("     \"EPICS_DebuggerResult\".#EPICS_PLCFactory_Version := '{}';".format(ifa.commit_id if not verify else ""))
 	ExternalSourceFile.append("")
 	ExternalSourceFile.append("	IF (\"Utilities\".AlwaysOn = FALSE) THEN")
@@ -1292,7 +1292,7 @@ def WriteStandardPLCCode(TIAVersion):
 	ExternalSourceFile.append("")
 	ExternalSourceFile.append("END_FUNCTION")
 
-	WriteEPICS_Debugger()
+	WriteEPICS_Debugger(True)
 
 	ExternalSourceFile.append("FUNCTION \"_Comms\" : Void")
 	ExternalSourceFile.append("{ S7_Optimized_Access := 'TRUE' }")
