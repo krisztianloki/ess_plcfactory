@@ -73,6 +73,10 @@ class BEAST(BEAST_BASE):
             self._append("""pv("{pv}")
 \tdescription("{desc}")""".format(pv        = self.create_pv_name(inst_slot, var),
                                   desc      = var.get_parameter("PV_DESC", "")), output)
+            if var.get_parameter("ALARM_IS_ANNUNCIATING", False):
+                self._append("\tannunciating(True)", output)
+            if var.get_parameter("ALARM_IS_LATCHING", False):
+                self._append("\tlatching(True)", output)
 
 
 

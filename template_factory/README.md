@@ -244,6 +244,14 @@ Controls validity requirements. [More details](#specifying-validity-requirements
 
 Controls the alarm severity condition of alarm PVs. [More details](#alarm-variable)
 
+### ALARM_IS_LATCHING
+
+Controls wether the alarm should be latched or not (applies to the `BEAST` output only). Valid for alarm PVs only.
+
+### ALARM_IS_ANNUNCIATING
+
+Controls wether the alarm should be annunciated or not (applies to the `BEAST` output only). Valid for alarm PVs only.
+
 ### USE_GATEWAY_DB
 
 Controls whether the variable is defined in the GatewayDatablock or not.
