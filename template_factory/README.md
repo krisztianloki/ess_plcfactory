@@ -303,7 +303,9 @@ Safety systems use a gateway PLC between the IOC and the safety PLC and this bri
 
 ## Specifying defaults
 
-**`set_defaults`** can be used to define global and/or variable type specific default values. Values specified when adding a variable take precedence.
+**`set_defaults`** can be used to define global and/or variable type specific default values. `set_defaults` calls are cumulative; new defaults will be added to the previous ones. Values specified when adding a variable take precedence.
+
+**`clear_defaults`** can be used to clear defaults that were set so far for a variable.
 
 ### Setting defaults for everything
 

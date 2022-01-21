@@ -841,7 +841,8 @@ def ifdef_interface(func):
                     pass
 
                 # Get global params
-                update_params(kwargs, args[0]._global_defaults)
+                if func.__name__ not in IF_DEF.IGNORE_DEFAULTS_FOR:
+                    update_params(kwargs, args[0]._global_defaults)
 
             var = func(*args, **kwargs)
 
@@ -862,6 +863,7 @@ def ifdef_interface(func):
 class IF_DEF(object):
     DEFAULT_INSTALLATION_SLOT = "INSTALLATION_SLOT"
     DEFAULT_DATABLOCK_NAME    = "DEV_[PLCF#{}]_iDB".format("RAW_INSTALLATION_SLOT")
+    IGNORE_DEFAULTS_FOR = ["set_defaults", "clear_defaults"]
 
 
     @staticmethod
@@ -1438,22 +1440,54 @@ class IF_DEF(object):
         return SOURCE(self._source)
 
 
+    def __do_with_defaults(self, func, *keywords):
+        """
+        Calls 'func' for every interface function in keywords
+        """
+        interface_func_type = type(self.set_defaults)
+        for keyword in keywords:
+            # Catch case when function is specified as-is; without quotes
+            if not isinstance(keyword, str):
+                if type(keyword) == interface_func_type:
+                    keyword = self._interface_funcs[keyword]
+                    if keyword in self.IGNORE_DEFAULTS_FOR:
+                        continue
+                else:
+                    raise IfDefSyntaxError("Not an Interface Definition keyword: " + str(keyword))
+
+            func(keyword)
+
+
+    @ifdef_interface
+    def clear_defaults(self, *keywords):
+        """
+        Clears defaults set for a definition type
+        """
+        if not keywords:
+            raise IfDefSyntaxError("'clear_defaults' requires at least one Interface Definition keyword")
+
+        def __clear(kw):
+            del self._defaults[kw]
+
+        self.__do_with_defaults(__clear, *keywords)
+
+        return SOURCE(self._source)
+
+
     @ifdef_interface
     def set_defaults(self, *keywords, **keyword_params):
+        """
+        Sets defaults for a definition type. Additional calls will append new defaults
+        """
         if not keywords:
             self._global_defaults.update(keyword_params)
         else:
-            interface_func_type = type(self.set_defaults)
-            for keyword in keywords:
-                # Catch case when function is specified as-is; without quotes
-                if not isinstance(keyword, str):
-                    if type(keyword) == interface_func_type:
-                        keyword = self._interface_funcs[keyword]
-                        if keyword == "set_defaults":
-                            continue
-                    else:
-                        raise IfDefSyntaxError("Not an Interface Definition keyword: " + str(keyword))
-                self._defaults[keyword] = keyword_params
+            def __set(kw):
+                d = self._defaults.get(kw, dict())
+                d.update(keyword_params)
+                self._defaults[kw] = d
+
+            self.__do_with_defaults(__set, *keywords)
 
         return SOURCE(self._source)
 
