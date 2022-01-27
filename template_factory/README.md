@@ -135,17 +135,21 @@ Adding more than one spare bit:
 
 #### Analog variable alarm limits
 
-Only allowed in a **STATUS** block
+Only allowed in a **STATUS** block.
 
 It is possible to specify alarm limits for **analog status** variables and when the value of that variable is out of a limit EPICS will automatically put the PV into the relevant alarm state. There are 4 possible limits:
 1. Major low limit: **`set_major_low_limit_from("<name>"[, EXTERNAL_PV=True])`**
+    *   Sets `LOLO` / `LLSV`
 2. Minor low limit: **`set_minor_low_limit_from("<name>"[, EXTERNAL_PV=True])`**
+    *   Sets `LOW` / `LSV`
 3. Minor high limit: **`set_minor_high_limit_from("<name>"[, EXTERNAL_PV=True])`**
+    *   Sets `HIGH` / `HSV`
 4. Major high limit: **`set_major_high_limit_from("<name>"[, EXTERNAL_PV=True])`**
+    *   Sets `HIHI` / `HHSV`
 
 The limits are enforced on the **previously specified** _analog_ variable (the _limited_ variable); in other words first you define an analog variable with `add_analog()` then **right after** this variable you define the alarm limits. Any number of limits can be defined (though you shouldn't specify more than 4 ;) ). _Major low_ should be less then _minor low_ and _major high_ should be greater than _minor high_.
 
-`"<name>"` is assumed to have the same ESS name as the limited variable unless it contains a `:` or `EXTERNAL_PV` is True
+`"<name>"` is assumed to have the same device name / ESS name as the _limited_ variable unless it contains a `:` or `EXTERNAL_PV` is True
 
 This sets one of the _HIHI_,_HIGH_,_LOLO_,_LOW_ fields of the _limited_ variable whenever the value of the limit record changes. The same limit can be applied to at most 8 variables.
 
@@ -165,15 +169,17 @@ If `<plc_type>` is omitted it is taken from the _limited analog_ variable.
 
 #### Analog variable drive limits
 
-Only allowed in **COMMAND**, **PARAMETER**, or **GENERAL INPUT** blocks
+Only allowed in **COMMAND**, **PARAMETER**, or **GENERAL INPUT** blocks.
 
-It is possible to specify OPI drive limits (`LOPR` and `HOPR`) for **analog command / parameter / general input** variables meaning that the OPI control widget's input range will be set to these limits. Whenever the value of limit changes the limit will be updated in the _limited_ analog variable. There are 2 possible limits:
+It is possible to specify **OPI** drive limits (`LOPR` and `HOPR`) for **analog command / parameter / general input** variables meaning that the OPI control widget's input range will be set to these limits. Whenever the value of limit changes the limit will be updated in the _limited_ analog variable. There are 2 possible limits:
 1. Low drive limit: **`set_low_drive_limit_from("<name>"[, EXTERNAL_PV=True])`**
+    *   Sets `LOPR`
 2. High drive limit: **`set_high_drive_limit_from("<name>"[, EXTERNAL_PV=True])`**
+    *   Sets `HOPR`
 
 The limits are enforced on the **previously specified** _analog_ variable (the _limited_ variable); in other words first you define an analog variable with `add_analog()` then **right after** this variable you define the drive limits. Although it is not enforced by PLCFactory you should set both limits (either with `set_*_drive_limit_from` or `PV_HOPR`/`PV_LOPR` keywords); Phoebus might get confused if only one limit is set.
 
-`"<name>"` is assumed to have the same ESS name as the limited variable unless it contains a `:` or `EXTERNAL_PV` is True
+`"<name>"` is assumed to have the same device name / ESS name as the _limited_ variable unless it contains a `:` or `EXTERNAL_PV` is True
 
 This sets one of the _LOPR_,_HOPR_ fields of the _limited_ variable whenever the value of the limit record changes. The same limit can be applied to at most 8 variables.
 
@@ -329,12 +335,27 @@ Safety systems use a gateway PLC between the IOC and the safety PLC and this bri
 *   `add_analog("Measurement",  "REAL")`
 *   `set_minor_low_limit_from("Measurement_Minimum")`
     *   Creates two variables: `Measurement_Minimum` and `Measurement` and sets the `LSV` field of `Measurement` to "MINOR" and the `LOW` field to the value of `Measurement_Minimum`
+    *   Created PVs if device name is `Device_name`:
+        *   `Device_name:Measurement_Minimum`
+        *   `Device_name:Measurement`
 
-#### 'External' alarm limit
+#### 'Explicitly-external' alarm limit
 
 *   `add_analog("Measurement", "REAL")`
-*   `set_major_low_limit_from("Measurement_Minimum")`
+*   `set_major_low_limit_from("Measurement_Minimum", EXTERNAL_PV=True)`
     *   Creates one variable: `Measurement` and sets the `LLSV` field of `Measurement` to "MAJOR" and the `LOLO` field to the value of `Measurement_Minimum`
+    *   Created PVs if device name is `Device_name`:
+        *   `Device_name:Measurement`
+    *   `Measurement_Minimum` shall be defined outside of PLCFactory
+
+#### 'Implicitly-external' alarm limit
+
+*   `add_analog("Measurement", "REAL")`
+*   `set_major_low_limit_from("External_Device:Measurement_Minimum")`
+    *   Creates one variable: `Measurement` and sets the `LLSV` field of `Measurement` to "MAJOR" and the `LOLO` field to the value of `External_Device:Measurement_Minimum`
+    *   Created PVs if device name is `Device_name`:
+        *   `Device_name:Measurement`
+    *   `External_Device:Measurement_Minimum` shall be defined outside of PLCFactory or in an Interface Definition file of `External_Device`
 
 #### Low and high alarm limits
 
