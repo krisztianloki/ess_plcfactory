@@ -310,8 +310,8 @@ class CCDB_Factory(CC):
         self._saved_as   = None
 
 
-    def addPLC(self, deviceName):
-        plc = self.addDevice("PLC", deviceName)
+    def addPLC(self, deviceName, description=None):
+        plc = self.addDevice("PLC", deviceName, description=description)
         plc._slot["properties"] = [{'dataType': 'Strings List', 'value': 'null', 'kind': 'SLOT', 'name': 'EPICSModule', 'unit': None},
                                    {'dataType': 'Strings List', 'value': 'null', 'kind': 'SLOT', 'name': 'EPICSSnippet', 'unit': None},
                                    {'dataType': 'String', 'value': 'EPICSToPLC', 'kind': 'SLOT', 'name': 'PLCF#EPICSToPLCDataBlockName', 'unit': None},
@@ -332,8 +332,8 @@ class CCDB_Factory(CC):
         return plc
 
 
-    def addBECKHOFF(self, deviceName):
-        plc = self.addDevice("PLC_BECKHOFF", deviceName)
+    def addBECKHOFF(self, deviceName, description=None):
+        plc = self.addDevice("PLC_BECKHOFF", deviceName, description=description)
         plc._slot["properties"] = [{'dataType': 'Strings List', 'value': 'null', 'kind': 'SLOT', 'name': 'EPICSModule', 'unit': None},
                                    {'dataType': 'Strings List', 'value': 'null', 'kind': 'SLOT', 'name': 'EPICSSnippet', 'unit': None},
                                    {'dataType': 'Integer', 'value': '12288', 'kind': 'SLOT', 'name': 'PLCF#EPICSToPLCDataBlockStartOffset', 'unit': None},
@@ -350,16 +350,18 @@ class CCDB_Factory(CC):
         return plc
 
 
-    def addIOC(self, deviceName):
-        ioc = self.addDevice("IOC", deviceName)
+    def addIOC(self, deviceName, description=None):
+        ioc = self.addDevice("IOC", deviceName, description=description)
 
         return ioc
 
 
-    def addDevice(self, deviceType, deviceName):
+    def addDevice(self, deviceType, deviceName, description=None):
         device = self.device(deviceName)
 
         if device._slot["deviceType"] is None:
+            device._slot["description"] = description
+
             device._slot["deviceType"] = deviceType
             try:
                 artifact = self._artifacts[deviceType]
@@ -382,7 +384,6 @@ class CCDB_Factory(CC):
             except KeyError:
                 # No properties for this deviceType
                 pass
-
 
         return device
 
