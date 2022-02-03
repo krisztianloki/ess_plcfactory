@@ -530,11 +530,18 @@ pip install --user pyyaml
                             default  = True,
                             action   = "store_false")
 
-        group.add_argument(
+        tag_or_not = group.add_mutually_exclusive_group()
+        tag_or_not.add_argument(
+                            "--ioc-git-tag",
+                            dest     = "ioc_git_tag",
+                            help     = "Do tag the generated IOC when a version is specified",
+                            default  = True,
+                            action   = "store_true")
+
+        tag_or_not.add_argument(
                             "--no-ioc-git-tag",
                             dest     = "ioc_git_tag",
                             help     = "Do not tag the generated IOC when a version is specified",
-                            default  = True,
                             action   = "store_false")
 
         group.add_argument(
