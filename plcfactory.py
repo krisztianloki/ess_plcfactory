@@ -1855,6 +1855,9 @@ Exiting.
     if IOC_ARGS:
         hostname = device.properties().get("Hostname", None)
 
+        if plc and not hostname:
+            hostname = plc.hostname()
+
         if not hostname:
             raise PLCFactoryException("Hostname of '{}' is not specified, required for IOC generation".format(device.name()))
 
