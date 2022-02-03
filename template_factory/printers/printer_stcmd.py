@@ -106,17 +106,17 @@ class MACROS(object):
             if self.raw_root_inst_slot()[0] == '$':
                 self._macros.append(self.raw_root_inst_slot())
                 self._append("""
-# @field {}
-# @type STRING
-# PLC device name
+#- @field {}
+#- @type STRING
+#- PLC device name
 """.format(self.macro_name(self.raw_root_inst_slot())), output)
 
         for macro in if_def.macros():
             self._macros.append(macro)
             self._append("""
-# @field {macro}
-# @type STRING
-# {macro}
+#- @field {macro}
+#- @type STRING
+#- {macro}
 """.format(macro = self.macro_name(macro)), output)
 
 
@@ -181,44 +181,44 @@ class ST_CMD(eee, MACROS, PRINTER):
             raise TemplatePrinterException("Cannot interpret PLCPulse property: '{}'".format(plc_pulse))
 
         st_cmd_header = """{require}
-# @field IPADDR
-# @{ipaddr}
-# PLC IP address
+#- @field IPADDR
+#- @{ipaddr}
+#- PLC IP address
 {s7_vs_opc}
-# @field DBDIR
-# @runtime YES
-# The directory where the db files are located
+#- @field DBDIR
+#- @runtime YES
+#- The directory where the db files are located
 
-# @field MODVERSION
-# @runtime YES
-# The version of the PLC-IOC integration
+#- @field MODVERSION
+#- @runtime YES
+#- The version of the PLC-IOC integration
 
-# @field {modversion}
-# @runtime YES
+#- @field {modversion}
+#- @runtime YES
 
-# @field S7_PORT
-# @runtime YES
-# Can override S7 port with this
+#- @field S7_PORT
+#- @runtime YES
+#- Can override S7 port with this
 
-# @field MB_PORT
-# @runtime YES
-# Can override Modbus port with this
+#- @field MB_PORT
+#- @runtime YES
+#- Can override Modbus port with this
 
 """.format(require    = self.require(),
            ipaddr     = "type STRING" if self._ipaddr is None else "runtime YES",
            modversion = self._modversion_macro(),
            s7_vs_opc  = """
-# @field RECVTIMEOUT
-# @type INTEGER
-# PLC->EPICS receive timeout (ms), should be longer than frequency of PLC SND block trigger (REQ input)
+#- @field RECVTIMEOUT
+#- @type INTEGER
+#- PLC->EPICS receive timeout (ms), should be longer than frequency of PLC SND block trigger (REQ input)
 """ if not self._opc else """
-# @field PORT
-# @type INTEGER
-# PLC OPC-UA port
+#- @field PORT
+#- @type INTEGER
+#- PLC OPC-UA port
 
-# @field PUBLISHING_INTERVAL
-# @type INTEGER
-# The OPC-UA publishing interval
+#- @field PUBLISHING_INTERVAL
+#- @type INTEGER
+#- The OPC-UA publishing interval
 """)
 
         self._append(st_cmd_header, output)
@@ -374,12 +374,12 @@ class ST_TEST_CMD(eee, MACROS, PRINTER):
         super(ST_TEST_CMD, self).header(header_if_def, output, **keyword_parameters).add_filename_header(output, inst_slot = self.snippet(), template = "test", extension = self._extension())
 
         st_cmd_header = """{require}
-# @field MODVERSION
-# @runtime YES
-# The version of the PLC-IOC integration
+#- @field MODVERSION
+#- @runtime YES
+#- The version of the PLC-IOC integration
 
-# @field {modversion}
-# @runtime YES
+#- @field {modversion}
+#- @runtime YES
 
 """.format(require = self.require(), modversion = self._modversion_macro())
 
@@ -430,20 +430,20 @@ class TEST_IOCSH(e3, ST_TEST_CMD):
 
 
 def autosave_header(printer):
-    return """# @field SAVEFILE_DIR
-# @type  STRING
-# The directory where autosave should save files
+    return """#- @field SAVEFILE_DIR
+#- @type  STRING
+#- The directory where autosave should save files
 
-# @field REQUIRE_{modulename}_PATH
-# @runtime YES
+#- @field REQUIRE_{modulename}_PATH
+#- @runtime YES
 """.format(modulename = printer.modulename())
 
 
 
 def e3_autosave_header(printer):
-    return """# @field SAVEFILE_DIR
-# @type STRING
-# The directory where autosave should save files
+    return """#- @field SAVEFILE_DIR
+#- @type STRING
+#- The directory where autosave should save files
 """
 
 
