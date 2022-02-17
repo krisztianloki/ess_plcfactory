@@ -14,8 +14,8 @@ PLC Factory requires Python 2.7.
 
 Automaticly generate the PLC block and the corresponding IOC from CCDB using .def files. The .def files are linked to the CCDB device types.
 
-#### Generate TIAv14 blocks with EEE module:
-`python plcfactory.py -d CrS-CMS:Cryo-PLC-01 --plc-siemens=14 --eee`
+#### Generate TIAv14 blocks with E3 module:
+`python plcfactory.py -d CrS-CMS:Cryo-PLC-01 --plc-siemens=15.1 --e3`
 
 #### Using manually created PLC Factory templates:
 

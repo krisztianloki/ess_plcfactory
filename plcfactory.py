@@ -2392,11 +2392,18 @@ def main(argv):
         parser.add_argument(
                             '--eee',
                             dest    = "eee",
-                            help    = "create a minimal EEE module with EPICS-DB and startup snippet",
+                            help    = "DEPRECATED: create a minimal EEE module with EPICS-DB and startup snippet",
                             metavar = "modulename",
                             nargs   = "?",
                             type    = str,
                             const   = ""
+                           )
+
+        parser.add_argument(
+                            '--force-eee',
+                            dest    = "force_eee",
+                            help    = "force enable -eee",
+                            action  = "store_true"
                            )
 
         return parser
@@ -2436,6 +2443,19 @@ def main(argv):
     # FIXME: EEE
     eee_modulename = None
     if args.eee is not None:
+        if not args.force_eee:
+            print("""
+***********************************************************************************************************************************************************************
+***********************************************************************************************************************************************************************
+***********************************************************************************************************************************************************************
+
+>> EEE support is deprecated and will be removed in the (hopefully very) near future. If you really need it then use `--force-eee` and contact krisztian.loki@ess.eu <<
+
+***********************************************************************************************************************************************************************
+***********************************************************************************************************************************************************************
+***********************************************************************************************************************************************************************
+""")
+            exit(1)
         if args.eee != "":
             eee_modulename = args.eee.lower()
             if eee_modulename.startswith('m-epics-'):
