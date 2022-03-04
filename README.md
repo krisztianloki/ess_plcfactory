@@ -143,12 +143,6 @@ For further information, see the files in [doc](doc/).
     *   \[OPTIONAL\]
     *   Do not allow command or parameter blocks in the PLC. Modbus will still be enabled to exchange the hash and heartbeat.
     *   `--plc-readonly`
-*   **--eee**`[=<module_name>]`
-    *   \[OPTIONAL\] \[DEPRECATED\]
-    *   Generate a proper EEE module. If not specified, the module name is taken from the _EPICSModule_ property of _device_ with a fallback to being derived from _device_ and of course prefixed with m-epics. The name of the snippet follows a similar algorithm; taken from the _EPICSSnippet_ property and falls back to being derived from the module name. Implicitly adds _EPICS-DB_, _AUTOSAVE-ST-CMD_, and _AUTOSAVE_ to the list of templates (which means you don't have to add any templates explicitly)
-    *   `--eee`
-    *   `--eee=my-module`
-    *   `--eee=m-epics-my-module`
 *   **--e3**`[=<module_name>]`
     *   \[OPTIONAL\]
     *   Generate a proper E3 module. If not specified, the module name is taken from the _EPICSModule_ property of _device_ with a fallback to being derived from _device_ and of course prefixed with e3. The name of the snippet follows a similar algorithm; taken from the _EPICSSnippet_ property and falls back to being derived from the module name. Implicitly adds _EPICS-DB_, _AUTOSAVE-ST-CMD_, and _AUTOSAVE_ to the list of templates (which means you don't have to add any templates explicitly)

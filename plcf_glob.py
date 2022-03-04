@@ -28,14 +28,8 @@ ccdb = None
 # the root installation slot
 root_installation_slot = None
 
-# the name of the EEE module
-eee_modulename = None
-
 # the name of the E3 module
 e3_modulename = None
-
-# the name of the EEE snippet
-eee_snippet = None
 
 # the name of the E3 snippet
 e3_snippet = None

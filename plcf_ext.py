@@ -71,16 +71,8 @@ def to_filename(x):
     return helpers.sanitizeFilename(x)
 
 
-def eee_modulename():
-    return plcf_glob.eee_modulename
-
-
 def e3_modulename():
     return plcf_glob.e3_modulename
-
-
-def eee_snippet():
-    return plcf_glob.eee_snippet
 
 
 def e3_snippet():

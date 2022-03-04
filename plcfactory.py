@@ -1811,37 +1811,6 @@ Exiting.
 """)
         exit(1)
 
-    # FIXME: EEE
-#####################################################
-    # Get the EPICSModule and EPICSSnippet properties
-    dev_props = device.properties()
-    modulename = dev_props.get("EPICSModule", [])
-    if len(modulename) == 1:
-        modulename = modulename[0]
-        if modulename != helpers.sanitizeFilename(modulename):
-            print("Overriding modulename because it is not a valid filename")
-    else:
-        modulename = deviceName.lower()
-
-    modulename = helpers.sanitizeFilename(modulename)
-
-    snippet = dev_props.get("EPICSSnippet", [])
-    if len(snippet) == 1:
-        snippet = snippet[0]
-        validSnippet = helpers.sanitizeFilename(snippet)
-        if snippet != validSnippet:
-            print("Overriding snippet because it is not a valid filename")
-            snippet = validSnippet
-    else:
-        snippet = modulename
-
-    # Set the module and snippet names from the CCDB properties if needed
-    if not glob.eee_modulename:
-        glob.eee_modulename = modulename
-        glob.eee_snippet    = snippet
-#####################################################
-    # FIXME: EEE
-
     global e3
     if e3 is True:
         e3 = E3.from_device(device)
@@ -1981,158 +1950,6 @@ class copy_helper(object):
         return of
 
 
-# FIXME: EEE
-def create_eee(modulename, snippet):
-    eee_files = []
-    out_mdir  = os.path.join(OUTPUT_DIR, "modules", "-".join([ "m-epics", modulename ]))
-    helpers.makedirs(out_mdir)
-
-    ch = copy_helper(out_mdir)
-
-    eee_files.extend(m_copytree(module_dir("eee"), out_mdir))
-
-    #
-    # Copy files
-    #
-    ch.m_cp(output_files.get('EPICS-DB', output_files.get('EPICS-OPC-DB')), "db", modulename + ".db")
-
-    try:
-        ch.m_cp(output_files['EPICS-TEST-DB'],           "db",      modulename + "-test.db")
-    except KeyError:
-        pass
-
-    try:
-        startup = 'AUTOSAVE-ST-CMD'
-        ch.m_cp(output_files[startup],                   "startup", snippet + ".cmd")
-    except KeyError:
-        startup = 'ST-CMD'
-        ch.m_cp(output_files[startup],                   "startup", snippet + ".cmd")
-
-    test_cmd = True
-    try:
-        test_startup = 'AUTOSAVE-ST-TEST-CMD'
-        ch.m_cp(output_files[test_startup],              "startup", snippet + "-test.cmd")
-    except KeyError:
-        try:
-            test_startup = 'ST-TEST-CMD'
-            ch.m_cp(output_files[test_startup],          "startup", snippet + "-test.cmd")
-        except KeyError:
-            test_cmd = False
-
-    req_files    = []
-    try:
-        ch.m_cp(output_files['AUTOSAVE'],                "misc",    modulename + ".req")
-        req_files.append(modulename + ".req")
-    except KeyError:
-        pass
-
-    try:
-        ch.m_cp(output_files['AUTOSAVE-TEST'],           "misc",    modulename + "-test.req")
-        req_files.append(modulename + "-test.req")
-    except KeyError:
-        pass
-
-    ch.m_cp(output_files["CREATOR"],                     "misc",    "creator")
-
-    try:
-        ch.m_cp(output_files["BECKHOFF"],                "misc",    os.path.basename(output_files["BECKHOFF"]))
-    except KeyError:
-        pass
-
-    try:
-        ch.m_cp(output_files["STANDARD_SCL"],            "misc",    os.path.basename(output_files["STANDARD_SCL"]))
-    except KeyError:
-        pass
-
-    try:
-        ch.m_cp(output_files["PROJECT_SCL"],             "misc",    os.path.basename(output_files["PROJECT_SCL"]))
-    except KeyError:
-        pass
-
-    #
-    # Copy CCDB dump
-    #
-    if output_files['CCDB-DUMP'] is not None:
-        miscdir = os.path.join(out_mdir, "misc")
-        try:
-            import zipfile
-            with zipfile.ZipFile(output_files['CCDB-DUMP'], "r") as z:
-                z.extractall(miscdir)
-                eee_files.extend(map(lambda x: os.path.join(miscdir, x), z.namelist()))
-                z.close()
-        except:
-            helpers.rmdirs(os.path.join(miscdir, "ccdb"))
-            print("Cannot copy CCDB dump to EEE module")
-
-    #
-    # Copy the README file to the modname directory
-    #
-    readme = os.path.join(out_mdir, "PLCFactory.md")
-    copy2(output_files["PLC-README"], readme)
-    eee_files.append(readme)
-
-    #
-    # Modify Makefile if needed
-    #
-    opc = 'OPC' in ifdef_params['PLC_TYPE']
-    if opc or req_files:
-        with open(os.path.join(out_mdir, "Makefile"), "a") as makefile:
-            if opc:
-                print("""
-USR_DEPENDENCIES += opcua,krisztianloki""", file = makefile)
-
-            if req_files:
-                print("""
-USR_DEPENDENCIES += autosave
-USR_DEPENDENCIES += synappsstd
-MISCS += $(wildcard misc/*.req)""", file = makefile)
-
-    eee_files.extend(ch.copied())
-    output_files['EEE'] = eee_files
-
-    macros          = ""
-    live_macros     = ""
-    test_macros     = ""
-    startup_printer = printers[startup]
-    macro_list      = startup_printer.macros()
-    if macro_list:
-        macros      = ", ".join(["{m}={m}".format(m = startup_printer.macro_name(macro)) for macro in macro_list])
-        live_macros = ", {}".format(macros)
-
-    #
-    # Create script to run module with 'safe' defaults
-    #
-    run_module_sh = os.path.join(OUTPUT_DIR, "run_module.sh")
-    with open(run_module_sh, "w") as run:
-        print("""#!/bin/bash
-""", file = run)
-
-        if 'OPC' in ifdef_params['PLC_TYPE']:
-            print("""iocsh -r {modulename},local -c 'requireSnippet({snippet}.cmd, "IPADDR=127.0.0.1, PORT=4840, PUBLISHING_INTERVAL=200{macros}")'""".format(modulename = modulename,
-                                                                                                                                                              snippet    = snippet,
-                                                                                                                                                              macros     = live_macros), file = run)
-        else:
-            print("""iocsh -r {modulename},local -c 'requireSnippet({snippet}.cmd, "IPADDR=127.0.0.1, RECVTIMEOUT=3000{macros}")'""".format(modulename = modulename,
-                                                                                                                                            snippet    = snippet,
-                                                                                                                                            macros     = live_macros), file = run)
-
-        os.chmod(run_module_sh, 0o775)
-
-    if test_cmd:
-        #
-        # Create script to run test version of module
-        #
-        with open(os.path.join(OUTPUT_DIR, "run_test_module"), "w") as run:
-            if macros:
-                test_macros = ', "{}"'.format(macros)
-            print("""iocsh -r {modulename},local -c 'requireSnippet({snippet}-test.cmd{macros})'""".format(modulename = modulename,
-                                                                                                           snippet    = snippet,
-                                                                                                           macros     = test_macros), file = run)
-
-    print("EEE Module created:", out_mdir)
-    return out_mdir
-
-
 def read_data_files():
     global hashes
     global prev_hashes
@@ -2199,15 +2016,15 @@ def verify_output(devicename, strictness, ignore):
     if strictness == 0 or (previous_files is None and strictness < 3):
         return
 
-    # Ignore "EEE" and "E3" files for now; will deal with E3 later
-    ignored_templates = [ "PREVIOUS_FILES", "CREATOR", "CCDB-DUMP", "EEE", "E3" ]
+    # Ignore "E3" files for now; will deal with E3 later
+    ignored_templates = [ "PREVIOUS_FILES", "CREATOR", "CCDB-DUMP", "E3" ]
     ignored_templates.extend(ignore.split(","))
     files_to_delete = []
     for template in ignored_templates:
         fname = previous_files.pop(template, None)
         if fname is not None and not isinstance(fname, list):
             if isinstance(fname, list):
-# EEE and E3 produce lists BUT we don't want to delete those files yet until we can actually verify them
+# E3 produces lists BUT we don't want to delete those files yet until we can actually verify them
 #                files_to_delete.extend(fname)
                 pass
             else:
@@ -2267,12 +2084,8 @@ def verify_output(devicename, strictness, ignore):
     if previous_files:
         # Save the list of files so that it is easy to delete them after checking
         fname = os.path.join(OUTPUT_DIR, ".current-files")
-        # Do not delete EEE and E3 until we can verify them
+        # Do not delete E3 until we can verify them
         temp_output_files = dict(output_files)
-        try:
-            temp_output_files.pop("EEE")
-        except KeyError:
-            pass
         try:
             temp_output_files.pop("E3")
         except KeyError:
@@ -2384,27 +2197,9 @@ def main(argv):
         return parser
 
 
-    def add_eee_arg(parser):
+    def add_e3_ioc_arg(parser):
         IOC.add_parser_args(parser)
         E3.add_parser_args(parser)
-
-        # FIXME: EEE
-        parser.add_argument(
-                            '--eee',
-                            dest    = "eee",
-                            help    = "DEPRECATED: create a minimal EEE module with EPICS-DB and startup snippet",
-                            metavar = "modulename",
-                            nargs   = "?",
-                            type    = str,
-                            const   = ""
-                           )
-
-        parser.add_argument(
-                            '--force-eee',
-                            dest    = "force_eee",
-                            help    = "force enable -eee",
-                            action  = "store_true"
-                           )
 
         return parser
 
@@ -2435,36 +2230,10 @@ def main(argv):
     plc = PLC.parse_args(args)
 
     # Second pass
-    #  get EEE, E3, and IOC
-    add_eee_arg(parser)
+    #  get E3 and IOC
+    add_e3_ioc_arg(parser)
 
     args = parser.parse_known_args(argv)[0]
-
-    # FIXME: EEE
-    eee_modulename = None
-    if args.eee is not None:
-        if not args.force_eee:
-            print("""
-***********************************************************************************************************************************************************************
-***********************************************************************************************************************************************************************
-***********************************************************************************************************************************************************************
-
->> EEE support is deprecated and will be removed in the (hopefully very) near future. If you really need it then use `--force-eee` and contact krisztian.loki@ess.eu <<
-
-***********************************************************************************************************************************************************************
-***********************************************************************************************************************************************************************
-***********************************************************************************************************************************************************************
-""")
-            exit(1)
-        if args.eee != "":
-            eee_modulename = args.eee.lower()
-            if eee_modulename.startswith('m-epics-'):
-                eee_modulename = eee_modulename[len('m-epics-'):]
-        glob.eee_modulename = eee_modulename
-        glob.eee_snippet    = eee_modulename
-        eee = True
-    else:
-        eee = False
 
     global IOC_ARGS
     IOC_ARGS = IOC.parse_args(args)
@@ -2477,7 +2246,7 @@ def main(argv):
     parser         = PLCFArgumentParser()
 
     add_common_parser_args(parser)
-    add_eee_arg(parser)
+    add_e3_ioc_arg(parser)
 
     parser.add_argument(
                         '-d',
@@ -2540,7 +2309,7 @@ def main(argv):
                         nargs    = '+',
                         type     = str,
                         default  = [],
-                        required = not (plc or eee or e3))
+                        required = not (plc or e3))
 
     global OUTPUT_DIR
     parser.add_argument(
@@ -2589,12 +2358,8 @@ def main(argv):
         ifdef_params["PLC_READONLY"] = plc.is_readonly()
         ifdef_params["PLC_HOSTNAME"] = plc.hostname()
 
-    elif eee or e3:
-        raise PLCFArgumentError("Generating EEE or E3 modules is only supported with PLC integration")
-
-    # FIXME: EEE
-    if eee:
-        default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "AUTOSAVE-ST-CMD", "AUTOSAVE", "BEAST", "BEAST-TEMPLATE" ] )
+    elif e3:
+        raise PLCFArgumentError("Generating an E3 module is only supported with PLC integration")
 
     if e3 or (IOC_ARGS and plc):
         default_printers.update( [ "EPICS-DB", "EPICS-TEST-DB", "IOCSH", "TEST-IOCSH", "BEAST", "BEAST-TEMPLATE", ] )
@@ -2609,19 +2374,6 @@ def main(argv):
 
     if plc and plc.is_opc() and "OPC-MAP.XLS" in tf.available_printers():
         templateIDs.update( [ "OPC-MAP.XLS" ] )
-
-    # FIXME: these tests should be put somewhere in the template_factory/printers section
-    if eee and "EPICS-TEST-DB" in templateIDs:
-        templateIDs.add("AUTOSAVE-TEST")
-        templateIDs.add("AUTOSAVE-ST-TEST-CMD")
-
-    # FIXME: EEE
-    if "ST-CMD" in templateIDs and "AUTOSAVE-ST-CMD" in templateIDs:
-        templateIDs.remove("ST-CMD")
-
-    # FIXME: EEE
-    if "ST-TEST-CMD" in templateIDs and "AUTOSAVE-ST-TEST-CMD" in templateIDs:
-        templateIDs.remove("ST-TEST-CMD")
 
     if "EPICS-DB" in templateIDs and plc and plc.is_opc():
         templateIDs.add("EPICS-OPC-DB")
@@ -2665,12 +2417,8 @@ def main(argv):
     # create a dump of CCDB
     output_files["CCDB-DUMP"] = glob.ccdb.save("-".join([ device, glob.timestamp ]), OUTPUT_DIR)
 
-    if plc:
-        # FIXME: EEE
-        if eee:
-            create_eee(glob.eee_modulename, glob.eee_snippet)
-        if e3:
-            e3.create()
+    if plc and e3:
+        e3.create()
     if ioc is not None:
         ioc.create(args.ioc)
 
