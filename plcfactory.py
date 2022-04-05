@@ -774,23 +774,29 @@ iocshLoad("$(E3_CMD_TOP)/iocsh/{iocsh}", "DBDIR=$(E3_CMD_TOP)/db/, MODVERSION=$(
 
     def __create_run_ioc(self, out_dir, iocdir):
         run_ioc_sh = os.path.join(out_dir, "run_ioc.sh")
+        major, minor, patch = map(int, self._require_version.split("."))
         with open(run_ioc_sh, "w") as run:
-            print("""#!/bin/sh
+            print("""#!/bin/bash
 
 # Script to start {iocname}
 
 # This variable sets the base autosave directory; the actual autosave files will be in $(AS_TOP)/{iocslug}/save
+(
 export AS_TOP=/tmp
 
 source /epics/base-{epics_version}/require/{require_version}/bin/setE3Env.bash
 
-iocsh.bash -e {iocdir}/env.sh {iocdir}/st.cmd
-""".format(out_dir = out_dir,
-           iocname = self.name(),
-           iocdir = iocdir,
+source {iocdir}/env.sh
+
+{iocsh} {source} {iocdir}/st.cmd
+)
+""".format(iocname = self.name(),
            iocslug = self.name().replace(':', '_'),
+           iocdir = iocdir,
            epics_version = self._epics_version,
-           require_version = self._require_version), file = run)
+           require_version = self._require_version,
+           iocsh = "iocsh.bash" if major < 4 else "iocsh",
+           source = "-e {}/env.sh".format(iocdir) if major < 4 else ""), file = run)
 
             os.chmod(run_ioc_sh, 0o775)
 
