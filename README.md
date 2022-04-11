@@ -92,6 +92,9 @@ For further information, see the files in [doc](doc/).
 *   **--ioc**`[=<version>]`
     *   \[OPTIONAL\]
     *   Used to generate an IOC. If `version` is specified it will be used to create a tag `plcfactory_<version>` (if the IOC has an associated git repository) and will be used as the value of `ModVersionR` (instead of `$(IOCVERSION)`)
+*   **--ioc-git-commit-message**`[=<message>]`
+    *   \[OPTIONAL\]
+    *   Specify a custom git commit message (use "__auto__" to automatically accept the auto-generated message)
 *   **--no-ioc-git**
     *   \[OPTIONAL\]
     *   Ignore any git repository when generating IOC i.e. generate IOC locally only
