@@ -306,6 +306,8 @@ de9dff53655734aa21357816897157161b238ad8	refs/merge-requests/3/merge
                     raise GITException("Empty repository does not have branch '{}'".format(branch))
                 self.checkout(branch)
         except subprocess.CalledProcessError as e:
+            if e.output.strip().lower().startswith("fatal: destination path '.' already exists and is not an empty directory"):
+                raise GITException("Directory '{}' already exists and is not a git repository".format(self._path))
             raise GITSubprocessException(e, self._path)
 
 
