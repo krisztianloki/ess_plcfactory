@@ -294,6 +294,7 @@ class TestCCDBDump(unittest.TestCase):
             cc_obj.device("no-such-device")
         device = cc_obj.device("device")
         self.assertIsInstance(device, ccdb_dump.CC.Device)
+        self.assertEqual(cc_obj.get_root_device(), device)
         self.assertEqual(device.name(), "device")
         self.assertEqual(str(device), "device")
         self.assertEqual(device["name"], "device")
@@ -335,6 +336,7 @@ class TestCCDBDump(unittest.TestCase):
             cc_obj.device("no-such-device")
         device = cc_obj.device("root")
         self.assertIsInstance(device, ccdb_dump.CC.Device)
+        self.assertEqual(cc_obj.get_root_device(), device)
         self.assertEqual(len(device.controls()), MultiDeviceDB.num_of_directly_controlled_devices)
 
         level1 = cc_obj.device("foo1_level1")

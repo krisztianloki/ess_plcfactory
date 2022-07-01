@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+from __future__ import print_function
 
 """ PLC Factory: CCDB dump parser """
 
@@ -190,3 +191,83 @@ class CCDB_Dump(object):
                 return filename
 
             return None
+
+
+
+
+def validate_names(ccdb, args):
+    import helpers
+    import json
+    import requests
+
+    naming = requests.session()
+    all_valid = True
+    for deviceName in ccdb.getAllDeviceNames():
+        result = naming.get(helpers.urljoin("https://naming.esss.lu.se/rest/deviceNames/search/", helpers.urlquote(deviceName)), headers = { 'Accept': 'application/json' })
+        if result.status_code != 200:
+            raise RuntimeError("Device {}: {}".format(deviceName, result))
+        results = json.loads(result.text)
+        if not results:
+            all_valid = False
+            print("Device {} is not registered".format(deviceName), file=sys.stderr)
+            continue
+        found = False
+        for result in results:
+            if result['name'] == deviceName:
+                found = True
+                break
+        if not found:
+            all_valid = False
+            print("Device {} is not registered".format(deviceName), file=sys.stderr)
+            continue
+        if result['status'].lower() != 'active':
+            all_valid = False
+            print("Device {} is not active".format(deviceName), file=sys.stderr)
+
+    if all_valid:
+        print("All names are valid")
+
+
+def show(ccdb, args):
+    if args.device:
+        root = args.device
+        print(ccdb.to_yaml(root=ccdb.device(args.device), show_controls=not args.no_controls_tree))
+    else:
+        print(ccdb.to_yaml())
+
+
+def main(argv):
+    import argparse
+
+    parser = argparse.ArgumentParser(description = "Prints information about CCDB dump")
+    subparsers = parser.add_subparsers(title="commands", dest="command")
+    subparsers.add_parser("naming", help="Validate device names").set_defaults(func=validate_names)
+    show_parser = subparsers.add_parser("show", help="Show information")
+    show_parser.set_defaults(func=show)
+    show_parser.add_argument(
+                         "--device",
+                         help = "device to get information about",
+                         required = False,
+                        )
+    show_parser.add_argument(
+                        "--no-controls-tree",
+                        help = "do not include list of controlled devices",
+                        dest = "no_controls_tree",
+                        default = False,
+                        action = "store_true",
+                       )
+
+
+    parser.add_argument("ccdb_dump_file",
+                        help = "CCDB dump",
+                        type = str)
+
+    args = parser.parse_args(argv)
+
+    ccdb = CCDB_Dump.load(args.ccdb_dump_file)
+    args.func(ccdb, args)
+
+
+if __name__ == "__main__":
+    import sys
+    main(sys.argv[1:])

@@ -1263,11 +1263,15 @@ factory.save("{filename}")""".format(factory_options = 'git_tag = "{}"'.format(g
         return os_path.join(directory, helpers.sanitize_path(filename))
 
 
+    def get_root_device(self):
+        return next(iter(self._devices.values()))
+
+
     def yaml_version(self):
         return "1.0"
 
 
-    def to_yaml(self):
+    def to_yaml(self, root=None, show_controls=True):
         """
         Returns the string representation of the serialization of the devices into YAML.
         """
@@ -1281,8 +1285,14 @@ factory.save("{filename}")""".format(factory_options = 'git_tag = "{}"'.format(g
         ymodel["version"] = self.yaml_version()
 
         ydevs = OrderedDict()
-        for (k, v) in self._devices.items():
-            ydevs[k] = v.to_yaml()
+        if root:
+            ydevs[root.name()] = root.to_yaml()
+            if show_controls:
+                for d in root.controls():
+                    ydevs[d.name()] = d.to_yaml()
+        else:
+            for (k, v) in self._devices.items():
+                ydevs[k] = v.to_yaml()
         ymodel["devices"] = ydevs
 
         # Dump identical values verbatim and do not use anchor-alias notation
