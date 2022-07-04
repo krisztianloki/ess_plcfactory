@@ -132,6 +132,13 @@ class CCDB(CC):
             return self._slot
 
 
+        def to_json(self):
+            """
+            Returns the Python object that should be serialized into YAML
+            """
+            return self._slot
+
+
         def url(self):
             return CCDB.urljoin(self.ccdb.url(), "?name={}".format(CCDB.urlquote(self.name())))
 
@@ -397,12 +404,19 @@ def main(argv):
                         default = False,
                         action = "store_true",
                        )
+    parser.add_argument(
+                        "--save-as",
+                        help = "save as .zip file",
+                        type = str)
 
     args = parser.parse_args(argv)
 
     ccdb = CCDB.open_from_args(args)
     ccdb.device(args.device, single_device_only = args.no_controls_tree)
-    print(ccdb.to_yaml())
+    if args.save_as:
+        ccdb.save(args.save_as)
+    else:
+        print(ccdb.to_yaml())
 
 
 if __name__ == "__main__":

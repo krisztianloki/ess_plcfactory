@@ -48,6 +48,7 @@ class CC(object):
     GIT_SUFFIX      = ".git"
     CCDB_ZIP_SUFFIX = ".ccdb.zip"
     DEVICE_DICT     = "device.dict"
+    DEVICE_JSON     = "device.json"
     DEVICE_YAML     = "device.yaml"
     GIT_CACHE       = "data-model"
     paths_cached    = dict()
@@ -515,6 +516,13 @@ class CC(object):
         def to_yaml(self):
             """
             Returns the Python object that should be serialized into YAML
+            """
+            return str(self)
+
+
+        def to_json(self):
+            """
+            Returns the Python object that should be serialized into JSON
             """
             return str(self)
 
@@ -1271,6 +1279,10 @@ factory.save("{filename}")""".format(factory_options = 'git_tag = "{}"'.format(g
         return "1.0"
 
 
+    def json_version(self):
+        return "1.0"
+
+
     def to_yaml(self, root=None, show_controls=True):
         """
         Returns the string representation of the serialization of the devices into YAML.
@@ -1304,6 +1316,23 @@ factory.save("{filename}")""".format(factory_options = 'git_tag = "{}"'.format(g
         return yaml.dump(ymodel, sort_keys = False, Dumper = NoAliasDumper)
 
 
+    def to_json(self):
+        import json
+        import datetime
+
+        def special_json(cls):
+            return cls.to_json()
+
+        jmodel = OrderedDict()
+        if self.url():
+            jmodel["url"] = self.url()
+        jmodel["utc-timestamp"] = "{:%Y%m%d%H%M%S}".format(datetime.datetime.utcnow())
+        jmodel["version"] = self.json_version()
+        jmodel["devices"] = self._devices
+
+        return json.dumps(jmodel, indent=4, default=special_json)
+
+
     def save(self, filename, directory = "."):
         import zipfile
         if isinstance(filename, str):
@@ -1315,6 +1344,7 @@ factory.save("{filename}")""".format(factory_options = 'git_tag = "{}"'.format(g
 
         # ast.literal_eval cannot parse OrderedDict so convert self._devices to simple dict()
         dumpfile.writestr(os_path.join("ccdb", CC.DEVICE_DICT), str(dict(self._devices)))
+        dumpfile.writestr(os_path.join("ccdb", CC.DEVICE_JSON), self.to_json())
         try:
             dumpfile.writestr(os_path.join("ccdb", CC.DEVICE_YAML), self.to_yaml())
         except Exception:
