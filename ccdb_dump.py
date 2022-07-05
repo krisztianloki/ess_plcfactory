@@ -229,11 +229,14 @@ def validate_names(ccdb, args):
 
 
 def show(ccdb, args):
+    kwargs = dict()
     if args.device:
-        root = args.device
-        print(ccdb.to_yaml(root=ccdb.device(args.device), show_controls=not args.no_controls_tree))
+        kwargs = dict({"root": ccdb.device(args.device), "show_controls": not args.no_controls_tree})
+
+    if args.json:
+        print(ccdb.to_json(**kwargs))
     else:
-        print(ccdb.to_yaml())
+        print(ccdb.to_yaml(**kwargs))
 
 
 def main(argv):
@@ -256,7 +259,23 @@ def main(argv):
                         default = False,
                         action = "store_true",
                        )
-
+    default_json = False
+    try:
+        import yaml
+        show_parser.add_argument(
+                            "--yaml",
+                            default = True,
+                            help = "output in YAML format",
+                            action = "store_true",
+                            )
+    except ImportError:
+        default_json = True
+    show_parser.add_argument(
+                        "--json",
+                        default = default_json,
+                        help = "output in JSON format",
+                        action = "store_true",
+                        )
 
     parser.add_argument("ccdb_dump_file",
                         help = "CCDB dump",

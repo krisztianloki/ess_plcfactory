@@ -408,6 +408,23 @@ def main(argv):
                         "--save-as",
                         help = "save as .zip file",
                         type = str)
+    default_json = False
+    try:
+        import yaml
+        parser.add_argument(
+                            "--yaml",
+                            default = True,
+                            help = "output in YAML format",
+                            action = "store_true",
+                            )
+    except ImportError:
+        default_json = True
+    parser.add_argument(
+                        "--json",
+                        default = default_json,
+                        help = "output in JSON format",
+                        action = "store_true",
+                        )
 
     args = parser.parse_args(argv)
 
@@ -416,7 +433,10 @@ def main(argv):
     if args.save_as:
         ccdb.save(args.save_as)
     else:
-        print(ccdb.to_yaml())
+        if args.json:
+            print(ccdb.to_json())
+        else:
+            print(ccdb.to_yaml())
 
 
 if __name__ == "__main__":

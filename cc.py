@@ -1316,7 +1316,10 @@ factory.save("{filename}")""".format(factory_options = 'git_tag = "{}"'.format(g
         return yaml.dump(ymodel, sort_keys = False, Dumper = NoAliasDumper)
 
 
-    def to_json(self):
+    def to_json(self, root=None, show_controls=True):
+        """
+        Returns the string representation of the serialization of the devices into JSON.
+        """
         import json
         import datetime
 
@@ -1328,7 +1331,15 @@ factory.save("{filename}")""".format(factory_options = 'git_tag = "{}"'.format(g
             jmodel["url"] = self.url()
         jmodel["utc-timestamp"] = "{:%Y%m%d%H%M%S}".format(datetime.datetime.utcnow())
         jmodel["version"] = self.json_version()
-        jmodel["devices"] = self._devices
+        if root:
+            jdevs = OrderedDict()
+            jmodel["devices"] = jdevs
+            jdevs[root.name()] = root
+            if show_controls:
+                for d in root.controls():
+                    jdevs[d.name()] = d
+        else:
+            jmodel["devices"] = self._devices
 
         return json.dumps(jmodel, indent=4, default=special_json)
 
