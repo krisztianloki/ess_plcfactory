@@ -650,7 +650,7 @@ pip install --user pyyaml
 
 
     def __create_env_sh(self, out_idir):
-        remove_env = ["PLCIOCVERSION"]
+        remove_env = ["PLCIOCVERSION", "DEFAULT_PLCIOCVERSION"]
         remove_lines = []
         new_env_lines = OrderedDict()
         new_env_lines["IOCNAME"] = self.name()
@@ -658,7 +658,6 @@ pip install --user pyyaml
         if self._e3:
             # This variable is no longer used by PLCFactory
             remove_env.append("{}_VERSION".format(self._e3.modulename()))
-            new_env_lines["DEFAULT_PLCIOCVERSION"] = glob.default_modversion
 
         # Get the currently defined env vars
         env_sh = os.path.join(out_idir, "env.sh")
@@ -735,7 +734,7 @@ pip install --user pyyaml
 iocshLoad("$(essioc_DIR)/common_config.iocsh")
 
 # Load PLC specific startup script
-iocshLoad("$(E3_CMD_TOP)/iocsh/{iocsh}", "DBDIR=$(E3_CMD_TOP)/db/, MODVERSION=$(IOCVERSION=$(DEFAULT_PLCIOCVERSION))")
+iocshLoad("$(E3_CMD_TOP)/iocsh/{iocsh}", "DBDIR=$(E3_CMD_TOP)/db/, MODVERSION=$(IOCVERSION=)")
 """.format(iocname = self.name(),
            modules = "\n".join(["require {}".format(module) for module in self.REQUIRED_MODULES]),
            iocsh = self._e3.iocsh())

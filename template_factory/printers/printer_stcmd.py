@@ -42,7 +42,8 @@ class e3(object):
         if plciocversion:
             return plciocversion
 
-        return "$(MODVERSION=$({}))".format(self._modversion())
+        # This is set using a tricky epicsEnvSet
+        return "$(PLCIOCVERSION)"
 
 
     def _modversion_macro(self):
@@ -193,6 +194,19 @@ class IOCSH(e3, MACROS, PRINTER):
 
         self._append(st_cmd_header, output)
 
+        self._append("""#-
+#- Check if MODVERSION is set
+#-
+#- First set PLCIOCVERSION to a safe default; the module version if it is a module else the creation date
+epicsEnvSet("PLCIOCVERSION", "$({default})")
+#- Now, the tricky part;
+#- 1. try to set PLCIOCVERSION from a macro named PLCIOCVERSION + MODVERSION (where MODVERSION defaults to the empty string if not set)
+#-    this will basically set PLCIOCVERSION to the value of PLCIOCVERSION if MODVERSION is not set or empty
+#- 2. if MODVERSION _is_ set to a non empty string then PLCIOCVERSION will be set to the value of MODVERSION because
+#-    the constructed macro name (from the macros PLCIOCVERSION + MODVERSION) will not exist and the value of MODVERSION will be used as a default
+epicsEnvSet("PLCIOCVERSION", "$(PLCIOCVERSION$(MODVERSION=)=$(MODVERSION))")
+""".format(default = self._modversion()), output)
+
         if not self._opc:
             self.advance_offsets_after_header()
 
@@ -229,6 +243,9 @@ dbLoadRecords("$(DBDIR=){modulename}.db", "{PLC_MACRO}={plcname}, MODVERSION={mo
             self._opc_footer(footer_if_def, output, **keyword_parameters)
         else:
             self._s7_footer(footer_if_def, output, **keyword_parameters)
+
+        self._append("""#- Remove PLCIOCVERSION to not pollute the environment
+epicsEnvUnset("PLCIOCVERSION")""", output)
 
     #
     # S7 + MODBUS FOOTER
