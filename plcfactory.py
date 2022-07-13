@@ -649,73 +649,6 @@ pip install --user pyyaml
             return f.read()
 
 
-    def __create_env_sh(self, out_idir):
-        remove_env = ["PLCIOCVERSION", "DEFAULT_PLCIOCVERSION"]
-        remove_lines = []
-        new_env_lines = OrderedDict()
-        new_env_lines["IOCNAME"] = self.name()
-        new_env_lines["IOCDIR"] = helpers.sanitizeFilename(self.name())
-        if self._e3:
-            # This variable is no longer used by PLCFactory
-            remove_env.append("{}_VERSION".format(self._e3.modulename()))
-
-        # Get the currently defined env vars
-        env_sh = os.path.join(out_idir, "env.sh")
-        lines = self.__get_contents(env_sh)
-        if lines is None:
-            lines = []
-        else:
-            lines = lines.splitlines(True)  # keepends
-
-        env_vars = dict()
-        for i in range(len(lines)):
-            sp = lines[i].strip()
-            if sp[0] == "#":
-                continue
-
-            # Split into only two; the value might contain spaces
-            sp = sp.split(" ", 1)
-            # Ignore export
-            if sp[0].strip() == "export":
-                sp = sp[1]
-            sp = sp.split("=", 1)
-            if len(sp) == 1:
-                continue
-
-            (name, value) = sp
-            # Remove if not needed
-            if name in remove_env:
-                remove_lines.append(i)
-                continue
-
-            # Store the variable name and its location
-            env_vars[name.strip()] = i
-
-        # Update the env vars we manage
-        for k,v in new_env_lines.items():
-            line = 'export {}="{}"\n'.format(k, v)
-            try:
-                i = env_vars[k]
-                lines[i] = line
-            except KeyError:
-                lines.append(line)
-
-        # Remove env vars that are not needed
-        if remove_lines:
-            newlines = []
-            for i, l in enumerate(lines):
-                if i in remove_lines:
-                    continue
-                newlines.append(l)
-        else:
-            newlines = lines
-
-        with open(env_sh, "wt") as f:
-            f.writelines(newlines)
-
-        return env_sh
-
-
     def __create_st_cmd(self, out_idir):
         st_cmd = os.path.join(out_idir, "st.cmd")
 
@@ -792,20 +725,19 @@ iocshLoad("$(E3_CMD_TOP)/iocsh/{iocsh}", "DBDIR=$(E3_CMD_TOP)/db/, MODVERSION=$(
 # This variable sets the base autosave directory; the actual autosave files will be in $(AS_TOP)/{iocslug}/save
 (
 export AS_TOP=/tmp
+export IOCNAME="{iocname}"
+export IOCDIR="{iocslug}"
 
 source /epics/base-{epics_version}/require/{require_version}/bin/setE3Env.bash
 
-source {iocdir}/env.sh
-
-{iocsh} {source} {iocdir}/st.cmd
+{iocsh} {iocdir}/st.cmd
 )
 """.format(iocname = self.name(),
            iocslug = self.name().replace(':', '_'),
            iocdir = iocdir,
            epics_version = self._epics_version,
            require_version = self._require_version,
-           iocsh = "iocsh.bash" if major < 4 else "iocsh",
-           source = "-e {}/env.sh".format(iocdir) if major < 4 else ""), file = run)
+           iocsh = "iocsh.bash" if major < 4 else "iocsh"), file = run)
 
             os.chmod(run_ioc_sh, 0o775)
 
@@ -880,10 +812,6 @@ source {iocdir}/env.sh
             st_cmd = self.__create_st_cmd(out_idir)
             created_files.append(st_cmd)
 
-        # Create env.sh
-        env_sh = self.__create_env_sh(out_idir)
-        created_files.append(env_sh)
-
         # Create ioc.yml
         ioc_yml = self.__create_ioc_yaml(out_idir)
         created_files.append(ioc_yml)
@@ -944,10 +872,12 @@ Command line:
            cmdline = " ".join(sys.argv))
 
             repo.add(created_files)
+            if os.path.isfile(os.path.join(out_idir, "env.sh")):
+                repo.remove("env.sh")
 
             # Create list of generated/ignored files inside subdirectories
             generated_files = self.get_ignored_files(out_idir, repo)
-            generated_files.append(custom_iocsh)
+            generated_files.extend(created_files)
             if self._e3:
                 repo.add(self._e3.files())
                 generated_files.extend(list(self._e3.files()))

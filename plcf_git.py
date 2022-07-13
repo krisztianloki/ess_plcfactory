@@ -382,7 +382,7 @@ de9dff53655734aa21357816897157161b238ad8	refs/merge-requests/3/merge
 
     def remove(self, files, ignore_unmatch = False):
         """
-        Removes the files in 'files'
+        Removes the files in 'files'. Works for absolute or WC-relative paths
         """
         try:
             if isinstance(files, str):
@@ -391,7 +391,7 @@ de9dff53655734aa21357816897157161b238ad8	refs/merge-requests/3/merge
                 ignore_unmatch = "--ignore-unmatch "
             else:
                 ignore_unmatch = ""
-            return subprocess.check_call(shlex_split("git rm --quiet {}{}".format(ignore_unmatch, " ".join(map(lambda x: os.path.relpath(x, self._path), files)))), cwd = self._path, **spkwargs)
+            return subprocess.check_call(shlex_split("git rm --quiet {}{}".format(ignore_unmatch, " ".join(map(lambda x: os.path.relpath(x, self._path) if os.path.isabs(x) else x, files)))), cwd = self._path, **spkwargs)
         except subprocess.CalledProcessError as e:
             raise GITSubprocessException(e, self._path)
 
@@ -546,6 +546,9 @@ de9dff53655734aa21357816897157161b238ad8	refs/merge-requests/3/merge
 
 
     def remove_stale_items(self, current_items):
+        """
+        Removes files not staged for commit. Skips files in 'root' of working directory
+        """
         # Get the 'toplevel' directories E3 creates
         paths = set()
         for cf in current_items:
@@ -563,7 +566,9 @@ de9dff53655734aa21357816897157161b238ad8	refs/merge-requests/3/merge
         for path in paths:
             for root, dirs, files in os.walk(os.path.join(self.path(), path)):
                 for f in files:
-                    if os.path.join(root, f) not in current_items:
+                    cur_f = os.path.join(root, f)
+                    # Try with normalized path too to be safe
+                    if os.path.normpath(cur_f) not in current_items and cur_f not in current_items:
                         self.remove(os.path.join(root, f), ignore_unmatch = True)
 
 
