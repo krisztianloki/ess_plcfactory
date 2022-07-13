@@ -28,11 +28,6 @@ class e3(object):
         return "iocsh"
 
 
-    def require(self):
-        # require is handled by the .dep file in E3
-        return ""
-
-
     def modulename(self):
         return self.plcf("ext.e3_modulename()")
 
@@ -147,7 +142,7 @@ class IOCSH(e3, MACROS, PRINTER):
         except KeyError:
             raise TemplatePrinterException("Cannot interpret PLCPulse property: '{}'".format(plc_pulse))
 
-        st_cmd_header = """{require}
+        st_cmd_header = """
 #- @field IPADDR
 #- @{ipaddr}
 #- PLC IP address
@@ -171,8 +166,7 @@ class IOCSH(e3, MACROS, PRINTER):
 #- @runtime YES
 #- Can override Modbus port with this
 
-""".format(require    = self.require(),
-           ipaddr     = "type STRING" if self._ipaddr is None else "runtime YES",
+""".format(ipaddr     = "type STRING" if self._ipaddr is None else "runtime YES",
            modversion = self._modversion_macro(),
            s7_vs_opc  = """
 #- @field RECVTIMEOUT
@@ -317,18 +311,13 @@ class TEST_IOCSH(e3, MACROS, PRINTER):
         return "-test"
 
 
-    def require(self):
-        # Test does not require anything
-        return ""
-
-
     #
     # HEADER
     #
     def header(self, header_if_def, output, **keyword_parameters):
         super(TEST_IOCSH, self).header(header_if_def, output, **keyword_parameters).add_filename_header(output, inst_slot = self.snippet(), template = "test", extension = self._extension())
 
-        st_cmd_header = """{require}
+        st_cmd_header = """
 #- @field MODVERSION
 #- @runtime YES
 #- The version of the PLC-IOC integration
@@ -336,7 +325,7 @@ class TEST_IOCSH(e3, MACROS, PRINTER):
 #- @field {modversion}
 #- @runtime YES
 
-""".format(require = self.require(), modversion = self._modversion_macro())
+""".format(modversion = self._modversion_macro())
 
         self._append(st_cmd_header, output)
 
