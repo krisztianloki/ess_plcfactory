@@ -28,11 +28,6 @@ class e3(object):
         return "iocsh"
 
 
-    def require(self):
-        # require is handled by the .dep file in E3
-        return ""
-
-
     def modulename(self):
         return self.plcf("ext.e3_modulename()")
 
@@ -41,12 +36,22 @@ class e3(object):
         return self.plcf("ext.e3_snippet()")
 
 
+    def modversion(self):
+        # If there is a requested version we have to use that as MODVERSION
+        plciocversion = self.plcf("ext.modversion()")
+        if plciocversion:
+            return plciocversion
+
+        # This is set using a tricky epicsEnvSet
+        return "$(PLCIOCVERSION)"
+
+
     def _modversion_macro(self):
         return "{modulename}_VERSION".format(modulename = self.modulename())
 
 
     def _modversion(self):
-        return "{modversion}={default}".format(modversion = self._modversion_macro(), default = self.plcf("ext.modversion()"))
+        return "{modversion}={default}".format(modversion = self._modversion_macro(), default = self.plcf("ext.default_modversion()"))
 
 
 
@@ -147,7 +152,7 @@ class IOCSH(e3, MACROS, PRINTER):
         except KeyError:
             raise TemplatePrinterException("Cannot interpret PLCPulse property: '{}'".format(plc_pulse))
 
-        st_cmd_header = """{require}
+        st_cmd_header = """
 #- @field IPADDR
 #- @{ipaddr}
 #- PLC IP address
@@ -171,8 +176,7 @@ class IOCSH(e3, MACROS, PRINTER):
 #- @runtime YES
 #- Can override Modbus port with this
 
-""".format(require    = self.require(),
-           ipaddr     = "type STRING" if self._ipaddr is None else "runtime YES",
+""".format(ipaddr     = "type STRING" if self._ipaddr is None else "runtime YES",
            modversion = self._modversion_macro(),
            s7_vs_opc  = """
 #- @field RECVTIMEOUT
@@ -189,6 +193,19 @@ class IOCSH(e3, MACROS, PRINTER):
 """)
 
         self._append(st_cmd_header, output)
+
+        self._append("""#-
+#- Check if MODVERSION is set
+#-
+#- First set PLCIOCVERSION to a safe default; the module version if it is a module else the creation date
+epicsEnvSet("PLCIOCVERSION", "$({default})")
+#- Now, the tricky part;
+#- 1. try to set PLCIOCVERSION from a macro named PLCIOCVERSION + MODVERSION (where MODVERSION defaults to the empty string if not set)
+#-    this will basically set PLCIOCVERSION to the value of PLCIOCVERSION if MODVERSION is not set or empty
+#- 2. if MODVERSION _is_ set to a non empty string then PLCIOCVERSION will be set to the value of MODVERSION because
+#-    the constructed macro name (from the macros PLCIOCVERSION + MODVERSION) will not exist and the value of MODVERSION will be used as a default
+epicsEnvSet("PLCIOCVERSION", "$(PLCIOCVERSION$(MODVERSION=)=$(MODVERSION))")
+""".format(default = self._modversion()), output)
 
         if not self._opc:
             self.advance_offsets_after_header()
@@ -207,11 +224,11 @@ class IOCSH(e3, MACROS, PRINTER):
 
     def _dbLoadRecords(self, plc_macro, insize):
         return """#- Load plc interface database
-dbLoadRecords("$(DBDIR=){modulename}.db", "{PLC_MACRO}={plcname}, MODVERSION=$(MODVERSION=$({modversion})), S7_PORT=$(S7_PORT={s7_port}), MODBUS_PORT=$(MB_PORT={modbus_port}), PAYLOAD_SIZE={insize}{macros}")""".format(
+dbLoadRecords("$(DBDIR=){modulename}.db", "{PLC_MACRO}={plcname}, MODVERSION={modversion}, S7_PORT=$(S7_PORT={s7_port}), MODBUS_PORT=$(MB_PORT={modbus_port}), PAYLOAD_SIZE={insize}{macros}")""".format(
             PLC_MACRO   = plc_macro,
             plcname     = self.raw_root_inst_slot(),
             modulename  = self.modulename(),
-            modversion  = self._modversion(),
+            modversion  = self.modversion(),
             s7_port     = self.plcf("PLC-EPICS-COMMS: S7Port"),
             modbus_port = self.plcf("PLC-EPICS-COMMS: MBPort"),
             insize      = insize,
@@ -226,6 +243,9 @@ dbLoadRecords("$(DBDIR=){modulename}.db", "{PLC_MACRO}={plcname}, MODVERSION=$(M
             self._opc_footer(footer_if_def, output, **keyword_parameters)
         else:
             self._s7_footer(footer_if_def, output, **keyword_parameters)
+
+        self._append("""#- Remove PLCIOCVERSION to not pollute the environment
+epicsEnvUnset("PLCIOCVERSION")""", output)
 
     #
     # S7 + MODBUS FOOTER
@@ -317,18 +337,13 @@ class TEST_IOCSH(e3, MACROS, PRINTER):
         return "-test"
 
 
-    def require(self):
-        # Test does not require anything
-        return ""
-
-
     #
     # HEADER
     #
     def header(self, header_if_def, output, **keyword_parameters):
         super(TEST_IOCSH, self).header(header_if_def, output, **keyword_parameters).add_filename_header(output, inst_slot = self.snippet(), template = "test", extension = self._extension())
 
-        st_cmd_header = """{require}
+        st_cmd_header = """
 #- @field MODVERSION
 #- @runtime YES
 #- The version of the PLC-IOC integration
@@ -336,7 +351,7 @@ class TEST_IOCSH(e3, MACROS, PRINTER):
 #- @field {modversion}
 #- @runtime YES
 
-""".format(require = self.require(), modversion = self._modversion_macro())
+""".format(modversion = self._modversion_macro())
 
         self._append(st_cmd_header, output)
 
@@ -357,9 +372,9 @@ class TEST_IOCSH(e3, MACROS, PRINTER):
 
         st_cmd_footer = """
 #- Load plc interface database
-dbLoadRecords("$(DBDIR=){modulename}-test.db", "MODVERSION=$(MODVERSION=$({modversion})){macros}")
+dbLoadRecords("$(DBDIR=){modulename}-test.db", "MODVERSION={modversion}{macros}")
 """.format(modulename = self.modulename(),
-           modversion = self._modversion(),
+           modversion = self.modversion(),
            macros     = self._define_macros())
 
         self._append(st_cmd_footer, output)
