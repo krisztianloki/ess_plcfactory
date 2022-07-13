@@ -649,7 +649,7 @@ pip install --user pyyaml
             return f.read()
 
 
-    def __create_env_sh(self, out_idir, version):
+    def __create_env_sh(self, out_idir):
         remove_env = ["PLCIOCVERSION"]
         remove_lines = []
         new_env_lines = OrderedDict()
@@ -659,9 +659,6 @@ pip install --user pyyaml
             # This variable is no longer used by PLCFactory
             remove_env.append("{}_VERSION".format(self._e3.modulename()))
             new_env_lines["DEFAULT_PLCIOCVERSION"] = glob.default_modversion
-            if version:
-                new_env_lines["PLCIOCVERSION"] = version
-                remove_env.remove("PLCIOCVERSION")
 
         # Get the currently defined env vars
         env_sh = os.path.join(out_idir, "env.sh")
@@ -738,7 +735,7 @@ pip install --user pyyaml
 iocshLoad("$(essioc_DIR)/common_config.iocsh")
 
 # Load PLC specific startup script
-iocshLoad("$(E3_CMD_TOP)/iocsh/{iocsh}", "DBDIR=$(E3_CMD_TOP)/db/, MODVERSION=$(PLCIOCVERSION=$(IOCVERSION=$(DEFAULT_PLCIOCVERSION)))")
+iocshLoad("$(E3_CMD_TOP)/iocsh/{iocsh}", "DBDIR=$(E3_CMD_TOP)/db/, MODVERSION=$(IOCVERSION=$(DEFAULT_PLCIOCVERSION))")
 """.format(iocname = self.name(),
            modules = "\n".join(["require {}".format(module) for module in self.REQUIRED_MODULES]),
            iocsh = self._e3.iocsh())
@@ -885,7 +882,7 @@ source {iocdir}/env.sh
             created_files.append(st_cmd)
 
         # Create env.sh
-        env_sh = self.__create_env_sh(out_idir, version)
+        env_sh = self.__create_env_sh(out_idir)
         created_files.append(env_sh)
 
         # Create ioc.yml
@@ -2380,6 +2377,7 @@ def main(argv):
     glob.branch = PLCF_BRANCH if not VERIFY else "N/A"
     glob.cmdline = " ".join(sys.argv) if not VERIFY else "N/A"
     glob.origin = git.get_origin()
+    glob.modversion = args.ioc
     glob.default_modversion = glob.timestamp if not VERIFY else "N/A"
 
     global device_tag

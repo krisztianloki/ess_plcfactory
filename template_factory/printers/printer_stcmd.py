@@ -36,6 +36,15 @@ class e3(object):
         return self.plcf("ext.e3_snippet()")
 
 
+    def modversion(self):
+        # If there is a requested version we have to use that as MODVERSION
+        plciocversion = self.plcf("ext.modversion()")
+        if plciocversion:
+            return plciocversion
+
+        return "$(MODVERSION=$({}))".format(self._modversion())
+
+
     def _modversion_macro(self):
         return "{modulename}_VERSION".format(modulename = self.modulename())
 
@@ -201,11 +210,11 @@ class IOCSH(e3, MACROS, PRINTER):
 
     def _dbLoadRecords(self, plc_macro, insize):
         return """#- Load plc interface database
-dbLoadRecords("$(DBDIR=){modulename}.db", "{PLC_MACRO}={plcname}, MODVERSION=$(MODVERSION=$({modversion})), S7_PORT=$(S7_PORT={s7_port}), MODBUS_PORT=$(MB_PORT={modbus_port}), PAYLOAD_SIZE={insize}{macros}")""".format(
+dbLoadRecords("$(DBDIR=){modulename}.db", "{PLC_MACRO}={plcname}, MODVERSION={modversion}, S7_PORT=$(S7_PORT={s7_port}), MODBUS_PORT=$(MB_PORT={modbus_port}), PAYLOAD_SIZE={insize}{macros}")""".format(
             PLC_MACRO   = plc_macro,
             plcname     = self.raw_root_inst_slot(),
             modulename  = self.modulename(),
-            modversion  = self._modversion(),
+            modversion  = self.modversion(),
             s7_port     = self.plcf("PLC-EPICS-COMMS: S7Port"),
             modbus_port = self.plcf("PLC-EPICS-COMMS: MBPort"),
             insize      = insize,
@@ -346,9 +355,9 @@ class TEST_IOCSH(e3, MACROS, PRINTER):
 
         st_cmd_footer = """
 #- Load plc interface database
-dbLoadRecords("$(DBDIR=){modulename}-test.db", "MODVERSION=$(MODVERSION=$({modversion})){macros}")
+dbLoadRecords("$(DBDIR=){modulename}-test.db", "MODVERSION={modversion}{macros}")
 """.format(modulename = self.modulename(),
-           modversion = self._modversion(),
+           modversion = self.modversion(),
            macros     = self._define_macros())
 
         self._append(st_cmd_footer, output)

@@ -58,6 +58,13 @@ def plcfactory_timestamp():
     return plcf_glob.timestamp
 
 
+def modversion():
+    """
+    Returns the modversion (can be None)
+    """
+    return plcf_glob.modversion
+
+
 def default_modversion():
     """
     Returns the default modversion
