@@ -219,7 +219,7 @@ record(longin, "{root_inst_slot}:#plcfC2")
            plcf_branch_39  = self.plcf("ext.plcfactory_branch()")[:39],
            timestamp       = self.plcf("ext.plcfactory_timestamp_as('{:%Y%m%d%H%M%S}')"),
            cmdline         = self.plcf("ext.plcfactory_cmdline()"),
-           modversion      = self.plcf("ext.modversion()"))
+           modversion      = self.plcf("ext.default_modversion()"))
 
         self._append(epics_db_header, output)
 

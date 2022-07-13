@@ -658,7 +658,7 @@ pip install --user pyyaml
         if self._e3:
             # This variable is no longer used by PLCFactory
             remove_env.append("{}_VERSION".format(self._e3.modulename()))
-            new_env_lines["DEFAULT_PLCIOCVERSION"] = glob.modversion
+            new_env_lines["DEFAULT_PLCIOCVERSION"] = glob.default_modversion
             if version:
                 new_env_lines["PLCIOCVERSION"] = version
                 remove_env.remove("PLCIOCVERSION")
@@ -1880,6 +1880,7 @@ Exiting.
 
     if plc:
         plc.get_ifdefs(devices)
+        # Returns the template IDs that have nothing to do with the PLC
         templateIDs = plc.generate_files(devices, templateIDs)
 
     for templateID in templateIDs:
@@ -2379,7 +2380,7 @@ def main(argv):
     glob.branch = PLCF_BRANCH if not VERIFY else "N/A"
     glob.cmdline = " ".join(sys.argv) if not VERIFY else "N/A"
     glob.origin = git.get_origin()
-    glob.modversion = glob.timestamp if not VERIFY else "N/A"
+    glob.default_modversion = glob.timestamp if not VERIFY else "N/A"
 
     global device_tag
     device_tag = args.tag

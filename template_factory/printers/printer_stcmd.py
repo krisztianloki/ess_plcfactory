@@ -46,7 +46,7 @@ class e3(object):
 
 
     def _modversion(self):
-        return "{modversion}={default}".format(modversion = self._modversion_macro(), default = self.plcf("ext.modversion()"))
+        return "{modversion}={default}".format(modversion = self._modversion_macro(), default = self.plcf("ext.default_modversion()"))
 
 
 

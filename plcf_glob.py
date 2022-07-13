@@ -35,4 +35,4 @@ e3_modulename = None
 e3_snippet = None
 
 # the default modversion of the PLC module/IOC
-modversion = None
+default_modversion = None

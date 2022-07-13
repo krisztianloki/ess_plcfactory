@@ -58,11 +58,11 @@ def plcfactory_timestamp():
     return plcf_glob.timestamp
 
 
-def modversion():
+def default_modversion():
     """
     Returns the default modversion
     """
-    return plcf_glob.modversion
+    return plcf_glob.default_modversion
 
 
 def to_filename(x):
