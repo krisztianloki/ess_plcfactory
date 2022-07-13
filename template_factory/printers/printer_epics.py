@@ -327,6 +327,9 @@ record(longin, "{root_inst_slot}:#plcfC2")
             if var.pv_name() == validity_pv or exp_var_pv_name == validity_pv:
                 return None
 
+        if validity_pv == "":
+            raise TemplatePrinterException("VALIDITY_PV is empty", IFDEF_SOURCE = var)
+
         if validity_pv is None:
             return None
 
@@ -340,7 +343,7 @@ record(longin, "{root_inst_slot}:#plcfC2")
             # We have to expand the PV name
             validity_pv = self.create_pv_name(val_pv_var)
 
-        validity_name = "{} MSS".format(self._gen_validity_name(validity_pv))
+        validity_name = "{} MSS".format(self._gen_validity_name(var, validity_pv))
         self._validity_pvs[validity_pv] = validity_name
 
         return validity_name
@@ -377,7 +380,7 @@ record(longin, "{root_inst_slot}:#plcfC2")
 
         # Register the fact that this validity PV was taken care of
         self._gen_validity_pvs.add(vpv)
-        helpernames = self._gen_validity_name(vpv, "vclc", "vinv", "vhsh")
+        helpernames = self._gen_validity_name(var, vpv, "vclc", "vinv", "vhsh")
 
         if vcond is True:
             vcond = "A"
@@ -438,7 +441,7 @@ record(calc, "{vbi}")
            vinv = helpernames[2]), output)
 
 
-    def _gen_validity_name(self, name, *suffixes):
+    def _gen_validity_name(self, var, name, *suffixes):
         """
         Generate validity helper PV names
         By default only the bi PV (that must be referenced in SDIS fields) is returned.
@@ -453,7 +456,7 @@ record(calc, "{vbi}")
         try:
             ess_name = rematch.group(1)
         except AttributeError:
-            raise TemplatePrinterException("Non ESS conformant device name: '{}'".format(name))
+            raise TemplatePrinterException("Cannot generate validity helper PV; non ESS conformant device name: '{}'".format(name), IFDEF_SOURCE = var)
         prop = rematch.group(2)
 
         vbi = "{}A_{}vbi".format(ess_name, prop)
