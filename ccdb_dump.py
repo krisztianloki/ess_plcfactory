@@ -239,12 +239,18 @@ def show(ccdb, args):
         print(ccdb.to_yaml(**kwargs))
 
 
+def controls_tree(ccdb, args):
+    device = ccdb.device(args.device)
+    device.buildControlsList(include_self = True, verbose = True)
+
+
 def main(argv):
     import argparse
 
     parser = argparse.ArgumentParser(description = "Prints information about CCDB dump")
     subparsers = parser.add_subparsers(title="commands", dest="command")
     subparsers.add_parser("naming", help="Validate device names").set_defaults(func=validate_names)
+
     show_parser = subparsers.add_parser("show", help="Show information")
     show_parser.set_defaults(func=show)
     show_parser.add_argument(
@@ -275,6 +281,14 @@ def main(argv):
                         default = default_json,
                         help = "output in JSON format",
                         action = "store_true",
+                        )
+
+    tree_parser = subparsers.add_parser("controls-tree", help="Show controls tree information")
+    tree_parser.set_defaults(func=controls_tree)
+    tree_parser.add_argument(
+                         "--device",
+                         help = "device to get information about",
+                         required = True,
                         )
 
     parser.add_argument("ccdb_dump_file",
