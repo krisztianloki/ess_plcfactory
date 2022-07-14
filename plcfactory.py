@@ -506,7 +506,7 @@ class IOC(object):
 Could not find package `yaml`!
 Please install it by running:
 
-pip install --user pyyaml
+pip2 install --user pyyaml==5.4.1
 
 """)
 
