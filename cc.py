@@ -1271,10 +1271,6 @@ factory.save("{filename}")""".format(factory_options = 'git_tag = "{}"'.format(g
         return os_path.join(directory, helpers.sanitize_path(filename))
 
 
-    def get_root_device(self):
-        return next(iter(self._devices.values()))
-
-
     def yaml_version(self):
         return "1.0"
 
