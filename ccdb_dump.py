@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+from __future__ import print_function
 
 """ PLC Factory: CCDB dump parser """
 
@@ -102,7 +103,7 @@ class CCDB_Dump(object):
                 self._devices[key] = self.Device(value, ccdb = self)
 
 
-        def _device(self, deviceName):
+        def _get_device(self, deviceName, single_device_only):
             raise CC.Exception("Inconsistent CCDB dump: No such device: {}".format(deviceName))
 
 
@@ -190,3 +191,75 @@ class CCDB_Dump(object):
                 return filename
 
             return None
+
+
+
+
+def validate_names(ccdb, args):
+    import helpers
+    import json
+    import requests
+
+    naming = requests.session()
+    all_valid = True
+    for deviceName in ccdb.getAllDeviceNames():
+        result = naming.get(helpers.urljoin("https://naming.esss.lu.se/rest/deviceNames/search/", helpers.urlquote(deviceName)), headers = { 'Accept': 'application/json' })
+        if result.status_code != 200:
+            raise RuntimeError("Device {}: {}".format(deviceName, result))
+        results = json.loads(result.text)
+        if not results:
+            all_valid = False
+            print("Device {} is not registered".format(deviceName), file=sys.stderr)
+            continue
+        found = False
+        for result in results:
+            if result['name'] == deviceName:
+                found = True
+                break
+        if not found:
+            all_valid = False
+            print("Device {} is not registered".format(deviceName), file=sys.stderr)
+            continue
+        if result['status'].lower() != 'active':
+            all_valid = False
+            print("Device {} is not active".format(deviceName), file=sys.stderr)
+
+    if all_valid:
+        print("All names are valid")
+
+
+def main(argv):
+    import argparse
+
+    parser = argparse.ArgumentParser(description = "Prints information about CCDB dump")
+    subparsers = parser.add_subparsers(title="commands", dest="command")
+
+    naming_parser = subparsers.add_parser("naming", help="Validate device names")
+    naming_parser.set_defaults(func=validate_names)
+
+    def show(ccdb, args):
+        ccdb.tool_show(args)
+
+    show_parser = CC.tool_show_subparser(subparsers, device_is_required=False)
+    show_parser.set_defaults(func=show)
+
+    def controls_tree(ccdb, args):
+        ccdb.tool_controls_tree(args)
+
+    tree_parser = CC.tool_controls_tree_subparser(subparsers)
+    tree_parser.set_defaults(func=controls_tree)
+
+    parser.add_argument("ccdb_dump_file",
+                        help = "CCDB dump",
+                        type = str
+                        )
+
+    args = parser.parse_args(argv)
+
+    ccdb = CCDB_Dump.load(args.ccdb_dump_file)
+    args.func(ccdb, args)
+
+
+if __name__ == "__main__":
+    import sys
+    main(sys.argv[1:])

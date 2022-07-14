@@ -10,6 +10,7 @@ __license__    = "GPLv3"
 
 # Python libraries
 import getpass
+from collections import OrderedDict
 from os import path as os_path
 from shutil import copy2
 
@@ -47,6 +48,8 @@ class CC(object):
     GIT_SUFFIX      = ".git"
     CCDB_ZIP_SUFFIX = ".ccdb.zip"
     DEVICE_DICT     = "device.dict"
+    DEVICE_JSON     = "device.json"
+    DEVICE_YAML     = "device.yaml"
     GIT_CACHE       = "data-model"
     paths_cached    = dict()
     sessions_cached = dict()
@@ -60,7 +63,7 @@ class CC(object):
 {banner}
 {msg}
 {banner}
-""".format(banner = "*" * max(map(lambda x: len(x), self.message.splitlines())), msg = self.message)
+""".format(banner = "*" * max(map(lambda x: len(x), str(self.message).splitlines())), msg = self.message)
             else:
                 return super(CC.Exception, self).__str__()
 
@@ -508,6 +511,20 @@ class CC(object):
 
         def __str__(self):
             return self.name()
+
+
+        def to_yaml(self):
+            """
+            Returns the Python object that should be serialized into YAML
+            """
+            return str(self)
+
+
+        def to_json(self):
+            """
+            Returns the Python object that should be serialized into JSON
+            """
+            return str(self)
 
 
         def url(self):
@@ -958,19 +975,17 @@ class CC(object):
 
     def __clear(self):
         # all devices; key, Device pairs
-        self._devices              = dict()
-
-        self._hashSum              = None
+        self._devices = OrderedDict()
 
         # cache for device, property dictionary
-        self._propDict             = dict()
+        self._propDict = dict()
 
         # cache for ^() expressions
         # key: (device, expression), value: property
-        self._backtrackCache       = dict()
+        self._backtrackCache = dict()
 
         # cache of downloaded artifacts
-        self._downloadedArtifacts  = set()
+        self._downloadedArtifacts = set()
 
         if self._clear_templates:
             # clear templates downloaded in a previous run
@@ -992,15 +1007,22 @@ class CC(object):
         return None
 
 
+    def _get_device(self, devicename, single_device_only):
+        """
+        Should return a CC.Device
+        """
+        raise NotImplementedError
+
+
     # Returns: CC.Device
-    def device(self, deviceName, cachedOnly = False):
+    def device(self, deviceName, cachedOnly = False, single_device_only = False):
         try:
             return self._devices[self.deviceName(deviceName)]
         except KeyError:
             if cachedOnly:
                 return None
 
-            device      = self._device(deviceName)
+            device = self._get_device(deviceName, single_device_only = single_device_only)
             device.ccdb = self
 
             return device
@@ -1249,6 +1271,75 @@ factory.save("{filename}")""".format(factory_options = 'git_tag = "{}"'.format(g
         return os_path.join(directory, helpers.sanitize_path(filename))
 
 
+    def yaml_version(self):
+        return "1.0"
+
+
+    def json_version(self):
+        return "1.0"
+
+
+    def to_yaml(self, root=None, show_controls=True):
+        """
+        Returns the string representation of the serialization of the devices into YAML.
+        """
+        import yaml
+        import datetime
+
+        ymodel = OrderedDict()
+        if self.url():
+            ymodel["url"] = self.url()
+        ymodel["utc-timestamp"] = "{:%Y%m%d%H%M%S}".format(datetime.datetime.utcnow())
+        ymodel["version"] = self.yaml_version()
+
+        ydevs = OrderedDict()
+        if root:
+            ydevs[root.name()] = root.to_yaml()
+            if show_controls:
+                for d in root.buildControlsList():
+                    ydevs[d.name()] = d.to_yaml()
+        else:
+            for (k, v) in self._devices.items():
+                ydevs[k] = v.to_yaml()
+        ymodel["devices"] = ydevs
+
+        # Dump identical values verbatim and do not use anchor-alias notation
+        class NoAliasDumper(yaml.Dumper):
+            def ignore_aliases(self, data):
+                return True
+
+        yaml.add_representer(OrderedDict, lambda dumper, data: dumper.represent_mapping("tag:yaml.org,2002:map", data.items()))
+        return yaml.dump(ymodel, sort_keys = False, Dumper = NoAliasDumper)
+
+
+    def to_json(self, root=None, show_controls=True):
+        """
+        Returns the string representation of the serialization of the devices into JSON.
+        """
+        import json
+        import datetime
+
+        def special_json(cls):
+            return cls.to_json()
+
+        jmodel = OrderedDict()
+        if self.url():
+            jmodel["url"] = self.url()
+        jmodel["utc-timestamp"] = "{:%Y%m%d%H%M%S}".format(datetime.datetime.utcnow())
+        jmodel["version"] = self.json_version()
+        if root:
+            jdevs = OrderedDict()
+            jmodel["devices"] = jdevs
+            jdevs[root.name()] = root
+            if show_controls:
+                for d in root.buildControlsList():
+                    jdevs[d.name()] = d
+        else:
+            jmodel["devices"] = self._devices
+
+        return json.dumps(jmodel, indent=4, default=special_json)
+
+
     def save(self, filename, directory = "."):
         import zipfile
         if isinstance(filename, str):
@@ -1258,7 +1349,16 @@ factory.save("{filename}")""".format(factory_options = 'git_tag = "{}"'.format(g
             dumpfile = zipfile.ZipFile(filename, "w", zipfile.ZIP_DEFLATED)
             filename = filename.name
 
-        dumpfile.writestr(os_path.join("ccdb", CC.DEVICE_DICT), str(self._devices))
+        # ast.literal_eval cannot parse OrderedDict so convert self._devices to simple dict()
+        dumpfile.writestr(os_path.join("ccdb", CC.DEVICE_DICT), str(dict(self._devices)))
+        dumpfile.writestr(os_path.join("ccdb", CC.DEVICE_JSON), self.to_json())
+        try:
+            dumpfile.writestr(os_path.join("ccdb", CC.DEVICE_YAML), self.to_yaml())
+        except Exception:
+            # Not a showstopper yet:
+            #  - 'yaml' might not be installed
+            #  - to_yaml() might not be correct
+            pass
         for template in self._downloadedArtifacts:
             dumpfile.write(template, os_path.join("ccdb", template))
 
@@ -1426,3 +1526,76 @@ factory.save("{filename}")""".format(factory_options = 'git_tag = "{}"'.format(g
                 raise CC.Exception("Input error {}".format(type(head)))
 
         return res
+
+
+    @staticmethod
+    def tool_output_format_args(parser):
+        default_json = False
+        try:
+            import yaml
+            parser.add_argument(
+                                "--yaml",
+                                default = True,
+                                help = "output in YAML format",
+                                action = "store_true",
+                                )
+        except ImportError:
+            default_json = True
+
+        parser.add_argument(
+                            "--json",
+                            default = default_json,
+                            help = "output in JSON format",
+                            action = "store_true",
+                            )
+
+        return parser
+
+
+    @staticmethod
+    def tool_device_args(parser, device_is_required=True):
+        parser.add_argument(
+                        "--device",
+                        help = "device to get information about",
+                        required = device_is_required,
+                       )
+
+
+    @staticmethod
+    def tool_show_subparser(subparser, device_is_required=True):
+        show_parser = subparser.add_parser("show", help="Show information")
+        CC.tool_device_args(show_parser, device_is_required)
+        show_parser.add_argument(
+                            "--no-controls-tree",
+                            help = "do not include list of controlled devices",
+                            dest = "no_controls_tree",
+                            default = False,
+                            action = "store_true",
+                           )
+        CC.tool_output_format_args(show_parser)
+
+        return show_parser
+
+
+    def tool_show(self, args):
+        kwargs = dict()
+        if args.device:
+            kwargs = dict({"root": self.device(args.device), "show_controls": not args.no_controls_tree})
+
+        if args.json:
+            print(self.to_json(**kwargs))
+        else:
+            print(self.to_yaml(**kwargs))
+
+
+    @staticmethod
+    def tool_controls_tree_subparser(subparser):
+        tree_parser = subparser.add_parser("controls-tree", help="Show controls tree information")
+        CC.tool_device_args(tree_parser)
+
+        return tree_parser
+
+
+    def tool_controls_tree(self, args):
+        device = self.device(args.device)
+        device.buildControlsList(include_self = True, verbose = True)

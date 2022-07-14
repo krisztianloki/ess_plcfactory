@@ -125,6 +125,20 @@ class CCDB(CC):
             return self._slot[item]
 
 
+        def to_yaml(self):
+            """
+            Returns the Python object that should be serialized into YAML
+            """
+            return self._slot
+
+
+        def to_json(self):
+            """
+            Returns the Python object that should be serialized into YAML
+            """
+            return self._slot
+
+
         def url(self):
             return CCDB.urljoin(self.ccdb.url(), "?name={}".format(CCDB.urlquote(self.name())))
 
@@ -283,11 +297,11 @@ class CCDB(CC):
             return deviceName
 
 
-    def _device(self, deviceName):
+    def _get_device(self, deviceName, single_device_only):
         deviceName = self.deviceName(deviceName)
 
         if deviceName not in self._devices:
-            url     = self.urljoin(self._rest_url, "slots", deviceName)
+            url = self.urljoin(self._rest_url, "slots", deviceName)
 
             result = self._get(url)
 
@@ -308,19 +322,22 @@ class CCDB(CC):
             except KeyError:
                 device = self.tostring(tmpDict)
 
-            if not self._devices:
+            # compute here so that we can add device to _devices to maintain order of devices
+            need_controls = not single_device_only and not self._devices
+
+            # save downloaded data
+            self._devices[deviceName] = self.Device(device, ccdb = self)
+
+            if need_controls:
                 # If this is the first device, assume this is the root device, so
                 # Greedily request transitive controls information
-                url    = self.urljoin(self._rest_url, "slots", deviceName, "controls/?transitive=True")
+                url = self.urljoin(self._rest_url, "slots", deviceName, "controls/?transitive=True")
 
                 result = self._get(url)
                 if result.status_code == 200:
                     slots = self.tostring(json.loads(result.text)["installationSlots"])
                     for slot in slots:
                         self._devices[slot["name"]] = self.Device(slot, ccdb = self)
-
-            # save downloaded data
-            self._devices[deviceName] = self.Device(device, ccdb = self)
 
         return self._devices[deviceName]
 
@@ -366,3 +383,54 @@ class CCDB_DEVEL(CCDB):
     def __init__(self, **kwargs):
         kwargs["verify_ssl_cert"] = True
         CCDB.__init__(self, CCDB_DEVEL.default_url(), **kwargs)
+
+
+
+
+def main(argv):
+    import argparse
+
+    parser = argparse.ArgumentParser(description = "Prints information from CCDB about device")
+    subparsers = parser.add_subparsers(title="commands", dest="command")
+
+    def save(ccdb, args):
+        ccdb.save(args.save_as)
+
+    save_parser = subparsers.add_parser("save", help="Save a CCDB dump")
+    save_parser.set_defaults(func=save)
+    CC.tool_device_args(save_parser)
+    save_parser.add_argument(
+                        "--save-as",
+                        help = "save as .zip file",
+                        required = True,
+                        type = str)
+
+    def show(ccdb, args):
+        ccdb.tool_show(args)
+
+    show_parser = CC.tool_show_subparser(subparsers)
+    show_parser.set_defaults(func=show)
+
+    def controls_tree(ccdb, args):
+        ccdb.tool_controls_tree(args)
+
+    tree_parser = CC.tool_controls_tree_subparser(subparsers)
+    tree_parser.set_defaults(func=controls_tree)
+
+    CCDB.addArgs(parser)
+    CC.tool_output_format_args(parser)
+
+    args = parser.parse_args(argv)
+
+    ccdb = CCDB.open_from_args(args)
+    try:
+        single_device_only = args.no_controls_tree
+    except AttributeError:
+        single_device_only = False
+    ccdb.device(args.device, single_device_only = single_device_only)
+    args.func(ccdb, args)
+
+
+if __name__ == "__main__":
+    import sys
+    main(sys.argv[1:])
