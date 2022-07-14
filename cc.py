@@ -1300,7 +1300,7 @@ factory.save("{filename}")""".format(factory_options = 'git_tag = "{}"'.format(g
         if root:
             ydevs[root.name()] = root.to_yaml()
             if show_controls:
-                for d in root.controls():
+                for d in root.buildControlsList():
                     ydevs[d.name()] = d.to_yaml()
         else:
             for (k, v) in self._devices.items():
@@ -1336,7 +1336,7 @@ factory.save("{filename}")""".format(factory_options = 'git_tag = "{}"'.format(g
             jmodel["devices"] = jdevs
             jdevs[root.name()] = root
             if show_controls:
-                for d in root.controls():
+                for d in root.buildControlsList():
                     jdevs[d.name()] = d
         else:
             jmodel["devices"] = self._devices
@@ -1530,3 +1530,76 @@ factory.save("{filename}")""".format(factory_options = 'git_tag = "{}"'.format(g
                 raise CC.Exception("Input error {}".format(type(head)))
 
         return res
+
+
+    @staticmethod
+    def tool_output_format_args(parser):
+        default_json = False
+        try:
+            import yaml
+            parser.add_argument(
+                                "--yaml",
+                                default = True,
+                                help = "output in YAML format",
+                                action = "store_true",
+                                )
+        except ImportError:
+            default_json = True
+
+        parser.add_argument(
+                            "--json",
+                            default = default_json,
+                            help = "output in JSON format",
+                            action = "store_true",
+                            )
+
+        return parser
+
+
+    @staticmethod
+    def tool_device_args(parser, device_is_required=True):
+        parser.add_argument(
+                        "--device",
+                        help = "device to get information about",
+                        required = device_is_required,
+                       )
+
+
+    @staticmethod
+    def tool_show_subparser(subparser, device_is_required=True):
+        show_parser = subparser.add_parser("show", help="Show information")
+        CC.tool_device_args(show_parser, device_is_required)
+        show_parser.add_argument(
+                            "--no-controls-tree",
+                            help = "do not include list of controlled devices",
+                            dest = "no_controls_tree",
+                            default = False,
+                            action = "store_true",
+                           )
+        CC.tool_output_format_args(show_parser)
+
+        return show_parser
+
+
+    def tool_show(self, args):
+        kwargs = dict()
+        if args.device:
+            kwargs = dict({"root": self.device(args.device), "show_controls": not args.no_controls_tree})
+
+        if args.json:
+            print(self.to_json(**kwargs))
+        else:
+            print(self.to_yaml(**kwargs))
+
+
+    @staticmethod
+    def tool_controls_tree_subparser(subparser):
+        tree_parser = subparser.add_parser("controls-tree", help="Show controls tree information")
+        CC.tool_device_args(tree_parser)
+
+        return tree_parser
+
+
+    def tool_controls_tree(self, args):
+        device = self.device(args.device)
+        device.buildControlsList(include_self = True, verbose = True)

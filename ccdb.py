@@ -391,52 +391,44 @@ def main(argv):
     import argparse
 
     parser = argparse.ArgumentParser(description = "Prints information from CCDB about device")
-    CCDB.addArgs(parser)
-    parser.add_argument(
-                        "--device",
-                        help = "device to get information about",
-                        required = True,
-                       )
-    parser.add_argument(
-                        "--no-controls-tree",
-                        help = "do not include list of controlled devices",
-                        dest = "no_controls_tree",
-                        default = False,
-                        action = "store_true",
-                       )
-    parser.add_argument(
+    subparsers = parser.add_subparsers(title="commands", dest="command")
+
+    def save(ccdb, args):
+        ccdb.save(args.save_as)
+
+    save_parser = subparsers.add_parser("save", help="Save a CCDB dump")
+    save_parser.set_defaults(func=save)
+    CC.tool_device_args(save_parser)
+    save_parser.add_argument(
                         "--save-as",
                         help = "save as .zip file",
+                        required = True,
                         type = str)
-    default_json = False
-    try:
-        import yaml
-        parser.add_argument(
-                            "--yaml",
-                            default = True,
-                            help = "output in YAML format",
-                            action = "store_true",
-                            )
-    except ImportError:
-        default_json = True
-    parser.add_argument(
-                        "--json",
-                        default = default_json,
-                        help = "output in JSON format",
-                        action = "store_true",
-                        )
+
+    def show(ccdb, args):
+        ccdb.tool_show(args)
+
+    show_parser = CC.tool_show_subparser(subparsers)
+    show_parser.set_defaults(func=show)
+
+    def controls_tree(ccdb, args):
+        ccdb.tool_controls_tree(args)
+
+    tree_parser = CC.tool_controls_tree_subparser(subparsers)
+    tree_parser.set_defaults(func=controls_tree)
+
+    CCDB.addArgs(parser)
+    CC.tool_output_format_args(parser)
 
     args = parser.parse_args(argv)
 
     ccdb = CCDB.open_from_args(args)
-    ccdb.device(args.device, single_device_only = args.no_controls_tree)
-    if args.save_as:
-        ccdb.save(args.save_as)
-    else:
-        if args.json:
-            print(ccdb.to_json())
-        else:
-            print(ccdb.to_yaml())
+    try:
+        single_device_only = args.no_controls_tree
+    except AttributeError:
+        single_device_only = False
+    ccdb.device(args.device, single_device_only = single_device_only)
+    args.func(ccdb, args)
 
 
 if __name__ == "__main__":

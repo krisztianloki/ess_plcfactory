@@ -228,72 +228,31 @@ def validate_names(ccdb, args):
         print("All names are valid")
 
 
-def show(ccdb, args):
-    kwargs = dict()
-    if args.device:
-        kwargs = dict({"root": ccdb.device(args.device), "show_controls": not args.no_controls_tree})
-
-    if args.json:
-        print(ccdb.to_json(**kwargs))
-    else:
-        print(ccdb.to_yaml(**kwargs))
-
-
-def controls_tree(ccdb, args):
-    device = ccdb.device(args.device)
-    device.buildControlsList(include_self = True, verbose = True)
-
-
 def main(argv):
     import argparse
 
     parser = argparse.ArgumentParser(description = "Prints information about CCDB dump")
     subparsers = parser.add_subparsers(title="commands", dest="command")
-    subparsers.add_parser("naming", help="Validate device names").set_defaults(func=validate_names)
 
-    show_parser = subparsers.add_parser("show", help="Show information")
+    naming_parser = subparsers.add_parser("naming", help="Validate device names")
+    naming_parser.set_defaults(func=validate_names)
+
+    def show(ccdb, args):
+        ccdb.tool_show(args)
+
+    show_parser = CC.tool_show_subparser(subparsers, device_is_required=False)
     show_parser.set_defaults(func=show)
-    show_parser.add_argument(
-                         "--device",
-                         help = "device to get information about",
-                         required = False,
-                        )
-    show_parser.add_argument(
-                        "--no-controls-tree",
-                        help = "do not include list of controlled devices",
-                        dest = "no_controls_tree",
-                        default = False,
-                        action = "store_true",
-                       )
-    default_json = False
-    try:
-        import yaml
-        show_parser.add_argument(
-                            "--yaml",
-                            default = True,
-                            help = "output in YAML format",
-                            action = "store_true",
-                            )
-    except ImportError:
-        default_json = True
-    show_parser.add_argument(
-                        "--json",
-                        default = default_json,
-                        help = "output in JSON format",
-                        action = "store_true",
-                        )
 
-    tree_parser = subparsers.add_parser("controls-tree", help="Show controls tree information")
+    def controls_tree(ccdb, args):
+        ccdb.tool_controls_tree(args)
+
+    tree_parser = CC.tool_controls_tree_subparser(subparsers)
     tree_parser.set_defaults(func=controls_tree)
-    tree_parser.add_argument(
-                         "--device",
-                         help = "device to get information about",
-                         required = True,
-                        )
 
     parser.add_argument("ccdb_dump_file",
                         help = "CCDB dump",
-                        type = str)
+                        type = str
+                        )
 
     args = parser.parse_args(argv)
 
