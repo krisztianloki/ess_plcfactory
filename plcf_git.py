@@ -165,7 +165,14 @@ git config --global user.name "My Name"
 
             if update is True:
                 # Do a 'full' update; all branches and tags
-                git.pull()
+                try:
+                    git.pull()
+                except GITException as e:
+                    if e.message != "Deleted remote ref":
+                        raise
+                    # The remote branch was deleted, let's switch to the default one and try again...
+                    git.checkout(git._default_branch)
+                    git.pull()
             else:
                 # 'Lazy' update; only update the default branch
                 if git.get_current_branch() == git._default_branch:
@@ -520,7 +527,7 @@ de9dff53655734aa21357816897157161b238ad8	refs/merge-requests/3/merge
         try:
             if dst:
                 dst = ":" + dst
-            subprocess.check_call(shlex_split("git fetch --quiet origin {}{}".format(src, dst)), cwd = self._path, **spkwargs)
+            subprocess.check_output(shlex_split("git fetch --quiet origin {}{}".format(src, dst)), stderr = subprocess.STDOUT, cwd = self._path, **spkwargs)
         except subprocess.CalledProcessError as e:
             raise GITSubprocessException(e, self._path)
 
@@ -530,7 +537,7 @@ de9dff53655734aa21357816897157161b238ad8	refs/merge-requests/3/merge
         Fetches tags
         """
         try:
-            subprocess.check_call(shlex_split("git fetch --quiet --tags origin"), cwd = self._path, **spkwargs)
+            subprocess.check_output(shlex_split("git fetch --quiet --tags origin"), stderr = subprocess.STDOUT, cwd = self._path, **spkwargs)
         except subprocess.CalledProcessError as e:
             raise GITSubprocessException(e, self._path)
 
@@ -540,8 +547,11 @@ de9dff53655734aa21357816897157161b238ad8	refs/merge-requests/3/merge
         Pulls 'src'
         """
         try:
-            subprocess.check_call(shlex_split("git pull --ff-only --quiet origin {}".format(src)), cwd = self._path, **spkwargs)
+            subprocess.check_output(shlex_split("git pull --ff-only --quiet origin {}".format(src)), stderr = subprocess.STDOUT, cwd = self._path, **spkwargs)
         except subprocess.CalledProcessError as e:
+            err = e.output.strip().lower()
+            if "your configuration specifies to merge with the ref" in err and "from the remote, but no such ref was fetched" in err:
+                raise GITException("Deleted remote ref")
             raise GITSubprocessException(e, self._path)
 
 
