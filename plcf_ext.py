@@ -103,3 +103,17 @@ def check_pv_length(pv_name):
         return pv_name
 
     raise PVLengthException("The PV name '{pv_name}' is longer than permitted ({act_len} / 60)".format(pv_name = pv_name, act_len = len(pv_name)))
+
+
+def strip(what):
+    """
+        Strip whitspace
+    """
+    return what.strip()
+
+
+def dash_means_empty(what):
+    """
+        Return an empty string if `what` is a dash (`-`) otherwise return `what`
+    """
+    return "" if what.strip() == "-" else what
