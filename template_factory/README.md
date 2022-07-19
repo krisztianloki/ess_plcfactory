@@ -232,6 +232,34 @@ Creates a PLC variable of type **<plc_type>** and an **mbbiDirect** or **mbboDir
 
 The default length is the maximum allowed by EPICS; 39 characters
 
+## Customizing / adding new PVs to the generated EPICS db
+
+If for some reason you have to add custom PVs whose values are not coming from the PLC you can use the `add_verbatim` function. It will copy everthing verbatim (subject to PLCF# evaluation).
+
+```
+add_verbatim("""
+record(calcout, "[PLCF#INSTALLATION_SLOT]:#CalcFbkError")
+{
+    field(DESC, "Aggregate feedback errors")
+    field(INPA, "[PLCF#INSTALLATION_SLOT]:ISrcMagPS_fbkErrorC1 CP MSS")
+    field(INPB, "[PLCF#INSTALLATION_SLOT]:ISrcMagPS_fbkErrorC2 CP MSS")
+    field(CALC, "A && B")
+    field(OUT,  "[PLCF#INSTALLATION_SLOT]:FbkError PP MSS")
+    field(SCAN, "1 second")
+}
+
+
+record(bi, "[PLCF#INSTALLATION_SLOT]:FbkError")
+{
+    field(DESC, "If there is a feedback error")
+    field(ZNAM, "Feedback error")
+    field(ONAM, "Good")
+}
+""")
+```
+
+will substitute `[PLCF#INSTALLATION_SLOT]` to the ESS-name of the device and copy the text between the triple quotes to the EPICS db.
+
 ## Supported KEYWORDs
 
 ### PV_ALIAS
