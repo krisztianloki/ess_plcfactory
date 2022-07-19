@@ -433,6 +433,7 @@ record(calc, "{vbi}")
 {{
 	field(DESC, "Aggregate PLCHashCorrectR and vinv")
 	field(INPA, "{sdis}")
+	# Only need the alarm status and severity from {vinv}
 	field(INPB, "{vinv} MSS")
 	field(CALC, "A")
 }}
@@ -459,13 +460,13 @@ record(calc, "{vbi}")
             raise TemplatePrinterException("Cannot generate validity helper PV; non ESS conformant device name: '{}'".format(name), IFDEF_SOURCE = var)
         prop = rematch.group(2)
 
-        vbi = "{}A_{}vbi".format(ess_name, prop)
+        vbi = "{}#{}vbi".format(ess_name, prop)
 
         if len(suffixes) == 0:
             return vbi
 
         pvs = [ vbi ]
-        pvs.extend(map(lambda s: "{}A_{}{}".format(ess_name, prop, s), suffixes))
+        pvs.extend(map(lambda s: "{}#{}{}".format(ess_name, prop, s), suffixes))
 
         return pvs
 
