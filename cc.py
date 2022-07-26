@@ -10,24 +10,10 @@ __license__    = "GPLv3"
 
 # Python libraries
 import getpass
+import requests
 from collections import OrderedDict
 from os import path as os_path
 from shutil import copy2
-
-try:
-    import requests
-except ImportError:
-    from sys import path as sys_path
-
-    # add directory for third-party libraries to module search path
-    parent_dir = os_path.abspath(os_path.dirname(__file__))
-    lib_dir    = os_path.join(parent_dir, 'libs')
-    sys_path.append(lib_dir)
-    del parent_dir
-    del lib_dir
-
-    # third-party libraries, stored in folder 'libs'
-    import requests
 
 
 # disable printing of unsigned SSH connection warnings to console
