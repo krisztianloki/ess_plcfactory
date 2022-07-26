@@ -43,6 +43,9 @@ For further information, see the files in [doc](doc/).
     *   \[**REQUIRED** _if not using any plc options_\]
     *   The list of templates to process
     *   `--template EPICS-DB TIA-MAP MY-SPECIAL-TEMPLATE`
+*   **--enable-python3**
+    *   \[OPTIONAL\]
+    *   Enables experimental Python-3 support
 *   **--zip**`[=<created_zip_file>]`
     *   \[OPTIONAL\]
     *   Create a zip file containing the generated files. The default file name is derived from _device_

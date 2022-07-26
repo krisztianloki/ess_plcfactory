@@ -23,11 +23,6 @@ __product__    = "ics_plc_factory"
 
 # Python libraries
 import sys
-if sys.version_info.major != 2:
-    raise RuntimeError("""
-PLCFactory supports Python-2.x only. You are running {}
-""".format(sys.version))
-
 import argparse
 from collections import OrderedDict
 import datetime
@@ -2158,6 +2153,13 @@ def main(argv):
                             action  = "store_true"
                            )
 
+        parser.add_argument(
+                            '--enable-python3',
+                            dest    = 'python3',
+                            help    = 'enable experimental Python-3 support',
+                            action  = "store_true"
+                           )
+
         return parser
 
 
@@ -2186,6 +2188,12 @@ def main(argv):
     #  get the device
     args   = parser.parse_known_args(argv)[0]
     device = args.device
+
+    if not args.python3 and sys.version_info.major != 2:
+        raise RuntimeError("""
+PLCFactory supports Python-2.x only. Try running with the '--enable-python3' option.
+Your Python version is {}
+""".format(sys.version))
 
     if args.list_templates:
         print(tf.available_printers())
