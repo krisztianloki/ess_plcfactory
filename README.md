@@ -149,6 +149,10 @@ For further information, see the files in [doc](doc/).
     *   \[OPTIONAL\]
     *   Do not allow command or parameter blocks in the PLC. Modbus will still be enabled to exchange the hash and heartbeat.
     *   `--plc-readonly`
+*   **--plc-hostname**`=<hostname>`
+    *   \[OPTIONAL\]
+    *   Override the `Hostname` CCDB property of the PLC. Only use it for testing purposes
+    *   `--plc-hostname=myplc.cslab.esss.lu.se`
 *   **--e3**`[=<module_name>]`
     *   \[OPTIONAL\]
     *   Generate a proper E3 module. If not specified, the module name is taken from the _EPICSModule_ property of _device_ with a fallback to being derived from _device_ and of course prefixed with e3. The name of the snippet follows a similar algorithm; taken from the _EPICSSnippet_ property and falls back to being derived from the module name. Implicitly adds _EPICS-DB_, _AUTOSAVE-ST-CMD_, and _AUTOSAVE_ to the list of templates (which means you don't have to add any templates explicitly)

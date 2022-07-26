@@ -988,11 +988,11 @@ class PLC(object):
                                action   = "store_true",
                                default  = False)
 
-        # This is just a workaround until CCDB is fixed an accepts CSEntry interfaces too
+        # This should only be used for testing purposes
         plc_group.add_argument(
                                "--plc-hostname",
                                dest = "plc_hostname",
-                               help = argparse.SUPPRESS)
+                               help = "Override the `Hostname` CCDB property of the PLC. Only use it for testing purposes")
 
         return parser
 
