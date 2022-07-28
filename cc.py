@@ -10,7 +10,18 @@ __license__    = "GPLv3"
 
 # Python libraries
 import getpass
-import requests
+try:
+    import requests
+except ImportError:
+    raise NotImplementedError("""
+++++++++++++++++++++++++++++++++++++
+Could not find package 'requests'!
+Please install it by running
+
+pip2 install --user requests==2.23.0
+
+++++++++++++++++++++++++++++++++++++
+""")
 from collections import OrderedDict
 from os import path as os_path
 from shutil import copy2
