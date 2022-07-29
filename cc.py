@@ -18,7 +18,7 @@ except ImportError:
 Could not find package 'requests'!
 Please install it by running
 
-pip2 install --user requests==2.23.0
+sudo yum install python-requests
 
 ++++++++++++++++++++++++++++++++++++
 """)
