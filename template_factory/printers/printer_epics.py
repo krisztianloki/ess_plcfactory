@@ -133,23 +133,24 @@ class EPICS_BASE(PRINTER):
 #
 # This shows the module version that was 'required'
 #
-record(stringin, "{root_inst_slot}:ModVersionR")
+record(lsi, "{root_inst_slot}:ModVersionR")
 {{
 	field(DESC,	"Module version")
 	field(DISP,	"1")
-	field(VAL,	"$(MODVERSION={modversion})")
+	field(SIZV,	"41")
+	field(INP,	{{const:"$(MODVERSION={modversion})"}})
 	field(PINI,	"YES")
 }}
 
 #
 # This can be used to get the branch of PLCFactory that was used to generate this file
 #
-record(stringin, "{root_inst_slot}:PLCFBranchR")
+record(lsi, "{root_inst_slot}:PLCFBranchR")
 {{
 	field(DESC,	"Branch of PLCFactory")
 	field(DISP,	"1")
-#{plcf_branch}
-	field(VAL,	"{plcf_branch_39}")
+	field(SIZV,	"64")
+	field(INP,	{{const:"{plcf_branch}"}})
 	field(PINI,	"YES")
 	info("plcf_branch", "{plcf_branch}")
 }}
@@ -157,12 +158,12 @@ record(stringin, "{root_inst_slot}:PLCFBranchR")
 #
 # This can be used to get the exact same version of PLCFactory that was used to generate this file
 #
-record(stringin, "{root_inst_slot}:PLCFCommitR")
+record(lsi, "{root_inst_slot}:PLCFCommitR")
 {{
 	field(DESC,	"Commit hash of PLCFactory")
 	field(DISP,	"1")
-#{plcf_commit}
-	field(VAL,	"{plcf_commit_39}")
+	field(SIZV,	"41")
+	field(INP,	{{const:"{plcf_commit}"}})
 	field(PINI,	"YES")
 	info("plcf_commit", "{plcf_commit}")
 }}
@@ -212,11 +213,9 @@ record(longin, "{root_inst_slot}:#plcfC2")
 }}
 """.format(root_inst_slot  = self.root_inst_slot(),
            plcf_commit     = keyword_params.get("COMMIT_ID", "N/A"),
-           plcf_commit_39  = keyword_params.get("COMMIT_ID", "N/A")[:39],
            plcf_status     = int(keyword_params.get("PLCF_STATUS", 0)),
            plcf_status_string = "Clean" if keyword_params.get("PLCF_STATUS", False) else "Dirty",
            plcf_branch     = self.plcf("ext.plcfactory_branch()"),
-           plcf_branch_39  = self.plcf("ext.plcfactory_branch()")[:39],
            timestamp       = self.plcf("ext.plcfactory_timestamp_as('{:%Y%m%d%H%M%S}')"),
            cmdline         = self.plcf("ext.plcfactory_cmdline()"),
            modversion      = self.plcf("ext.default_modversion()"))
@@ -1179,18 +1178,19 @@ class EPICS_OPC(EPICS_BASE):
         self.DISABLE_TEMPLATE = EPICS_OPC.DISABLE_TEMPLATE.format(DISABLE_PV = self.DISABLE_PV)
 
         epics_db_header = """
-record(stringin, "{root_inst_slot}:ModVersionR")
+record(lsi, "{root_inst_slot}:ModVersionR")
 {{
 	field(DISP,	"1")
-	field(VAL,	"$(MODVERSION=N/A)")
+	field(SIZV,	"41")
+	field(INP,	{{const:"$(MODVERSION=N/A)"}})
 	field(PINI,	"YES")
 }}
 
-record(stringin, "{root_inst_slot}:PLCFCommitR")
+record(lsi, "{root_inst_slot}:PLCFCommitR")
 {{
 	field(DISP,	"1")
-#{plcf_commit}
-	field(VAL,	"{plcf_commit_39}")
+	field(SIZV,	"41")
+	field(INP,	{{const:"{plcf_commit}"}})
 	field(PINI,	"YES")
 	info("plcf_commit", "{plcf_commit}")
 }}
@@ -1225,8 +1225,7 @@ record(ao, "{root_inst_slot}:CommsHashToPLCS")
 	field(DOL,	"{root_inst_slot}:CommsHashToPLC")
 }}
 """.format(root_inst_slot  = self.root_inst_slot(),
-           plcf_commit     = keyword_params.get("COMMIT_ID", "N/A"),
-           plcf_commit_39  = keyword_params.get("COMMIT_ID", "N/A")[:39])
+           plcf_commit     = keyword_params.get("COMMIT_ID", "N/A"))
 
         self._append(epics_db_header, output)
         return self
