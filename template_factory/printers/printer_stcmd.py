@@ -148,7 +148,7 @@ class IOCSH(e3, MACROS, PRINTER):
         plc_pulse = self.get_property("PLC-EPICS-COMMS: PLCPulse", "Pulse_200ms")
         try:
             plc_pulse = self.SIEMENS_PLC_PULSE[plc_pulse]
-            self._recvtimeout = int(plc_pulse * 6)
+            self._recvtimeout = int(plc_pulse * 1.5)
         except KeyError:
             raise TemplatePrinterException("Cannot interpret PLCPulse property: '{}'".format(plc_pulse))
 
