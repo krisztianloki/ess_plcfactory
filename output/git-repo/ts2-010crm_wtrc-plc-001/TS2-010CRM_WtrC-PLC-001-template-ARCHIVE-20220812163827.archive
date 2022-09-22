@@ -1,0 +1,178 @@
+############################################################
+## TS2-010CRM:WtrC-PLC-001
+# The module version
+TS2-010CRM:WtrC-PLC-001:ModVersionR
+# Modbus connection state
+TS2-010CRM:WtrC-PLC-001:ModbusConnectedR
+# S7 connection state
+TS2-010CRM:WtrC-PLC-001:S7ConnectedR
+# Address of the PLC
+TS2-010CRM:WtrC-PLC-001:PLCAddr-RB
+# Global connection state
+TS2-010CRM:WtrC-PLC-001:ConnectedR
+# Hash correctness state
+TS2-010CRM:WtrC-PLC-001:PLCHashCorrectR
+# PLC liveliness
+TS2-010CRM:WtrC-PLC-001:AliveR
+# IOC Hash
+TS2-010CRM:WtrC-PLC-001:CommsHashToPLC
+# PLC Hash
+TS2-010CRM:WtrC-PLC-001:CommsHashFromPLCR
+# Configured payload size
+TS2-010CRM:WtrC-PLC-001:PayloadSizeR
+# Payload size configured on the PLC
+TS2-010CRM:WtrC-PLC-001:PayloadSizeFromPLCR
+# Payload size configuration correctness state
+TS2-010CRM:WtrC-PLC-001:PayloadSizeCorrectR
+############################################################
+## TS2-010CRM:WtrC-PT-101
+# Pressure Value
+TS2-010CRM:WtrC-PT-101:MeasValue
+# RAW integer scaled
+TS2-010CRM:WtrC-PT-101:RAWValue
+############################################################
+## TS2-010CRM:WtrC-PT-102
+# Pressure Value
+TS2-010CRM:WtrC-PT-102:MeasValue
+# RAW integer scaled
+TS2-010CRM:WtrC-PT-102:RAWValue
+############################################################
+## TS2-010CRM:WtrC-YCV-101
+# Valve Opened
+TS2-010CRM:WtrC-YCV-101:Opened
+# Valve Closed
+TS2-010CRM:WtrC-YCV-101:Closed
+# Solenoid energized
+TS2-010CRM:WtrC-YCV-101:Solenoid
+# Start Interlock
+TS2-010CRM:WtrC-YCV-101:StartInterlock
+# Stop Interlock
+TS2-010CRM:WtrC-YCV-101:StopInterlock
+############################################################
+## TS2-010CRM:WtrC-YCV-102
+# Valve Opened
+TS2-010CRM:WtrC-YCV-102:Opened
+# Valve Closed
+TS2-010CRM:WtrC-YCV-102:Closed
+# Solenoid energized
+TS2-010CRM:WtrC-YCV-102:Solenoid
+# Start Interlock
+TS2-010CRM:WtrC-YCV-102:StartInterlock
+# Stop Interlock
+TS2-010CRM:WtrC-YCV-102:StopInterlock
+############################################################
+## TS2-010CRM:WtrC-YCV-103
+# Valve Opened
+TS2-010CRM:WtrC-YCV-103:Opened
+# Valve Closed
+TS2-010CRM:WtrC-YCV-103:Closed
+# Solenoid energized
+TS2-010CRM:WtrC-YCV-103:Solenoid
+# Start Interlock
+TS2-010CRM:WtrC-YCV-103:StartInterlock
+# Stop Interlock
+TS2-010CRM:WtrC-YCV-103:StopInterlock
+############################################################
+## TS2-010CRM:WtrC-YCV-104
+# Valve Opened
+TS2-010CRM:WtrC-YCV-104:Opened
+# Valve Closed
+TS2-010CRM:WtrC-YCV-104:Closed
+# Solenoid energized
+TS2-010CRM:WtrC-YCV-104:Solenoid
+# Start Interlock
+TS2-010CRM:WtrC-YCV-104:StartInterlock
+# Stop Interlock
+TS2-010CRM:WtrC-YCV-104:StopInterlock
+############################################################
+## TS2-010CRM:WtrC-YSV-109
+# Valve Opened
+TS2-010CRM:WtrC-YSV-109:Opened
+# Valve Closed
+TS2-010CRM:WtrC-YSV-109:Closed
+# Solenoid energized
+TS2-010CRM:WtrC-YSV-109:Solenoid
+# Start Interlock
+TS2-010CRM:WtrC-YSV-109:StartInterlock
+# Stop Interlock
+TS2-010CRM:WtrC-YSV-109:StopInterlock
+############################################################
+## TS2-010CRM:WtrC-YSV-110
+# Valve Opened
+TS2-010CRM:WtrC-YSV-110:Opened
+# Valve Closed
+TS2-010CRM:WtrC-YSV-110:Closed
+# Solenoid energized
+TS2-010CRM:WtrC-YSV-110:Solenoid
+# Start Interlock
+TS2-010CRM:WtrC-YSV-110:StartInterlock
+# Stop Interlock
+TS2-010CRM:WtrC-YSV-110:StopInterlock
+############################################################
+## TS2-010CRM:WtrC-YSV-111
+# Valve Opened
+TS2-010CRM:WtrC-YSV-111:Opened
+# Valve Closed
+TS2-010CRM:WtrC-YSV-111:Closed
+# Solenoid energized
+TS2-010CRM:WtrC-YSV-111:Solenoid
+# Start Interlock
+TS2-010CRM:WtrC-YSV-111:StartInterlock
+# Stop Interlock
+TS2-010CRM:WtrC-YSV-111:StopInterlock
+############################################################
+## TS2-010CRM:WtrC-YSV-112
+# Valve Opened
+TS2-010CRM:WtrC-YSV-112:Opened
+# Valve Closed
+TS2-010CRM:WtrC-YSV-112:Closed
+# Solenoid energized
+TS2-010CRM:WtrC-YSV-112:Solenoid
+# Start Interlock
+TS2-010CRM:WtrC-YSV-112:StartInterlock
+# Stop Interlock
+TS2-010CRM:WtrC-YSV-112:StopInterlock
+############################################################
+## TS2-010CRM:WtrC-YSV-113
+# Valve Opened
+TS2-010CRM:WtrC-YSV-113:Opened
+# Valve Closed
+TS2-010CRM:WtrC-YSV-113:Closed
+# Solenoid energized
+TS2-010CRM:WtrC-YSV-113:Solenoid
+# Start Interlock
+TS2-010CRM:WtrC-YSV-113:StartInterlock
+# Stop Interlock
+TS2-010CRM:WtrC-YSV-113:StopInterlock
+############################################################
+## TS2-010CRM:WtrC-TE-101
+# Temperature Value
+TS2-010CRM:WtrC-TE-101:MeasValue
+# Temperature in Current
+TS2-010CRM:WtrC-TE-101:MeasCurrent
+# RAW integer scaled
+TS2-010CRM:WtrC-TE-101:RAWValue
+############################################################
+## TS2-010CRM:WtrC-TE-102
+# Temperature Value
+TS2-010CRM:WtrC-TE-102:MeasValue
+# Temperature in Current
+TS2-010CRM:WtrC-TE-102:MeasCurrent
+# RAW integer scaled
+TS2-010CRM:WtrC-TE-102:RAWValue
+############################################################
+## TS2-010CRM:WtrC-TE-103
+# Temperature Value
+TS2-010CRM:WtrC-TE-103:MeasValue
+# Temperature in Current
+TS2-010CRM:WtrC-TE-103:MeasCurrent
+# RAW integer scaled
+TS2-010CRM:WtrC-TE-103:RAWValue
+############################################################
+## TS2-010CRM:WtrC-TE-104
+# Temperature Value
+TS2-010CRM:WtrC-TE-104:MeasValue
+# Temperature in Current
+TS2-010CRM:WtrC-TE-104:MeasCurrent
+# RAW integer scaled
+TS2-010CRM:WtrC-TE-104:RAWValue

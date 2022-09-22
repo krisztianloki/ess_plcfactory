@@ -1,0 +1,8 @@
+#!/bin/sh
+
+#Date:              2022-08-12 16:40:42
+#PLCFactory URL:    https://gitlab.esss.lu.se/icshwi/plcfactory.git
+#PLCFactory branch: master
+#PLCFactory commit: ffa943c824bc42c5378196579606b0f20e8dd5c8
+
+plcfactory.py --device TS2-010CRM:WtrC-PLC-001 --plc-siemens --ioc --enable-python3 --plc-no-diag

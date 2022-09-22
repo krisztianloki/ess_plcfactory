@@ -1,0 +1,106 @@
+############################################################
+## Spk-000CDL:Cryo-PLC-010
+# The module version
+Spk-000CDL:Cryo-PLC-010:ModVersionR
+# Modbus connection state
+Spk-000CDL:Cryo-PLC-010:ModbusConnectedR
+# S7 connection state
+Spk-000CDL:Cryo-PLC-010:S7ConnectedR
+# Address of the PLC
+Spk-000CDL:Cryo-PLC-010:PLCAddr-RB
+# Global connection state
+Spk-000CDL:Cryo-PLC-010:ConnectedR
+# Hash correctness state
+Spk-000CDL:Cryo-PLC-010:PLCHashCorrectR
+# PLC liveliness
+Spk-000CDL:Cryo-PLC-010:AliveR
+# IOC Hash
+Spk-000CDL:Cryo-PLC-010:CommsHashToPLC
+# PLC Hash
+Spk-000CDL:Cryo-PLC-010:CommsHashFromPLCR
+# Configured payload size
+Spk-000CDL:Cryo-PLC-010:PayloadSizeR
+# Payload size configured on the PLC
+Spk-000CDL:Cryo-PLC-010:PayloadSizeFromPLCR
+# Payload size configuration correctness state
+Spk-000CDL:Cryo-PLC-010:PayloadSizeCorrectR
+############################################################
+## Spk-000CDL:Cryo-CV-91
+# Valve Position AI
+Spk-000CDL:Cryo-CV-91:ValvePosition
+# Valve Setpoint
+Spk-000CDL:Cryo-CV-91:ValveSP
+# Valve Control AO
+Spk-000CDL:Cryo-CV-91:ValveMV
+# Move Interlock
+Spk-000CDL:Cryo-CV-91:MoveInterlock
+############################################################
+## Spk-000CDL:Cryo-CV-92
+# Valve Position AI
+Spk-000CDL:Cryo-CV-92:ValvePosition
+# Valve Setpoint
+Spk-000CDL:Cryo-CV-92:ValveSP
+# Valve Control AO
+Spk-000CDL:Cryo-CV-92:ValveMV
+# Move Interlock
+Spk-000CDL:Cryo-CV-92:MoveInterlock
+############################################################
+## Spk-000CDL:Cryo-CV-93
+# Valve Position AI
+Spk-000CDL:Cryo-CV-93:ValvePosition
+# Valve Setpoint
+Spk-000CDL:Cryo-CV-93:ValveSP
+# Valve Control AO
+Spk-000CDL:Cryo-CV-93:ValveMV
+# Move Interlock
+Spk-000CDL:Cryo-CV-93:MoveInterlock
+############################################################
+## Spk-000CDL:Cryo-CV-94
+# Valve Position AI
+Spk-000CDL:Cryo-CV-94:ValvePosition
+# Valve Setpoint
+Spk-000CDL:Cryo-CV-94:ValveSP
+# Valve Control AO
+Spk-000CDL:Cryo-CV-94:ValveMV
+# Move Interlock
+Spk-000CDL:Cryo-CV-94:MoveInterlock
+############################################################
+## Spk-000CDL:Cryo-TT-91
+# Temperature Value
+Spk-000CDL:Cryo-TT-91:MeasValue
+############################################################
+## Spk-000CDL:Cryo-TT-92
+# Temperature Value
+Spk-000CDL:Cryo-TT-92:MeasValue
+############################################################
+## Spk-000CDL:Cryo-TT-93
+# Temperature Value
+Spk-000CDL:Cryo-TT-93:MeasValue
+############################################################
+## Spk-000CDL:Cryo-TT-94
+# Temperature Value
+Spk-000CDL:Cryo-TT-94:MeasValue
+############################################################
+## Spk-000CDL:Cryo-TT-95
+# Temperature Value
+Spk-000CDL:Cryo-TT-95:MeasValue
+############################################################
+## Spk-000CDL:Cryo-TT-96
+# Temperature Value
+Spk-000CDL:Cryo-TT-96:MeasValue
+############################################################
+## Spk-000CDL:Cryo-TT-97
+# Temperature Value
+Spk-000CDL:Cryo-TT-97:MeasValue
+############################################################
+## Spk-000CDL:Cryo-TT-98
+# Temperature Value
+Spk-000CDL:Cryo-TT-98:MeasValue
+############################################################
+## Spk-000CDL:Cryo-LT-91
+# RAW integer scaled
+Spk-000CDL:Cryo-LT-91:RAWValue
+############################################################
+## Spk-000CDL:Cryo-LT-92
+# RAW integer scaled
+Spk-000CDL:Cryo-LT-92:RAWValue

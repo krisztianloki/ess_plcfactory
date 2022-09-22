@@ -1,0 +1,11 @@
+
+#- @field MODVERSION
+#- @runtime YES
+#- The version of the PLC-IOC integration
+
+#- @field spk_000cdl_cryo_plc_010_VERSION
+#- @runtime YES
+
+
+#- Load plc interface database
+dbLoadRecords("$(DBDIR=)spk_000cdl_cryo_plc_010-test.db", "MODVERSION=$(PLCIOCVERSION)")

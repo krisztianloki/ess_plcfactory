@@ -1,0 +1,11 @@
+
+#- @field MODVERSION
+#- @runtime YES
+#- The version of the PLC-IOC integration
+
+#- @field ts2_010crm_wtrc_plc_001_VERSION
+#- @runtime YES
+
+
+#- Load plc interface database
+dbLoadRecords("$(DBDIR=)ts2_010crm_wtrc_plc_001-test.db", "MODVERSION=$(PLCIOCVERSION)")

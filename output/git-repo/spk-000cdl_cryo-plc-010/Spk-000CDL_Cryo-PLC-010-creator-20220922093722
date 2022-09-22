@@ -1,0 +1,8 @@
+#!/bin/sh
+
+#Date:              2022-09-22 09:37:22
+#PLCFactory URL:    https://gitlab.esss.lu.se/icshwi/plcfactory.git
+#PLCFactory branch: master
+#PLCFactory commit: fb3b582a9a66e37ff877560bc4f23ab7654f4230
+
+plcfactory.py --device Spk-000CDL:Cryo-PLC-010 --plc-siemens --ioc --ioc-git-commit-message=auto --plc-diag
